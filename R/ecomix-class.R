@@ -1,3 +1,7 @@
+#' @useDynLib bbgdm
+#' @importFrom Rcpp sourceCpp
+NULL
+
 #' @title ecomix package
 #' @name ecomix-package
 #' @description ecomix is a package for implementing species archetype models (SAM) and region of
