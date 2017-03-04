@@ -1,4 +1,4 @@
-#' @useDynLib bbgdm
+#' @useDynLib ecomix
 #' @importFrom Rcpp sourceCpp
 NULL
 
@@ -15,3 +15,19 @@ NULL
 #' @name ecomix
 #' @description creates an \code{ecomix} model; see \code{ecomix.fit} for more specifics about how
 #' ecomix fits finite mixture models.
+#' @param process_formula an object of class "formula" (or an object that can be coerced to that class).
+#' The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the ecomix probabilities on covariates.
+#' @param observation_formula an object of class "formula" (or an object that can be coerced to that class). The left hand side of this formula should be left empty (it is removed if it is not empty). The right hand side of this formula specifies the dependence of the species"'" data on covariates (typically different covariates to \code{process_formula} to avoid confusing confounding). An example formula is observations ~ gear_type + time_of_day, where gear_type describes the different sampling gears and time_of_day describes the time of the sample. #maybe could call this detection/bias
+#' @param species_data a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned.
+#' @param covariate_data a data frame containng the covariate data for each site. Names of columns must match that given in \code{process_formula} and \code{observation_formula}.
+#' @param n_mixtures The number of mixing components (groups) to fit.
+#' @param distribution The family of statistical distribution to used within the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data.
+#' @param offset a numeric vector of length nrow( data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the unobserved RCP type. Note that offsets cannot be included as part of the form.RCP or form.spp arguments ??? only through this argument.
+#' @param weights a numeric vector of length nrow( data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1.
+#' @param  control a list of control parameters for optimisation and calculation. See details.
+#' @export
+
+
+ecomix <- function(x){
+  message('haha this does nothing yet.')
+}
