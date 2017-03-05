@@ -24,10 +24,22 @@ NULL
 #' @param distribution The family of statistical distribution to used within the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data.
 #' @param offset a numeric vector of length nrow( data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the unobserved RCP type. Note that offsets cannot be included as part of the form.RCP or form.spp arguments ??? only through this argument.
 #' @param weights a numeric vector of length nrow( data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1.
-#' @param  control a list of control parameters for optimisation and calculation. See details.
+#' @param  control a list of control parameters for optimisation and calculation. See details. From \code{ecomix.fit} control.
+#' @param initialise a characture string which defines the method used to initialise finite mixture model clustering. #Will have to synergise this function call across RCP and SpeciesMix. Looks like SpeciesMix uses a em.prefit to setup initialisations. regimix has a number of methods. This seems like a good place to setup the bivariate clusting step - cobra function.
 #' @export
+#' @examples
+#' simulated_data <- simulate_ecomix_data()
+#' process_form <- occurrence ~ 1 + x1 + x2 + x3
+#' obs_form <- observations ~ 1 + w1 + w2 + w3
 
-
-ecomix <- function(x){
+ecomix <- function(process_formula=NULL,
+                   observation_formula=NULL,
+                   species_data,
+                   covariate_data,
+                   n_mixtures=3,
+                   initialise='random',
+                   offset=NULL,
+                   weights=NULL,
+                   control=list()){
   message('haha this does nothing yet.')
 }

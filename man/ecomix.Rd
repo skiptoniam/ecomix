@@ -4,7 +4,9 @@
 \alias{ecomix}
 \title{ecomix objects}
 \usage{
-ecomix(x)
+ecomix(process_formula = NULL, observation_formula = NULL, species_data,
+  covariate_data, n_mixtures = 3, initialise = "random", offset = NULL,
+  weights = NULL, control = list())
 }
 \arguments{
 \item{process_formula}{an object of class "formula" (or an object that can be coerced to that class).
@@ -18,9 +20,22 @@ The response variable (left hand side of the formula) needs to be either 'presen
 
 \item{n_mixtures}{The number of mixing components (groups) to fit.}
 
+\item{initialise}{a characture string which defines the method used to initialise finite mixture model clustering. #Will have to synergise this function call across RCP and SpeciesMix. Looks like SpeciesMix uses a em.prefit to setup initialisations. regimix has a number of methods. This seems like a good place to setup the bivariate clusting step - cobra function.}
+
+\item{offset}{a numeric vector of length nrow( data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the unobserved RCP type. Note that offsets cannot be included as part of the form.RCP or form.spp arguments ??? only through this argument.}
+
+\item{weights}{a numeric vector of length nrow( data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1.}
+
+\item{control}{a list of control parameters for optimisation and calculation. See details. From \code{ecomix.fit} control.}
+
 \item{distribution}{The family of statistical distribution to used within the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data.}
 }
 \description{
 creates an \code{ecomix} model; see \code{ecomix.fit} for more specifics about how
 ecomix fits finite mixture models.
+}
+\examples{
+simulated_data <- simulate_ecomix_data()
+process_form <- occurrence ~ 1 + x1 + x2 + x3
+obs_form <- observations ~ 1 + w1 + w2 + w3
 }
