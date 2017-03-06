@@ -42,4 +42,15 @@ ecomix <- function(process_formula=NULL,
                    weights=NULL,
                    control=list()){
   message('haha this does nothing yet.')
+
+  #use this to match formula to distribution in model
+  #presence -> poisson w/ offset
+  #occurrence -> bernoulli
+  #abundance -> poisson or negative_binomial
+  #biomass -> tweedie
+  #quantity -> guassian
+  #all.vars(process_formula)[1]
+
+
+
 }
