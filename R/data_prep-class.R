@@ -9,7 +9,6 @@
 #' @return A sites x species matrix to used as species_data in \code{ecomix} models.
 #' @export
 
-
 table_to_species_data <- function(observation_data, site_id = "site_id", species_id = "species_id", measurement_id = NULL) {
 
     nr <- length(levels(as.factor(observation_data[, site_id])))
@@ -37,3 +36,46 @@ table_to_species_data <- function(observation_data, site_id = "site_id", species
         return(as.matrix(fm))
 }
 
+#' @rdname data_prep
+#' @name make_mixture_data
+#' @param species_data A character string providing the name of the column in \verb{data} that contains the counts
+#' @param covariate_data A character string providing the name of the column in \verb{data} that contains the binary occurence data
+# #' @param weights A formula decribing the variables for which delta will be the coefficients.
+# #' @param offset A formula giveng additional variables to be used for all groups.
+#'
+#' @return
+#' A list containing the following elements:
+#' \item{species_data}{A matrix of occurrence, counts, biomass, or...}
+#' \item{covariate_data}{The design matrix for the global covariates}
+# #' \item{weights}{An optional vector of 'prior weights' to be used in the fitting process}
+# #' \item{offset}{An optinal vector that can be used to specify an a priori known component to be included in the linear predictor during fitting. }
+#'
+#' @author Skipton Woolley
+#' @export
+
+make_mixture_data <- function(species_data,covariate_data){
+
+  #check species data
+  species_data_check(species_data)
+
+  #check covariate data
+  covariate_data_check(covariate_data)
+
+  if(!identical(dim(species_data)[1],dim(covariate_data)[1]))
+    stop('dimensions of species matrix sites (rows) and covariate data at sites (rows) do not match, have another look')
+
+  out <- list('species_data'=species_data,'covariate_data'=covariate_data)
+  return(out)
+}
+
+species_data_check <- function(x){
+    stopifnot(is.matrix(x)|is.data.frame(x))
+    stopifnot(all(is.finite(x)))
+}
+
+covariate_data_check <- function(x){
+  stopifnot(is.matrix(x)|is.data.frame(x))
+  stopifnot(all(is.finite(x)))
+}
+
+# make_ppm_weights <- function()
