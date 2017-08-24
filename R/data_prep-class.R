@@ -1,4 +1,4 @@
-#' @title data_prep objects
+#' @title data_preperation-class
 #' @rdname data_prep
 #' @name table_to_species_data
 #' @description prepares table of observational records into a sites x species matrix for use in \code{ecomix}.
@@ -6,14 +6,14 @@
 #' @param site_id Name of column that contains site names /IDs.
 #' @param species_id Name of column that contains species information/ID.
 #' @param measurement_id Name of column that contains species observational data. eg, 'occurrence', 'abundance' or 'biomass'.
+#' @param distribution The family of statistical distribution to use within the ecomix models. A choice between "bernoulli", "poisson", "ipp", "negative_binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data. The data perp will try to match distribution with the data.
 #' @return A sites x species matrix to used as species_data in \code{ecomix} models.
 #' @export
 
-table_to_species_data <- function(observation_data, site_id = "site_id", species_id = "species_id", measurement_id = NULL) {
+table_to_species_data <- function(observation_data, site_id = "site_id", species_id = "species_id", distribution = 'bernoulli', measurement_id = NULL) {
 
     nr <- length(levels(as.factor(observation_data[, site_id])))
     rn <- levels(as.factor(observation_data[, site_id]))
-
     cn <- levels(as.factor(observation_data[, species_id]))
     nc <- length(cn)
     nm <- matrix(0, nr, nc, dimnames = list(rn, cn))

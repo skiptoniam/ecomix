@@ -7,7 +7,7 @@
 #' The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the species archetype probabilities on covariates. An example formula follows something like this: cbind(spp1,spp2,spp3)~1+temperature+rainfall
 #' @param model_data a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containng the covariate data for each site. Names of columns must match that given in \code{formula}.
 #' @param n_mixtures The number of mixing components (groups) to fit.
-#' @param distribution The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "ipp", "negative_binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data.
+#' @param distribution The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "ipp" (inhomogeneous point process), "negative_binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data.
 #' @param offset a numeric vector of length nrow(data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the SAM.
 #' @param weights a numeric vector of length nrow(data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1. For ipp distribution - weights must be a nrow(data)*n_species matrix, which provides a species-specific background weights used to estimate the species-specific marginal likelihood.
 #' @param control a list of control parameters for optimisation and calculation. See details. From \code{species_mix.control} for details on optimistaion parameters.
@@ -16,9 +16,9 @@
 #' @export
 #' @examples
 #' simulated_data <- simulate_species_mix_data()
-#' form <- cbind() ~ 1 + x1 + x2 + x3
-#' model_data <- list('species_data' = Y, 'covariate_data' = X)
-#' fm_species_mix <- species_mix(rcp_form,spp_form,model_data=model_data,distribution='bernoulli',n_mixtures=5)
+#' form <- cbind(spp1,spp2,spp3) ~ 1 + x1 + x2 + x3
+#' model_data <- make_mixture_data(species_data = Y, covariate_data = X)
+#' fm_species_mix <- species_mix(formula,model_data=model_data,distribution='bernoulli',n_mixtures=5)
 
 species_mix <- function(formula = NULL, data, n_mixtures = 3, distribution="poisson",
   offset=NULL, weights=NULL, estimate_variance = FALSE,
@@ -37,7 +37,7 @@ species_mix <- function(formula = NULL, data, n_mixtures = 3, distribution="pois
     return(NULL)
   }
 
-  # this is Scott's approach to create the model matrix.
+  # Create model matrix
   mf <- match.call(expand.dots = FALSE)
   m <- match(c("formula","data","offset","weights"), names(mf), 0L)
   mf <- mf[c(1L, m)]
@@ -54,7 +54,8 @@ species_mix <- function(formula = NULL, data, n_mixtures = 3, distribution="pois
   y <- model.response(mf)
 
   # logical matirx needed for removing NAs from response and weights.
-  y_is_na <- is.na(y)
+  if(distribution='ipp')y_is_na <- is.na(y)
+  else y_is_na <- NULL
   # print(dim(y_is_na))
   # check names of reponses
   S <- check_reponse_sm(y)
@@ -71,12 +72,12 @@ species_mix <- function(formula = NULL, data, n_mixtures = 3, distribution="pois
   X <- model.matrix(formula,mf)
 
   #get distribution
-  disty.cases <- c("bernoulli","poisson","ppm","negative_binomial","tweedie","normal")
-  disty <- get_distribution_sm(disty.cases, distribution)
+  disty.cases <- c("bernoulli","poisson","ipp","negative_binomial","tweedie","normal")
+  disty <- get_distribution_sam(disty.cases, distribution)
 
   # get offsets and weights
-  offy <- get_offset_sm(mf)
-  wts <- get_weights_sm(mf,S,distribution)
+  offy <- get_offset_sam(mf)
+  wts <- get_weights_sam(mf,S,distribution)
 
   if(distribution=='ppm'){
     if(!all(colnames(y)%in%colnames(wts)))
@@ -97,7 +98,7 @@ species_mix <- function(formula = NULL, data, n_mixtures = 3, distribution="pois
   }
 
   # summarising data to console
-  print_input_sam_ppm(y, X, S, formula, distribution, quiet=control$quiet)
+  print_input_sam(y, X, S, formula, distribution, quiet=control$quiet)
 
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
   tmp <- species_mix.fit(y=y, X=X, weights=wts, offset=offy, distribution=disty, G=n_mixtures, control=control, y_is_na=y_is_na, estimate_variance=estimate_variance)
@@ -268,4 +269,43 @@ species_mix.predict <-function (object, new_obs, ...){
     }
   }
   list(fit = outpred, se.fit = sqrt(outvar))
+}
+
+print_input_sam <- function(y, X, S, formula, distribution, quiet=FALSE){
+  if( quiet)
+    return( NULL)
+  n.tot <- nrow(y)
+  if(distribution=='ipp'){
+    n_pres <- sum(unlist(y)==1,na.rm=TRUE)
+    n_bkgrd <- sum(unlist(y[,1])==0,na.rm=TRUE)
+    message("There are ", n_pres, " presence observations for ", S," species")
+    message("There are ", n_bk_pts, " background (integration) points for each of the ", S," species")
+  } else {
+    message("There are ", nrow(X), " site observations for ", S," species")
+  }
+  formula[[2]] <- NULL
+  message("The model for the SAM is ", Reduce( "paste", deparse( formula)))
+  message("You are implementing a ", distribution, " SAM.")
+}
+
+get_distribution_sam <- function( disty.cases, dist1) {
+  error.msg <- paste( c( "Distribution not implemented. Options are: ", disty.cases, "-- Exitting Now"), collapse=" ")
+  disty <- switch( dist1, "bernoulli" = 1,"poisson" = 2,"ipp"=3,"negative_binomial" = 4,"tweedie" = 5,"gaussian" = 6,{stop( error.msg)} )
+  return( disty)
+}
+
+get_X_sam <- function(form.SAM, mf.X){
+  form.X <- form.SAM
+  form.X[[2]] <- NULL
+  form.X <- as.formula(form.X)
+  X <- model.matrix(form.X, mf.X)
+  return( X)
+}
+
+check_reponse_sam <-function(outs) {
+  nam <- colnames( outs)
+  if( length( nam) == length( unique( nam)))
+    return( length( nam))
+  else
+    return( FALSE)
 }
