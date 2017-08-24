@@ -3,3 +3,7 @@
 .RData
 .Ruserdata
 .tar.gz
+RCPmod/
+SpeciesMix/
+developing_functions/
+binary_builds/

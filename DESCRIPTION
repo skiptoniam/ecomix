@@ -2,17 +2,30 @@ Package: ecomix
 Type: Package
 Title: Fits finite mixture models to ecological data.
 Version: 0.0.1
-Authors@R: c(person("Skipton", "Woolley", email = "swoolley@museum.vic.gov.au", role = c("aut", "cre")),
+Authors@R: c(person("Skipton", "Woolley", email = "skip.woolley@csiro.au", role = c("aut", "cre")),
              person("Scott", "Foster", email = "scott.foster@csiro.au", role = c("aut")),
              person("Piers", "Dunstan", email = "Piers.Dunstan@csiro.au",  role = c("aut")))
 Maintainer: Skipton Woolley <swoolley@museum.vic.gov.au>
-Description: Identifies regions of common (species) profiles (RCPs), possibly when sampling artefacts are present.  Within a region the probability of sampling all species remains approximately constant.  This is performed using mixtures-of-experts models.  The package also contains associated methods, such as diagnostics.
+Description: ecomix is a package to implement model-based species level (Species Archetype Models) 
+or site level (Region of Common Profile) grouping of community data. 
 Encoding: UTF-8
 LazyData: true
-Imports: glmnet, fishMod, MASS, gtools, parallel, stats, graphics
-Suggests: knitr, rmarkdown, testthat, covr
-Depends: R (>= 3.1.0)
+Imports:
+    glmnet,
+    fishMod,
+    MASS,
+    gtools,
+    parallel,
+    stats,
+    graphics
+Suggests:
+    knitr,
+    rmarkdown,
+    testthat,
+    covr
+Depends:
+    R (>= 3.1.0)
 License: GPL (>= 2)
 SystemRequirements: C++11
 NeedsCompilation: yes
-RoxygenNote: 6.0.1
+RoxygenNote: 5.0.1
