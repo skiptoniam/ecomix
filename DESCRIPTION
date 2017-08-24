@@ -6,8 +6,7 @@ Authors@R: c(person("Skipton", "Woolley", email = "skip.woolley@csiro.au", role 
              person("Scott", "Foster", email = "scott.foster@csiro.au", role = c("aut")),
              person("Piers", "Dunstan", email = "Piers.Dunstan@csiro.au",  role = c("aut")))
 Maintainer: Skipton Woolley <swoolley@museum.vic.gov.au>
-Description: ecomix is a package to implement model-based species level (Species Archetype Models) 
-or site level (Region of Common Profile) grouping of community data. 
+Description: ecomix is a package to implement model-based species level (Species Archetype Models) or site level (Region of Common Profile) grouping of community data. 
 Encoding: UTF-8
 LazyData: true
 Imports:
