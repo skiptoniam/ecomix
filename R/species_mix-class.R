@@ -20,7 +20,7 @@
 #' model_data <- make_mixture_data(species_data = Y, covariate_data = X)
 #' fm_species_mix <- species_mix(formula,model_data=model_data,distribution='bernoulli',n_mixtures=5)
 
-species_mix <- function(formula = NULL, data, n_mixtures = 3, distribution="poisson",
+"species_mix" <- function(formula = NULL, data, n_mixtures = 3, distribution="poisson",
   offset=NULL, weights=NULL, estimate_variance = FALSE,
   control=species_mix.control(), standardise = FALSE){
 
@@ -42,7 +42,7 @@ species_mix <- function(formula = NULL, data, n_mixtures = 3, distribution="pois
   m <- match(c("formula","data","offset","weights"), names(mf), 0L)
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
-  if(distribution=="ppm") mf$na.action <- "na.pass"
+  if(distribution=="ipp") mf$na.action <- "na.pass"
   else mf$na.action <- "na.exclude"
   mf[[1L]] <- quote(stats::model.frame)
   mf <- eval(mf, parent.frame())
@@ -58,7 +58,7 @@ species_mix <- function(formula = NULL, data, n_mixtures = 3, distribution="pois
   else y_is_na <- NULL
   # print(dim(y_is_na))
   # check names of reponses
-  S <- check_reponse_sm(y)
+  S <- check_reponse_sam(y)
 
   if (!S){
     if(!control$quiet)
@@ -79,7 +79,7 @@ species_mix <- function(formula = NULL, data, n_mixtures = 3, distribution="pois
   offy <- get_offset_sam(mf)
   wts <- get_weights_sam(mf,S,distribution)
 
-  if(distribution=='ppm'){
+  if(distribution=='ipp'){
     if(!all(colnames(y)%in%colnames(wts)))
       stop('When modelling a inhomogenous poisson point process weights colnames must match species data colnames')
     if(any(dim(y)!=dim(wts)))
@@ -115,18 +115,18 @@ species_mix <- function(formula = NULL, data, n_mixtures = 3, distribution="pois
 #'@param X is a design matrix of dimension n_sites * n_covariates.
 #'@param G is the number of species archetypes that are being estimated.
 #'@param weights is used in alternative way depending on the error distribution used. See \link[ecomix]{species_mix} for more details.
-#'@param distribution the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ppm' (Poisson point process), 'negative_binomial' and 'tweedie' are avaliable.
+#'@param distribution the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ipp' (Poisson point process), 'negative_binomial' and 'tweedie' are avaliable.
 #'@param offset this is a vector of site specific offsets, this might be something like area sampled at sites.
 #'@param control this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.
-#'@param y_is_na This is a logical matrix used specifically with 'ppm' modelling - don't worry about this, it'll be worked out for you. Yay!
+#'@param y_is_na This is a logical matrix used specifically with 'ipp' modelling - don't worry about this, it'll be worked out for you. Yay!
 
-# test_fit_mix_ppm <- fitmix_ppm(y, X, weights, offset, G = 4, control)
+# test_fit_mix_ipp <- fitmix_ipp(y, X, weights, offset, G = 4, control)
 # a function to fit species mix. irrespective of distribution. I should be able to wrap this around pisers' existing distributions.
 "species_mix.fit" <- function(y, X, G, weights, offset, distribution, control, y_is_na=NULL){
 
   if(distribution == 2) tmp <- fitmix_poisson(y, X, G, weights, offset, control, y_is_na)
-  if(distribution == 3) tmp <- fitmix_ppm(y, X, G, weights, offset, control, y_is_na)
-  else stop('current only PPM or Poisson distribution is set up to use "species_mix.fit"')
+  if(distribution == 3) tmp <- fitmix_ipp(y, X, G, weights, offset, control, y_is_na)
+  else stop('current only ipp or Poisson distribution is set up to use "species_mix.fit"')
   return(tmp)
 }
 
@@ -236,7 +236,7 @@ reltol_fun <- function(logl_n1, logl_n){
           g])
     }
   }
-  if (class(mixture.model)[2] == "ppm" | class(mixture.model)[2] == "poisson") {
+  if (class(mixture.model)[2] == "ipp" | class(mixture.model)[2] == "poisson") {
     G <- length(mixture.model$pi)
     covar <- mixture.model$covar[-1 * c(1:(G - 1)), -1 * c(1:(G - 1))]
     sp.int <- mixture.model$sp_intercept
