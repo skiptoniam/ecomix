@@ -40,9 +40,6 @@ table_to_species_data <- function(observation_data, site_id = "site_id", species
 #' @name make_mixture_data
 #' @param species_data A character string providing the name of the column in \verb{data} that contains the counts
 #' @param covariate_data A character string providing the name of the column in \verb{data} that contains the binary occurence data
-# #' @param weights A formula decribing the variables for which delta will be the coefficients.
-# #' @param offset A formula giveng additional variables to be used for all groups.
-#'
 #' @return
 #' A list containing the following elements:
 #' \item{species_data}{A matrix of occurrence, counts, biomass, or...}
@@ -64,13 +61,13 @@ make_mixture_data <- function(species_data,covariate_data){
   if(!identical(dim(species_data)[1],dim(covariate_data)[1]))
     stop('dimensions of species matrix sites (rows) and covariate data at sites (rows) do not match, have another look')
 
-  out <- list('species_data'=species_data,'covariate_data'=covariate_data)
+  out <- data.frame(species_data,const=1,covariate_data)
   return(out)
 }
 
 species_data_check <- function(x){
-    stopifnot(is.matrix(x)|is.data.frame(x))
-    stopifnot(all(is.finite(x)))
+  stopifnot(is.matrix(x)|is.data.frame(x))
+  stopifnot(all(is.finite(x)))
 }
 
 covariate_data_check <- function(x){
@@ -78,4 +75,4 @@ covariate_data_check <- function(x){
   stopifnot(all(is.finite(x)))
 }
 
-# make_ppm_weights <- function()
+
