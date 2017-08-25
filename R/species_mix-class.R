@@ -122,7 +122,7 @@ species_mix <- function(formula = NULL, data, n_mixtures = 3, distribution="pois
 
 # test_fit_mix_ppm <- fitmix_ppm(y, X, weights, offset, G = 4, control)
 # a function to fit species mix. irrespective of distribution. I should be able to wrap this around pisers' existing distributions.
-species_mix.fit <- function(y, X, G, weights, offset, distribution, control, y_is_na=NULL){
+"species_mix.fit" <- function(y, X, G, weights, offset, distribution, control, y_is_na=NULL){
 
   if(distribution == 2) tmp <- fitmix_poisson(y, X, G, weights, offset, control, y_is_na)
   if(distribution == 3) tmp <- fitmix_ppm(y, X, G, weights, offset, control, y_is_na)
@@ -138,7 +138,7 @@ species_mix.fit <- function(y, X, G, weights, offset, distribution, control, y_i
 #'@param fstol	numeric tolerance for convergence in (quasi) Fisher scoring. For details see \code{\link[stats]{optim}}.
 #'@export
 
-species_mix.control <- function(maxit = 500,
+"species_mix.control" <- function(maxit = 500,
   quiet = FALSE,
   trace = 1,
   nreport = 10,
@@ -165,7 +165,7 @@ reltol_fun <- function(logl_n1, logl_n){
 #'fm1 <- species_mix(form,data)
 #'preds_fm1 <- predict(fm1,newdata)
 
-species_mix.predict <-function (object, new_obs, ...){
+"species_mix.predict" <-function (object, new_obs, ...){
   mixture.model <- object
   if (class(mixture.model)[2] == "bernoulli") {
     G <- length(mixture.model$pi)
@@ -271,7 +271,7 @@ species_mix.predict <-function (object, new_obs, ...){
   list(fit = outpred, se.fit = sqrt(outvar))
 }
 
-print_input_sam <- function(y, X, S, formula, distribution, quiet=FALSE){
+"print_input_sam" <- function(y, X, S, formula, distribution, quiet=FALSE){
   if( quiet)
     return( NULL)
   n.tot <- nrow(y)
@@ -288,13 +288,13 @@ print_input_sam <- function(y, X, S, formula, distribution, quiet=FALSE){
   message("You are implementing a ", distribution, " SAM.")
 }
 
-get_distribution_sam <- function( disty.cases, dist1) {
+"get_distribution_sam" <- function( disty.cases, dist1) {
   error.msg <- paste( c( "Distribution not implemented. Options are: ", disty.cases, "-- Exitting Now"), collapse=" ")
   disty <- switch( dist1, "bernoulli" = 1,"poisson" = 2,"ipp"=3,"negative_binomial" = 4,"tweedie" = 5,"gaussian" = 6,{stop( error.msg)} )
   return( disty)
 }
 
-get_X_sam <- function(form.SAM, mf.X){
+"get_X_sam" <- function(form.SAM, mf.X){
   form.X <- form.SAM
   form.X[[2]] <- NULL
   form.X <- as.formula(form.X)
@@ -302,7 +302,7 @@ get_X_sam <- function(form.SAM, mf.X){
   return( X)
 }
 
-check_reponse_sam <-function(outs) {
+"check_reponse_sam" <-function(outs) {
   nam <- colnames( outs)
   if( length( nam) == length( unique( nam)))
     return( length( nam))
