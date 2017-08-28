@@ -11,7 +11,6 @@
 #' @param offset a numeric vector of length nrow(data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the SAM.
 #' @param weights a numeric vector of length nrow(data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1. For ipp distribution - weights must be a nrow(data)*n_species matrix, which provides a species-specific background weights used to estimate the species-specific marginal likelihood.
 #' @param control a list of control parameters for optimisation and calculation. See details. From \code{species_mix.control} for details on optimistaion parameters.
-#' @param initialise a character string of either ("random", "hclust","kmeans") this provides a method to generate starting values. \
 #' @param inits NULL a numeric vector that provides approximate starting values for species_mix coefficents. These are distribution specific, but as a minimum you'll need pis, alphas (intercepts) and betas.
 #' @export
 #' @examples
@@ -21,8 +20,7 @@
 #' fm_species_mix <- species_mix(formula,model_data=model_data,distribution='bernoulli',n_mixtures=5)
 
 "species_mix" <- function(formula = NULL, data, n_mixtures = 3, distribution="poisson",
-  offset=NULL, weights=NULL, estimate_variance = FALSE,
-  control=species_mix.control(), standardise = FALSE){
+  offset=NULL, weights=NULL, control=species_mix.control(), standardise = FALSE){
 
   #the control parameters
   control <- set_control_sm(control)
@@ -100,11 +98,15 @@
   # summarising data to console
   print_input_sam(y, X, S, formula, distribution, quiet=control$quiet)
 
+  # used wrapper to run Piers' models.
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
-  tmp <- species_mix.fit(y=y, X=X, weights=wts, offset=offy, distribution=disty, G=n_mixtures, control=control, y_is_na=y_is_na, estimate_variance=estimate_variance)
-
-  tmp$formula <- formula
-  class(tmp) <- c("archetype",disty)
+  if(any(distribution!=c('poisson','ipp'))){
+    tmp <- fit_species_mix_wrapper(y=y, X=X, weights=wts, offset=offy, distribution=disty, G=n_mixtures, control=control, y_is_na=y_is_na, estimate_variance=control$est.var)
+  } else {
+    tmp <- species_mix.fit(y=y, X=X, weights=wts, offset=offy, distribution=disty, G=n_mixtures, control=control, y_is_na=y_is_na, estimate_variance=control$est.var)
+    tmp$formula <- formula
+    class(tmp) <- c("archetype",disty)
+  }
   return(tmp)
 }
 
@@ -124,6 +126,8 @@
 # a function to fit species mix. irrespective of distribution. I should be able to wrap this around pisers' existing distributions.
 "species_mix.fit" <- function(y, X, G, weights, offset, distribution, control, y_is_na=NULL){
 
+  #use the wrapper function as a way to deal with distributions and existing fit steps.
+
   if(distribution == 2) tmp <- fitmix_poisson(y, X, G, weights, offset, control, y_is_na)
   if(distribution == 3) tmp <- fitmix_ipp(y, X, G, weights, offset, control, y_is_na)
   else stop('current only ipp or Poisson distribution is set up to use "species_mix.fit"')
@@ -131,21 +135,31 @@
 }
 
 #'@rdname species_mix-classs
-#'@param maxit  integer specifying the maxit argument (maximal number of iterations) passed to optim.
+#'@name control
 #'@param quite Should any reporting be performed? Default is FALSE, for reporting.
-#'@param start	an optional vector with starting values for all parameters.
-#'@param fsmaxit	integer specifying maximal number of additional (quasi) Fisher scoring iterations. For details see below.
-#'@param fstol	numeric tolerance for convergence in (quasi) Fisher scoring. For details see \code{\link[stats]{optim}}.
+#'@param trace int 1=model will report parameter estimates and loglikelihood at each iteration. 0=quite.
+#'@param reltol function that determines the relative tolernace for model convergence. Default is quite strict.
+#'@param maxit Maximum number of evaluations of the objective function allowed. Defaults to 500.
+#'@param cores The number of cores to use in fitting of species mix models. These will be largely used to model the species-specific parameteres.
+#'@param em.prefit Logical if TRUE the model will run a slower EM algorithim fit to find starting values.
+#'@param em.steps int Default is 3, the number of EM iterations to get to starting values.
+#'@param em.refit int Default is 1, number of times to refit using EM.
+#'@param est.var logical if TRUE model will numerically estimate the variance covariance matrix.
+#'@param residuals logical if TRUE model will estimate residuals.
 #'@export
 
 "species_mix.control" <- function(maxit = 500,
   quiet = FALSE,
   trace = 1,
-  nreport = 10,
   reltol = reltol_fun,
   cores = 4,
+  em.prefit = TRUE,
+  em.steps = 3,
+  em.refit = 1,
+  est.var = FALSE,
   ...){
-  rval <- list(maxit = maxit, quiet = quiet, trace = trace, nreport=nreport, reltol = reltol, cores = cores)
+  rval <- list(maxit = maxit, quiet = quiet, trace = trace, nreport=nreport, reltol = reltol, cores = cores,
+    em.refit = em.refit, em.steps = em.steps, em.refit = em.refit, est.var = est.var)
   rval <- c(rval, list(...))
   if (is.null(rval$reltol))
     rval$reltol <- sqrt(.Machine$double.eps)
