@@ -26,7 +26,7 @@ The response variable (left hand side of the formula) needs to be either 'presen
 
 \item{n_mixtures}{The number of mixing components (groups) to fit.}
 
-\item{distribution}{The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "ipp", "negative_binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data.}
+\item{distribution}{The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "ipp" (inhomogeneous point process), "negative_binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data.}
 
 \item{offset}{a numeric vector of length nrow(data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the SAM.}
 
@@ -40,7 +40,7 @@ The response variable (left hand side of the formula) needs to be either 'presen
 
 \item{G}{is the number of species archetypes that are being estimated.}
 
-\item{y_is_na}{This is a logical matrix used specifically with 'ppm' modelling - don't worry about this, it'll be worked out for you. Yay!}
+\item{y_is_na}{This is a logical matrix used specifically with 'ipp' modelling - don't worry about this, it'll be worked out for you. Yay!}
 
 \item{maxit}{integer specifying the maxit argument (maximal number of iterations) passed to optim.}
 
@@ -54,7 +54,7 @@ The response variable (left hand side of the formula) needs to be either 'presen
 
 \item{weights}{is used in alternative way depending on the error distribution used. See \link[ecomix]{species_mix} for more details.}
 
-\item{distribution}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ppm' (Poisson point process), 'negative_binomial' and 'tweedie' are avaliable.}
+\item{distribution}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ipp' (Poisson point process), 'negative_binomial' and 'tweedie' are avaliable.}
 
 \item{offset}{this is a vector of site specific offsets, this might be something like area sampled at sites.}
 
@@ -78,9 +78,9 @@ species_mix is used to fit mixtures of glms to multivariate species data. The fu
 }
 \examples{
 simulated_data <- simulate_species_mix_data()
-form <- cbind() ~ 1 + x1 + x2 + x3
-model_data <- list('species_data' = Y, 'covariate_data' = X)
-fm_species_mix <- species_mix(rcp_form,spp_form,model_data=model_data,distribution='bernoulli',n_mixtures=5)
+form <- cbind(spp1,spp2,spp3) ~ 1 + x1 + x2 + x3
+model_data <- make_mixture_data(species_data = Y, covariate_data = X)
+fm_species_mix <- species_mix(formula,model_data=model_data,distribution='bernoulli',n_mixtures=5)
 fm1 <- species_mix(form,data)
 preds_fm1 <- predict(fm1,newdata)
 }

@@ -1,7 +1,7 @@
 # these are simple function that setup onAttach and onLoad calls.
 
 .onAttach <- function(libname, pkgname) {
-    packageStartupMessage("Welcome to ecomix, let's get mixing. To run finite mixture models on ecological data see ?species_mix or ?region_mix")
+    packageStartupMessage("Welcome to ecomix, let's get mixing. To run finite mixture models on ecological data see ?species_mix or ?regional_mix")
 }
 
 .onLoad <- function(libname, pkgname) {

@@ -54,7 +54,7 @@
   y <- model.response(mf)
 
   # logical matirx needed for removing NAs from response and weights.
-  if(distribution='ipp')y_is_na <- is.na(y)
+  if(distribution=='ipp')y_is_na <- is.na(y)
   else y_is_na <- NULL
   # print(dim(y_is_na))
   # check names of reponses
