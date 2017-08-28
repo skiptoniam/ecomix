@@ -3,8 +3,9 @@
 #new version of species mix takes cbind(sp1, sp2, sp3) ~ 1 + x1 + x2
 #so the trick will be setting up the model.frame and responses to suit the old approach.
 
-fit_species_mix_wrapper <- function(formula, y, X, weights, offset, distribution, n_mixtures, inits, control, estimate_variance){
+fit_species_mix_wrapper <- function(formula, y, X, weights, offset, distribution, n_mixtures, inits, control, y_is_na, estimate_variance){
 
+  if(any(distribution!=c('poisson','ipp'))){
   sp.form <- update(form,obs~1+.)
   sp.data <- y
   covar.data <- X
@@ -17,9 +18,14 @@ fit_species_mix_wrapper <- function(formula, y, X, weights, offset, distribution
   trace <- control$trace
   r1 <- control$r1
 
-  if(dist=="bernoulli") return(SpeciesMix.bernoulli(sp.form,sp.data,covar.data,G, pars, em.prefit,em.steps, em.refit ,est.var,residuals,trace,r1))
-  if(dist=="negative_binomial") return(SpeciesMix.nbinom(sp.form,sp.data,covar.data,G, pars, em.prefit,em.steps, em.refit ,est.var,residuals,trace))
-  if(dist=="tweedie") return(SpeciesMix.tweedie(sp.form,sp.data,covar.data,G, pars, em.prefit,em.steps, em.refit ,est.var,residuals,trace))
-  if(dist=="gaussian") return(SpeciesMix.gaussian(sp.form,sp.data,covar.data,G, pars, em.prefit,em.steps, em.refit ,est.var,residuals,trace))
-  print("incorrect distribution type, options are bernoulli, negbin or tweedie")
+  if(dist=="bernoulli") fit <- SpeciesMix.bernoulli(sp.form,sp.data,covar.data,G, pars, em.prefit,em.steps, em.refit ,est.var,residuals,trace,r1)
+  if(dist=="negative_binomial") fit <- SpeciesMix.nbinom(sp.form,sp.data,covar.data,G, pars, em.prefit,em.steps, em.refit ,est.var,residuals,trace)
+  if(dist=="tweedie") fit <- SpeciesMix.tweedie(sp.form,sp.data,covar.data,G, pars, em.prefit,em.steps, em.refit ,est.var,residuals,trace)
+  if(dist=="gaussian") fit <- SpeciesMix.gaussian(sp.form,sp.data,covar.data,G, pars, em.prefit,em.steps, em.refit ,est.var,residuals,trace)
+  } else {
+    fit <- species_mix.fit(y=y, X=X, weights=wts, offset=offy, distribution=disty, G=n_mixtures, control=control, y_is_na=y_is_na, estimate_variance=control$est.var)
+    fit$formula <- formula
+    class(fit) <- c("archetype",disty)
+  }
+  return(fit)
 }

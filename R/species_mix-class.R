@@ -20,7 +20,7 @@
 #' fm_species_mix <- species_mix(formula,model_data=model_data,distribution='bernoulli',n_mixtures=5)
 
 "species_mix" <- function(formula = NULL, data, n_mixtures = 3, distribution="poisson",
-  offset=NULL, weights=NULL, control=species_mix.control(), standardise = FALSE){
+  offset=NULL, weights=NULL, control=species_mix.control(), inits=NULL, standardise = FALSE){
 
   #the control parameters
   control <- set_control_sm(control)
@@ -81,9 +81,7 @@
     if(!all(colnames(y)%in%colnames(wts)))
       stop('When modelling a inhomogenous poisson point process weights colnames must match species data colnames')
     if(any(dim(y)!=dim(wts)))
-      stop('Weights needs to have the same dimensions at the species data - sites x species')
-    # change the response variable to be a weighted incident function 'z'.
-    # y <- y/wts
+      stop('Weights needs to have the same dimensions at the species data - n_sites x n_species')
   }
 
   s.means = NULL
@@ -100,13 +98,7 @@
 
   # used wrapper to run Piers' models.
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
-  if(any(distribution!=c('poisson','ipp'))){
-    tmp <- fit_species_mix_wrapper(y=y, X=X, weights=wts, offset=offy, distribution=disty, G=n_mixtures, control=control, y_is_na=y_is_na, estimate_variance=control$est.var)
-  } else {
-    tmp <- species_mix.fit(y=y, X=X, weights=wts, offset=offy, distribution=disty, G=n_mixtures, control=control, y_is_na=y_is_na, estimate_variance=control$est.var)
-    tmp$formula <- formula
-    class(tmp) <- c("archetype",disty)
-  }
+  tmp <- fit_species_mix_wrapper(y=y, X=X, weights=wts, offset=offy, distribution=disty, G=n_mixtures, inits = inits, control=control, y_is_na=y_is_na, estimate_variance=control$est.var)
   return(tmp)
 }
 
