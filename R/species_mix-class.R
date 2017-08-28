@@ -1,5 +1,5 @@
 #' @title species_mix objects
-#' @rdname species_mix-classs
+#' @rdname species_mix-class
 #' @name species_mix
 #' @description Fits a finite mixture model to identify species archetype models (SAMs).
 #' @details species_mix is used to fit mixtures of glms to multivariate species data. The function uses BFGS to optimise the mixture likelihood. There is the option to use EM get appropriate starting parameters. Species acts as a wrapper for fitmix.cpp that allows for easier data input. The data frames are merged into the appropriate format for the use in fitmix.cpp. Minima is found using vmmin (BFGS) and the gradients are calculated using CPPAD (auto differentiation)
@@ -103,7 +103,7 @@
 }
 
 
-#'@rdname species_mix-classs
+#'@rdname species_mix-class
 #'@name species_mix.fit
 #'@param y is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.
 #'@param X is a design matrix of dimension n_sites * n_covariates.
@@ -126,7 +126,7 @@
   return(tmp)
 }
 
-#'@rdname species_mix-classs
+#'@rdname species_mix-class
 #'@name control
 #'@param quite Should any reporting be performed? Default is FALSE, for reporting.
 #'@param trace int 1=model will report parameter estimates and loglikelihood at each iteration. 0=quite.
@@ -162,7 +162,7 @@ reltol_fun <- function(logl_n1, logl_n){
   return(abs(logl_n1 - logl_n) > (abs(logl_n1 - logl_n) / abs(logl_n)))
 }
 
-#'@rdname species_mix-classs
+#'@rdname species_mix-class
 #'@name species_mix.predict
 #'@param object is a matrix model returned from the species_mix model.
 #'@param new_obs a matrix of new observations for prediction.

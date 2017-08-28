@@ -11,7 +11,7 @@ NULL
 NULL
 
 #' @title regional_mix objects
-#' @rdname regional_mix
+#' @rdname regional_mix-class
 #' @name regional_mix
 #' @description creates an \code{regional_mix} model.
 #' @param rcp_formula an object of class "formula" (or an object that can be coerced to that class).

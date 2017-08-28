@@ -10,7 +10,7 @@
 \usage{
 species_mix(formula = NULL, data, n_mixtures = 3,
   distribution = "poisson", offset = NULL, weights = NULL,
-  control = species_mix.control(), standardise = FALSE)
+  control = species_mix.control(), inits = NULL, standardise = FALSE)
 
 species_mix.fit(y, X, G, weights, offset, distribution, control,
   y_is_na = NULL)
@@ -34,6 +34,8 @@ The response variable (left hand side of the formula) needs to be either 'presen
 \item{weights}{a numeric vector of length nrow(data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1. For ipp distribution - weights must be a nrow(data)*n_species matrix, which provides a species-specific background weights used to estimate the species-specific marginal likelihood.}
 
 \item{control}{a list of control parameters for optimisation and calculation. See details. From \code{species_mix.control} for details on optimistaion parameters.}
+
+\item{inits}{NULL a numeric vector that provides approximate starting values for species_mix coefficents. These are distribution specific, but as a minimum you'll need pis, alphas (intercepts) and betas.}
 
 \item{y}{is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.}
 
@@ -64,8 +66,6 @@ The response variable (left hand side of the formula) needs to be either 'presen
 \item{new_obs}{a matrix of new observations for prediction.}
 
 \item{model_data}{a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containng the covariate data for each site. Names of columns must match that given in \code{formula}.}
-
-\item{inits}{NULL a numeric vector that provides approximate starting values for species_mix coefficents. These are distribution specific, but as a minimum you'll need pis, alphas (intercepts) and betas.}
 
 \item{weights}{is used in alternative way depending on the error distribution used. See \link[ecomix]{species_mix} for more details.}
 
