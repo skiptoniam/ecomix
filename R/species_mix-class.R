@@ -1087,14 +1087,14 @@ reltol_fun <- function(logl_n1, logl_n){
     model.type<- as.integer(1)
     loglike <- try(.Call("SpeciesMix",pars,y,X,sp,tau,gradient,offset,model.type,PACKAGE="SpeciesMix"))
 
-    calc.deriv <- function(p){
+    calc_deriv <- function(p){
       gradient <- rep(0,length(pars))
       ll <- .Call("Calculate_Gradient",p,y,X,sp,tau,gradient,offset,as.integer(1),PACKAGE="SpeciesMix")
       return(gradient)
     }
     hes <- 0
     if(calc.hes){
-      hes <- nd2(pars,calc.deriv)
+      hes <- nd2(pars,calc_deriv)
       dim(hes) <- rep(length(pars),2)
       dim(hes) <- rep(length(pars),2)
       rownames(hes) <- colnames(hes) <- c(paste("G.",1:(G-1),sep=""),paste("G",1:G,rep(colnames(X),each=G),sep="."))
@@ -1346,7 +1346,7 @@ reltol_fun <- function(logl_n1, logl_n){
 
     loglike <- try(.Call("SpeciesMix",pars,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="SpeciesMix"))
 
-    calc.deriv <- function(p){
+    calc_deriv <- function(p){
       gradient <- rep(0,length(pars))
       ll <- .Call("Calculate_Gradient",p,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="SpeciesMix")
       return(gradient)
@@ -1357,7 +1357,7 @@ reltol_fun <- function(logl_n1, logl_n){
     hes <- 0
     covar <- 0
     if(calc.hes){
-      hes <- nd2(pars,calc.deriv)
+      hes <- nd2(pars,calc_deriv)
       dim(hes) <- rep(length(pars),2)
       dim(hes) <- rep(length(pars),2)
       covar <- try(solve(hes))
@@ -1523,7 +1523,7 @@ reltol_fun <- function(logl_n1, logl_n){
     tau <- matrix(0, S, G)
     loglike <- try(.Call("SpeciesMix", pars, y, X, sp, tau, gradient,
       offset, as.integer(3),PACKAGE="SpeciesMix"))
-    calc.deriv <- function(p) {
+    calc_deriv <- function(p) {
       gradient <- rep(0, length(pars))
       ll <- .Call("Calculate_Gradient", p, y, X, sp, tau, gradient,
         offset, as.integer(3),PACKAGE="SpeciesMix")
@@ -1531,7 +1531,7 @@ reltol_fun <- function(logl_n1, logl_n){
     }
     hes <- 0
     if (calc.hes) {
-      hes <- jacobian(calc.deriv, pars, method = "simple")
+      hes <- jacobian(calc_deriv, pars, method = "simple")
       dim(hes) <- rep(length(pars), 2)
       dim(hes) <- rep(length(pars), 2)
     }
@@ -1585,12 +1585,12 @@ reltol_fun <- function(logl_n1, logl_n){
     vcov <- 0
     se <- rep(0,length(pars))
     if(est_var) {
-      calc.deriv <- function(p){
+      calc_deriv <- function(p){
         gradient <- rep(0,length(pars))
         ll <- .Call("Neg_Bin_Gradient",p,X,y,weights,offset,gradient,PACKAGE="SpeciesMix")
         return(gradient)
       }
-      hes <- nd2(pars,calc.deriv)
+      hes <- nd2(pars,calc_deriv)
       dim(hes) <- rep(length(pars),2)
       vcov <- try(solve(hes))
       se <- try(sqrt(diag(vcov)))
@@ -1619,12 +1619,12 @@ reltol_fun <- function(logl_n1, logl_n){
     vcov <- 0
     se <- rep(0,length(pars))
     if(est_var) {
-      calc.deriv <- function(p){
+      calc_deriv <- function(p){
         gradient <- rep(0,length(pars))
         ll <- .Call("Neg_Bin_Gradient",p,X,y,weights,offset,gradient,PACKAGE="SpeciesMix")
         return(gradient)
       }
-      hes <- nd2(pars,calc.deriv)
+      hes <- nd2(pars,calc_deriv)
       dim(hes) <- rep(length(pars),2)
       vcov <- try(solve(hes))
       se <- try(sqrt(diag(vcov)))
@@ -1739,9 +1739,6 @@ reltol_fun <- function(logl_n1, logl_n){
       lg[s] <- sum(tmp.like)
       like <- like*sum(tmp.like)
     }
-    #print(dBi)
-    #  print(log(lg))
-    #  print(log(lf))
     dl.dpi <- rep(0,G)
     for(g in 1:G) dl.dpi[g] <- ( sum( exp(-log(lg) + log(lf[g,]))))
 
@@ -1750,7 +1747,6 @@ reltol_fun <- function(logl_n1, logl_n){
       for(g in 1:G){
         for(s in 1:S){
           der[g,j] <- der[g,j]+ exp( -log(lg[s]) + log(pi[g]) + log(lf[g,s])) * dBi[s,g,j]
-          #if(g==1 & j == 1) print(c(der[g,j],-log(lg[s]),pi[g],log(lf[g,s]),dBi[s,g,j]))
         }
       }
     }
@@ -2243,8 +2239,8 @@ reltol_fun <- function(logl_n1, logl_n){
       t.pi <- additive_logistic(fmM.out$pi,TRUE)
       parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef))
       first.fit <- list(y=data[,1],x=model.matrix(sp.form,data=data))
-      fun.est_var <- function(x){-logLmix(x,first.fit,G,S,sp,sp.name)}
-      var <- solve( nH2( pt=parms, fun=fun.est_var))
+      fun_est_var <- function(x){-logLmix(x,first.fit,G,S,sp,sp.name)}
+      var <- solve( nH2( pt=parms, fun=fun_est_var))
       colnames( var) <- rownames( var) <- names( parms)
       fmM.out$covar <- var
     }
@@ -2278,8 +2274,8 @@ reltol_fun <- function(logl_n1, logl_n){
       t.pi <- additive_logistic(fmM.out$pi,TRUE)
       parms <- c(t.pi[1:(G-1)],fmM.out$theta,unlist(fmM.out$coef),unlist(fmM.out$sp.intercept))
       first.fit <- list(y=data[,1],x=model.matrix(sp.form,data=data)[,-1])
-      fun.est_var <- function(x){-logLmix_gaussian(x,first.fit,G,S,sp,sp.name)}
-      var <- solve( nH2( pt=parms, fun=fun.est_var))
+      fun_est_var <- function(x){-logLmix_gaussian(x,first.fit,G,S,sp,sp.name)}
+      var <- solve( nH2( pt=parms, fun=fun_est_var))
       colnames( var) <- rownames( var) <- names( parms)
       fmM.out$covar <- var
     }
@@ -2314,9 +2310,9 @@ reltol_fun <- function(logl_n1, logl_n){
       t.pi <- additive_logistic(fmM.out$pi,TRUE)
       parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef),fmM.out$sp.intercept,rep(1,S))##unlist(fmM.out$sp.intercept))
       first.fit <- list(y=data[,1],x=model.matrix(sp.form,data=data)[,-1])
-      fun.est_var <- function(x){-logLmix_nbinom(x,first.fit,G,S,sp,sp.name)}
-      deriv <- nd2(parms,fun.est_var)
-      var <- solve( nH2( pt=parms, fun=fun.est_var))
+      fun_est_var <- function(x){-logLmix_nbinom(x,first.fit,G,S,sp,sp.name)}
+      deriv <- nd2(parms,fun_est_var)
+      var <- solve( nH2( pt=parms, fun=fun_est_var))
       colnames( var) <- rownames( var) <- names( parms)
       fmM.out$covar <- var
     }
@@ -2352,8 +2348,8 @@ reltol_fun <- function(logl_n1, logl_n){
       t.pi <- additive_logistic(fmM.out$pi,TRUE)
       parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef),unlist(fmM.out$sp.intercept),fmM.out$theta)
       first.fit <- list(y=data[,1],x=model.matrix(sp.form,data=data)[,-1])
-      fun.est_var <- function(x){-logLmix_tweedie(x,first.fit,G,S,sp,sp.name)}
-      var <- solve( nH2( pt=parms, fun=fun.est_var))
+      fun_est_var <- function(x){-logLmix_tweedie(x,first.fit,G,S,sp,sp.name)}
+      var <- solve( nH2( pt=parms, fun=fun_est_var))
       colnames( var) <- rownames( var) <- names( parms)
       fmM.out$covar <- var
     }
