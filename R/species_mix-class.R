@@ -142,6 +142,7 @@ fit_species_mix_wrapper <- function(formula, y, X, weights, offset, distribution
     est_var <- control$estimate_variance
     trace <- control$trace
     r1 <- control$r1
+    cores <- control$cores
 
     if(distribution=="bernoulli") fit <- species_mix_bernoulli(sp.form,sp.data,covar.data,G, pars, em_prefit,em_steps, em_refit ,est_var,residuals,trace,r1)
     if(distribution=="negative_binomial") fit <- species_mix_nbinom(sp.form,sp.data,covar.data,G, pars, em_prefit,em_steps, em_refit ,est_var,residuals,trace)
@@ -477,11 +478,8 @@ reltol_fun <- function(logl_n1, logl_n){
       cat("Fitting group",g,"\n")
       try(SpeciesMix(form,sp.data,covar.data,g,em_prefit=em_prefit,em_steps=em_steps,em_refit=em_refit,est_var=est_var,trace=trace))
     }
-   if(mc){ 
-	   out <- survelliance::parlapply(G,my.fun,form,dat,mc.preschedule = FALSE, mc.set.seed = TRUE, mc.silent = FALSE, .cores = control$cores)
-	   } else { 
-		   out <- lapply(G,my.fun,sp.form,sp.data,covar.data)
-		   }
+    out <- plapply(G,my.fun,form,dat,mc.preschedule = FALSE, mc.set.seed = TRUE, mc.silent = FALSE, .parallel = control$cores)
+	
     aic <- rep(0,length(G))
     bic <- rep(0,length(G))
     fm <- list()
@@ -495,65 +493,30 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"create_starting_values" <-
-  function (S,G,n,form,datsp)
-  {
-    ##apply_glm <- function(i,form,datsp,tau,n,dat.tau){
-    ##  dat.tau <- rep(tau[,i],each=n)
-    ##  dat.tau <- get("dat.tau")
-    ##  datsp <- get("datsp")
-    ##f.mix <- glm(as.formula(form),data=datsp,weights=dat.tau[,i],family="binomial",x=T,y=T)
-    ##  f.mix <- glm(as.formula(form),data=datsp,weights=dat.tau,family="binomial",x=T,y=T)
-    ##list(residuals=f.mix$residuals,fitted=f.mix$fitted,linear.predictors=f.mix$linear.predictors,coef=f.mix$coef)
-    ## list(coef=f.mix$coef)
-    ##}
-
-    environment(form) <- environment()
+"create_starting_values" <- function (S,G,n,form,datsp,cores){
+	environment(form) <- environment()
     tau <- matrix(runif(S*G),S,G)
     tau <- (tau/rowSums(tau))
     fmM <- list()
     for(i in 1:G){
-      ##dat.tau[,i] <- rep(tau[,i],each=n)
       pi[i] <- sum(tau[,i])/S
     }
-    ##dat.tau <- rep(0,dim(datsp)[1])
-
-    fmM <- lapply(1:G,apply_glm,form,datsp,tau,n)
+    fmM <- plapply(1:G,apply_glm,form,datsp,tau,n,.parallel=cores)
     first.fit <- list(x=model.matrix(as.formula(form),data=datsp),y=datsp$obs,formula=form)
-
-    ##return(list(pi=pi,fmM=fmM,tau=tau,dat.tau=dat.tau,first.fit=first.fit))
     return(list(pi=pi,fmM=fmM,tau=tau,first.fit=first.fit))
   }
 
-
-"create_starting_values_gaussian" <-
-  function (S,G,n,form,datsp,mc=FALSE,set.cores=2)
-  {
-    ##apply_glm <- function(i,form,datsp,tau,n,dat.tau){
-    ##  dat.tau <- rep(tau[,i],each=n)
-    ##  dat.tau <- get("dat.tau")
-    ##  datsp <- get("datsp")
-    ##f.mix <- glm(as.formula(form),data=datsp,weights=dat.tau[,i],family="binomial",x=T,y=T)
-    ##  f.mix <- glm(as.formula(form),data=datsp,weights=dat.tau,family="binomial",x=T,y=T)
-    ##list(residuals=f.mix$residuals,fitted=f.mix$fitted,linear.predictors=f.mix$linear.predictors,coef=f.mix$coef)
-    ## list(coef=f.mix$coef)
-    ##}
-
+"create_starting_values_gaussian" <- function (S,G,n,form,datsp,cores){
     environment(form) <- environment()
     tau <- matrix(runif(S*G),S,G)
     tau <- (tau/rowSums(tau))
     fmM <- list()
     for(i in 1:G){
-      ##dat.tau[,i] <- rep(tau[,i],each=n)
       pi[i] <- sum(tau[,i])/S
     }
-    ##dat.tau <- rep(0,dim(datsp)[1])
-
-    fmM <- lapply(1:G,apply_glm_gaussian,form,datsp,tau,n)
+    fmM <- plapply(1:G,apply_glm_gaussian,form,datsp,tau,n,.parallel=cores)
     first.fit <- list(x=model.matrix(as.formula(form),data=datsp)[,-1],y=datsp$obs,formula=form)
-
-    ##return(list(pi=pi,fmM=fmM,tau=tau,dat.tau=dat.tau,first.fit=first.fit))
-    return(list(pi=pi,fmM=fmM,tau=tau,first.fit=first.fit))
+   return(list(pi=pi,fmM=fmM,tau=tau,first.fit=first.fit))
   }
 
 
@@ -580,7 +543,7 @@ reltol_fun <- function(logl_n1, logl_n){
     }
     ##dat.tau <- rep(0,dim(datsp)[1])
 
-    fmM <- lapply(1:G,apply_glm_nbinom,form,datsp,tau,n)
+    fmM <- plapply(1:G,apply_glm_nbinom,form,datsp,tau,n)
     offset <- model.frame(as.formula(form),data=datsp)
     offset <- model.offset(offset)
     if(is.null(offset)) offset <- rep(0,length(datsp$obs))
@@ -638,7 +601,7 @@ reltol_fun <- function(logl_n1, logl_n){
     pi <- rep(1/G, G)
     pi <- runif(G, 0.2, 0.8)
     pi <- pi/sum(pi)
-    est.tau <- lapply(1:S, estimate_pi_nbinom, sp, sp.name, datsp,
+    est.tau <- plapply(1:S, estimate_pi_nbinom, sp, sp.name, datsp,
       fmM, pi, G, first.fit)
     max.newTau <- 0.8
     alpha <- (1 - max.newTau * G)/(max.newTau * (2 - G) - 1)
@@ -679,7 +642,7 @@ reltol_fun <- function(logl_n1, logl_n){
     offset <- model.frame(form,datsp)
     offset <- model.offset(offset)
     if(is.null(offset)) offset <- rep(0,length(datsp$obs))
-    fmM <- lapply(1:G,apply_glm_tweedie,form,datsp,tau,n)
+    fmM <- plapply(1:G,apply_glm_tweedie,form,datsp,tau,n)
     first.fit <- list(x=model.matrix(as.formula(form),data=datsp)[,-1],y=datsp$obs,formula=form)
 
     ##return(list(pi=pi,fmM=fmM,tau=tau,dat.tau=dat.tau,first.fit=first.fit))
@@ -732,7 +695,7 @@ reltol_fun <- function(logl_n1, logl_n){
     pi <- rep(1/G, G)
     pi <- runif(G, 0.2, 0.8)
     pi <- pi/sum(pi)
-    est.tau <- lapply(1:S, estimate_pi_tweedie, sp, sp.name,
+    est.tau <- plapply(1:S, estimate_pi_tweedie, sp, sp.name,
       datsp, fmM, pi, G, first.fit)
     max.newTau <- 0.8
     alpha <- (1 - max.newTau * G)/(max.newTau * (2 - G) - 1)
@@ -973,7 +936,7 @@ reltol_fun <- function(logl_n1, logl_n){
 
 
 "fitMix" <-
-  function (form,datsp,sp,G=2,ite.max=500,trace=TRUE,full.model=FALSE,r1=FALSE)
+  function (form,datsp,sp,G=2,ite.max=500,trace=TRUE,full.model=FALSE,r1=FALSE,cores)
   {
     ## dat2 has colums obs,sp
     ##
@@ -1015,13 +978,13 @@ reltol_fun <- function(logl_n1, logl_n){
         ite <- 1
       }
 
-      fmM <- lapply(1:G,weighted_glm,first.fit,tau,n,fmM,sp)
+      fmM <- plapply(1:G,weighted_glm,first.fit,tau,n,fmM,sp)
 
 
       logL <- 0
       tmp.like <- matrix(0,S,G)
 
-      est.tau <- lapply(1:S,estimate_pi,sp,sp.name,datsp,fmM,pi,G,first.fit)
+      est.tau <- plapply(1:S,estimate_pi,sp,sp.name,datsp,fmM,pi,G,first.fit)
 
       for(j in 1:S){
         if(is.atomic(est.tau[[j]])){ print (est.tau[[j]])} else
@@ -1162,13 +1125,13 @@ reltol_fun <- function(logl_n1, logl_n){
         ite <- 1
       }
 
-      fmM <- lapply(1:G,weighted_glm_gaussian,first.fit,tau,n,fmM,sp)
+      fmM <- plapply(1:G,weighted_glm_gaussian,first.fit,tau,n,fmM,sp)
 
 
       logL <- 0
       tmp.like <- matrix(0,S,G)
 
-      est.tau <- lapply(1:S,estimate_pi_gaussian,sp,sp.name,datsp,fmM,pi,G,first.fit)
+      est.tau <- plapply(1:S,estimate_pi_gaussian,sp,sp.name,datsp,fmM,pi,G,first.fit)
 
       for(j in 1:S){
         if(is.atomic(est.tau[[j]])){ print (est.tau[[j]])} else
@@ -1251,8 +1214,7 @@ reltol_fun <- function(logl_n1, logl_n){
       first.fit <- t1$first.fit
       ite <- 1
     }
-    fmM <- lapply(1:G, weighted_glm_nbinom, first.fit, tau,
-      n, fmM, sp)
+    fmM <- plapply(1:G, weighted_glm_nbinom, first.fit, tau, n, fmM, sp)
     for (j in 1:S) {
       tmp <- rep(0, G)
       for (g in 1:G) tmp[g] <- fmM[[g]]$sp.intercept[j]
@@ -1261,8 +1223,7 @@ reltol_fun <- function(logl_n1, logl_n){
     }
     logL <- 0
     tmp.like <- matrix(0, S, G)
-    est.tau <- lapply(1:S, estimate_pi_nbinom, sp, sp.name,
-      datsp, fmM, pi, G, first.fit)
+    est.tau <- plapply(1:S, estimate_pi_nbinom, sp, sp.name, datsp, fmM, pi, G, first.fit)
     for (j in 1:S) {
       if (is.atomic(est.tau[[j]])) {
         print(est.tau[[j]])
@@ -1432,8 +1393,7 @@ reltol_fun <- function(logl_n1, logl_n){
         first.fit <- t1$first.fit
         ite <- 1
       }
-      fmM <- lapply(1:G, weighted_glm_tweedie, first.fit, tau,
-        n, fmM, sp)
+      fmM <- plapply(1:G, weighted_glm_tweedie, first.fit, tau, n, fmM, sp)
       for (j in 1:S) {
         tmp <- rep(0, G)
         for (g in 1:G) tmp[g] <- fmM[[g]]$sp.intercept[j]
@@ -1442,7 +1402,7 @@ reltol_fun <- function(logl_n1, logl_n){
       }
       logL <- 0
       tmp.like <- matrix(0, S, G)
-      est.tau <- lapply(1:S, estimate_pi_tweedie, sp, sp.name,
+      est.tau <- plapply(1:S, estimate_pi_tweedie, sp, sp.name,
         datsp, fmM, pi, G, first.fit)
       for (j in 1:S) {
         if (is.atomic(est.tau[[j]])) {
@@ -2171,7 +2131,8 @@ reltol_fun <- function(logl_n1, logl_n){
     return( rans)
   }
 
-"species_mix_bernoulli" <- function (sp.form,sp.data,covar.data,G=2, pars=NA, em_prefit=TRUE,em_steps=4, em_refit = 1 , est_var = FALSE,residuals=FALSE,trace=TRUE,r1=FALSE) {
+"species_mix_bernoulli" <- function (sp.form,sp.data,covar.data,G=2, pars=NA, em_prefit=TRUE,em_steps=4,
+ em_refit = 1 , est_var = FALSE,residuals=FALSE,trace=TRUE,r1=FALSE, cores) {
     t.covar.data <- covar.data
     t.sp.data <- sp.data
     sp.form <- update.formula(sp.form,obs~1+.)
@@ -2702,4 +2663,76 @@ reltol_fun <- function(logl_n1, logl_n){
       sp.intercept = fmM[[g]]$sp.intercept, fitted = f.mix$fitted))
   }
 
-
+"plapply" <- function (X, FUN, ..., .parallel = 1, .seed = NULL, .verbose = TRUE) 
+{
+  if (!(useCluster <- inherits(.parallel, "cluster"))) {
+    stopifnot(isScalar(.parallel), .parallel >= 1)
+    .parallel <- as.vector(.parallel, mode = "integer")
+    if (.Platform$OS.type == "windows" && .parallel > 1L) {
+      useCluster <- TRUE
+      .parallel <- parallel::makeCluster(.parallel)
+      on.exit(parallel::stopCluster(.parallel))
+    }
+  }
+  FUN <- match.fun(FUN)
+  .FUN <- if (useCluster || is.primitive(FUN)) {
+    FUN
+  }
+  else {
+    verboseExpr <- if (isTRUE(.verbose)) {
+      if (.parallel == 1L && interactive()) {
+        env <- new.env(hash = FALSE, parent = environment(FUN))
+        environment(FUN) <- env
+        env$pb <- txtProgressBar(min = 0, max = length(X), 
+          initial = 0, style = 3)
+        on.exit(close(env$pb), add = TRUE)
+        quote(setTxtProgressBar(pb, pb$getVal() + 1L))
+      }
+      else {
+        on.exit(cat("\n"), add = TRUE)
+        quote(cat("."))
+      }
+    }
+    else if (is.call(.verbose) || is.expression(.verbose)) {
+      .verbose
+    }
+    else if (is.character(.verbose)) {
+      on.exit(cat("\n"), add = TRUE)
+      substitute(cat(.verbose))
+    }
+    do.call(add.on.exit, list(FUN, verboseExpr))
+  }
+  if (!is.null(.seed)) {
+    if (useCluster) {
+      parallel::clusterSetRNGStream(cl = .parallel, iseed = .seed)
+    }
+    else {
+      if (!exists(".Random.seed", envir = .GlobalEnv, 
+        inherits = FALSE)) {
+        set.seed(NULL)
+      }
+      .orig.seed <- get(".Random.seed", envir = .GlobalEnv)
+      on.exit(assign(".Random.seed", .orig.seed, envir = .GlobalEnv), 
+        add = TRUE)
+      if (.parallel == 1L) {
+        set.seed(seed = .seed)
+      }
+      else {
+        stopifnot(requireNamespace("parallel", quietly = TRUE))
+        set.seed(seed = .seed, kind = "L'Ecuyer-CMRG")
+        parallel::mc.reset.stream()
+      }
+    }
+  }
+  if (useCluster) {
+    parallel::parLapply(cl = .parallel, X = X, fun = .FUN, 
+      ...)
+  }
+  else if (.parallel == 1L) {
+    lapply(X = X, FUN = .FUN, ...)
+  }
+  else {
+    parallel::mclapply(X = X, FUN = .FUN, ..., mc.preschedule = TRUE, 
+      mc.set.seed = TRUE, mc.silent = FALSE, mc.cores = .parallel)
+  }
+}
