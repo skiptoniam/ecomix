@@ -128,7 +128,7 @@
 #'@rdname species_mix-class
 #'@name fit_species_mix_wrapper
 #'
-fit_species_mix_wrapper <- function(formula, y, X, weights, offset, distribution, n_mixtures, inits, control, y_is_na, estimate_variance){
+"fit_species_mix_wrapper" <- function(formula, y, X, weights, offset, distribution, n_mixtures, inits, control, y_is_na, estimate_variance){
 
   if(any(distribution!=c('poisson','ipp'))){
     sp.form <- update(form,obs~1+.)
@@ -186,10 +186,6 @@ fit_species_mix_wrapper <- function(formula, y, X, weights, offset, distribution
   if (is.null(rval$reltol))
     rval$reltol <- sqrt(.Machine$double.eps)
   rval
-}
-
-reltol_fun <- function(logl_n1, logl_n){
-  return(abs(logl_n1 - logl_n) > (abs(logl_n1 - logl_n) / abs(logl_n)))
 }
 
 #'@rdname species_mix-class
@@ -520,43 +516,24 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"create_starting_values_nbinom" <-
-  function (S,G,n,form,datsp,mc=FALSE,set.cores=2)
-  {
-    ##apply_glm <- function(i,form,datsp,tau,n,dat.tau){
-    ##  dat.tau <- rep(tau[,i],each=n)
-    ##  dat.tau <- get("dat.tau")
-    ##  datsp <- get("datsp")
-    ##f.mix <- glm(as.formula(form),data=datsp,weights=dat.tau[,i],family="binomial",x=T,y=T)
-    ##  f.mix <- glm(as.formula(form),data=datsp,weights=dat.tau,family="binomial",x=T,y=T)
-    ##list(residuals=f.mix$residuals,fitted=f.mix$fitted,linear.predictors=f.mix$linear.predictors,coef=f.mix$coef)
-    ## list(coef=f.mix$coef)
-    ##}
-
+"create_starting_values_nbinom" <- function (S,G,n,form,datsp,cores) {
     environment(form) <- environment()
     tau <- matrix(runif(S*G),S,G)
     tau <- (tau/rowSums(tau))
     fmM <- list()
     for(i in 1:G){
-      ##dat.tau[,i] <- rep(tau[,i],each=n)
       pi[i] <- sum(tau[,i])/S
     }
-    ##dat.tau <- rep(0,dim(datsp)[1])
-
-    fmM <- plapply(1:G,apply_glm_nbinom,form,datsp,tau,n)
+    fmM <- plapply(1:G,apply_glm_nbinom,form,datsp,tau,n,.parallel=cores)
     offset <- model.frame(as.formula(form),data=datsp)
     offset <- model.offset(offset)
     if(is.null(offset)) offset <- rep(0,length(datsp$obs))
     first.fit <- list(x=model.matrix(as.formula(form),data=datsp)[,-1],y=datsp$obs,offset=offset,formula=form)
-
-    ##return(list(pi=pi,fmM=fmM,tau=tau,dat.tau=dat.tau,first.fit=first.fit))
     return(list(pi=pi,fmM=fmM,tau=tau,first.fit=first.fit))
   }
 
 
-"create_starting_values_nbinom_kmeans" <-
-  function (S, G, n, form, datsp, tol = 0.1)
-  {
+"create_starting_values_nbinom_kmeans" <- function (S, G, n, form, datsp, tol = 0.1,cores){
     MM <- model.matrix(form, datsp)
     offset <- model.frame(form,datsp)
     offset <- model.offset(offset)
@@ -575,8 +552,7 @@ reltol_fun <- function(logl_n1, logl_n){
     all.betas <- matrix(0, nrow = S, ncol = ncol(MM))
     colnames(all.betas) <- colnames(MM)
     for (j in 1:S) {
-      fit <- glm_nbinom(form, datsp[((j - 1) * n):(j * n -
-          1), ], est_var = FALSE)
+      fit <- glm_nbinom(form, datsp[((j - 1) * n):(j * n - 1), ], est_var = FALSE)
       starting.fitem$sp.intercepts[j] <- fit$coef[1]
       all.betas[j, ] <- fit$coef
       starting.fitem$theta[j] = fit$theta
@@ -602,7 +578,7 @@ reltol_fun <- function(logl_n1, logl_n){
     pi <- runif(G, 0.2, 0.8)
     pi <- pi/sum(pi)
     est.tau <- plapply(1:S, estimate_pi_nbinom, sp, sp.name, datsp,
-      fmM, pi, G, first.fit)
+      fmM, pi, G, first.fit,.parallel=cores)
     max.newTau <- 0.8
     alpha <- (1 - max.newTau * G)/(max.newTau * (2 - G) - 1)
     for (j in 1:S) {
@@ -617,42 +593,23 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"create_starting_values_tweedie" <-
-  function (S,G,n,form,datsp)
-  {
-    ##apply_glm <- function(i,form,datsp,tau,n,dat.tau){
-    ##  dat.tau <- rep(tau[,i],each=n)
-    ##  dat.tau <- get("dat.tau")
-    ##  datsp <- get("datsp")
-    ##f.mix <- glm(as.formula(form),data=datsp,weights=dat.tau[,i],family="binomial",x=T,y=T)
-    ##  f.mix <- glm(as.formula(form),data=datsp,weights=dat.tau,family="binomial",x=T,y=T)
-    ##list(residuals=f.mix$residuals,fitted=f.mix$fitted,linear.predictors=f.mix$linear.predictors,coef=f.mix$coef)
-    ## list(coef=f.mix$coef)
-    ##}
-
+"create_starting_values_tweedie" <- function (S,G,n,form,datsp,cores){
     environment(form) <- environment()
     tau <- matrix(runif(S*G),S,G)
     tau <- (tau/rowSums(tau))
     fmM <- list()
     for(i in 1:G){
-      ##dat.tau[,i] <- rep(tau[,i],each=n)
       pi[i] <- sum(tau[,i])/S
     }
-    ##dat.tau <- rep(0,dim(datsp)[1])
     offset <- model.frame(form,datsp)
     offset <- model.offset(offset)
     if(is.null(offset)) offset <- rep(0,length(datsp$obs))
-    fmM <- plapply(1:G,apply_glm_tweedie,form,datsp,tau,n)
+    fmM <- plapply(1:G,apply_glm_tweedie,form,datsp,tau,n,.parallel=cores)
     first.fit <- list(x=model.matrix(as.formula(form),data=datsp)[,-1],y=datsp$obs,formula=form)
-
-    ##return(list(pi=pi,fmM=fmM,tau=tau,dat.tau=dat.tau,first.fit=first.fit))
     return(list(pi=pi,fmM=fmM,tau=tau,first.fit=first.fit))
   }
 
-
-"create_starting_values_tweedie_kmeans" <-
-  function (S, G, n, form, datsp, tol = 0.1)
-  {
+"create_starting_values_tweedie_kmeans" <- function (S, G, n, form, datsp, tol = 0.1,cores){
     MM <- model.matrix(form, datsp)
     offset <- model.frame(form,datsp)
     offset <- model.offset(offset)
@@ -696,7 +653,7 @@ reltol_fun <- function(logl_n1, logl_n){
     pi <- runif(G, 0.2, 0.8)
     pi <- pi/sum(pi)
     est.tau <- plapply(1:S, estimate_pi_tweedie, sp, sp.name,
-      datsp, fmM, pi, G, first.fit)
+      datsp, fmM, pi, G, first.fit,.parallel=cores)
     max.newTau <- 0.8
     alpha <- (1 - max.newTau * G)/(max.newTau * (2 - G) - 1)
     for (j in 1:S) {
@@ -935,7 +892,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"fitMix" <-
+"fitmix" <-
   function (form,datsp,sp,G=2,ite.max=500,trace=TRUE,full.model=FALSE,r1=FALSE,cores)
   {
     ## dat2 has colums obs,sp
@@ -1671,60 +1628,58 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"Lmix" <-
-  function (pars,y,x,G)
-  {
-    fm <- pars[-1*(1:(G-1))]
-    pi <- pars[(1:(G-1))]
-    dim(fm) <- c(G,(length(pars)-(G-1))/G)
-    pi <- additive_logistic(pi)
-    S <- dim(y)[2]
+#"Lmix" <- function (pars,y,x,G) {
+#    fm <- pars[-1*(1:(G-1))]
+#    pi <- pars[(1:(G-1))]
+#    dim(fm) <- c(G,(length(pars)-(G-1))/G)
+#    pi <- additive_logistic(pi)
+#    S <- dim(y)[2]
 
-    link.fun <- make.link("logit")
+#    link.fun <- make.link("logit")
 
-    like <- 1
-    lf <- matrix(0,G,S)
-    lg <- rep(0,S)
-    dBi <- array(0,dim=c(S,G,dim(fm)[2]))
-    for(s in 1:S){
-      tmp.like <- rep(0,G)
-      for(g in 1:G){
-        lpre <- x%*%fm[g,]
-        for(j in 1:dim(fm)[2]){
-          dBi[s,g,j] <- sum((y[,s]-link.fun$linkinv(lpre))*x[,j])
-        }
-        tmp.like[g] <- pi[g]*prod(dbinom(y[,s],1,link.fun$linkinv(lpre),log=F))
-        lf[g,s] <- prod(dbinom(y[,s],1,link.fun$linkinv(lpre),log=F))
-      }
-      lg[s] <- sum(tmp.like)
-      like <- like*sum(tmp.like)
-    }
-    dl.dpi <- rep(0,G)
-    for(g in 1:G) dl.dpi[g] <- ( sum( exp(-log(lg) + log(lf[g,]))))
+#    like <- 1
+#    lf <- matrix(0,G,S)
+#    lg <- rep(0,S)
+#    dBi <- array(0,dim=c(S,G,dim(fm)[2]))
+#    for(s in 1:S){
+#      tmp.like <- rep(0,G)
+#      for(g in 1:G){
+#        lpre <- x%*%fm[g,]
+#        for(j in 1:dim(fm)[2]){
+#          dBi[s,g,j] <- sum((y[,s]-link.fun$linkinv(lpre))*x[,j])
+#        }
+#        tmp.like[g] <- pi[g]*prod(dbinom(y[,s],1,link.fun$linkinv(lpre),log=F))
+#        lf[g,s] <- prod(dbinom(y[,s],1,link.fun$linkinv(lpre),log=F))
+#      }
+#      lg[s] <- sum(tmp.like)
+#      like <- like*sum(tmp.like)
+#    }
+#    dl.dpi <- rep(0,G)
+#    for(g in 1:G) dl.dpi[g] <- ( sum( exp(-log(lg) + log(lf[g,]))))
 
-    der <- matrix(0,dim(fm)[1],dim(fm)[2])
-    for(j in 1:dim(fm)[2]){
-      for(g in 1:G){
-        for(s in 1:S){
-          der[g,j] <- der[g,j]+ exp( -log(lg[s]) + log(pi[g]) + log(lf[g,s])) * dBi[s,g,j]
-        }
-      }
-    }
-    dpi.deta <- matrix(0,G-1,G)
-    ad.trans <- 1+sum(exp(pars[1:(G-1)]))
-    for(i in 1:(G-1))
-      for(g in 1:G-1){
-        if(i==g) {dpi.deta[i,g] <- exp(pars[i])*exp(pars[g])/ad.trans^2}
-        else{ dpi.deta[i,g] <- exp(pars[i])/ad.trans - exp(2*pars[g])/ad.trans^2}
-      }
-    dpi.deta[,G] <- -rowSums(dpi.deta)
-    print(dpi.deta)
-    print(dl.dpi)
-    d1 <- dpi.deta%*%dl.dpi
-    print(d1)
+#    der <- matrix(0,dim(fm)[1],dim(fm)[2])
+#    for(j in 1:dim(fm)[2]){
+#      for(g in 1:G){
+#        for(s in 1:S){
+#          der[g,j] <- der[g,j]+ exp( -log(lg[s]) + log(pi[g]) + log(lf[g,s])) * dBi[s,g,j]
+#        }
+#      }
+#    }
+#    dpi.deta <- matrix(0,G-1,G)
+#    ad.trans <- 1+sum(exp(pars[1:(G-1)]))
+#    for(i in 1:(G-1))
+#      for(g in 1:G-1){
+#        if(i==g) {dpi.deta[i,g] <- exp(pars[i])*exp(pars[g])/ad.trans^2}
+#        else{ dpi.deta[i,g] <- exp(pars[i])/ad.trans - exp(2*pars[g])/ad.trans^2}
+#      }
+#    dpi.deta[,G] <- -rowSums(dpi.deta)
+#    print(dpi.deta)
+#    print(dl.dpi)
+#    d1 <- dpi.deta%*%dl.dpi
+#    print(d1)
 
-    list(like,0-der)
-  }
+#    list(like,0-der)
+#  }
 
 
 "logLike.pars" <-
@@ -1748,8 +1703,6 @@ reltol_fun <- function(logl_n1, logl_n){
     logl <- -logLmix(pars,first.fit,G,S,sp,sp.name)
     logl
   }
-
-
 
 "logLmix" <-
   function (pars,first.fit,G,S,sp,spname,out.tau=FALSE)
@@ -2053,25 +2006,6 @@ reltol_fun <- function(logl_n1, logl_n){
     return( Hes)
   }
 
-
-".onLoad" <-
-  function (libname, pkgname)
-  {
-    ##require(MASS)
-    # Generic DLL loader
-    dll.path <- file.path( libname, pkgname, 'libs')
-    if( nzchar( subarch <- .Platform$r_arch))
-      dll.path <- file.path( dll.path, subarch)
-    this.ext <- paste( sub( '.', '[.]', .Platform$dynlib.ext,
-      fixed=TRUE), '$', sep='')
-
-    dlls <- dir( dll.path, pattern=this.ext, full.names=FALSE)
-    names( dlls) <- dlls
-    if( length( dlls))
-      lapply( dlls, function( x) library.dynam( sub( this.ext, '', x),
-        package=pkgname, lib.loc=libname))
-  }
-
 "print.species_mix" <-  function (x,...){
     cat("\nMixing probabilities\n")
     print(x$pi)
@@ -2189,10 +2123,10 @@ reltol_fun <- function(logl_n1, logl_n){
     sp.data <- as.data.frame(sp.data)
     data <- data.frame(obs=unlist(sp.data),covar.data)
 
-    fmM.out <- fitMix(sp.form,data,sp,G,ite.max,trace,r1)
+    fmM.out <- fitmix(sp.form,data,sp,G,ite.max,trace,r1)
     if(em_refit>1)
       for(i in 2:em_refit){
-        fmM <- fitMix(sp.form,data,sp,G,ite.max,trace,r1)
+        fmM <- fitmix(sp.form,data,sp,G,ite.max,trace,r1)
         if(fmM$logl>fmM.out$logl) fmM.out <- fmM
       }
     if(est_var){
@@ -2735,4 +2669,419 @@ reltol_fun <- function(logl_n1, logl_n){
     parallel::mclapply(X = X, FUN = .FUN, ..., mc.preschedule = TRUE, 
       mc.set.seed = TRUE, mc.silent = FALSE, mc.cores = .parallel)
   }
+}
+
+#ipp stuff
+"species_data_check" <- function(x){
+  stopifnot(is.matrix(x)|is.data.frame(x))
+  stopifnot(all(is.finite(x)))
+}
+
+"covariate_data_check" <- function(x){
+  stopifnot(is.matrix(x)|is.data.frame(x))
+  stopifnot(all(is.finite(x)))
+}
+
+"get_offset_sam"  <- function(mf){
+  offy <- model.offset(mf)
+  if(any(offy!=0))
+    return(offy)
+  offy <- rep(0, nrow(mf))
+  return(offy)
+}
+
+"get_weights_sam"  <- function(mf,S,distribution){
+  if(distribution=='poisson'|distribution=='ipp'){
+    sp_names <- colnames(model.response(mf))
+    wts <- model.weights(mf)
+    if(!is.null(wts)){
+      wts <- subset(wts, select = colnames(wts)%in%sp_names)
+    } else {
+      wts <- matrix(1,nrow(mf),S)
+    }
+  } else {
+    wts <- rep(1, nrow(mf))
+  }
+  return(wts)
+}
+
+"get_distribution_sam" <- function( disty.cases, dist1) {
+  error.msg <- paste( c( "Distribution not implemented. Options are: ", disty.cases, "-- Exitting Now"), collapse=" ")
+  disty <- switch( dist1, "bernoulli" = 1,"poisson" = 2,"ipp"=3,"negative_binomial" = 4,"tweedie" = 5,"gaussian" = 6,{stop( error.msg)} )
+  return( disty)
+}
+
+"get_X_sam" <- function(form.SAM, mf.X){
+  form.X <- form.SAM
+  form.X[[2]] <- NULL
+  form.X <- as.formula(form.X)
+  X <- model.matrix(form.X, mf.X)
+  return( X)
+}
+
+"check_reponse_sam" <-function(outs) {
+  nam <- colnames( outs)
+  if( length( nam) == length( unique( nam)))
+    return( length( nam))
+  else
+    return( FALSE)
+}
+
+"skrink_taus_ipp" <- function( taus, max_tau=0.7, G){
+  if( G==1)
+    return( taus)
+  alpha <- (1-max_tau*G) / ( max_tau*(2-G)-1)
+  tau_star <- ( 2*alpha*taus - alpha + 1 ) / ( 2*alpha - alpha*G + G)
+  return(tau_star)
+}
+
+"reltol_fun" <- function(logl_n1, logl_n){
+  return(abs(logl_n1 - logl_n) > (abs(logl_n1 - logl_n) / abs(logl_n)))
+}
+
+"set_control_sam" <- function(control){
+  if(is.null(control))control <- species_mix.control()
+  control
+}
+
+"clean_data_sam" <- function(form, data){
+  mf.X <- model.frame(formula = form, data = data, na.action = na.exclude)
+  ids <- rownames(mf.X)
+  res <- list(ids=ids, mf.X=mf.X)
+  return(res)
+}
+
+"standardise.X" <- function (mat){
+  X = scale(as.matrix(mat))
+  dat.means = apply(as.matrix(mat), 2, mean, na.rm = TRUE)
+  dat.sds = apply(as.matrix(mat), 2, sd, na.rm = TRUE)
+  return(list(X = X, dat.means = dat.means, dat.sds = dat.sds))
+}
+
+# fit tau for poisson model using glm.fit style inputs
+# fix this to correctly include weights/
+#apply_glm_ipp_tau <- function (i, y, X, tau, y_is_na){
+#
+#  Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
+#  X_no_NA <- list()
+#    for (jj in 1:ncol(y)){
+#    X_no_NA[[jj]] <- X[!y_is_na[,jj],]
+#  }
+#  X_tau <- do.call(rbind, X_no_NA)
+#  n_ys <- sapply(X_no_NA,nrow)
+#  wts_tau <- rep(tau[,i],n_ys)
+#  f_mix <- glm.fit(x = X_tau, y = Y_tau, weights = wts_tau, family=poisson())
+#  sp_int <- rep(f_mix$coef[1],dim(tau)[1])
+#  first_fit_tau <- list(x=X_tau,y=Y_tau)
+#  return(list(coef=f_mix$coef[-1],sp_intercept=sp_int,first_fit_tau))
+#  #return(list(coef=f_mix$coef,first_fit_tau))
+#}
+
+# fit tau for poisson model using glm.fit style inputs
+# fix this to correctly include weights/
+"apply_glm_ipp_sp_tau" <- function (ss, y, X, y_is_na, weights, offset, tau, G, S, fits){
+  Y_sp_tau <- as.matrix(rep(y[!y_is_na[,ss],ss],G))
+  ipp_weights_sp_tau <- as.matrix(rep(weights[!y_is_na[,ss],ss],G))
+  z_sp_tau <- as.matrix(Y_sp_tau/ipp_weights_sp_tau)
+  X_sp_tau <- do.call(rbind, replicate(G, X[!y_is_na[,ss],], simplify=FALSE))
+  wts_sp_tau <- rep(tau[ss,],each=length(y[!y_is_na[,ss],ss]))
+  wts_sp_ippXtau <- wts_sp_tau*ipp_weights_sp_tau
+  offy <- rep(offset[!y_is_na[,ss]],G)
+  offy2 <-  as.matrix(X[!y_is_na[,ss],-1]) %*% t(fits$mix_coefs)
+  offy <- as.numeric(offy2)+offy
+  f_mix <- glm.fit(x = X_sp_tau, y = z_sp_tau, weights = wts_sp_ippXtau, offset = offy, family=poisson())
+  return(sp_coef=f_mix$coef)
+}
+
+# This is the fit with weights.
+# y is a matrix n * S.
+# weights is a matrix of n * S. This will be important for ipp weights.
+"apply_glm_ipp" <- function(i, y, X, weights, offset, y_is_na){
+  ids_i <- !y_is_na[,i]
+  f_ipp <- glm.fit(x=X[ids_i,],y=y[ids_i,i]/weights[ids_i,i],weights=weights[ids_i,i],offset=offset[ids_i],family=poisson())
+  f_ipp$coef
+}
+
+#"estimate_pi_ipp"<- function (j,fits,pis,G,first_fit){
+#  tmp_like <- rep(0,G)
+#  tau <- rep(0,G)
+#  sp_site_id <- !first_fit$y_is_na[,j]
+#  for(i in 1:G) {
+#    # cat(c(fits$sp_intercepts[j],fits$mix_coefs[i,]),"\n\n")
+#    log_lambda <- as.matrix(first_fit$x[sp_site_id,])%*%c(c(fits$sp_intercepts[j],fits$mix_coefs[i,]))+first_fit$offset[sp_site_id]
+#    tmp_like[i] <- first_fit$y[sp_site_id,j] %*% log_lambda - first_fit$weights[sp_site_id,j] %*% exp(log_lambda)
+
+#  }
+#  cat(tmp_like,'\n')
+#  #log for of the likelihoods to estimate tau.
+#  eps <- max(tmp_like)
+#  sum_like <- (log(sum(pis*exp((tmp_like)-(eps))))+(eps))
+#  for(i in 1:G) {
+#    tau[i] <- exp((log(pis[i]) + tmp_like[i]) - sum_like)
+#  }
+#  cat("taus:\n",tau,'\n')
+#  return(list(tau=tau,sum_like=sum_like))
+#}
+
+"initiate_fit_ipp" <- function(y, X, weights, offset, y_is_na, G, S, cores, inits='kmeans', init.sd=1){
+  fm_ipp <- surveillance::plapply(1:S,apply_glm_ipp, y, X, weights, offset, y_is_na, .parallel = cores)
+  all_coefs <- do.call(rbind,fm_ipp)
+  mix_coefs <- all_coefs[,-1] # drop intercepts
+  # print(all_coefs)
+  if(inits=='kmeans'){
+    cat( "Initial groups by K-means clustering\n")
+    tmp1 <- kmeans( mix_coefs, centers=G, nstart=100)
+    tmp_grp <- tmp1$cluster
+    grp_coefs <- apply( mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
+  }
+  if(inits=='hclust'){
+    cat( "Initial groups by hierarchical clustering using Ward's method on Euclidean distances\n")
+    disto <- dist( mix_coefs, method="euclidean")
+    tmp1 <- hclust(disto, method = "ward.D")
+    tmp_grp <- cutree(tmp1, G)
+    grp_coefs <- apply( mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
+  }
+  if(inits=='random' | is.null(tmp_grp)){
+    cat( "Initial groups by random allocation and means from random numbers\n")
+    grp_coefs <- matrix( rnorm(G*ncol(mix_coefs), sd=init.sd, mean=0), nrow=G, ncol=ncol(mix_coefs))
+    tmp_grp <- sample(1:G, S, replace=TRUE)
+  }
+  colnames(grp_coefs)<-colnames(X[,-1])
+  results <- list()
+  results$grps <- tmp_grp
+  results$mix_coefs <- grp_coefs
+  results$sp_intercepts <- all_coefs[,1]
+  results$all_coefs <- all_coefs
+  return(results)
+}
+
+"get_initial_values_ipp" <- function(y, X, weights, offset, y_is_na, G, S, cores, inits='kmeans', init.sd=1){
+  starting_values <- initiate_fit_ipp(y, X, weights, offset, y_is_na, G, S, cores, inits, init.sd)
+  fits <- list(mix_coefs=starting_values$mix_coefs,sp_intercepts=starting_values$sp_intercepts)
+  first_fit <- list(x = X, y = y, offset=offset, weights=weights, y_is_na=y_is_na)
+  logls <- get_logls_ipp(first_fit, fits, G, S)
+  pis <- rep(1/G, G)
+  taus <- get_taus_ipp(pis, logls, G, S)
+  taus <- skrink_taus_ipp(taus,max_tau=1/G + 0.1, G)
+  res <- list()
+  res$fits <- fits
+  res$first_fit <- first_fit
+  res$pis <- pis
+  res$taus <- taus
+  return(res)
+}
+
+"fitmix_ipp" <- function(y, X, G, weights, offset, control, y_is_na, estimate_variance){
+  S <- ncol(y)
+  cat("Fitting Group", G, "\n")
+  if (control$trace)
+    cat("Iteration | LogL \n")
+  pis <- rep(0, G)
+  ite <- 1
+  logl_old <- -99999999
+  logl_new <- -88888888
+
+  # Get responable starting values for EM estimation. #first e-step.
+  starting_values <- get_initial_values_ipp(y, X, weights, offset, y_is_na, G, S, control$cores, inits=control$init_method, control$init.sd)
+
+  pis <- starting_values$pis
+  fits <- starting_values$fits
+  taus <- starting_values$taus
+  first_fit <- starting_values$first_fit
+
+  # cat('starting pis at:', pis)
+  old_time <- Sys.time()
+  print(paste0('loglikelihood estimation starts at ', old_time))
+  while (control$reltol(logl_new,logl_old) & ite <= control$maxit) {
+
+    # Estimate pis from tau.
+    pis <- colSums(taus)/S
+    if(!control$quiet)
+    cat(pis,"\n")
+
+    if (any(pis == 0)) {
+    starting_values <- get_initial_values_ipp(y, X, weights, offset, y_is_na, G, S, control$cores, control$init_method, control$init_sd)
+    pis <- starting_values$pis
+    fits <- starting_values$fits
+    taus <- starting_values$taus
+    first_fit <- starting_values$first_fit
+    ite <- 1
+    }
+
+    # this updates the mixture coefs
+    if(control$method=="Nelder-Meld"){
+    tmp <- optim(par=fits$mix_coefs, fn=incom_logl_ipp, gr = NULL,first_fit=first_fit, pis=pis, fits=fits, G=G, S=S,  method = "Nelder-Mead",control = list(trace=control$nlminb_trace), hessian = FALSE)
+    }
+    if(control$method=="nlminb"){
+    tmp <- nlminb(start=fits$mix_coefs, objective=incom_logl_ipp, gradient=NULL, hessian=NULL, first_fit=first_fit, pis=pis, fits=fits, G=G, S=S,control=list(trace=control$nlminb_trace))
+	  }
+    fits$mix_coefs <- update_mix_coefs(fits$mix_coefs, tmp$par)
+
+    # update species intercepts
+    fm_ipp <- surveillance::plapply(1:S, apply_glm_ipp_sp_tau, first_fit$y, first_fit$x, first_fit$y_is_na, first_fit$weights,first_fit$offset, taus, S, G, fits,  .parallel = control$cores)
+    sp_int <- do.call(rbind,fm_ipp)[,1]
+    fits$sp_intercepts <- update_sp_coefs(fits$sp_intercepts,sp_int)
+
+    # E-step
+    # get the log-likes and taus
+    logls <- get_logls_ipp(first_fit, fits, G, S)
+    taus <- get_taus_ipp(pis, logls, G, S)
+
+    #update the likelihood
+    logl_old <- logl_new
+    logl_new <- get_incomplete_logl_ipp(pi, first_fit, fits, G, S)
+    new_time <- Sys.time() - old_time
+    if (control$trace){
+      cat(ite, "  |  ", logl_new, "\n")
+      print(new_time)}
+    ite <- ite + 1
+  }
+
+  taus <- data.frame(taus)
+  names(taus) <- paste("grp.", 1:G, sep = "")
+  EN <- -sum(unlist(taus) * log(unlist(taus)))
+  int_out <- fits$sp_intercepts
+  fm_out <- fits$mix_coefs
+  d <- length(unlist(fm_out)) + length(taus) - 1
+  int_out <- fits$sp_intercepts
+  fm_out <- fits$mix_coefs
+  names(pis) <- paste("G", 1:G, sep = ".")
+  t_pis <- additive_logistic(pis, TRUE)
+  parms <- c(t_pis[1:(G - 1)], unlist(fm_out), int_out)
+  logl_full <- logl_new
+
+  # estimate log-likelihood
+  logl_new <- get_incomplete_logl_ipp( pi, first_fit, fits, G, S)
+
+  if(estimate_variance){
+    message('Numerically estimating the derivates for mixing coefs and sp intercepts, this could take a while. Soz.')
+    var <- 0
+    fun_est_var <- function(x){-logLmix_ipp(x,first_fit,G,S)}
+    var <- solve(nH2(pt=parms, fun=fun_est_var))
+    colnames(var) <- rownames(var) <- names(parms)
+  } else {
+    var <- 0
+  }
+
+  return(list(logl = logl_new, aic = -2 * logl_new + 2 * d, taus = round(taus,4), pis = pis, bic = -2 * logl_new + log(S) * d, ICL = -2 *
+                logl_new + log(S) * d + 2 * EN, coef = fm_out, sp_intercept = int_out,
+              covar = var, aic_full = -2 * logl_full +  2 * d, bic_full = -2 * logl_full + log(S) * d, pars = parms, weights = weights))
+}
+
+"update_mix_coefs" <- function(old, new, kappa=1){
+  if(any(is.na( old)))
+    tmp <- new
+  else
+    tmp <- old + kappa*(new-old)
+  return( tmp)
+}
+
+"update_sp_coefs" <- function(old, new, kappa=1){
+  if(any(is.na( old)))
+    tmp <- new
+  else
+    tmp <- old + kappa*(new-old)
+  return( tmp)
+}
+
+"incom_logl_ipp" <- function(x, first_fit, pis, fits, G, S){ #fits == fmM
+  fits$mix_coefs <- matrix(x,nrow=nrow(fits$mix_coef),ncol=ncol(fits$mix_coef))
+  tmp <- get_incomplete_logl_ipp_function(pis, first_fit, fits, G, S)
+  return(-tmp)
+}
+
+"get_incomplete_logl_ipp_function" <- function(pis, first_fit, fits, G, S, theta.range=c(0.01, 10), pen.parm=1.25){
+  logl_sp_ipp <- matrix(NA, nrow=S, ncol=G)
+  incomplete.logl <- 0
+  for(ss in 1:S){
+    sp_idx<-!first_fit$y_is_na[,ss]
+    for(gg in 1:G){
+      eta <- first_fit$x[sp_idx,1] * fits$sp_intercepts[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$mix_coefs[gg,] + first_fit$offset[sp_idx] #eta is the same as log_lambda (linear predictor)
+      logl_sp_ipp[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
+    }
+  }
+  ak <- logl_sp_ipp + matrix( rep( log( pis), each=S), nrow=S, ncol=G)
+  am <- apply( ak, 1, max)
+  ak <- exp(ak-am)
+  sppLogls <- am + log( rowSums( ak))
+  logl <- sum( sppLogls)
+  return( logl)
+}
+
+"get_logls_ipp" <- function(first_fit, fits, G, S){
+  logl_sp_ipp <- matrix(NA, nrow=S, ncol=G)
+  for(ss in 1:S){
+    sp_idx<-!first_fit$y_is_na[,ss]
+    for(gg in 1:G){
+      #eta is the same as log_lambda (linear predictor)
+      eta <- first_fit$x[sp_idx,1] * fits$sp_intercepts[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$mix_coefs[gg,] + first_fit$offset[sp_idx]
+      logl_sp_ipp[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
+    }
+  }
+  return(logl_sp_ipp)
+}
+
+"get_taus_ipp" <- function(pi, logls, G, S){
+  fullLogPis <- matrix( rep( log(pi), each=S), nrow=S, ncol=G)
+  a_k <- fullLogPis + logls
+  a_m <- apply( a_k, 1, max)
+  tmp <- exp( a_k - rep( a_m, times=G))
+  log_denom <- a_m + log( rowSums( tmp))
+  return( exp( a_k - log_denom))
+}
+
+"get_incomplete_logl_ipp" <-  function(pis, first_fit, fits, G, S){
+  incomplete.logl <- 0
+  logl_sp_ipp <- matrix(NA, nrow=S, ncol=G)
+  for(ss in 1:S){
+    sp_idx<-!first_fit$y_is_na[,ss]
+    for(gg in 1:G){
+      #eta is the same as log_lambda (linear predictor)
+      eta <- first_fit$x[sp_idx,1] * fits$sp_intercepts[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$mix_coefs[gg,] + first_fit$offset[sp_idx]
+      logl_sp_ipp[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
+    }
+  }
+  ak <- logl_sp_ipp + matrix( rep( log( pis), each=S), nrow=S, ncol=G)
+  am <- apply( ak, 1, max)
+  ak <- exp( ak-am)
+  sppLogls <- am + log( rowSums( ak))
+  logl <- sum( sppLogls)
+  return( logl)
+}
+
+"logLmix_ipp" <-  function(pars, first_fit, G, S){
+  tau <- matrix(0,S,G)
+  ##tau,out.tau=FALSE
+  if(G>1){
+    fm <- pars[-1*(1:(G-1))]  ## remove pi
+    sp_int <- fm[(length(fm)-(S-1)):length(fm)]
+    fm <- fm[-1*(length(fm)-(S-1)):length(fm)]
+    pis <- pars[(1:(G-1))]
+
+    # dim(sp.int) <- c(S,G)
+    dim(fm) <- c(G,length(fm)/G)
+    pis <- additive_logistic(pis)
+  } else{
+    return(0)
+    fm <- tau[1:(length(pars)-1)]
+    dim(fm) <- c(1,length(fm))
+    pi <- 1
+  }
+
+  complete.logl <- 0
+  logl_sp_ipp <- matrix(NA, nrow=S, ncol=G)
+  for(ss in 1:S){
+    sp_idx<-!first_fit$y_is_na[,ss]
+    for(gg in 1:G){
+      #eta is the same as log_lambda (linear predictor)
+      eta <- first_fit$x[sp_idx,1] * sp_int[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fm[gg,] + first_fit$offset[sp_idx]
+      logl_sp_ipp[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
+    }
+  }
+  ak <- logl_sp_ipp + matrix( rep( log( pis), each=S), nrow=S, ncol=G)
+  am <- apply( ak, 1, max)
+  ak <- exp( ak-am)
+  sppLogls <- am + log( rowSums( ak))
+  logl <- sum( sppLogls)
+  return( logl)
 }
