@@ -470,17 +470,18 @@ reltol_fun <- function(logl_n1, logl_n){
 #'@name species_mix_estimate_groups
 #'@param 
 #this will need to be reworked to fit new species mix function.
-"species_mix_estimate_groups" <- function (sp.form,sp.data,covar.data,G=1:10,em_prefit=TRUE, em_steps=4 ,em_refit=3,est_var=FALSE,trace=TRUE)
-  {
+
+"species_mix_estimate_groups" <- function(formula = NULL, data, n_mixtures = 1:10, distribution="poisson",
+  offset=NULL, weights=NULL, control=species_mix.control(), inits=NULL, standardise = FALSE){
     my.fun <- function(g,form,sp.data,covar.data){
       cat("Fitting group",g,"\n")
       try(SpeciesMix(form,sp.data,covar.data,g,em_prefit=em_prefit,em_steps=em_steps,em_refit=em_refit,est_var=est_var,trace=trace))
     }
-
-
-    #  if(mc){ out <- mclapply(G,my.fun,form,dat,mc.preschedule = FALSE, mc.set.seed = TRUE, mc.silent = FALSE, mc.cores = set.cores)} else
-    { out <- lapply(G,my.fun,sp.form,sp.data,covar.data)}
-
+   if(mc){ 
+	   out <- survelliance::parlapply(G,my.fun,form,dat,mc.preschedule = FALSE, mc.set.seed = TRUE, mc.silent = FALSE, .cores = control$cores)
+	   } else { 
+		   out <- lapply(G,my.fun,sp.form,sp.data,covar.data)
+		   }
     aic <- rep(0,length(G))
     bic <- rep(0,length(G))
     fm <- list()
@@ -491,7 +492,6 @@ reltol_fun <- function(logl_n1, logl_n){
         fm[[i]] <- list(logl=out[[i]]$logl,coef=out[[i]]$coef,tau=out[[i]]$tau,pi=out[[i]]$pi,covar=out[[i]]$covar)
       }
     return(list(aic=aic,bic=bic,fm=fm))
-
   }
 
 
@@ -1015,7 +1015,7 @@ reltol_fun <- function(logl_n1, logl_n){
         ite <- 1
       }
 
-      fmM <- lapply(1:G,weighted.glm,first.fit,tau,n,fmM,sp)
+      fmM <- lapply(1:G,weighted_glm,first.fit,tau,n,fmM,sp)
 
 
       logL <- 0
@@ -1162,7 +1162,7 @@ reltol_fun <- function(logl_n1, logl_n){
         ite <- 1
       }
 
-      fmM <- lapply(1:G,weighted.glm_gaussian,first.fit,tau,n,fmM,sp)
+      fmM <- lapply(1:G,weighted_glm_gaussian,first.fit,tau,n,fmM,sp)
 
 
       logL <- 0
@@ -1251,7 +1251,7 @@ reltol_fun <- function(logl_n1, logl_n){
       first.fit <- t1$first.fit
       ite <- 1
     }
-    fmM <- lapply(1:G, weighted.glm_nbinom, first.fit, tau,
+    fmM <- lapply(1:G, weighted_glm_nbinom, first.fit, tau,
       n, fmM, sp)
     for (j in 1:S) {
       tmp <- rep(0, G)
@@ -1432,7 +1432,7 @@ reltol_fun <- function(logl_n1, logl_n){
         first.fit <- t1$first.fit
         ite <- 1
       }
-      fmM <- lapply(1:G, weighted.glm_tweedie, first.fit, tau,
+      fmM <- lapply(1:G, weighted_glm_tweedie, first.fit, tau,
         n, fmM, sp)
       for (j in 1:S) {
         tmp <- rep(0, G)
@@ -2650,14 +2650,14 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"weighted.glm" <-  function (g,first.fit,tau,n,fmM,sp) {
+"weighted_glm" <-  function (g,first.fit,tau,n,fmM,sp) {
     dat.tau <- rep(tau[,g],each=n)
     f.mix <- glm.fit(x=first.fit$x,y=first.fit$y,weights=dat.tau,family=binomial(),start=fmM[[g]]$coef)
     return(list(coef=f.mix$coef))
   }
 
 
-"weighted.glm_gaussian" <-  function (g,first.fit,tau,n,fmM,sp){
+"weighted_glm_gaussian" <-  function (g,first.fit,tau,n,fmM,sp){
     dat.tau <- rep(tau[,g],each=n)
     sp.name <- unique(sp)
     X <- first.fit$x
@@ -2675,7 +2675,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"weighted.glm_nbinom" <-  function (g,first.fit,tau,n,fmM,sp){
+"weighted_glm_nbinom" <-  function (g,first.fit,tau,n,fmM,sp){
     dat.tau <- rep(tau[,g],each=n)
     sp.name <- unique(sp)
     X <- first.fit$x
@@ -2693,7 +2693,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"weighted.glm_tweedie" <-  function (g, first.fit, tau, n, fmM, sp){
+"weighted_glm_tweedie" <-  function (g, first.fit, tau, n, fmM, sp){
     dat.tau <- rep(tau[, g], each = n)
     sp.int.offset <- rep(fmM[[g]]$sp.intercept, each = n)+first.fit$offset
     sp.name <- unique(sp)
