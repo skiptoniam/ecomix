@@ -346,7 +346,7 @@ reltol_fun <- function(logl_n1, logl_n){
 }
 
 ## the start of Piers' code
-"additive.logistic" <-
+"additive_logistic" <-
   function (x,inv=FALSE)
   {
     if(inv){
@@ -361,8 +361,8 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 #' @rdname species_mix-class
-#' @name apply.glm
-"apply.glm" <-  function (i,form,datsp,tau,n){
+#' @name apply_glm
+"apply_glm" <-  function (i,form,datsp,tau,n){
     dat.tau <- rep(tau[,i],each=n)
     x <- model.matrix(as.formula(form),data=datsp)
     y <- datsp$obs
@@ -371,8 +371,8 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 #' @rdname species_mix-class
-#' @name apply.glm.gaussian
-"apply.glm.gaussian" <-  function (i,form,datsp,tau,n){
+#' @name apply_glm_gaussian
+"apply_glm_gaussian" <-  function (i,form,datsp,tau,n){
     dat.tau <- rep(tau[,i],each=n)
     x <- model.matrix(as.formula(form),data=datsp)
     y <- datsp$obs
@@ -383,20 +383,20 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 #' @rdname species_mix-class
-#' @name apply.glm.nbinom
-"apply.glm.nbinom" <- function (i,form,datsp,tau,n){
+#' @name apply_glm_nbinom
+"apply_glm_nbinom" <- function (i,form,datsp,tau,n){
     dat.tau <- rep(tau[,i],each=n)
     x <- model.matrix(as.formula(form),data=datsp)
     y <- datsp$obs
     environment(form) <- environment()
-    f.mix <- glm.nbinom(as.formula(form),data=datsp,weights=dat.tau)
+    f.mix <- glm_nbinom(as.formula(form),data=datsp,weights=dat.tau)
     sp.int <- rep(f.mix$coef[1],dim(tau)[1])
     return(list(coef=f.mix$coef[-1],theta=f.mix$theta,sp.intercept=sp.int))
   }
 
 #' @rdname species_mix-class
-#' @name apply.glm.tweedie
-"apply.glm.tweedie" <- function (i,form,datsp,tau,n){
+#' @name apply_glm_tweedie
+"apply_glm_tweedie" <- function (i,form,datsp,tau,n){
     dat.tau <- rep(tau[,i],each=n)
     x <- model.matrix(as.formula(form),data=datsp)
     y <- datsp$obs
@@ -408,8 +408,9 @@ reltol_fun <- function(logl_n1, logl_n){
 
 #' @rdname species_mix-class
 #' @name simulate_species_mix_data
-"simulate_species_mix_data" <-  function (formula, data, theta, S, dist = "bernoulli")
-  {
+## need to update this to take the new formula framework and simulate ipp data.
+"simulate_species_mix_data" <-  function (formula, data, theta, S, dist = "bernoulli"){
+	
     X <- model.matrix(formula, data)
     out <- matrix(0, dim(X)[1], S)
     k <- dim(theta)[1]
@@ -465,9 +466,11 @@ reltol_fun <- function(logl_n1, logl_n){
     list(pa = out, group = group, pi = pi)
   }
 
-
-"clusterSelect" <-
-  function (sp.form,sp.data,covar.data,G=1:10,em_prefit=TRUE, em_steps=4 ,em_refit=3,est_var=FALSE,trace=TRUE)
+#'@rdname species_mix-class
+#'@name species_mix_estimate_groups
+#'@param 
+#this will need to be reworked to fit new species mix function.
+"species_mix_estimate_groups" <- function (sp.form,sp.data,covar.data,G=1:10,em_prefit=TRUE, em_steps=4 ,em_refit=3,est_var=FALSE,trace=TRUE)
   {
     my.fun <- function(g,form,sp.data,covar.data){
       cat("Fitting group",g,"\n")
@@ -492,10 +495,10 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"create.starting.values" <-
+"create_starting_values" <-
   function (S,G,n,form,datsp)
   {
-    ##apply.glm <- function(i,form,datsp,tau,n,dat.tau){
+    ##apply_glm <- function(i,form,datsp,tau,n,dat.tau){
     ##  dat.tau <- rep(tau[,i],each=n)
     ##  dat.tau <- get("dat.tau")
     ##  datsp <- get("datsp")
@@ -515,7 +518,7 @@ reltol_fun <- function(logl_n1, logl_n){
     }
     ##dat.tau <- rep(0,dim(datsp)[1])
 
-    fmM <- lapply(1:G,apply.glm,form,datsp,tau,n)
+    fmM <- lapply(1:G,apply_glm,form,datsp,tau,n)
     first.fit <- list(x=model.matrix(as.formula(form),data=datsp),y=datsp$obs,formula=form)
 
     ##return(list(pi=pi,fmM=fmM,tau=tau,dat.tau=dat.tau,first.fit=first.fit))
@@ -523,10 +526,10 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"create.starting.values.gaussian" <-
+"create_starting_values_gaussian" <-
   function (S,G,n,form,datsp,mc=FALSE,set.cores=2)
   {
-    ##apply.glm <- function(i,form,datsp,tau,n,dat.tau){
+    ##apply_glm <- function(i,form,datsp,tau,n,dat.tau){
     ##  dat.tau <- rep(tau[,i],each=n)
     ##  dat.tau <- get("dat.tau")
     ##  datsp <- get("datsp")
@@ -546,7 +549,7 @@ reltol_fun <- function(logl_n1, logl_n){
     }
     ##dat.tau <- rep(0,dim(datsp)[1])
 
-    fmM <- lapply(1:G,apply.glm.gaussian,form,datsp,tau,n)
+    fmM <- lapply(1:G,apply_glm_gaussian,form,datsp,tau,n)
     first.fit <- list(x=model.matrix(as.formula(form),data=datsp)[,-1],y=datsp$obs,formula=form)
 
     ##return(list(pi=pi,fmM=fmM,tau=tau,dat.tau=dat.tau,first.fit=first.fit))
@@ -554,10 +557,10 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"create.starting.values.nbinom" <-
+"create_starting_values_nbinom" <-
   function (S,G,n,form,datsp,mc=FALSE,set.cores=2)
   {
-    ##apply.glm <- function(i,form,datsp,tau,n,dat.tau){
+    ##apply_glm <- function(i,form,datsp,tau,n,dat.tau){
     ##  dat.tau <- rep(tau[,i],each=n)
     ##  dat.tau <- get("dat.tau")
     ##  datsp <- get("datsp")
@@ -577,7 +580,7 @@ reltol_fun <- function(logl_n1, logl_n){
     }
     ##dat.tau <- rep(0,dim(datsp)[1])
 
-    fmM <- lapply(1:G,apply.glm.nbinom,form,datsp,tau,n)
+    fmM <- lapply(1:G,apply_glm_nbinom,form,datsp,tau,n)
     offset <- model.frame(as.formula(form),data=datsp)
     offset <- model.offset(offset)
     if(is.null(offset)) offset <- rep(0,length(datsp$obs))
@@ -588,7 +591,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"create.starting.values.nbinom.kmeans" <-
+"create_starting_values_nbinom_kmeans" <-
   function (S, G, n, form, datsp, tol = 0.1)
   {
     MM <- model.matrix(form, datsp)
@@ -609,7 +612,7 @@ reltol_fun <- function(logl_n1, logl_n){
     all.betas <- matrix(0, nrow = S, ncol = ncol(MM))
     colnames(all.betas) <- colnames(MM)
     for (j in 1:S) {
-      fit <- glm.nbinom(form, datsp[((j - 1) * n):(j * n -
+      fit <- glm_nbinom(form, datsp[((j - 1) * n):(j * n -
           1), ], est_var = FALSE)
       starting.fitem$sp.intercepts[j] <- fit$coef[1]
       all.betas[j, ] <- fit$coef
@@ -635,7 +638,7 @@ reltol_fun <- function(logl_n1, logl_n){
     pi <- rep(1/G, G)
     pi <- runif(G, 0.2, 0.8)
     pi <- pi/sum(pi)
-    est.tau <- lapply(1:S, estimate.pi.nbinom, sp, sp.name, datsp,
+    est.tau <- lapply(1:S, estimate_pi_nbinom, sp, sp.name, datsp,
       fmM, pi, G, first.fit)
     max.newTau <- 0.8
     alpha <- (1 - max.newTau * G)/(max.newTau * (2 - G) - 1)
@@ -651,10 +654,10 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"create.starting.values.tweedie" <-
+"create_starting_values_tweedie" <-
   function (S,G,n,form,datsp)
   {
-    ##apply.glm <- function(i,form,datsp,tau,n,dat.tau){
+    ##apply_glm <- function(i,form,datsp,tau,n,dat.tau){
     ##  dat.tau <- rep(tau[,i],each=n)
     ##  dat.tau <- get("dat.tau")
     ##  datsp <- get("datsp")
@@ -676,7 +679,7 @@ reltol_fun <- function(logl_n1, logl_n){
     offset <- model.frame(form,datsp)
     offset <- model.offset(offset)
     if(is.null(offset)) offset <- rep(0,length(datsp$obs))
-    fmM <- lapply(1:G,apply.glm.tweedie,form,datsp,tau,n)
+    fmM <- lapply(1:G,apply_glm_tweedie,form,datsp,tau,n)
     first.fit <- list(x=model.matrix(as.formula(form),data=datsp)[,-1],y=datsp$obs,formula=form)
 
     ##return(list(pi=pi,fmM=fmM,tau=tau,dat.tau=dat.tau,first.fit=first.fit))
@@ -684,7 +687,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"create.starting.values.tweedie.kmeans" <-
+"create_starting_values_tweedie_kmeans" <-
   function (S, G, n, form, datsp, tol = 0.1)
   {
     MM <- model.matrix(form, datsp)
@@ -729,7 +732,7 @@ reltol_fun <- function(logl_n1, logl_n){
     pi <- rep(1/G, G)
     pi <- runif(G, 0.2, 0.8)
     pi <- pi/sum(pi)
-    est.tau <- lapply(1:S, estimate.pi.tweedie, sp, sp.name,
+    est.tau <- lapply(1:S, estimate_pi_tweedie, sp, sp.name,
       datsp, fmM, pi, G, first.fit)
     max.newTau <- 0.8
     alpha <- (1 - max.newTau * G)/(max.newTau * (2 - G) - 1)
@@ -863,7 +866,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"estimate.pi" <-
+"estimate_pi" <-
   function (j,sp,spname,datsp,fmM,pi,G,first.fit)
   {
 
@@ -892,7 +895,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"estimate.pi.gaussian" <-
+"estimate_pi_gaussian" <-
   function (j,sp,spname,datsp,fmM,pi,G,first.fit)
   {
 
@@ -921,7 +924,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"estimate.pi.nbinom" <-
+"estimate_pi_nbinom" <-
   function (j,sp,spname,datsp,fmM,pi,G,first.fit)
   {
 
@@ -949,7 +952,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"estimate.pi.tweedie" <-
+"estimate_pi_tweedie" <-
   function (j, sp, spname, datsp, fmM, pi, G, first.fit)
   {
     tmp.like <- rep(0, G)
@@ -993,7 +996,7 @@ reltol_fun <- function(logl_n1, logl_n){
     old.logL <- -88888888
 
     ## set up initial GLM
-    t1 <- create.starting.values(S,G,n,form,datsp)
+    t1 <- create_starting_values(S,G,n,form,datsp)
     pi <- t1$pi;fmM <- t1$fmM;tau <- t1$tau;dat.tau <- t1$dat.tau;first.fit <- t1$first.fit
 
 
@@ -1007,7 +1010,7 @@ reltol_fun <- function(logl_n1, logl_n){
 
       if(any(pi==0)) { ## occasionally with complicated models the random starting values result in a pi[i]==0; so restart with new random starts
         cat("pi has gone to zero - restarting fitting \n")
-        t1 <- create.starting.values(S,G,n,form,datsp)
+        t1 <- create_starting_values(S,G,n,form,datsp)
         pi <- t1$pi;fmM <- t1$fmM;tau <- t1$tau;dat.tau <- t1$dat.tau;first.fit <- t1$first.fit
         ite <- 1
       }
@@ -1018,7 +1021,7 @@ reltol_fun <- function(logl_n1, logl_n){
       logL <- 0
       tmp.like <- matrix(0,S,G)
 
-      est.tau <- lapply(1:S,estimate.pi,sp,sp.name,datsp,fmM,pi,G,first.fit)
+      est.tau <- lapply(1:S,estimate_pi,sp,sp.name,datsp,fmM,pi,G,first.fit)
 
       for(j in 1:S){
         if(is.atomic(est.tau[[j]])){ print (est.tau[[j]])} else
@@ -1043,7 +1046,7 @@ reltol_fun <- function(logl_n1, logl_n){
     }
 
     names(pi) <- paste("G",1:G,sep=".")
-    t.pi <- additive.logistic(pi,TRUE)
+    t.pi <- additive_logistic(pi,TRUE)
     parms <- c(t.pi[1:(G-1)],unlist(fm.out))
     logL.full <- logL
     logL <- logLmix(parms,first.fit,G,S,sp,sp.name)
@@ -1101,7 +1104,7 @@ reltol_fun <- function(logl_n1, logl_n){
     coef <- pars[ (G):length(pars)]
 
     r.logl <- logLmix(pars,list(y=y,x=model.matrix(form, data = datsp)),G,S,sp,sp.name,out.tau=TRUE)
-    pi <- additive.logistic(pi)
+    pi <- additive_logistic(pi)
     names(pi) <- paste("G.",1:G,sep="")
     coef <- matrix(coef,G,ncol(X))
     rownames(coef) <- paste("G.",1:G,sep="")
@@ -1115,7 +1118,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"fitmix.gaussian" <-
+"fitmix_gaussian" <-
   function (form,datsp,sp,G=2,ite.max=500,trace=TRUE,full.model=FALSE)
   {
     ## fitting abundance data with a negative binomial distribution
@@ -1140,7 +1143,7 @@ reltol_fun <- function(logl_n1, logl_n){
     old.logL <- -88888888
 
     ## set up initial GLM
-    t1 <- create.starting.values.gaussian(S,G,n,form,datsp)
+    t1 <- create_starting_values_gaussian(S,G,n,form,datsp)
     pi <- t1$pi;fmM <- t1$fmM;tau <- t1$tau;dat.tau <- t1$dat.tau;first.fit <- t1$first.fit
 
 
@@ -1154,18 +1157,18 @@ reltol_fun <- function(logl_n1, logl_n){
 
       if(any(pi==0)) { ## occasionally with complicated models the random starting values result in a pi[i]==0; so restart with new random starts
         cat("pi has gone to zero - restarting fitting \n")
-        t1 <- create.starting.values.gaussian(S,G,n,form,datsp)
+        t1 <- create_starting_values_gaussian(S,G,n,form,datsp)
         pi <- t1$pi;fmM <- t1$fmM;tau <- t1$tau;dat.tau <- t1$dat.tau;first.fit <- t1$first.fit
         ite <- 1
       }
 
-      fmM <- lapply(1:G,weighted.glm.gaussian,first.fit,tau,n,fmM,sp)
+      fmM <- lapply(1:G,weighted.glm_gaussian,first.fit,tau,n,fmM,sp)
 
 
       logL <- 0
       tmp.like <- matrix(0,S,G)
 
-      est.tau <- lapply(1:S,estimate.pi.gaussian,sp,sp.name,datsp,fmM,pi,G,first.fit)
+      est.tau <- lapply(1:S,estimate_pi_gaussian,sp,sp.name,datsp,fmM,pi,G,first.fit)
 
       for(j in 1:S){
         if(is.atomic(est.tau[[j]])){ print (est.tau[[j]])} else
@@ -1195,10 +1198,10 @@ reltol_fun <- function(logl_n1, logl_n){
     }
 
     names(pi) <- paste("G",1:G,sep=".")
-    t.pi <- additive.logistic(pi,TRUE)
+    t.pi <- additive_logistic(pi,TRUE)
     parms <- c(t.pi[1:(G-1)],fm.theta,unlist(fm.out),unlist(int.out))
     logL.full <- logL
-    logL <- logLmix.gaussian(parms,first.fit,G,S,sp,sp.name)
+    logL <- logLmix_gaussian(parms,first.fit,G,S,sp,sp.name)
 
     options(warn=temp.warn)
     if(full.model)  return(list(logl=logL,aic = -2*logL + 2*d,tau=round(tau,4),pi=pi,bic=-2*logL + log(S)*d,ICL= -2*logL + log(S)*d +2*EN,coef=fm.out,sp.intercept=int.out,theta=fm.theta,fmM=fmM,model.tau=dat.tau,covar=0,aic.full= -2*logL.full + 2*d,bic.full= -2*logL.full + log(S)*d))
@@ -1207,7 +1210,7 @@ reltol_fun <- function(logl_n1, logl_n){
 
   }
 
-"fitmix.nbinom" <- function (form, datsp, sp, G = 2, ite.max = 500, trace = TRUE,
+"fitmix_nbinom" <- function (form, datsp, sp, G = 2, ite.max = 500, trace = TRUE,
   full.model = FALSE)
 {
   temp.warn <- getOption("warn")
@@ -1224,8 +1227,8 @@ reltol_fun <- function(logl_n1, logl_n){
   logL <- -99999999
   old.logL <- -88888888
   if (ite != 1)
-    t1 <- create.starting.values.nbinom(S, G, n, form, datsp)
-  t1 <- create.starting.values.nbinom.kmeans(S, G, n, form,
+    t1 <- create_starting_values_nbinom(S, G, n, form, datsp)
+  t1 <- create_starting_values_nbinom_kmeans(S, G, n, form,
     datsp)
   pi <- t1$pi
   fmM <- t1$fmM
@@ -1239,7 +1242,7 @@ reltol_fun <- function(logl_n1, logl_n){
     }
     if (any(pi == 0)) {
       cat("pi has gone to zero - restarting fitting \n")
-      t1 <- create.starting.values.nbinom(S, G, n, form,
+      t1 <- create_starting_values_nbinom(S, G, n, form,
         datsp)
       pi <- t1$pi
       fmM <- t1$fmM
@@ -1248,7 +1251,7 @@ reltol_fun <- function(logl_n1, logl_n){
       first.fit <- t1$first.fit
       ite <- 1
     }
-    fmM <- lapply(1:G, weighted.glm.nbinom, first.fit, tau,
+    fmM <- lapply(1:G, weighted.glm_nbinom, first.fit, tau,
       n, fmM, sp)
     for (j in 1:S) {
       tmp <- rep(0, G)
@@ -1258,7 +1261,7 @@ reltol_fun <- function(logl_n1, logl_n){
     }
     logL <- 0
     tmp.like <- matrix(0, S, G)
-    est.tau <- lapply(1:S, estimate.pi.nbinom, sp, sp.name,
+    est.tau <- lapply(1:S, estimate_pi_nbinom, sp, sp.name,
       datsp, fmM, pi, G, first.fit)
     for (j in 1:S) {
       if (is.atomic(est.tau[[j]])) {
@@ -1286,11 +1289,11 @@ reltol_fun <- function(logl_n1, logl_n){
     fm.out[i, ] <- fmM[[i]]$coef
   }
   names(pi) <- paste("G", 1:G, sep = ".")
-  t.pi <- additive.logistic(pi, TRUE)
+  t.pi <- additive_logistic(pi, TRUE)
   parms <- c(t.pi[1:(G - 1)], unlist(fm.out), int.out, rep(1,
     S))
   logL.full <- logL
-  logL <- logLmix.nbinom(parms, first.fit, G, S, sp, sp.name)
+  logL <- logLmix_nbinom(parms, first.fit, G, S, sp, sp.name)
   options(warn = temp.warn)
   if (full.model)
     return(list(logl = logL, aic = -2 * logL + 2 * d, tau = round(tau,
@@ -1307,7 +1310,7 @@ reltol_fun <- function(logl_n1, logl_n){
 }
 
 
-"fitmix.nbinom.cpp" <-
+"fitmix_nbinom.cpp" <-
   function (form,datsp,sp,G=2,pars=NA,trace=TRUE,calc.hes=FALSE)
   {
     if(!is.numeric(sp)){
@@ -1348,7 +1351,7 @@ reltol_fun <- function(logl_n1, logl_n){
       ll <- .Call("Calculate_Gradient",p,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="SpeciesMix")
       return(gradient)
     }
-    r.deriv <- function(p){ logLmix.nbinom(p,list(y=y,x=model.matrix(form, data = datsp)),G,S,sp,sp.name,out.tau=FALSE)}
+    r.deriv <- function(p){ logLmix_nbinom(p,list(y=y,x=model.matrix(form, data = datsp)),G,S,sp,sp.name,out.tau=FALSE)}
     #r.grad <- nd2(pars,r.deriv)
     ##print(r.grad)
     hes <- 0
@@ -1371,9 +1374,9 @@ reltol_fun <- function(logl_n1, logl_n){
     offset <- model.offset(offset)
     if(is.null(offset)) offset <-  rep(0,nrow(datsp))
 
-    r.logl <- logLmix.nbinom(pars,list(y=y,x=model.matrix(form, data = datsp),offset=offset),G,S,sp,sp.name,out.tau=TRUE)
+    r.logl <- logLmix_nbinom(pars,list(y=y,x=model.matrix(form, data = datsp),offset=offset),G,S,sp,sp.name,out.tau=TRUE)
     print(r.logl$logl)
-    pi <- additive.logistic(pi)
+    pi <- additive_logistic(pi)
     names(pi) <- paste("G.",1:G,sep="")
     coef <- matrix(fm,G,ncol(X))
     rownames(coef) <- paste("G.",1:G,sep="")
@@ -1387,7 +1390,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"fitmix.tweedie" <-
+"fitmix_tweedie" <-
   function (form, datsp, sp, G = 2, ite.max = 500, trace = TRUE,
     full.model = FALSE)
   {
@@ -1405,8 +1408,8 @@ reltol_fun <- function(logl_n1, logl_n){
     logL <- -99999999
     old.logL <- -88888888
     if (ite != 1)
-      t1 <- create.starting.values.tweedie(S, G, n, form, datsp)
-    t1 <- create.starting.values.tweedie.kmeans(S, G, n, form,
+      t1 <- create_starting_values_tweedie(S, G, n, form, datsp)
+    t1 <- create_starting_values_tweedie_kmeans(S, G, n, form,
       datsp)
     pi <- t1$pi
     fmM <- t1$fmM
@@ -1420,7 +1423,7 @@ reltol_fun <- function(logl_n1, logl_n){
       }
       if (any(pi == 0)) {
         cat("pi has gone to zero - restarting fitting \n")
-        t1 <- create.starting.values.tweedie(S, G, n, form,
+        t1 <- create_starting_values_tweedie(S, G, n, form,
           datsp)
         pi <- t1$pi
         fmM <- t1$fmM
@@ -1429,7 +1432,7 @@ reltol_fun <- function(logl_n1, logl_n){
         first.fit <- t1$first.fit
         ite <- 1
       }
-      fmM <- lapply(1:G, weighted.glm.tweedie, first.fit, tau,
+      fmM <- lapply(1:G, weighted.glm_tweedie, first.fit, tau,
         n, fmM, sp)
       for (j in 1:S) {
         tmp <- rep(0, G)
@@ -1439,7 +1442,7 @@ reltol_fun <- function(logl_n1, logl_n){
       }
       logL <- 0
       tmp.like <- matrix(0, S, G)
-      est.tau <- lapply(1:S, estimate.pi.tweedie, sp, sp.name,
+      est.tau <- lapply(1:S, estimate_pi_tweedie, sp, sp.name,
         datsp, fmM, pi, G, first.fit)
       for (j in 1:S) {
         if (is.atomic(est.tau[[j]])) {
@@ -1468,13 +1471,13 @@ reltol_fun <- function(logl_n1, logl_n){
       fm.p[i] <- fmM[[i]]$p
     }
     names(pi) <- paste("G", 1:G, sep = ".")
-    t.pi <- additive.logistic(pi, TRUE)
+    t.pi <- additive_logistic(pi, TRUE)
     parms <- c(t.pi[1:(G - 1)], unlist(fm.out), int.out, rep(2,
       S))
     names(parms) <- c(rep("pi", G - 1), rep("coef", length(unlist(fm.out))),
       rep("int", length(int.out)), rep("phi", S))
     logL.full <- logL
-    logL <- logLmix.tweedie(parms, first.fit, G, S, sp, sp.name)
+    logL <- logLmix_tweedie(parms, first.fit, G, S, sp, sp.name)
     print(logL)
     options(warn = temp.warn)
     if (full.model)
@@ -1492,7 +1495,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"fitmix.tweedie.cpp" <-
+"fitmix_tweedie.cpp" <-
   function (form, datsp, sp, G = 2, pars = NA, trace = TRUE, calc.hes = FALSE)
   {
     if (!is.numeric(sp)) {
@@ -1550,13 +1553,13 @@ reltol_fun <- function(logl_n1, logl_n){
       length(unlist(fm))), rep("int", length(sp.int)), rep("phi",
         S))
     r.deriv <- function(p) {
-      logLmix.tweedie(p, list(y = y, x = model.matrix(form,
+      logLmix_tweedie(p, list(y = y, x = model.matrix(form,
         data = datsp)), G, S, sp, sp.name, out.tau = FALSE)
     }
-    r.logl <- logLmix.tweedie(pars, list(y = y, x = model.matrix(form,
+    r.logl <- logLmix_tweedie(pars, list(y = y, x = model.matrix(form,
       data = datsp),offset=offset), G, S, sp, sp.name, out.tau = TRUE)
     print(r.logl$logl)
-    pi <- additive.logistic(pi)
+    pi <- additive_logistic(pi)
     names(pi) <- paste("G.", 1:G, sep = "")
     coef <- matrix(fm, G, ncol(X))
     rownames(coef) <- paste("G.", 1:G, sep = "")
@@ -1569,7 +1572,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"glm.fit.nbinom" <-
+"glm.fit_nbinom" <-
   function (x,y,offset=NULL,weights=NULL,mustart=NULL,est_var=FALSE)
   {
     X <- x
@@ -1599,7 +1602,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"glm.nbinom" <-
+"glm_nbinom" <-
   function (form,data,weights=NULL,mustart=NULL,est_var=FALSE)
   {
     X <- model.matrix(form,data)
@@ -1714,7 +1717,7 @@ reltol_fun <- function(logl_n1, logl_n){
     fm <- pars[-1*(1:(G-1))]
     pi <- pars[(1:(G-1))]
     dim(fm) <- c(G,(length(pars)-(G-1))/G)
-    pi <- additive.logistic(pi)
+    pi <- additive_logistic(pi)
     S <- dim(y)[2]
 
     link.fun <- make.link("logit")
@@ -1773,7 +1776,7 @@ reltol_fun <- function(logl_n1, logl_n){
   {
 
     G <- length(pi)
-    pars <- c(additive.logistic(pi,T)[1:(G-1)],unlist(coef))
+    pars <- c(additive_logistic(pi,T)[1:(G-1)],unlist(coef))
 
     S <- dim(sp.data)[2]
     if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
@@ -1804,7 +1807,7 @@ reltol_fun <- function(logl_n1, logl_n){
       #pi <- tau[((length(tau)-(G-2)):length(tau))]
       dim(fm) <- c(G,(length(pars)-(G-1))/G)
       ##pi[G] <- 1-sum(pi)
-      pi <- additive.logistic(pi)
+      pi <- additive_logistic(pi)
     } else{
       fm <- tau[1:(length(pars)-1)]
       dim(fm) <- c(1,length(fm))
@@ -1833,7 +1836,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"logLmix.gaussian" <-
+"logLmix_gaussian" <-
   function (pars,first.fit,G,S,sp,spname,out.tau=FALSE)
   {
     tau <- matrix(0,S,G)
@@ -1850,7 +1853,7 @@ reltol_fun <- function(logl_n1, logl_n){
       dim(sp.int) <- c(S,G)
       dim(fm) <- c(G,length(fm)/G)
       ##pi[G] <- 1-sum(pi)
-      pi <- additive.logistic(pi)
+      pi <- additive_logistic(pi)
 
     } else{
       return(0)
@@ -1879,7 +1882,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"logLmix.nbinom" <-
+"logLmix_nbinom" <-
   function (pars,first.fit,G,S,sp,spname,out.tau=FALSE)
   {
     tau <- matrix(0,S,G)
@@ -1901,7 +1904,7 @@ reltol_fun <- function(logl_n1, logl_n){
       dim(fm) <- c(G,length(fm)/G)
 
       ##pi[G] <- 1-sum(pi)
-      pi <- additive.logistic(pi)
+      pi <- additive_logistic(pi)
 
     } else{
       return(0)
@@ -1932,7 +1935,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"logLmix.tweedie" <-
+"logLmix_tweedie" <-
   function (pars,first.fit,G,S,sp,spname,out.tau=FALSE)
   {
     tau <- matrix(0,S,G)
@@ -1954,7 +1957,7 @@ reltol_fun <- function(logl_n1, logl_n){
       ##dim(sp.int) <- c(S,G)
       dim(fm) <- c(G,length(fm)/G)
       ##pi[G] <- 1-sum(pi)
-      pi <- additive.logistic(pi)
+      pi <- additive_logistic(pi)
 
     } else{
       return(0)
@@ -2113,73 +2116,7 @@ reltol_fun <- function(logl_n1, logl_n){
         package=pkgname, lib.loc=libname))
   }
 
-
-"predict.archetype" <-
-  function (object,new.obs,...)
-  {
-    mixture.model <- object
-    if(class(mixture.model)[2]=="bernoulli"){
-      G <- length(mixture.model$pi)
-      covar <- mixture.model$covar[-(1:(G-1)),-(1:(G-1))]
-      coef <- mixture.model$coef
-      model.fm <- as.formula(mixture.model$formula)
-      model.fm[[2]] <- NULL
-      X <- model.matrix(model.fm,new.obs)
-      link.fun <- make.link("logit")
-      outvar <- matrix(NA,dim(X)[1],G)
-      outpred <- matrix(NA,dim(X)[1],G)
-      colnames(outvar) <- colnames(outpred) <- paste("G",1:G,sep=".")
-      for(g in 1:G){
-        lp <- as.numeric(X%*%coef[g,])
-        outpred[,g] <- link.fun$linkinv(lp)
-        dhdB <- (exp(lp)/(1+exp(lp)))*X - exp(lp)^2/((1+exp(lp))^2)*X
-        c2 <- covar[seq(g,dim(covar)[1],G),seq(g,dim(covar)[1],G)]
-        for(k in 1:dim(X)[1]){
-          outvar[k,g] <- (dhdB[k,]%*%c2)%*%(dhdB[k,])
-        }
-      }
-    }
-    if(class(mixture.model)[2]=="negbin"|class(mixture.model)[2]=="tweedie"){
-      G <- length(mixture.model$pi)
-      ##covar <- mixture.model$covar[-1*c(1:(G-1),(dim(mixture.model$covar)[1]-2*length(mixture.model$sp.intercept)+1):dim(mixture.model$covar)[1]),-1*c(1:(G-1),(dim(mixture.model$covar)[1]-2*length(mixture.model$sp.intercept)+1):dim(mixture.model$covar)[1])] # remove pi,sp.int,sp.disp from matrix
-      covar <- mixture.model$covar[-1*c(1:(G-1),(dim(mixture.model$covar)[1]-length(mixture.model$sp.intercept)+1):dim(mixture.model$covar)[1]),-1*c(1:(G-1),(dim(mixture.model$covar)[1]-length(mixture.model$sp.intercept)+1):dim(mixture.model$covar)[1])] # remove pi,sp.disp from matrix
-      sp.int <- mixture.model$sp.intercept
-      coef <- mixture.model$coef
-      model.fm <- as.formula(mixture.model$formula)
-      model.fm[[2]] <- NULL
-      X <- cbind(model.matrix(model.fm,new.obs),1)
-      offset <- model.frame(model.fm, data = new.obs)
-      offset <- model.offset(offset)
-      if(is.null(offset)) offset <-  rep(0,nrow(X))
-
-      outvar <- matrix(NA,dim(X)[1],G)
-      outpred <- matrix(NA,dim(X)[1],G)
-      colnames(outvar) <- colnames(outpred) <- paste("G",1:G,sep=".")
-
-      for(g in 1:G){
-        s.outvar <- matrix(NA,dim(X)[1],length(sp.int))
-        s.outpred <- matrix(NA,dim(X)[1],length(sp.int))
-
-        for(s in 1:length(sp.int)){
-          lp <- as.numeric(X%*%c(coef[g,],sp.int[s])+offset)
-          s.outpred[,s] <- exp(lp)
-          dhdB <- exp(lp)*X
-          c2 <- covar[c(seq(g,G*(dim(X)[2]-1),G),G*(dim(X)[2]-1)+s),c(seq(g,G*(dim(X)[2]-1),G),G*(dim(X)[2]-1)+s)]
-          for(k in 1:dim(X)[1]){
-            s.outvar[k,s] <- (dhdB[k,]%*%c2)%*%(dhdB[k,])
-          }
-        }
-        outpred[,g] <- apply(s.outpred*rep(mixture.model$tau[,g],each=dim(X)[1]),1,mean)/sum(mixture.model$tau[,g])
-        outvar[,g]<- apply(s.outvar*rep(mixture.model$tau[,g],each=dim(X)[1]),1,mean)/sum(mixture.model$tau[,g])
-      }
-    }
-    list(fit=outpred,se.fit=sqrt(outvar))
-  }
-
-
-"print.archetype" <-
-  function (x,...)
-  {
+"print.species_mix" <-  function (x,...){
     cat("\nMixing probabilities\n")
     print(x$pi)
     cat("\nCoefficents\n")
@@ -2193,26 +2130,16 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"pTweedie" <-
-  function ( quant, mu, phi, p)
-  {
+"pTweedie" <-  function ( quant, mu, phi, p){
     lambda <- ( mu^( 2-p)) / ( phi*(2-p))
     alpha <- ( 2-p) / ( p-1)
     tau <- phi*(p-1)*mu^(p-1)
     mu.Z <- alpha * tau
     ps <- 0
-    # ps <- pPoisGam( quant, lambda, mu.Z, alpha)
-
-    #  require( tweedie)
-    #  ps <- ptweedie( as.numeric( q), mu=as.numeric( mu), phi=as.numeric( phi), power=as.numeric( p))
-
     return( ps)
   }
 
-
-"rPoisGam" <-
-  function ( n, lambda, mu.Z, alpha)
-  {
+"rPoisGam" <- function ( n, lambda, mu.Z, alpha) {
     mu.N <- lambda
     #simulate n random variables from the same compound poisson distribution
     my.fun <- function (parms)
@@ -2239,28 +2166,22 @@ reltol_fun <- function(logl_n1, logl_n){
     return( y)
   }
 
-
-"rTweedie" <-
-  function ( n, mu, phi, p)
-  {
+"rTweedie" <- function ( n, mu, phi, p) {
     lambda <- ( mu^( 2-p)) / ( phi*(2-p))
     alpha <- ( 2-p) / ( p-1)
     tau <- phi*(p-1)*mu^(p-1)
     mu.Z <- alpha * tau
-
     rans <- rPoisGam( n, lambda, mu.Z, alpha)
     return( rans)
   }
 
-"species_mix_bernoulli" <-
-  function (sp.form,sp.data,covar.data,G=2, pars=NA, em_prefit=TRUE,em_steps=4, em_refit = 1 , est_var = FALSE,residuals=FALSE,trace=TRUE,r1=FALSE)
-  {
+"species_mix_bernoulli" <- function (sp.form,sp.data,covar.data,G=2, pars=NA, em_prefit=TRUE,em_steps=4, em_refit = 1 , est_var = FALSE,residuals=FALSE,trace=TRUE,r1=FALSE) {
     t.covar.data <- covar.data
     t.sp.data <- sp.data
     sp.form <- update.formula(sp.form,obs~1+.)
     if(em_prefit | G==1){
       prefit <- species_mix_em(sp.form,sp.data,covar.data,G,ite.max=em_steps,em_refit=em_refit,r1)
-      pars <- c(additive.logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
+      pars <- c(additive_logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
     }
     S <- dim(sp.data)[2]
     if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
@@ -2276,7 +2197,7 @@ reltol_fun <- function(logl_n1, logl_n){
     fmM.out <- fitmix.cpp(sp.form,data,sp,G,pars=pars,calc.hes=est_var,r1)
     while(fmM.out$logl==0) {
       prefit <- species_mix_em(sp.form,t.sp.data,t.covar.data,G,ite.max=em_steps,em_refit=1,r1)
-      pars <- c(additive.logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
+      pars <- c(additive_logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
       fmM.out <- fitmix.cpp(sp.form,data,sp,G,pars=pars,calc.hes=est_var,r1)
     }
 
@@ -2285,7 +2206,6 @@ reltol_fun <- function(logl_n1, logl_n){
     if(est_var){
       fmM.out$covar <- try(solve(fmM.out$hessian))
       if(class(fmM.out$covar)!="try-error"){
-        ##colnames(fmM.out$covar) <- rownames(fmM.out$covar) <- names(fmM.out$gradient)
         tmp <- sqrt(diag(fmM.out$covar))
         tmp <- tmp[(G):length(tmp)]
         fmM.out$se <- matrix(tmp,G,ncol(fmM.out$coef))
@@ -2300,9 +2220,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"species_mix_em" <-
-  function (sp.form,sp.data,covar.data,G=2,em_refit=1,ite.max=500, est_var = FALSE,residuals=FALSE,trace=TRUE,r1=FALSE)
-  {
+"species_mix_em" <-  function (sp.form,sp.data,covar.data,G=2,em_refit=1,ite.max=500, est_var = FALSE,residuals=FALSE,trace=TRUE,r1=FALSE){
     S <- dim(sp.data)[2]
     if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
     n <- dim(sp.data)[1]
@@ -2320,10 +2238,9 @@ reltol_fun <- function(logl_n1, logl_n){
         fmM <- fitMix(sp.form,data,sp,G,ite.max,trace,r1)
         if(fmM$logl>fmM.out$logl) fmM.out <- fmM
       }
-
     if(est_var){
       var <- 0
-      t.pi <- additive.logistic(fmM.out$pi,TRUE)
+      t.pi <- additive_logistic(fmM.out$pi,TRUE)
       parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef))
       first.fit <- list(y=data[,1],x=model.matrix(sp.form,data=data))
       fun.est_var <- function(x){-logLmix(x,first.fit,G,S,sp,sp.name)}
@@ -2338,9 +2255,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"species_mix_em_gaussian" <-
-  function (sp.form,sp.data,covar.data,G=2,em_refit=1,ite.max=500, est_var = FALSE,residuals=FALSE,trace=TRUE)
-  {
+"species_mix_em_gaussian" <- function (sp.form,sp.data,covar.data,G=2,em_refit=1,ite.max=500, est_var = FALSE,residuals=FALSE,trace=TRUE){
     S <- dim(sp.data)[2]
     if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
     n <- dim(sp.data)[1]
@@ -2352,20 +2267,18 @@ reltol_fun <- function(logl_n1, logl_n){
     sp.data <- as.data.frame(sp.data)
     data <- data.frame(obs=unlist(sp.data),covar.data)
 
-    fmM.out <- fitmix.gaussian(sp.form,data,sp,G,ite.max,trace)
+    fmM.out <- fitmix_gaussian(sp.form,data,sp,G,ite.max,trace)
     if(em_refit>1)
       for(i in 2:em_refit){
-        fmM <- fitmix.gaussian(sp.form,data,sp,G,ite.max,trace)
+        fmM <- fitmix_gaussian(sp.form,data,sp,G,ite.max,trace)
         if(fmM$logl>fmM.out$logl) fmM.out <- fmM
       }
-    ##est_var <- FALSE
     if(est_var){
       var <- 0
-      t.pi <- additive.logistic(fmM.out$pi,TRUE)
-      ##parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef))
+      t.pi <- additive_logistic(fmM.out$pi,TRUE)
       parms <- c(t.pi[1:(G-1)],fmM.out$theta,unlist(fmM.out$coef),unlist(fmM.out$sp.intercept))
       first.fit <- list(y=data[,1],x=model.matrix(sp.form,data=data)[,-1])
-      fun.est_var <- function(x){-logLmix.gaussian(x,first.fit,G,S,sp,sp.name)}
+      fun.est_var <- function(x){-logLmix_gaussian(x,first.fit,G,S,sp,sp.name)}
       var <- solve( nH2( pt=parms, fun=fun.est_var))
       colnames( var) <- rownames( var) <- names( parms)
       fmM.out$covar <- var
@@ -2378,9 +2291,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"species_mix_em_nbinom" <-
-  function (sp.form,sp.data,covar.data,G=2,em_refit=1,ite.max=500, est_var = FALSE,residuals=FALSE,trace=TRUE)
-  {
+"species_mix_em_nbinom" <- function (sp.form,sp.data,covar.data,G=2,em_refit=1,ite.max=500, est_var = FALSE,residuals=FALSE,trace=TRUE){
     S <- dim(sp.data)[2]
     if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
     n <- dim(sp.data)[1]
@@ -2392,22 +2303,18 @@ reltol_fun <- function(logl_n1, logl_n){
     sp.data <- as.data.frame(sp.data)
     data <- data.frame(obs=unlist(sp.data),covar.data)
 
-    fmM.out <- fitmix.nbinom(sp.form,data,sp,G,ite.max,trace)
+    fmM.out <- fitmix_nbinom(sp.form,data,sp,G,ite.max,trace)
     if(em_refit>1)
       for(i in 2:em_refit){
-        fmM <- fitmix.nbinom(sp.form,data,sp,G,ite.max,trace)
+        fmM <- fitmix_nbinom(sp.form,data,sp,G,ite.max,trace)
         if(fmM$logl>fmM.out$logl) fmM.out <- fmM
       }
-    ##est_var <- FALSE
     if(est_var){
       var <- 0
-      t.pi <- additive.logistic(fmM.out$pi,TRUE)
-      ##parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef))
+      t.pi <- additive_logistic(fmM.out$pi,TRUE)
       parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef),fmM.out$sp.intercept,rep(1,S))##unlist(fmM.out$sp.intercept))
       first.fit <- list(y=data[,1],x=model.matrix(sp.form,data=data)[,-1])
-      # first.fit$x <- cbind(sp.mat,first.fit$x)
-      fun.est_var <- function(x){-logLmix.nbinom(x,first.fit,G,S,sp,sp.name)}
-      #
+      fun.est_var <- function(x){-logLmix_nbinom(x,first.fit,G,S,sp,sp.name)}
       deriv <- nd2(parms,fun.est_var)
       var <- solve( nH2( pt=parms, fun=fun.est_var))
       colnames( var) <- rownames( var) <- names( parms)
@@ -2421,9 +2328,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"species_mix_em_tweedie" <-
-  function (sp.form,sp.data,covar.data,G=2,em_refit=1,ite.max=500, est_var = FALSE,residuals=FALSE,trace=TRUE)
-  {
+"species_mix_em_tweedie" <- function (sp.form,sp.data,covar.data,G=2,em_refit=1,ite.max=500, est_var = FALSE,residuals=FALSE,trace=TRUE){
     S <- dim(sp.data)[2]
     if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
     n <- dim(sp.data)[1]
@@ -2435,20 +2340,19 @@ reltol_fun <- function(logl_n1, logl_n){
     sp.data <- as.data.frame(sp.data)
     data <- data.frame(obs=unlist(sp.data),covar.data)
 
-    fmM.out <- fitmix.tweedie(sp.form,data,sp,G,ite.max,trace)
+    fmM.out <- fitmix_tweedie(sp.form,data,sp,G,ite.max,trace)
     if(em_refit>1)
       for(i in 2:em_refit){
-        fmM <- fitmix.tweedie(sp.form,data,sp,G,ite.max,trace)
+        fmM <- fitmix_tweedie(sp.form,data,sp,G,ite.max,trace)
         if(fmM$logl>fmM.out$logl) fmM.out <- fmM
       }
     est_var <- FALSE
     if(est_var){
       var <- 0
-      t.pi <- additive.logistic(fmM.out$pi,TRUE)
-      ##parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef))
+      t.pi <- additive_logistic(fmM.out$pi,TRUE)
       parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef),unlist(fmM.out$sp.intercept),fmM.out$theta)
       first.fit <- list(y=data[,1],x=model.matrix(sp.form,data=data)[,-1])
-      fun.est_var <- function(x){-logLmix.tweedie(x,first.fit,G,S,sp,sp.name)}
+      fun.est_var <- function(x){-logLmix_tweedie(x,first.fit,G,S,sp,sp.name)}
       var <- solve( nH2( pt=parms, fun=fun.est_var))
       colnames( var) <- rownames( var) <- names( parms)
       fmM.out$covar <- var
@@ -2460,10 +2364,8 @@ reltol_fun <- function(logl_n1, logl_n){
     fmM.out
   }
 
-
-"species_mix_gaussian" <-
-  function (sp.form,sp.data,covar.data,G=2, pars=NA, em_prefit=TRUE,em_steps=4, em_refit = 1 , est_var = FALSE,residuals=FALSE,trace=TRUE)
-  {
+#species_mix_gaussian C++ not working.
+"species_mix_gaussian" <- function (sp.form,sp.data,covar.data,G=2, pars=NA, em_prefit=TRUE,em_steps=4, em_refit = 1 , est_var = FALSE,residuals=FALSE,trace=TRUE){
     t.covar.data <- covar.data
     t.sp.data <- sp.data
     sp.form <- update.formula(sp.form,obs~1+.)
@@ -2471,7 +2373,7 @@ reltol_fun <- function(logl_n1, logl_n){
     ##if(em_prefit | G==1){
     prefit <- species_mix_em_gaussian(sp.form,sp.data,covar.data,G,ite.max=em_steps,est_var=est_var,em_refit=em_refit)
     return(prefit)
-    ##pars <- c(additive.logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
+    ##pars <- c(additive_logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
     ##}
     ##S <- dim(sp.data)[2]
     ##if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
@@ -2487,7 +2389,7 @@ reltol_fun <- function(logl_n1, logl_n){
     ##fmM.out <- fitmix.cpp(sp.form,data,sp,G,pars=pars,calc.hes=est_var)
     ##while(fmM.out$logl==0) {
     ## prefit <- species_mix_em(sp.form,t.sp.data,t.covar.data,G,ite.max=em_steps,em_refit=1)
-    ## pars <- c(additive.logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
+    ## pars <- c(additive_logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
     ##fmM.out <- fitmix.cpp(sp.form,data,sp,G,pars=pars,calc.hes=est_var)
     ##}
 
@@ -2503,17 +2405,13 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"species_mix_nbinom" <-
-  function (sp.form,sp.data,covar.data,G=2, pars=NA, em_prefit=TRUE,em_steps=3, em_refit = 1 , est_var = FALSE,residuals=FALSE,trace=TRUE)
-  {
+"species_mix_nbinom" <-  function (sp.form,sp.data,covar.data,G=2, pars=NA, em_prefit=TRUE,em_steps=3, em_refit = 1 , est_var = FALSE,residuals=FALSE,trace=TRUE){
     t.covar.data <- covar.data
     t.sp.data <- sp.data
     sp.form <- update.formula(sp.form,obs~1+.)
-    #em_steps=100
     if(em_prefit | G==1){
       prefit <- species_mix_em_nbinom(sp.form,sp.data,covar.data,G,ite.max=em_steps,est_var=FALSE,em_refit=em_refit)
-      ##return(prefit)
-      pars <- prefit$pars#c(additive.logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
+      pars <- prefit$pars#c(additive_logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
     }
     S <- dim(sp.data)[2]
     if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
@@ -2527,19 +2425,12 @@ reltol_fun <- function(logl_n1, logl_n){
     data <- data.frame(obs=as.numeric(unlist(sp.data)),covar.data)
     names(data)[1] <- as.character(sp.form)[2]
     sp.form <- update.formula(sp.form,obs~-1+.)
-    fmM.out <- fitmix.nbinom.cpp(sp.form,data,sp,G,pars=pars,calc.hes=est_var)
-    #while(fmM.out$logl==0) {
-    #  prefit <- species_mix_em_nbinom(sp.form,sp.data,covar.data,G,ite.max=em_steps,est_var=est_var,em_refit=em_refit)
-    # pars <- prefit$pars
-    # fmM.out <- fitmix.nbinom.cpp(sp.form,data,sp,G,pars=pars,calc.hes=est_var)
-    #}
-
+    fmM.out <- fitmix_nbinom.cpp(sp.form,data,sp,G,pars=pars,calc.hes=est_var)
     rownames(fmM.out$tau) <- sp.name ## add names to taus
     fmM.out$se <- NA
     if(est_var){
       fmM.out$covar <- try(solve(fmM.out$hessian))
       if(class(fmM.out$covar)!="try-error"){
-        #colnames(fmM.out$covar) <- rownames(fmM.out$covar) <- names(fmM.out$gradient)
         tmp <- sqrt(diag(fmM.out$covar))
         tmp <- tmp[-1*(1:((G-1)))]
         tmp <- tmp[-1*((length(tmp)-(2*S-1)):length(tmp))]
@@ -2547,33 +2438,21 @@ reltol_fun <- function(logl_n1, logl_n){
         colnames(fmM.out$se) <- colnames(fmM.out$coef)
         rownames(fmM.out$se) <- rownames(fmM.out$coef)
       }
-      ##t1 <- sqrt(diag(fmM.out$covar))
-      ##t1 <- t1[-(1:G-1)]
-      ##fmM.out$se.coef <- t1[1:length(fmM.out$coef)]
-      ##t1 <- t1[-(1:length(fmM.out$coef))]
-      ##dim(fmM.out$se.coef) <- dim(fmM.out$coef)
-
-      ##fmM.out$se.int <- t1[1:S]
-      ##fmM.out$se.disp <- t1[-(1:S)]
-    }
+     }
     if(residuals) fmM.out$residuals <- mix.residuals(fmM.out,sp.form,data,sp)
     fmM.out$formula <- sp.form
     class(fmM.out) <- c("archetype","negbin")
     fmM.out
   }
 
-
-"species_mix_tweedie" <-
-  function (sp.form,sp.data,covar.data,G=2, pars=NA, em_prefit=TRUE,em_steps=3, em_refit = 1 , est_var = FALSE,residuals=FALSE,trace=TRUE)
-  {
+"species_mix_tweedie" <- function (sp.form,sp.data,covar.data,G=2, pars=NA, em_prefit=TRUE,em_steps=3, em_refit = 1 , est_var = FALSE,residuals=FALSE,trace=TRUE){
     t.covar.data <- covar.data
     t.sp.data <- sp.data
     sp.form <- update.formula(sp.form,obs~1+.)
     pars <- NA
     if(em_prefit | G==1){
       prefit <- species_mix_em_tweedie(sp.form,sp.data,covar.data,G,ite.max=em_steps,est_var=est_var,em_refit=em_refit)
-      ##return(prefit)
-      pars <- prefit$pars##pars <- c(additive.logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
+      pars <- prefit$pars##pars <- c(additive_logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
     }
     S <- dim(sp.data)[2]
     if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
@@ -2587,17 +2466,10 @@ reltol_fun <- function(logl_n1, logl_n){
     data <- data.frame(obs=as.numeric(unlist(sp.data)),covar.data)
     names(data)[1] <- as.character(sp.form)[2]
     sp.form <- update.formula(sp.form,obs~-1+.)
-    fmM.out <- fitmix.tweedie.cpp(sp.form,data,sp,G,pars=pars,calc.hes=est_var)
-    ##while(fmM.out$logl==0) {
-    ## prefit <- species_mix_em(sp.form,t.sp.data,t.covar.data,G,ite.max=em_steps,em_refit=1)
-    ## pars <- c(additive.logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
-    ##fmM.out <- fitmix.cpp(sp.form,data,sp,G,pars=pars,calc.hes=est_var)
-    ##}
-
-    rownames(fmM.out$tau) <- sp.name ## add names to taus
+    fmM.out <- fitmix_tweedie.cpp(sp.form,data,sp,G,pars=pars,calc.hes=est_var)
+     rownames(fmM.out$tau) <- sp.name ## add names to taus
     fmM.out$se <- NA
     if(est_var){
-      ##fmM.out$covar <- try(solve(fmM.out$hessian))
       fmM.out$covar <- try(solve(fmM.out$hessian))
       if(class(fmM.out$covar)!="try-error"){
         colnames(fmM.out$covar) <- rownames(fmM.out$covar) <- names(fmM.out$gradient)
@@ -2615,10 +2487,7 @@ reltol_fun <- function(logl_n1, logl_n){
     fmM.out
   }
 
-
-"tglm" <-
-  function ( mean.form, data, wts=NULL, phi=NULL, p=NULL, inits=NULL, vcov=TRUE, residuals=TRUE, trace=1, iter.max=150)
-  {
+"tglm" <- function ( mean.form, data, wts=NULL, phi=NULL, p=NULL, inits=NULL, vcov=TRUE, residuals=TRUE, trace=1, iter.max=150){
     if( is.null( wts))
       wts <- rep( 1, nrow( data))
 
@@ -2673,14 +2542,11 @@ reltol_fun <- function(logl_n1, logl_n){
     }
 
     fmTGLM <- tglm.fit( x=X.p, y=y, wts=wts1, offset=offset.p, inits=inits, phi=phi, p=p, vcov=vcov, residuals=residuals, trace=trace, iter.max=iter.max)
-
     return( fmTGLM)
   }
 
 
-"tglm.fit" <-
-  function ( x, y, wts=NULL, offset=rep( 0, length( y)), inits, phi=NULL, p=NULL, vcov=TRUE, residuals=TRUE, trace=1, iter.max=150)
-  {
+"tglm.fit" <- function ( x, y, wts=NULL, offset=rep( 0, length( y)), inits, phi=NULL, p=NULL, vcov=TRUE, residuals=TRUE, trace=1, iter.max=150){
     if( trace!=0){
       print( "Estimating parameters")
       if( is.null( phi) & is.null( p))
@@ -2779,36 +2645,19 @@ reltol_fun <- function(logl_n1, logl_n){
     BIC <- -2*(-fm$objective) + log( nrow( x))*(length( parms)-ICadj)
 
     res <- list( coef=parms, logl=-fm$objective, scores=scores, vcov=vcovar, conv=fm$convergence, message=fm$message, niter=fm$iterations, evals=fm$evaluations, call=match.call(), fitted=mu, residuals=resids, AIC=AIC, BIC=BIC)
-
     class( res) <- "tglm"
-
     return( res)
-
-
   }
 
 
-"weighted.glm" <-
-  function (g,first.fit,tau,n,fmM,sp)
-  {
+"weighted.glm" <-  function (g,first.fit,tau,n,fmM,sp) {
     dat.tau <- rep(tau[,g],each=n)
-    ##lpre <- first.fit$x%*%fmM[[g]]$coef
-    ##f.mix <- glm.fit(x=first.fit$x,y=first.fit$y,weights=dat.tau[,g],family=binomial(),etastart=fmM[[g]]$linear.predictors)
-
     f.mix <- glm.fit(x=first.fit$x,y=first.fit$y,weights=dat.tau,family=binomial(),start=fmM[[g]]$coef)
     return(list(coef=f.mix$coef))
-
-
-    ##list(residuals=f.mix$residuals,fitted=f.mix$fitted,linear.predictors=f.mix$linear.predictors,coef=f.mix$coef)
-    ##list(linear.predictors=f.mix$linear.predictors,coef=f.mix$coef)
-
-
   }
 
 
-"weighted.glm.gaussian" <-
-  function (g,first.fit,tau,n,fmM,sp)
-  {
+"weighted.glm_gaussian" <-  function (g,first.fit,tau,n,fmM,sp){
     dat.tau <- rep(tau[,g],each=n)
     sp.name <- unique(sp)
     X <- first.fit$x
@@ -2819,8 +2668,6 @@ reltol_fun <- function(logl_n1, logl_n){
     }
     X <- cbind(sp.mat,X)
     f.mix <- glm.fit(x=X,y=first.fit$y,weights=dat.tau,family=gaussian())
-    #f.mix$theta <- 1
-    ## f.mix <- glm.fit.nbinom(x=X,y=first.fit$y,weights=dat.tau)
     sp.intercept <- f.mix$coef[1:length(sp.name)]
     sp.intercept[is.na(sp.intercept)] <- 0
     return(list(coef=f.mix$coef[-1:-length(sp.name)],theta=sqrt(f.mix$deviance/f.mix$df.residual),sp.intercept=sp.intercept,fitted=f.mix$fitted))#,lpre=f.mix$linear.predictors))
@@ -2828,9 +2675,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"weighted.glm.nbinom" <-
-  function (g,first.fit,tau,n,fmM,sp)
-  {
+"weighted.glm_nbinom" <-  function (g,first.fit,tau,n,fmM,sp){
     dat.tau <- rep(tau[,g],each=n)
     sp.name <- unique(sp)
     X <- first.fit$x
@@ -2840,9 +2685,7 @@ reltol_fun <- function(logl_n1, logl_n){
       sp.mat[sp==sp.name[i],i] <- 1
     }
     X <- cbind(sp.mat,X)
-    #f.mix <- glm.fit(x=X,y=first.fit$y,weights=dat.tau,family=poisson())
-    #f.mix$theta <- 1
-    f.mix <- glm.fit.nbinom(x=X,y=first.fit$y,offset=first.fit$offset,weights=dat.tau)
+    f.mix <- glm.fit_nbinom(x=X,y=first.fit$y,offset=first.fit$offset,weights=dat.tau)
     sp.intercept <- f.mix$coef[1:length(sp.name)]
     sp.intercept[is.na(sp.intercept)] <- 0
     return(list(coef=f.mix$coef[-1:-length(sp.name)],theta=f.mix$theta,sp.intercept=sp.intercept,fitted=f.mix$fitted))#,lpre=f.mix$linear.predictors))
@@ -2850,9 +2693,7 @@ reltol_fun <- function(logl_n1, logl_n){
   }
 
 
-"weighted.glm.tweedie" <-
-  function (g, first.fit, tau, n, fmM, sp)
-  {
+"weighted.glm_tweedie" <-  function (g, first.fit, tau, n, fmM, sp){
     dat.tau <- rep(tau[, g], each = n)
     sp.int.offset <- rep(fmM[[g]]$sp.intercept, each = n)+first.fit$offset
     sp.name <- unique(sp)
