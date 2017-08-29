@@ -119,12 +119,42 @@
 "species_mix.fit" <- function(y, X, G, weights, offset, distribution, control, y_is_na=NULL){
 
   #use the wrapper function as a way to deal with distributions and existing fit steps.
-
   if(distribution == 2) tmp <- fitmix_poisson(y, X, G, weights, offset, control, y_is_na)
   if(distribution == 3) tmp <- fitmix_ipp(y, X, G, weights, offset, control, y_is_na)
   else stop('current only ipp or Poisson distribution is set up to use "species_mix.fit"')
   return(tmp)
 }
+
+#'@rdname species_mix-class
+#'@name fit_species_mix_wrapper
+#'
+fit_species_mix_wrapper <- function(formula, y, X, weights, offset, distribution, n_mixtures, inits, control, y_is_na, estimate_variance){
+
+  if(any(distribution!=c('poisson','ipp'))){
+    sp.form <- update(form,obs~1+.)
+    sp.data <- y
+    covar.data <- X
+    G <- n_mixtures
+    pars <- init
+    em.prefit <- control$em.prefit
+    em.steps <- control$em.steps
+    em.refit <- control$em.refit
+    est.var <- control$estimate_variance
+    trace <- control$trace
+    r1 <- control$r1
+
+    if(distribution=="bernoulli") fit <- SpeciesMix.bernoulli(sp.form,sp.data,covar.data,G, pars, em.prefit,em.steps, em.refit ,est.var,residuals,trace,r1)
+    if(distribution=="negative_binomial") fit <- SpeciesMix.nbinom(sp.form,sp.data,covar.data,G, pars, em.prefit,em.steps, em.refit ,est.var,residuals,trace)
+    if(distribution=="tweedie") fit <- SpeciesMix.tweedie(sp.form,sp.data,covar.data,G, pars, em.prefit,em.steps, em.refit ,est.var,residuals,trace)
+    # if(distribution=="gaussian") fit <- SpeciesMix.gaussian(sp.form,sp.data,covar.data,G, pars, em.prefit,em.steps, em.refit ,est.var,residuals,trace)
+  } else {
+    fit <- species_mix.fit(y=y, X=X, weights=wts, offset=offy, distribution=disty, G=n_mixtures, control=control, y_is_na=y_is_na, estimate_variance=control$est.var)
+    fit$formula <- formula
+    class(fit) <- c("archetype",disty)
+  }
+  return(fit)
+}
+
 
 #'@rdname species_mix-class
 #'@name control
