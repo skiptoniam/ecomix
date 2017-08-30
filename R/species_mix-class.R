@@ -2,11 +2,11 @@
 #' @rdname species_mix-class
 #' @name species_mix
 #' @description Fits a finite mixture model to identify species archetype models (SAMs).
-#' @details species_mix is used to fit mixtures of glms to multivariate species data. 
-#' The function uses BFGS to optimise the mixture likelihood. There is the option to use EM get appropriate starting parameters. 
-#' `species_mix` acts as a wrapper for fitmix.cpp that allows for easier data input. 
-#' The data frames are merged into the appropriate format for the use in fitmix.cpp. 
-#' Minima is found using vmmin (BFGS) and the gradients are calculated using CPPAD (auto differentiation). 
+#' @details species_mix is used to fit mixtures of glms to multivariate species data.
+#' The function uses BFGS to optimise the mixture likelihood. There is the option to use EM get appropriate starting parameters.
+#' `species_mix` acts as a wrapper for fitmix.cpp that allows for easier data input.
+#' The data frames are merged into the appropriate format for the use in fitmix.cpp.
+#' Minima is found using vmmin (BFGS) and the gradients are calculated using CPPAD (auto differentiation).
 #' Currently only 'bernoulli', 'negative_binomial' and 'tweedie' distributions use fitmix.cpp so the other statistical distributions could be slow.
 #' @param formula an object of class "formula" (or an object that can be coerced to that class).
 #' The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the species archetype probabilities on covariates. An example formula follows something like this: cbind(spp1,spp2,spp3)~1+temperature+rainfall
@@ -16,21 +16,21 @@
 #' @param offset a numeric vector of length nrow(data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the SAM.
 #' @param weights a numeric vector of length nrow(data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1. For ipp distribution - weights must be a nrow(data)*n_species matrix, which provides a species-specific background weights used to estimate the species-specific marginal likelihood.
 #' @param control a list of control parameters for optimisation and calculation. See details. From \code{species_mix.control} for details on optimistaion parameters.
-#' @param inits NULL a numeric vector that provides approximate starting values for species_mix coefficents. These are distribution specific, but as a minimum you'll need pis, alphas (intercepts) and betas.
+#' @param inits NULL a numeric vector that provides approximate starting values for species_mix coefficents. These are distribution specific, but at a minimum you will need pis (additive_logitic transformed), alphas (intercepts) and betas (mixing coefs).
 #' @export
 #' @examples
-#' form <- as.formula(paste0("cbind(",paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+#' form <- as.formula(paste0("cbind(",paste(paste0('spp',1:20),collapse = ','),")~1+x"))
 #' theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9),4,2,byrow=TRUE)
-#' dat <- data.frame(y=rep(1,100),x=runif(100,0,2.5)) 
-#' simulated_data <- simulate_species_mix_data(form,data,theta,dist="bernoulli")
-#' model_data <- make_mixture_data(species_data = simulated_data$Y, covariate_data = simulated_data$X)
-#' fm_species_mix <- species_mix(formula,model_data=model_data,distribution='bernoulli',n_mixtures=5)
+#' dat <- data.frame(y=rep(1,100),x=runif(100,0,2.5))
+#' simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
+#' model_data <- make_mixture_data(species_data = simulated_data$species_data, covariate_data = simulated_data$covariate_data)
+#' fm_species_mix <- species_mix(formula, data=model_data,distribution='bernoulli',n_mixtures=5)
 
 "species_mix" <- function(formula = NULL, data, n_mixtures = 3, distribution="poisson",
   offset=NULL, weights=NULL, control=species_mix.control(), inits=NULL, standardise = FALSE){
 
   #the control parameters
-  control <- set_control_sm(control)
+  control <- set_control_sam(control)
   if(!control$quiet)
     message( "SAM modelling")
   call <- match.call()
@@ -178,7 +178,7 @@
   em_refit = 1,
   est_var = FALSE,
   ...){
-  rval <- list(maxit = maxit, quiet = quiet, trace = trace, nreport=nreport, reltol = reltol, cores = cores,
+  rval <- list(maxit = maxit, quiet = quiet, trace = trace, reltol = reltol, cores = cores,
     em_refit = em_refit, em_steps = em_steps, em_refit = em_refit, est_var = est_var)
   rval <- c(rval, list(...))
   if (is.null(rval$reltol))
@@ -378,22 +378,22 @@
     sp.int <- rep(f.mix$coef[1],dim(tau)[1])
     return(list(coef=f.mix$coef[-1],theta=f.mix$theta,sp.intercept=sp.int))
   }
-  
+
 "apply_glm_poisson" <- function(i, y, X, weights, offset){
                      f.pois <- glm.fit(x=X,y=y[,i],weights=weights[,i],offset=offset,family=poisson())
                      f.pois$coef
 }
-  
+
 "apply_glm_poisson_tau" <- function (i, y, X, tau){
   y_tau <- as.matrix(unlist(as.data.frame(y)))
-  X_tau <- do.call(rbind, replicate(ncol(y), X, simplify=FALSE)) 
+  X_tau <- do.call(rbind, replicate(ncol(y), X, simplify=FALSE))
   wts_tau <- rep(tau[,i],each=nrow(y))
   f_mix <- glm.fit(x = X_tau, y = y_tau, weights = wts_tau, family=poisson())
   sp_int <- rep(f_mix$coef[1],dim(tau)[1])
   first_fit_tau <- list(x=X_tau,y=y_tau)
   return(list(coef=f_mix$coef[-1],sp_intercept=sp_int,first_fit_tau))
-}  
-  
+}
+
 
 "apply_glm_tweedie" <- function (i,form,datsp,tau,n){
     dat.tau <- rep(tau[,i],each=n)
@@ -407,22 +407,39 @@
 
 #' @rdname species_mix-class
 #' @name simulate_species_mix_data
+#' @param form formula to simulate species_mix data, needs to have the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2
+#' @param dat a matrix of variables to simulate data from.
+#' @param theta coefficents for each species archetype. Matrix of G x number of parameters. Each row is a different species archetype.
+#' @param distribution Which statistical distribution to simulate data for. 'bernoulli', 'gaussian', 'ipp', 'negative_binomial','poisson' and 'tweedie'.
+#' @export
+#' @examples
+#' form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+#' theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
+#' dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
+#' simulated_data <- simulate_species_mix_data(form,data,theta,dist="bernoulli")
+
 ## need to update this to take the new formula framework and simulate ipp data.
-"simulate_species_mix_data" <-  function (formula, data, theta, S, dist = "bernoulli"){
-	
-    X <- model.matrix(formula, data)
-    out <- matrix(0, dim(X)[1], S)
-    k <- dim(theta)[1]
+"simulate_species_mix_data" <-  function (form, dat, theta, distribution = "bernoulli"){
+
+	if(distribution=='ipp')stop('simulation of ipp data has not been set up yet, watch this space')
+	S <- length(form[[2]])-1
+	#update the formula to old format.
+	form_org <- form
+	form <- update(form,y~.)
+	X <- model.matrix(form, dat)
+  out <- matrix(0, dim(X)[1], S)
+  k <- dim(theta)[1]
+    if(dim(theta)[2]!=ncol(X))stop('theta must have the same dimensions as "data" (do not forget the intercept)')
     sp.int <- rep(0, S)
     group <- rep(0, S)
     for (s in 1:S) {
       g <- ceiling(runif(1) * k)
-      if (dist == "bernoulli") {
+      if (distribution == "bernoulli") {
         lgtp <- X %*% theta[g, ]
         p <- exp(lgtp)/(1 + exp(lgtp))
         out[, s] <- rbinom(dim(X)[1], 1, p)
       }
-      if (dist == "negbin") {
+      if (distribution == "negative_binomial") {
         tmp <- rep(1e+05, dim(X)[1])
         while (max(tmp, na.rm = T) > 5000 | sum(tmp) < 100) {
           theta[g, 1] <- runif(1, -15, 5)
@@ -433,7 +450,17 @@
         }
         out[, s] <- tmp
       }
-      if (dist == "tweedie") {
+      if (distribution == "poisson") {
+        tmp <- rep(1e+05, dim(X)[1])
+        while (max(tmp, na.rm = T) > 5000 | sum(tmp) < 100) {
+          theta[g, 1] <- runif(1, -5, 5)
+          sp.int[s] <- theta[g, 1]
+          lgtp <- X %*% theta[g, ]
+          tmp <- rpois(dim(X)[1], lambda = exp(lgtp))
+        }
+        out[, s] <- tmp
+      }
+      if (distribution == "tweedie") {
         tmp <- rep(6e+05, dim(X)[1])
         while (max(tmp, na.rm = T) > 5e+05 | sum(tmp) < 100) {
           theta[g, 1] <- runif(1, -15, 5)
@@ -445,7 +472,7 @@
         }
         out[, s] <- tmp
       }
-      if (dist == "gaussian") {
+      if (distribution == "gaussian") {
         tmp <- rep(1e+05, dim(X)[1])
         while (max(tmp, na.rm = T) > 50000 | sum(tmp) < 100) {
           theta[g, 1] <- runif(1, 100, 500)
@@ -458,11 +485,16 @@
       group[s] <- g
     }
     pi <- tapply(group, group, length)/S
-    if (dist == "negbin")
-      return(list(pa = out, group = group, pi = pi, sp.int = sp.int))
-    if (dist == "tweedie")
-      return(list(pa = out, group = group, pi = pi, sp.int = sp.int))
-    list(pa = out, group = group, pi = pi)
+    colnames(out) <- all.vars(form_org)[1:S]
+    out <- as.matrix(out)
+    dat <- as.matrix(dat)
+    if (distribution == "negbin")
+      return(list(species_data = out, covariate_data = dat, group = group, pi = pi, sp.int = sp.int))
+    if (distribution == "tweedie")
+      return(list(species_data = out, covariate_data = dat, group = group, pi = pi, sp.int = sp.int))
+    if (distribution == "poisson")
+      return(list(species_data = out, covariate_data = dat, group = group, pi = pi, sp.int = sp.int))
+    list(species_data = out, covariate_data = dat, group = group, pi = pi)
   }
 
 #'@rdname species_mix-class
@@ -592,18 +624,18 @@
   }
 
 "create_starting_values_poisson"  <- function (y, X, G, weights, offset, cores){
-  
+
           # generate random starting values for tau
           S <- ncol(y)
           tau <- matrix(runif(S*G),S,G)
           tau <- (tau/rowSums(tau))
           fmM <- list()
-          
+
           #sum tau's to get pi's
           for(i in 1:G){
                 pi[i] <- sum(tau[,i])/S
             }
-          
+
           #fit a model to each group with tau as weights.
           fmM <- plapply(1:G,apply_glm_poisson_tau,y,X,tau,.parallel = cores)
           first_fit <- list(x=X,y=y,offset=offset,weights=weights)
@@ -617,20 +649,20 @@
           my_coefs <- do.call(rbind,fm_poisson)
           starting_fitem <- list(intercepts = rep(0, S), alpha = rep(0, S))
           starting_fitem$sp_intercepts <- my_coefs[,1]
-          MM <- do.call(rbind, replicate(ncol(y), X, simplify=FALSE)) 
+          MM <- do.call(rbind, replicate(ncol(y), X, simplify=FALSE))
           my_coefs[, 1] <- 0
-          
+
           cat("Clustering...",G,"groups\n")
           fmmvnorm <- kmeans(x = my_coefs, centers = G, iter.max = 100, nstart = 50)
           starting_fitem$coef <- fmmvnorm$centers
-          
+
               fmM <- list()
               for (i in 1:G) {
-                  B <- matrix(rep(fmmvnorm$centers[i, ], nrow(MM)), 
+                  B <- matrix(rep(fmmvnorm$centers[i, ], nrow(MM)),
                       nrow(MM), ncol(fmmvnorm$centers), byrow = T)
                   B[, 1] <- rep(starting_fitem$sp_intercepts, each = nrow(y))
                   fitted <- exp(rowSums(MM * B))
-                  fmM[[i]] <- list(coef = fmmvnorm$centers[i, 2:ncol(fmmvnorm$centers)], 
+                  fmM[[i]] <- list(coef = fmmvnorm$centers[i, 2:ncol(fmmvnorm$centers)],
                                    sp_intercept = starting_fitem$sp_intercepts,
                                    fitted = fitted)
               }
@@ -638,15 +670,15 @@
               pi <- rep(1/G, G)
               pi <- runif(G, 0.2, 0.8)
               pi <- pi/sum(pi)
-              
+
               first_fit <- list(x = X, y = y, offset=offset, weights=weights)
-              
+
               #parallel - seems to be slower. Might be due to overheads.
               est.tau <- plapply(1:S, estimate_pi_poisson, fmM, pi, G, first_fit, .parallel = cores)
               max.newTau <- 0.8
               alpha <- (1 - max.newTau * G)/(max.newTau * (2 - G) - 1)
               for (j in 1:S) {
-                  newTau <- (2 * alpha * est.tau[[j]]$tau - alpha + 1)/(2 * 
+                  newTau <- (2 * alpha * est.tau[[j]]$tau - alpha + 1)/(2 *
                       alpha - alpha * G + G)
                   tau[j, ] <- newTau
               }
@@ -654,7 +686,7 @@
                   pi[i] <- sum(tau[, i])/S
               }
     return(list(pi=pi,fmM=fmM,tau=tau,first_fit=first_fit))
-}    
+}
 
 
 "create_starting_values_tweedie" <- function (S,G,n,form,datsp,cores){
@@ -1298,14 +1330,14 @@
     S <- ncol(y)
     n <- nrow(y)
     cat("Fitting Group", G, "\n")
-    if (control$trace) 
+    if (control$trace)
         cat("Iteration | LogL \n")
     dat_tau <- 0
     pi <- rep(0, G)
     ite <- 1
     logL <- -99999999
     old_logL <- -88888888
-    
+
     # Get responable starting values for EM estimation.
     starting_values <- get_initial_values_poisson(ite, y, X, G, weights, offset, cores=control$cores)
     pi <- starting_values$pi
@@ -1314,7 +1346,7 @@
     dat_tau <- starting_values$dat_tau
     first_fit <- starting_values$first_fit
 
-    
+
     while (control$reltol(logL,old_logL) & ite <= control$maxit) {
         old_logL <- logL
         for (i in 1:G) {
@@ -1349,11 +1381,11 @@
                 logL <- logL + est_tau[[j]]$sum_like
             }
         }
-        if (control$trace) 
+        if (control$trace)
             cat(ite, " | ", logL, "\n")
         ite <- ite + 1
     }
-    
+
     fm_out <- data.frame(matrix(0, G, length(fmM[[1]]$coef)))
     int_out <- rep(0, S)
     names(fm_out) <- names(fmM[[1]]$coef)
@@ -1370,10 +1402,10 @@
     t_pi <- additive_logistic(pi, TRUE)
     parms <- c(t_pi[1:(G - 1)], unlist(fm_out), int_out)
     logL_full <- logL
-    
+
     # estimate log-likelihood
     logL <- logLmix_poisson(parms, first_fit, G)
-    
+
     if(estimate_variance){
 		message('Numerically estimating the derivates for mixing coefs and sp intercepts, this could take a while. Soz.')
 		var <- 0
@@ -1384,9 +1416,9 @@
 		var <- 0
 	  }
 
-    return(list(logl = logL, aic = -2 * logL + 2 * d, tau = round(tau, 
-        4), pi = pi, bic = -2 * logL + log(S) * d, ICL = -2 * 
-        logL + log(S) * d + 2 * EN, coef = fm_out, sp_intercept = int_out, 
+    return(list(logl = logL, aic = -2 * logL + 2 * d, tau = round(tau,
+        4), pi = pi, bic = -2 * logL + log(S) * d, ICL = -2 *
+        logL + log(S) * d + 2 * EN, coef = fm_out, sp_intercept = int_out,
         covar = var, aic_full = -2 * logL_full +  2 * d, bic_full = -2 * logL_full + log(S) * d, pars = parms,weights = weights))
 }
 
@@ -2011,22 +2043,22 @@
 
     # remove pi
     fm <- pars[-1*(1:((G-1)))]  ## remove pi
-    
+
     # get species intercepts
     sp_int <- fm[(length(fm)-(S-1)):(length(fm))]
-    
+
     # get mixture parameters
     fm <- fm[-1*(length(fm)-(S-1)):(length(fm))]
-    
+
     # get pi's
     pi <- pars[(1:(G-1))]
-    
+
     # re-structure vector to matrix
     dim(fm) <- c(G,length(fm)/G)
- 
+
     # re calculate pi's
     pi <- additive_logistic(pi)
-    
+
   } else{
     return(0)
     fm <- tau[1:(length(pars)-1)]
@@ -2785,14 +2817,14 @@
   }
 
 "weighted_glm_poisson" <- function(g, first_fit, tau){
-  
+
   # set up the correct data structure
   S <- ncol(first_fit$y)
   n <- nrow(first_fit$y)
   sp_name <- colnames(first_fit$y)
   sp <- rep(sp_name, each=n)
   y_tau <- as.matrix(unlist(as.data.frame(first_fit$y)))
-  X_tau <- do.call(rbind, replicate(ncol(first_fit$y), first_fit$x, simplify=FALSE)) 
+  X_tau <- do.call(rbind, replicate(ncol(first_fit$y), first_fit$x, simplify=FALSE))
   dat_tau <- rep(tau[,g],each=nrow(first_fit$y))
 
   #set up indicator matrix
@@ -2823,7 +2855,7 @@
       sp.intercept = fmM[[g]]$sp.intercept, fitted = f.mix$fitted))
   }
 
-"plapply" <- function (X, FUN, ..., .parallel = 1, .seed = NULL, .verbose = TRUE) 
+"plapply" <- function (X, FUN, ..., .parallel = 1, .seed = NULL, .verbose = TRUE)
 {
   if (!(useCluster <- inherits(.parallel, "cluster"))) {
     stopifnot(isScalar(.parallel), .parallel >= 1)
@@ -2843,7 +2875,7 @@
       if (.parallel == 1L && interactive()) {
         env <- new.env(hash = FALSE, parent = environment(FUN))
         environment(FUN) <- env
-        env$pb <- txtProgressBar(min = 0, max = length(X), 
+        env$pb <- txtProgressBar(min = 0, max = length(X),
           initial = 0, style = 3)
         on.exit(close(env$pb), add = TRUE)
         quote(setTxtProgressBar(pb, pb$getVal() + 1L))
@@ -2867,12 +2899,12 @@
       parallel::clusterSetRNGStream(cl = .parallel, iseed = .seed)
     }
     else {
-      if (!exists(".Random.seed", envir = .GlobalEnv, 
+      if (!exists(".Random.seed", envir = .GlobalEnv,
         inherits = FALSE)) {
         set.seed(NULL)
       }
       .orig.seed <- get(".Random.seed", envir = .GlobalEnv)
-      on.exit(assign(".Random.seed", .orig.seed, envir = .GlobalEnv), 
+      on.exit(assign(".Random.seed", .orig.seed, envir = .GlobalEnv),
         add = TRUE)
       if (.parallel == 1L) {
         set.seed(seed = .seed)
@@ -2885,14 +2917,14 @@
     }
   }
   if (useCluster) {
-    parallel::parLapply(cl = .parallel, X = X, fun = .FUN, 
+    parallel::parLapply(cl = .parallel, X = X, fun = .FUN,
       ...)
   }
   else if (.parallel == 1L) {
     lapply(X = X, FUN = .FUN, ...)
   }
   else {
-    parallel::mclapply(X = X, FUN = .FUN, ..., mc.preschedule = TRUE, 
+    parallel::mclapply(X = X, FUN = .FUN, ..., mc.preschedule = TRUE,
       mc.set.seed = TRUE, mc.silent = FALSE, mc.cores = .parallel)
   }
 }
@@ -3076,7 +3108,7 @@
 }
 
 "get_initial_values_poisson" <- function(ite, y, X, G, weights, offset, cores){#distribution ='poisson', function call not used yet.
-  
+
   if(ite==1)t1 <- create_starting_values_poisson(y, X, G, weights, offset, cores)
   t1 <- create_starting_values_poisson_kmeans(y, X, G, weights, offset, cores)
   return(t1)
