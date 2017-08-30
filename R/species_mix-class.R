@@ -2,7 +2,12 @@
 #' @rdname species_mix-class
 #' @name species_mix
 #' @description Fits a finite mixture model to identify species archetype models (SAMs).
-#' @details species_mix is used to fit mixtures of glms to multivariate species data. The function uses BFGS to optimise the mixture likelihood. There is the option to use EM get appropriate starting parameters. Species acts as a wrapper for fitmix.cpp that allows for easier data input. The data frames are merged into the appropriate format for the use in fitmix.cpp. Minima is found using vmmin (BFGS) and the gradients are calculated using CPPAD (auto differentiation)
+#' @details species_mix is used to fit mixtures of glms to multivariate species data. 
+#' The function uses BFGS to optimise the mixture likelihood. There is the option to use EM get appropriate starting parameters. 
+#' `species_mix` acts as a wrapper for fitmix.cpp that allows for easier data input. 
+#' The data frames are merged into the appropriate format for the use in fitmix.cpp. 
+#' Minima is found using vmmin (BFGS) and the gradients are calculated using CPPAD (auto differentiation). 
+#' Currently only 'bernoulli', 'negative_binomial' and 'tweedie' distributions use fitmix.cpp so the other statistical distributions could be slow.
 #' @param formula an object of class "formula" (or an object that can be coerced to that class).
 #' The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the species archetype probabilities on covariates. An example formula follows something like this: cbind(spp1,spp2,spp3)~1+temperature+rainfall
 #' @param model_data a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containng the covariate data for each site. Names of columns must match that given in \code{formula}.
@@ -14,9 +19,11 @@
 #' @param inits NULL a numeric vector that provides approximate starting values for species_mix coefficents. These are distribution specific, but as a minimum you'll need pis, alphas (intercepts) and betas.
 #' @export
 #' @examples
-#' simulated_data <- simulate_species_mix_data()
-#' form <- cbind(spp1,spp2,spp3) ~ 1 + x1 + x2 + x3
-#' model_data <- make_mixture_data(species_data = Y, covariate_data = X)
+#' form <- as.formula(paste0("cbind(",paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+#' theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9),4,2,byrow=TRUE)
+#' dat <- data.frame(y=rep(1,100),x=runif(100,0,2.5)) 
+#' simulated_data <- simulate_species_mix_data(form,data,theta,dist="bernoulli")
+#' model_data <- make_mixture_data(species_data = simulated_data$Y, covariate_data = simulated_data$X)
 #' fm_species_mix <- species_mix(formula,model_data=model_data,distribution='bernoulli',n_mixtures=5)
 
 "species_mix" <- function(formula = NULL, data, n_mixtures = 3, distribution="poisson",
@@ -1377,7 +1384,6 @@
 		var <- 0
 	  }
 
- 
     return(list(logl = logL, aic = -2 * logL + 2 * d, tau = round(tau, 
         4), pi = pi, bic = -2 * logL + log(S) * d, ICL = -2 * 
         logL + log(S) * d + 2 * EN, coef = fm_out, sp_intercept = int_out, 
