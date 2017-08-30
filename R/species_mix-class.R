@@ -1366,11 +1366,22 @@
     
     # estimate log-likelihood
     logL <- logLmix_poisson(parms, first_fit, G)
+    
+    if(estimate_variance){
+		message('Numerically estimating the derivates for mixing coefs and sp intercepts, this could take a while. Soz.')
+		var <- 0
+		fun_est_var <- function(x){-logLmix_poisson(x,first_fit,G)}
+		var <- solve(nH2(pt=parms, fun=fun_est_var))
+		colnames(var) <- rownames(var) <- names(parms)
+	  } else {
+		var <- 0
+	  }
+
  
     return(list(logl = logL, aic = -2 * logL + 2 * d, tau = round(tau, 
         4), pi = pi, bic = -2 * logL + log(S) * d, ICL = -2 * 
         logL + log(S) * d + 2 * EN, coef = fm_out, sp_intercept = int_out, 
-        covar = 0, aic_full = -2 * logL_full +  2 * d, bic_full = -2 * logL_full + log(S) * d, pars = parms,weights = weights))
+        covar = var, aic_full = -2 * logL_full +  2 * d, bic_full = -2 * logL_full + log(S) * d, pars = parms,weights = weights))
 }
 
 "fitmix_nbinom.cpp" <-
@@ -1633,7 +1644,7 @@
   }
 
 
-"glm.fit_nbinom" <-
+"glm_fit_nbinom" <-
   function (x,y,offset=NULL,weights=NULL,mustart=NULL,est_var=FALSE)
   {
     X <- x
@@ -2086,9 +2097,7 @@
   }
 
 
-"mix.residuals" <-
-  function (fmM,form,datsp,sp)
-  {
+"mix.residuals" <- function (fmM,form,datsp,sp){
     cat("calculating residuals \n")
     link.fun <- make.link("logit")
     x <- model.matrix(form,data=datsp)
@@ -2116,8 +2125,7 @@
   }
 
 
-"nd2" <-
-  function( x0, f, m=NULL, D.accur=4, ...) {
+"nd2" <- function( x0, f, m=NULL, D.accur=4, ...) {
     # A function to compute highly accurate first-order derivatives
     # From Fornberg and Sloan (Acta Numerica, 1994, p. 203-267; Table 1, page 213)
     # Adapted by Scott Foster from code nicked off the net 2007
@@ -2763,7 +2771,7 @@
       sp.mat[sp==sp.name[i],i] <- 1
     }
     X <- cbind(sp.mat,X)
-    f.mix <- glm.fit_nbinom(x=X,y=first.fit$y,offset=first.fit$offset,weights=dat.tau)
+    f.mix <- glm_fit_nbinom(x=X,y=first.fit$y,offset=first.fit$offset,weights=dat.tau)
     sp.intercept <- f.mix$coef[1:length(sp.name)]
     sp.intercept[is.na(sp.intercept)] <- 0
     return(list(coef=f.mix$coef[-1:-length(sp.name)],theta=f.mix$theta,sp.intercept=sp.intercept,fitted=f.mix$fitted))#,lpre=f.mix$linear.predictors))
