@@ -371,6 +371,22 @@
     sp.int <- rep(f.mix$coef[1],dim(tau)[1])
     return(list(coef=f.mix$coef[-1],theta=f.mix$theta,sp.intercept=sp.int))
   }
+  
+"apply_glm_poisson" <- function(i, y, X, weights, offset){
+                     f.pois <- glm.fit(x=X,y=y[,i],weights=weights[,i],offset=offset,family=poisson())
+                     f.pois$coef
+}
+  
+"apply_glm_poisson_tau" <- function (i, y, X, tau){
+  y_tau <- as.matrix(unlist(as.data.frame(y)))
+  X_tau <- do.call(rbind, replicate(ncol(y), X, simplify=FALSE)) 
+  wts_tau <- rep(tau[,i],each=nrow(y))
+  f_mix <- glm.fit(x = X_tau, y = y_tau, weights = wts_tau, family=poisson())
+  sp_int <- rep(f_mix$coef[1],dim(tau)[1])
+  first_fit_tau <- list(x=X_tau,y=y_tau)
+  return(list(coef=f_mix$coef[-1],sp_intercept=sp_int,first_fit_tau))
+}  
+  
 
 "apply_glm_tweedie" <- function (i,form,datsp,tau,n){
     dat.tau <- rep(tau[,i],each=n)
@@ -567,6 +583,71 @@
     }
     return(list(pi = pi, fmM = fmM, tau = tau, first.fit = first.fit))
   }
+
+"create_starting_values_poisson"  <- function (y, X, G, weights, offset, cores){
+  
+          # generate random starting values for tau
+          S <- ncol(y)
+          tau <- matrix(runif(S*G),S,G)
+          tau <- (tau/rowSums(tau))
+          fmM <- list()
+          
+          #sum tau's to get pi's
+          for(i in 1:G){
+                pi[i] <- sum(tau[,i])/S
+            }
+          
+          #fit a model to each group with tau as weights.
+          fmM <- plapply(1:G,apply_glm_poisson_tau,y,X,tau,.parallel = cores)
+          first_fit <- list(x=X,y=y,offset=offset,weights=weights)
+          return(list(pi=pi,fmM=fmM,tau=tau,first_fit=first_fit))
+}
+
+"create_starting_values_poisson_kmeans" <-function(y, X, G, weights, offset, cores, tol=0.1){
+
+          S <- ncol(y)
+          fm_poisson <- plapply(1:S,apply_glm_poisson, y, X, weights, offset, .parallel = cores)
+          my_coefs <- do.call(rbind,fm_poisson)
+          starting_fitem <- list(intercepts = rep(0, S), alpha = rep(0, S))
+          starting_fitem$sp_intercepts <- my_coefs[,1]
+          MM <- do.call(rbind, replicate(ncol(y), X, simplify=FALSE)) 
+          my_coefs[, 1] <- 0
+          
+          cat("Clustering...",G,"groups\n")
+          fmmvnorm <- kmeans(x = my_coefs, centers = G, iter.max = 100, nstart = 50)
+          starting_fitem$coef <- fmmvnorm$centers
+          
+              fmM <- list()
+              for (i in 1:G) {
+                  B <- matrix(rep(fmmvnorm$centers[i, ], nrow(MM)), 
+                      nrow(MM), ncol(fmmvnorm$centers), byrow = T)
+                  B[, 1] <- rep(starting_fitem$sp_intercepts, each = nrow(y))
+                  fitted <- exp(rowSums(MM * B))
+                  fmM[[i]] <- list(coef = fmmvnorm$centers[i, 2:ncol(fmmvnorm$centers)], 
+                                   sp_intercept = starting_fitem$sp_intercepts,
+                                   fitted = fitted)
+              }
+              tau <- matrix(0, S, G)
+              pi <- rep(1/G, G)
+              pi <- runif(G, 0.2, 0.8)
+              pi <- pi/sum(pi)
+              
+              first_fit <- list(x = X, y = y, offset=offset, weights=weights)
+              
+              #parallel - seems to be slower. Might be due to overheads.
+              est.tau <- plapply(1:S, estimate_pi_poisson, fmM, pi, G, first_fit, .parallel = cores)
+              max.newTau <- 0.8
+              alpha <- (1 - max.newTau * G)/(max.newTau * (2 - G) - 1)
+              for (j in 1:S) {
+                  newTau <- (2 * alpha * est.tau[[j]]$tau - alpha + 1)/(2 * 
+                      alpha - alpha * G + G)
+                  tau[j, ] <- newTau
+              }
+              for (i in 1:G) {
+                  pi[i] <- sum(tau[, i])/S
+              }
+    return(list(pi=pi,fmM=fmM,tau=tau,first_fit=first_fit))
+}    
 
 
 "create_starting_values_tweedie" <- function (S,G,n,form,datsp,cores){
@@ -828,13 +909,8 @@
 
     for(i in 1:G) {
       lpre <- dnbinom(first.fit$y[sel.sp],mu=fmM[[i]]$fitted[sel.sp],size=fmM[[i]]$theta,log=TRUE)
-      ##lpre <- dnbinom(first.fit$y[sel.sp],mu=exp(cbind(1,first.fit$x[sel.sp,])%*%c(fmM[[i]]$sp.intercept[j],fmM[[i]]$coef)),size=fmM[[i]]$theta,log=TRUE)
-      ##lpre <- dpois(first.fit$y[sel.sp],exp(cbind(1,first.fit$x[sel.sp,])%*%c(fmM[[i]]$sp.intercept[j],fmM[[i]]$coef)),log=TRUE)
-      #lpre <- dpois(first.fit$y[sel.sp],exp(first.fit$x[sel.sp,]%*%fmM[[i]]$coef),log=TRUE)
-
       tmp.like[i] <- sum(lpre)
     }
-
 
     eps <- max(tmp.like)
     sum.like <- (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
@@ -843,6 +919,21 @@
     }
     return(list(tau=tau,sum.like=sum.like))
   }
+
+"estimate_pi_poisson" <- function (j,fmM,pi,G,first_fit){
+    tmp_like <- rep(0,G)
+    tau <- rep(0,G)
+    for(i in 1:G) {
+        lpre <- first_fit$x%*%c(fmM[[i]]$sp_intercept[j],fmM[[i]]$coef)+first_fit$offset
+        tmp_like[i] <- sum(dpois(first_fit$y[,j],exp(lpre),log=TRUE)*first_fit$weights[,j]) #not sure about this step...
+    }
+	eps <- max(tmp_like)
+	sum_like <- (log(sum(pi*exp((tmp_like)-(eps))))+(eps))
+	  for(i in 1:G) {
+		tau[i] <- exp((log(pi[i]) + tmp_like[i]) - sum_like)
+	  }
+  return(list(tau=tau,sum_like=sum_like))
+}
 
 
 "estimate_pi_tweedie" <-
@@ -1195,6 +1286,92 @@
       2 * d, bic.full = -2 * logL.full + log(S) * d, pars = parms))
 }
 
+"fitmix_poisson" <- function(y, X, G, weights, offset, control){
+
+    S <- ncol(y)
+    n <- nrow(y)
+    cat("Fitting Group", G, "\n")
+    if (control$trace) 
+        cat("Iteration | LogL \n")
+    dat_tau <- 0
+    pi <- rep(0, G)
+    ite <- 1
+    logL <- -99999999
+    old_logL <- -88888888
+    
+    # Get responable starting values for EM estimation.
+    starting_values <- get_initial_values_poisson(ite, y, X, G, weights, offset, cores=control$cores)
+    pi <- starting_values$pi
+    fmM <- starting_values$fmM
+    tau <- starting_values$tau
+    dat_tau <- starting_values$dat_tau
+    first_fit <- starting_values$first_fit
+
+    
+    while (control$reltol(logL,old_logL) & ite <= control$maxit) {
+        old_logL <- logL
+        for (i in 1:G) {
+            pi[i] <- sum(tau[, i])/S
+        }
+        if (any(pi == 0)) {
+            cat("pi has gone to zero - restarting fitting \n")
+            starting_values <- get_initial_values(ite, y, X, G, weights, offset, cores=.cores)
+            pi <- starting_values$pi
+            fmM <- starting_values$fmM
+            tau <- starting_values$tau
+            dat_tau <- starting_values$dat_tau
+            first_fit <- starting_values$first_fit
+            ite <- 1
+        }
+        fmM <- plapply(1:G, weighted_glm_poisson, first_fit, tau, .parallel = .cores)
+        for (j in 1:S) {
+            tmp <- rep(0, G)
+            for (g in 1:G) tmp[g] <- fmM[[g]]$sp_intercept[j]
+            tmp <- sum(tmp * tau[j, ])
+            for (g in 1:G) fmM[[g]]$sp_intercept[j] <- tmp
+        }
+        logL <- 0
+        tmp_like <- matrix(0, S, G)
+        est_tau <- plapply(1:S, estimate_pi_poisson, fmM, pi, G, first_fit, .parallel = .cores)
+        for (j in 1:S) {
+            if (is.atomic(est_tau[[j]])) {
+                print(est_tau[[j]])
+            } else {
+                # print(est_tau[[j]]$tau)
+                tau[j, ] <- est_tau[[j]]$tau
+                logL <- logL + est_tau[[j]]$sum_like
+            }
+        }
+        if (control$trace) 
+            cat(ite, " | ", logL, "\n")
+        ite <- ite + 1
+    }
+    
+    fm_out <- data.frame(matrix(0, G, length(fmM[[1]]$coef)))
+    int_out <- rep(0, S)
+    names(fm_out) <- names(fmM[[1]]$coef)
+    tau <- data.frame(tau)
+    names(tau) <- paste("grp.", 1:G, sep = "")
+    EN <- -sum(unlist(tau) * log(unlist(tau)))
+    d <- length(unlist(fm_out)) + length(tau) - 1
+    fm_theta <- rep(0, G)
+    int_out <- fmM[[1]]$sp_intercept
+    for (i in 1:G) {
+        fm_out[i, ] <- fmM[[i]]$coef
+    }
+    names(pi) <- paste("G", 1:G, sep = ".")
+    t_pi <- additive_logistic(pi, TRUE)
+    parms <- c(t_pi[1:(G - 1)], unlist(fm_out), int_out)
+    logL_full <- logL
+    
+    # estimate log-likelihood
+    logL <- logLmix_poisson(parms, first_fit, G)
+ 
+    return(list(logl = logL, aic = -2 * logL + 2 * d, tau = round(tau, 
+        4), pi = pi, bic = -2 * logL + log(S) * d, ICL = -2 * 
+        logL + log(S) * d + 2 * EN, coef = fm_out, sp_intercept = int_out, 
+        covar = 0, aic_full = -2 * logL_full +  2 * d, bic_full = -2 * logL_full + log(S) * d, pars = parms,weights = weights))
+}
 
 "fitmix_nbinom.cpp" <-
   function (form,datsp,sp,G=2,pars=NA,trace=TRUE,calc.hes=FALSE)
@@ -1810,6 +1987,51 @@
     log.like
   }
 
+"logLmix_poisson" <- function (pars, first_fit, G){# keep weights and offsets in first fit, weights, offsets, out_tau=FALSE){
+  S <- ncol(first_fit$y)
+  tau <- matrix(0,S,G)
+  if(G>1){
+
+    # remove pi
+    fm <- pars[-1*(1:((G-1)))]  ## remove pi
+    
+    # get species intercepts
+    sp_int <- fm[(length(fm)-(S-1)):(length(fm))]
+    
+    # get mixture parameters
+    fm <- fm[-1*(length(fm)-(S-1)):(length(fm))]
+    
+    # get pi's
+    pi <- pars[(1:(G-1))]
+    
+    # re-structure vector to matrix
+    dim(fm) <- c(G,length(fm)/G)
+ 
+    # re calculate pi's
+    pi <- additive_logistic(pi)
+    
+  } else{
+    return(0)
+    fm <- tau[1:(length(pars)-1)]
+    dim(fm) <- c(1,length(fm))
+    pi <- 1
+  }
+
+  log_like <- 0
+  S <- ncol(first_fit$y)
+
+  for(j in 1:S){
+    tmp_like <- rep(0,G)
+    for(i in 1:G){
+      lpre <- first_fit$x%*%c(sp_int[j],fm[i,])+first_fit$offset
+      tmp_like[i] <- sum(dpois(first_fit$y[,j],lambda=exp(lpre),log=T)*first_fit$weights[,j])
+    }
+      eps <- max(tmp_like)
+      log_like <- log_like + (log(sum(pi*exp((tmp_like)-(eps))))+(eps))
+      tau[j,] <- log(pi) + tmp_like - (log(sum(pi*exp((tmp_like)-(eps))))+(eps))
+    }
+  log_like
+}
 
 "logLmix_tweedie" <-
   function (pars,first.fit,G,S,sp,spname,out.tau=FALSE)
@@ -1929,8 +2151,7 @@
   }
 
 
-"nH2" <-
-  function( pt, fun, accur=c(4,4), type="H.Diag", ...) {
+"nH2" <- function( pt, fun, accur=c(4,4), type="H.Diag", ...) {
     # A function to compute highly accurate second order Hessian diags and other off-diags
     # partially from Fornberg and Sloan (Acta Numerica, 1994, p. 203-267; Table 1, page 213)
     # Adapted by Scott Foster from code nicked off the net 2007
@@ -2532,7 +2753,6 @@
 
   }
 
-
 "weighted_glm_nbinom" <-  function (g,first.fit,tau,n,fmM,sp){
     dat.tau <- rep(tau[,g],each=n)
     sp.name <- unique(sp)
@@ -2549,6 +2769,31 @@
     return(list(coef=f.mix$coef[-1:-length(sp.name)],theta=f.mix$theta,sp.intercept=sp.intercept,fitted=f.mix$fitted))#,lpre=f.mix$linear.predictors))
 
   }
+
+"weighted_glm_poisson" <- function(g, first_fit, tau){
+  
+  # set up the correct data structure
+  S <- ncol(first_fit$y)
+  n <- nrow(first_fit$y)
+  sp_name <- colnames(first_fit$y)
+  sp <- rep(sp_name, each=n)
+  y_tau <- as.matrix(unlist(as.data.frame(first_fit$y)))
+  X_tau <- do.call(rbind, replicate(ncol(first_fit$y), first_fit$x, simplify=FALSE)) 
+  dat_tau <- rep(tau[,g],each=nrow(first_fit$y))
+
+  #set up indicator matrix
+  sp_mat <- matrix(0,dim(X_tau)[1],length(sp_name))
+  for(i in 1:length(sp_name)){
+    sp_mat[sp==sp_name[i],i] <- 1
+  }
+  X_tau <- cbind(sp_mat,X_tau[,-1])
+
+  # fit glm per tau weight
+  f_mix <- glm.fit(x=X_tau, y=y_tau, weights=dat_tau, family=poisson())
+  sp_intercept <- f_mix$coef[1:length(sp_name)]
+  sp_intercept[is.na(sp_intercept)] <- 0
+  return(list(coef=f_mix$coef[-1:-length(sp_name)],sp_intercept=sp_intercept,fitted=f_mix$fitted))
+}
 
 
 "weighted_glm_tweedie" <-  function (g, first.fit, tau, n, fmM, sp){
@@ -2814,6 +3059,13 @@
   res$pis <- pis
   res$taus <- taus
   return(res)
+}
+
+"get_initial_values_poisson" <- function(ite, y, X, G, weights, offset, cores){#distribution ='poisson', function call not used yet.
+  
+  if(ite==1)t1 <- create_starting_values_poisson(y, X, G, weights, offset, cores)
+  t1 <- create_starting_values_poisson_kmeans(y, X, G, weights, offset, cores)
+  return(t1)
 }
 
 "fitmix_ipp" <- function(y, X, G, weights, offset, control, y_is_na, estimate_variance){
