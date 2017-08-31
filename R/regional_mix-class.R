@@ -71,7 +71,7 @@ function( outs)
 }
 
 
-"clean.data" <-
+"clean_data_rcp" <-
 function( data, form1, form2){
     mf.X <- model.frame(form1, data = data, na.action = na.exclude)
     if( !is.null( form2)){
@@ -211,9 +211,7 @@ function( model, ..., oosSize=1, times=model$n, mc.cores=1, quiet=FALSE)
 }
 
 
-"extractAIC.regional_mix" <-
-function (fit, scale = 1, k = 2, ...)
-{
+"extractAIC.regional_mix" <- function (fit, scale = 1, k = 2, ...){
     n <- object$n
     edf <- length(unlist(coef( fit)))
     if (is.null(k))
@@ -223,18 +221,14 @@ function (fit, scale = 1, k = 2, ...)
 }
 
 
-"get.dist" <-
-function( disty.cases, dist1)
-{
+"get_dist_rcp" <- function( disty.cases, dist1){
   error.msg <- paste( c( "Distribution not implemented. Options are: ", disty.cases, "-- Exitting Now"), collapse=" ")
   disty <- switch( dist1, "bernoulli" = 1,"poisson" = 2,"negative_binomial" = 3,"tweedie" = 4,"gaussian" = 5,{stop( error.msg)} )
   return( disty)
 }
 
 
-"get.long.names" <-
-function( object)
-{
+"get_long_names_rcp" <- function( object){
 #function to get the names of columns for the vcov matrix or the regiboot matrix
 
   #defining the column names...  Trickier than you might expect
@@ -254,7 +248,7 @@ function( object)
 }
 
 
-"get.offset" <-
+"get_offset_rcp" <-
 function( mf, mf.X, mf.W)
 {
   offy <- model.offset( mf)
@@ -265,7 +259,7 @@ function( mf, mf.X, mf.W)
 }
 
 
-"get.power" <-
+"get_power_rcp" <-
 function( disty, power, S)
 {
   if( disty == 4){
@@ -281,7 +275,7 @@ function( disty, power, S)
 }
 
 
-"get.residuals" <-
+"get_residuals_rcp" <-
 function( site.logls, outcomes, dist, coef, nRCP, type="deviance", powers=NULL, quiet=FALSE, nsim=1000, X, W, offy)
 {
   if( ! type %in% c("deviance","RQR"))
@@ -308,7 +302,7 @@ function( site.logls, outcomes, dist, coef, nRCP, type="deviance", powers=NULL, 
 }
 
 
-"get.start.vals" <-
+"get_start_vals_rcp" <-
 function( outcomes, W, X, offy, wts, disty, G, S, power, inits, quiet=FALSE)
 {
   if( !quiet)
@@ -457,7 +451,7 @@ function( outcomes, W, X, offy, wts, disty, G, S, power, inits, quiet=FALSE)
 }
 
 
-"get.titbits" <-
+"get_titbits_rcp" <-
 function( titbits, outcomes, X, W, offset, wts, form.RCP, form.spp, control, dist, p.w, power)
 {
   if( titbits==TRUE)
@@ -494,9 +488,7 @@ function( titbits, outcomes, X, W, offset, wts, form.RCP, form.spp, control, dis
 }
 
 
-"get.W" <-
-function( form.spp, mf.W)
-{
+"get_W_rcp" <- function( form.spp, mf.W){
   form.W <- form.spp
   if( !is.null( form.spp)){
     if( length( form.W)>2)
@@ -512,19 +504,14 @@ function( form.spp, mf.W)
 }
 
 
-"get.wts" <-
-function ( mf)
-{
+"get_wts_rcp" <-function ( mf){
   wts <- model.weights( mf)
   if( is.null( wts))
     return( rep( 1, nrow( mf)))  #all weights assumed equal
   return( wts)
 }
 
-
-"get.X" <-
-function( form.RCP, mf.X)
-{
+"get_X_rcp" <-function( form.RCP, mf.X){
   form.X <- form.RCP
   form.X[[2]] <- NULL
   form.X <- as.formula(form.X)
@@ -533,21 +520,14 @@ function( form.RCP, mf.X)
   return( X)
 }
 
-
-"globCIFinder" <-
-function( x, en, alpha, nsim)
-{
+"globCIFinder" <-function( x, en, alpha, nsim){
 	#this now works for both upper and lower CIs
 	c <- uniroot( f=globErrorFn, interval=c(0.1,5), x=x, en=en, alpha=alpha, nsim=nsim)$root
-
 	return( en*c)
 
 }
 
-
-"globErrorFn" <-
-function( c1, x, en, alpha, nsim)
-{
+"globErrorFn" <-function( c1, x, en, alpha, nsim){
 	if( alpha > 0.5){
 		tmp <- apply( x, 2, function(x) any( x-c1*en > 0))
 		return( sum( tmp) / nsim - (1-alpha))
@@ -558,27 +538,18 @@ function( c1, x, en, alpha, nsim)
 	}
 }
 
-
-"inv.logit" <-
-function(x)
-{
+"inv.logit" <-function(x){
 	eta <- exp( x)
 	mu <- eta / (1+eta)
 	return(mu)
 }
 
-
-"logLik.regional_mix" <-
-function (object, ...)
-{
+"logLik.regional_mix" <-function (object, ...){
     return(object$logl)
 }
 
 
-"my.rmvnorm" <-
-function (n, mean = rep(0, nrow(sigma)), sigma = diag(length(mean)),
-    method = c("eigen", "svd", "chol"))
-{
+"my.rmvnorm" <-function (n, mean = rep(0, nrow(sigma)), sigma = diag(length(mean)), method = c("eigen", "svd", "chol")){
     if (!isSymmetric(sigma, tol = sqrt(.Machine$double.eps),
         check.attributes = FALSE)) {
         stop("sigma must be a symmetric matrix")
@@ -619,8 +590,7 @@ function (n, mean = rep(0, nrow(sigma)), sigma = diag(length(mean)),
 }
 
 
-"nd2" <-
-function(x0, f, m=NULL, D.accur=4, eps=NULL, mc.cores=getOption("mc.cores", 4L), ...) {
+"nd2" <- function(x0, f, m=NULL, D.accur=4, eps=NULL, mc.cores=getOption("mc.cores", 4L), ...) {
 # A function to compute highly accurate first-order derivatives
 # Stolen (mostly) from the net and adapted / modified by Scott (scott.foster@csiro.au)
 # From Fornberg and Sloan (Acta Numerica, 1994, p. 203-267; Table 1, page 213)
@@ -679,9 +649,7 @@ function(x0, f, m=NULL, D.accur=4, eps=NULL, mc.cores=getOption("mc.cores", 4L),
 }
 
 
-"noRCPfit" <-
-function( outcomes, W, X, offy, wts, disty, nRCP, power, inits, control, n, S, p.x, p.w)
-{
+"noRCPfit" <- function( outcomes, W, X, offy, wts, disty, nRCP, power, inits, control, n, S, p.x, p.w){
   beta <- tau <- NULL
   if( all(W==-999999)){
     W <- matrix( 1, ncol=1, nrow=n)
@@ -751,14 +719,10 @@ function( outcomes, W, X, offy, wts, disty, nRCP, power, inits, control, n, S, p
   ret$logl.sites <- NULL  #for residuals
 
   return( ret)
-
-
 }
 
 
-"notTweedieOptimise" <-
-function( outcomes, X, W, offy, wts, S, nRCP, p.x, p.w, n, disty, start.vals, power, control)
-{
+"notTweedieOptimise" <-function( outcomes, X, W, offy, wts, S, nRCP, p.x, p.w, n, disty, start.vals, power, control){
   inits <- c(start.vals$alpha, start.vals$tau, start.vals$beta, start.vals$gamma, start.vals$disp)
   alpha <- start.vals$alpha; tau <- as.numeric( start.vals$tau); beta <- as.numeric( start.vals$beta); gamma <- as.numeric( start.vals$gamma); disp <- start.vals$disp
   #scores
@@ -823,9 +787,7 @@ function( outcomes, X, W, offy, wts, S, nRCP, p.x, p.w, n, disty, start.vals, po
 }
 
 
-"orderFitted" <-
-function( fm, simDat)
-{
+"orderFitted" <- function( fm, simDat){
 	RCPs <- attr( simDat, "RCP")
 	posts <- fm$postProbs
 
@@ -870,9 +832,7 @@ function( fm, simDat)
 }
 
 
-"orderPost" <-
-function( new.fm=NULL, fm, RCPs=NULL, sample=NULL)
-{
+"orderPost" <- function( new.fm=NULL, fm, RCPs=NULL, sample=NULL){
 	G1 <- G2 <- NULL
 	if( !is.null( new.fm))
 		G <- G1 <- new.fm$nRCP
@@ -927,9 +887,6 @@ function( new.fm=NULL, fm, RCPs=NULL, sample=NULL)
 	new.fm$classErrRunnerUp <- max( classErr[-(which.max( classErr))])
 
 	return( new.fm)
-
-
-
 }
 
 
@@ -1012,7 +969,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
           as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
           as.integer( FALSE), as.integer( TRUE), as.integer( FALSE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "RCPmod")
 
-          allResids[, s] <- get.residuals( logls, Y, x$dist, x$coef, nRCP, type="deviance", powers=power, quiet=TRUE)
+          allResids[, s] <- get_residuals_rcp(logls, Y, x$dist, x$coef, nRCP, type="deviance", powers=power, quiet=TRUE)
       }
     if( !quiet)
       message("")
@@ -1099,9 +1056,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
 }
 
 
-"plot.registab" <-
-function(x, y, minWidth=1, ncuts=111, ylimmo=NULL, ...)
-{
+"plot.registab" <-function(x, y, minWidth=1, ncuts=111, ylimmo=NULL, ...){
     par(mfrow = c(1, 2))
     matplot(c(0, x$oosSizeRange), rbind(0, x$disty), type = "b",
         ylab = "Distance from Full Model Predictions", xlab = "Number of Obs Removed",
@@ -1133,10 +1088,7 @@ function(x, y, minWidth=1, ncuts=111, ylimmo=NULL, ...)
 }
 
 
-"predict.regional_mix" <-
-function (object, object2 = NULL, ..., newdata = NULL, nboot = 0,
-    alpha = 0.95, mc.cores = 1)
-{
+"predict.regional_mix" <- function (object, object2 = NULL, ..., newdata = NULL, nboot = 0, alpha = 0.95, mc.cores = 1){
     if (is.null(newdata)) {
         X <- object$titbits$X
         if (class(object$titbits$form.spp) == "formula") {
@@ -1326,9 +1278,7 @@ function (x, ...)
 }
 
 
-"regiboot" <-
-function (object, nboot=1000, type="BayesBoot", mc.cores=1, quiet=FALSE, orderSamps=FALSE, MLstart=TRUE)
-{
+"regiboot" <-function (object, nboot=1000, type="BayesBoot", mc.cores=1, quiet=FALSE, orderSamps=FALSE, MLstart=TRUE){
   if (nboot < 1)
     stop( "No Boostrap samples requested.  Please set nboot to something > 1.")
   if( ! type %in% c("BayesBoot","SimpleBoot"))
@@ -1341,7 +1291,8 @@ function (object, nboot=1000, type="BayesBoot", mc.cores=1, quiet=FALSE, orderSa
 #  else
 #    orig.data <- data.frame( cbind( object$titbits$Y, object$titbits$X, offset=object$titbits$offset), weights=rep(0,nrow(object$titbits$Y)))
   if( !quiet)
-    pb <- txtProgressBar(min = 1, max = nboot, style = 3, char = "><(('> ")
+    chars <- c("><(('> ","~(‾▿‾)~ ","_@_'' ","@(*O*)@ ")
+    pb <- txtProgressBar(min = 1, max = nboot, style = 3, char = chars[sample(length(chars),1)]) 
   if( type == "SimpleBoot"){
     all.wts <- matrix( sample( 1:object$n, nboot*object$n, replace=TRUE), nrow=nboot, ncol=object$n)
     tmp <- apply( all.wts, 1, table)
@@ -1358,7 +1309,7 @@ function (object, nboot=1000, type="BayesBoot", mc.cores=1, quiet=FALSE, orderSa
     orderSamps <- TRUE
   }
 
-  my.fun <- function( dummy){
+  my.fun <- function(dummy){
     if( !quiet)
       setTxtProgressBar(pb, dummy)
     dumbOut <- capture.output(
@@ -1390,7 +1341,7 @@ function (object, nboot=1000, type="BayesBoot", mc.cores=1, quiet=FALSE, orderSa
   object$titbits$control$quiet <- tmpOldQuiet
   if( !quiet)
     message( "")
-  colnames( boot.estis) <- get.long.names( object)
+  colnames( boot.estis) <- get_long_names_rcp( object)
   class( boot.estis) <- "regiboot"
   return( boot.estis)
 }
@@ -1461,7 +1412,7 @@ function( fm, mf, nboot)
 
     ##data <- as.data.frame(data)
     #get the data model frames and strip out any NAs
-    dat <- clean.data( mf, form.RCP, form.spp)
+    dat <- clean_data_rcp( mf, form.RCP, form.spp)
     #get the outcomes
     outcomes <- model.response(dat$mf.X)
     S <- check.outcomes1(outcomes)
@@ -1473,23 +1424,23 @@ function( fm, mf, nboot)
     if( !control$quiet)
       message( "There are: ", nRCP, "RCPs to group the sites into")
     #get the design matrix for RCP part of model
-    X <- get.X(form.RCP, dat$mf.X)
+    X <- get_X_rcp(form.RCP, dat$mf.X)
     p.x <- ncol( X)
     #get design matrix for spp part of the model -- if there is one
-    W <- get.W( form.spp, dat$mf.W)
+    W <- get_W_rcp( form.spp, dat$mf.W)
     if( all( W != -999999))
       p.w <- ncol( W)
     else
       p.w <- 0
     #get offset (if not specified then it will be zeros)
-    offy <- get.offset( mf, dat$mf.X, dat$mf.W)
+    offy <- get_offset_rcp( mf, dat$mf.X, dat$mf.W)
     #get model wts (if not specified then it will be ones)
-    wts <- get.wts( mf)
+    wts <- get_wts_rcp( mf)
     #get distribution
     disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie","gaussian")
-    disty <- get.dist( disty.cases, dist)
+    disty <- get_dist_rcp( disty.cases, dist)
     #get power params for Tweedie
-    power <- get.power( disty, power, S)
+    power <- get_power_rcp( disty, power, S)
     #summarising data to console
     print.data.summ( data, dat, S, form.RCP, form.spp, disty.cases, disty, control$quiet)
 
@@ -1505,7 +1456,7 @@ function( fm, mf, nboot)
     #Information criteria
     tmp <- calcInfoCrit( tmp)
     #titbits object, if wanted/needed.
-    tmp$titbits <- get.titbits( titbits, outcomes, X, W, offy, wts, form.RCP, form.spp, control, dist, p.w=p.w, power)
+    tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts, form.RCP, form.spp, control, dist, p.w=p.w, power)
     tmp$titbits$disty <- disty
     #the last bit of the regional_mix object puzzle
     tmp$call <- call
@@ -1529,7 +1480,7 @@ function( outcomes, W, X, offy, wts, disty, nRCP, power, inits, control, n, S, p
     }
 
     #initial values
-    start.vals <- get.start.vals( outcomes, W, X, offy, wts, disty, nRCP, S, power, inits, control$quiet)
+    start.vals <- get_start_vals_rcp( outcomes, W, X, offy, wts, disty, nRCP, S, power, inits, control$quiet)
     #doing the optimisation
     if( !control$quiet)
       message( "Quasi-Newton Optimisation")
@@ -1573,7 +1524,7 @@ function (form.RCP = NULL, form.spp = NULL, data, nRCP = 3, dist="bernoulli", of
 
     ##data <- as.data.frame(data)
     #get the data model frames and strip out any NAs
-    dat <- clean.data( mf, form.RCP, form.spp)
+    dat <- clean_data_rcp( mf, form.RCP, form.spp)
     #get the outcomes
     outcomes <- model.response(dat$mf.X)
     S <- check.outcomes1(outcomes)
@@ -1585,23 +1536,23 @@ function (form.RCP = NULL, form.spp = NULL, data, nRCP = 3, dist="bernoulli", of
     if( !control$quiet)
       message( "There are: ", nRCP, "RCPs to group the sites into")
     #get the design matrix for RCP part of model
-    X <- get.X(form.RCP, dat$mf.X)
+    X <- get_X_rcp(form.RCP, dat$mf.X)
     p.x <- ncol( X)
     #get design matrix for spp part of the model -- if there is one
-    W <- get.W( form.spp, dat$mf.W)
+    W <- get_W_rcp( form.spp, dat$mf.W)
     if( all( W != -999999))
       p.w <- ncol( W)
     else
       p.w <- 0
     #get offset (if not specified then it will be zeros)
-    offy <- get.offset( mf, dat$mf.X, dat$mf.W)
+    offy <- get_offset_rcp( mf, dat$mf.X, dat$mf.W)
     #get model wts (if not specified then it will be ones)
-    wts <- get.wts( mf)
+    wts <- get_wts_rcp( mf)
     #get distribution
     disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie","gaussian")
-    disty <- get.dist( disty.cases, dist)
+    disty <- get_dist_rcp( disty.cases, dist)
     #get power params for Tweedie
-    power <- get.power( disty, power)
+    power <- get_power_rcp( disty, power)
     #summarising data to console
     print.data.summ( data, dat, S, form.RCP, form.spp, disty.cases, disty, control$quiet)
 
@@ -1622,7 +1573,7 @@ function (form.RCP = NULL, form.spp = NULL, data, nRCP = 3, dist="bernoulli", of
       #Information criteria
       tmp <- calcInfoCrit( tmp)
       #titbits object, if wanted/needed.
-      tmp$titbits <- get.titbits( titbits, outcomes, X, W, offy, wts, form.RCP, form.spp, control, dist, p.w=p.w, power)
+      tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts, form.RCP, form.spp, control, dist, p.w=p.w, power)
       tmp$titbits$disty <- disty
       #the last bit of the regional_mix object puzzle
       tmp$call <- call
@@ -2238,7 +2189,7 @@ function (object, ..., object2=NULL, method = "FiniteDifference", nboot = 1000, 
 }
 
 # MVB's workaround for futile CRAN 'no visible blah' check:
-globalVariables( package="RCPmod",
+globalVariables( package="ecomix",
   names=c( ".Traceback"
     ,"dll.path"
     ,"libname"
