@@ -2,6 +2,7 @@
 
 export(make_mixture_data)
 export(regional_mix)
+export(simulate_species_mix_data)
 export(species_mix)
 export(species_mix.control)
 export(table_to_species_data)
