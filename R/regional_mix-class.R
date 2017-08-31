@@ -1290,9 +1290,9 @@ function (x, ...)
 #    orig.data <- data.frame( cbind( object$titbits$Y, object$titbits$X, object$titbits$W, offset=object$titbits$offset, weights=rep(0,nrow(object$titbits$Y))))
 #  else
 #    orig.data <- data.frame( cbind( object$titbits$Y, object$titbits$X, offset=object$titbits$offset), weights=rep(0,nrow(object$titbits$Y)))
-  if( !quiet)
+  if( !quiet){
     chars <- c("><(('> ","~(‾▿‾)~ ","_@_'' ","@(*O*)@ ")
-    pb <- txtProgressBar(min = 1, max = nboot, style = 3, char = chars[sample(length(chars),1)]) 
+    pb <- txtProgressBar(min = 1, max = nboot, style = 3, char = chars[sample(length(chars),1)]) }
   if( type == "SimpleBoot"){
     all.wts <- matrix( sample( 1:object$n, nboot*object$n, replace=TRUE), nrow=nboot, ncol=object$n)
     tmp <- apply( all.wts, 1, table)
@@ -1593,7 +1593,12 @@ function (form.RCP = NULL, form.spp = NULL, data, nRCP = 3, dist="bernoulli", of
     return(many.starts)
 }
 
+#' @rdname regional_mix-class
+#' @name residuals
+#' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep). The result is one residual per species per site and they all should be standard 
+#' normal variates. Within a site they are likely to be correlated (as they share a common latent factor), but across sampling locations they will be independent.
 
+#'  The deviance residuals (as used here), are actually just square root of minus two times the log-likelihood contribution for each sampling location. We do #' not subtract the log-likelihood of the saturated model as, at the time of writing, we are unsure what this log-likelihood should be (latent factors confuse #' things here). This implies that the residuals will not have mean zero and their variance might also be heteroskedastic. This was not realised when writing #' the original RCP paper (Foster et al, 2013), obviously. We still believe that these residuals have some utility, but we are unsure where that utility stops. #' For general useage, the "RQR" residuals should probably be preferred.}
 "residuals.regional_mix" <-
 function( object, ..., type="RQR", quiet=FALSE)
 {
