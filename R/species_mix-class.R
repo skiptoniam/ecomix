@@ -19,12 +19,14 @@
 #' @param inits NULL a numeric vector that provides approximate starting values for species_mix coefficents. These are distribution specific, but at a minimum you will need pis (additive_logitic transformed), alphas (intercepts) and betas (mixing coefs).
 #' @export
 #' @examples
+#' \dontrun{
 #' form <- as.formula(paste0("cbind(",paste(paste0('spp',1:20),collapse = ','),")~1+x"))
 #' theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9),4,2,byrow=TRUE)
 #' dat <- data.frame(y=rep(1,100),x=runif(100,0,2.5))
 #' simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
 #' model_data <- make_mixture_data(species_data = simulated_data$species_data, covariate_data = simulated_data$covariate_data)
 #' fm_species_mix <- species_mix(formula, data=model_data,distribution='bernoulli',n_mixtures=5)
+#' }
 
 "species_mix" <- function(formula = NULL, data, n_mixtures = 3, distribution="poisson",
   offset=NULL, weights=NULL, control=species_mix.control(), inits=NULL, standardise = FALSE){
@@ -1421,6 +1423,85 @@
         logL + log(S) * d + 2 * EN, coef = fm_out, sp_intercept = int_out,
         covar = var, aic_full = -2 * logL_full +  2 * d, bic_full = -2 * logL_full + log(S) * d, pars = parms,weights = weights))
 }
+
+"fitmix_ipp_cpp" <- function (form, datsp, sp, G=2,pars=NA,trace=TRUE,calc.hes=FALSE){
+    if(!is.numeric(sp)){
+      sp <- as.integer(factor(sp))
+    }
+    sp.name <- unique(sp)
+    S <- length(unique(sp))
+    n <- length(which(sp==sp.name[1]))
+
+    X <- model.matrix(form, data = datsp[sp==sp.name[1],])
+    ##  offset <- model.offset(form, data = datsp[sp==sp.name[1],])
+    offset <- model.frame(form, data = datsp[sp==sp.name[1],])
+    offset <- model.offset(offset)
+    if(is.null(offset)) offset <-  rep(0,n)
+    ##offset <-  rep(0,n)
+    ##X <- model.frame(form, data = datsp)
+    # X <- X[sp==sp.name[1],]
+
+    #y <- model.response(form, data = datsp)
+    y <- datsp$obs
+    if(is.na(pars[1])) {
+      ##pars <- rep(0.01,G-1+(ncol(X)*G))
+      sp.int <- rep(0.5,S)
+      sp.dispersion <- rep(1,S)
+      fm <- matrix(runif(ncol(X)*G,-1,1),G,ncol(X))
+      pars <- c(runif(G-1),unlist(fm),sp.int,sp.dispersion)
+
+    }
+
+    ##  hes <- rep(0,length(pars)^2)
+    gradient <- rep(0,length(pars))
+    tau <- matrix(0,S,G) ##must leave this in as defines S & G
+
+    loglike <- try(.Call("SpeciesMix",pars,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="SpeciesMix"))
+
+    calc_deriv <- function(p){
+      gradient <- rep(0,length(pars))
+      ll <- .Call("Calculate_Gradient",p,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="SpeciesMix")
+      return(gradient)
+    }
+    r.deriv <- function(p){ logLmix_nbinom(p,list(y=y,x=model.matrix(form, data = datsp)),G,S,sp,sp.name,out.tau=FALSE)}
+    #r.grad <- nd2(pars,r.deriv)
+    ##print(r.grad)
+    hes <- 0
+    covar <- 0
+    if(calc.hes){
+      hes <- nd2(pars,calc_deriv)
+      dim(hes) <- rep(length(pars),2)
+      dim(hes) <- rep(length(pars),2)
+      covar <- try(solve(hes))
+      #rownames(hes) <- colnames(hes) <- c(paste("G.",1:(G-1),sep=""),paste("G",1:G,rep(colnames(X),each=G),sep="."))
+    }
+    if(!is.numeric(loglike)) loglike <- 0
+    pi <- pars[1:(G-1)]
+    #coef <- pars[ (G):length(pars)]
+    coef <- pars[-1*(1:((G-1)))]  ## remove pi
+    sp.int <- coef[(length(coef)-(2*S-1)):(length(coef)-S)]
+    sp.dispersion <- coef[(length(coef)-(S-1)):length(coef)]
+    fm <- coef[-1*((length(coef)-(2*S-1)):length(coef))]
+    offset <- model.frame(form, data = datsp)
+    offset <- model.offset(offset)
+    if(is.null(offset)) offset <-  rep(0,nrow(datsp))
+
+    r.logl <- logLmix_nbinom(pars,list(y=y,x=model.matrix(form, data = datsp),offset=offset),G,S,sp,sp.name,out.tau=TRUE)
+    print(r.logl$logl)
+    pi <- additive_logistic(pi)
+    names(pi) <- paste("G.",1:G,sep="")
+    coef <- matrix(fm,G,ncol(X))
+    rownames(coef) <- paste("G.",1:G,sep="")
+    colnames(coef) <- colnames(X)
+
+    AIC <- 2*loglike + 2*length(pars)
+    BIC <- 2*loglike + log(S)*length(pars)
+    list(logl=loglike,pi=pi,coef=coef,sp.intercept=sp.int,tau=round(exp(r.logl$tau),4),aic=AIC,bic=BIC,hessian=hes,gradient=gradient,covar=covar)#,r.grad=r.grad)
+
+  }
+
+
+
 
 "fitmix_nbinom.cpp" <-
   function (form,datsp,sp,G=2,pars=NA,trace=TRUE,calc.hes=FALSE)
