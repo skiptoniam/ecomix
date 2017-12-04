@@ -12,9 +12,9 @@
 #' The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the species archetype probabilities on covariates. An example formula follows something like this: cbind(spp1,spp2,spp3)~1+temperature+rainfall
 #' @param model_data a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containng the covariate data for each site. Names of columns must match that given in \code{formula}.
 #' @param n_mixtures The number of mixing components (groups) to fit.
-#' @param distribution The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "ipp" (inhomogeneous point process), "negative_binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data.
+#' @param distribution The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "ippm" (inhomogeneous point process), "negative_binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data.
 #' @param offset a numeric vector of length nrow(data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the SAM.
-#' @param weights a numeric vector of length nrow(data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1. For ipp distribution - weights must be a nrow(data)*n_species matrix, which provides a species-specific background weights used to estimate the species-specific marginal likelihood.
+#' @param weights a numeric vector of length nrow(data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1. For ippm distribution - weights must be a nrow(data)*n_species matrix, which provides a species-specific background weights used to estimate the species-specific marginal likelihood.
 #' @param control a list of control parameters for optimisation and calculation. See details. From \code{species_mix.control} for details on optimistaion parameters.
 #' @param inits NULL a numeric vector that provides approximate starting values for species_mix coefficents. These are distribution specific, but at a minimum you will need pis (additive_logitic transformed), alphas (intercepts) and betas (mixing coefs).
 #' @export
@@ -49,7 +49,7 @@
   m <- match(c("formula","data","offset","weights"), names(mf), 0L)
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
-  if(distribution=="ipp") mf$na.action <- "na.pass"
+  if(distribution=="ippm") mf$na.action <- "na.pass"
   else mf$na.action <- "na.exclude"
   mf[[1L]] <- quote(stats::model.frame)
   mf <- eval(mf, parent.frame())
@@ -61,7 +61,7 @@
   y <- model.response(mf)
 
   # logical matirx needed for removing NAs from response and weights.
-  if(distribution=='ipp')y_is_na <- is.na(y)
+  if(distribution=='ippm')y_is_na <- is.na(y)
   else y_is_na <- NULL
   # print(dim(y_is_na))
   # check names of reponses
@@ -79,14 +79,14 @@
   X <- model.matrix(formula,mf)
 
   #get distribution
-  disty.cases <- c("bernoulli","poisson","ipp","negative_binomial","tweedie","normal")
+  disty.cases <- c("bernoulli","negative_binomial","tweedie","normal","poisson","ippm")
   disty <- get_distribution_sam(disty.cases, distribution)
 
   # get offsets and weights
   offy <- get_offset_sam(mf)
   wts <- get_weights_sam(mf,S,distribution)
 
-  if(distribution=='ipp'){
+  if(distribution=='ippm'){
     if(!all(colnames(y)%in%colnames(wts)))
       stop('When modelling a inhomogenous poisson point process weights colnames must match species data colnames')
     if(any(dim(y)!=dim(wts)))
@@ -117,21 +117,21 @@
 #'@param X is a design matrix of dimension n_sites * n_covariates.
 #'@param G is the number of species archetypes that are being estimated.
 #'@param weights is used in alternative way depending on the error distribution used. See \link[ecomix]{species_mix} for more details.
-#'@param distribution the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ipp' (Poisson point process), 'negative_binomial' and 'tweedie' are avaliable.
+#'@param distribution the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'tweedie' are avaliable.
 #'@param offset this is a vector of site specific offsets, this might be something like area sampled at sites.
 #'@param control this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.
-#'@param y_is_na This is a logical matrix used specifically with 'ipp' modelling - don't worry about this, it'll be worked out for you. Yay!
+#'@param y_is_na This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!
 "species_mix.fit" <- function(y, X, G, weights, offset, distribution, control, y_is_na=NULL){
 
   #if(distribution == 2) tmp <- fitmix_poisson(y, X, G, weights, offset, control, y_is_na)
-  if(distribution == 3) tmp <- fitmix_ipp(y, X, G, weights, offset, control, y_is_na)
-  else stop('current only "ipp" or "poisson" distribution is set up to use "species_mix.fit"')
+  if(distribution == 3) tmp <- fitmix_ippm(y, X, G, weights, offset, control, y_is_na)
+  else stop('current only "ippm" or "poisson" distribution is set up to use "species_mix.fit"')
   return(tmp)
 }
 
 "fit_species_mix_wrapper" <- function(formula, y, X, weights, offset, distribution, n_mixtures, inits, control, y_is_na, estimate_variance){
 
-  if(any(distribution!=c('poisson','ipp'))){
+  if(any(distribution!=c('poisson','ippm'))){
     sp.form <- update(form,obs~1+.)
     sp.data <- y
     covar.data <- X
@@ -267,7 +267,7 @@
           g])
     }
   }
-  if (class(mixture.model)[2] == "ipp" | class(mixture.model)[2] == "poisson") {
+  if (class(mixture.model)[2] == "ippm" | class(mixture.model)[2] == "poisson") {
     G <- length(mixture.model$pi)
     covar <- mixture.model$covar[-1 * c(1:(G - 1)), -1 * c(1:(G - 1))]
     sp.int <- mixture.model$sp_intercept
@@ -306,7 +306,7 @@
   if( quiet)
     return( NULL)
   n.tot <- nrow(y)
-  if(distribution=='ipp'){
+  if(distribution=='ippm'){
     n_pres <- sum(unlist(y)==1,na.rm=TRUE)
     n_bkgrd <- sum(unlist(y[,1])==0,na.rm=TRUE)
     message("There are ", n_pres, " presence observations for ", S," species")
@@ -321,7 +321,7 @@
 
 "get_distribution_sam" <- function( disty.cases, dist1) {
   error.msg <- paste( c( "Distribution not implemented. Options are: ", disty.cases, "-- Exitting Now"), collapse=" ")
-  disty <- switch( dist1, "bernoulli" = 1,"poisson" = 2,"ipp"=3,"negative_binomial" = 4,"tweedie" = 5,"gaussian" = 6,{stop( error.msg)} )
+  disty <- switch( dist1, "bernoulli" = 1,"negative_binomial" = 2,"tweedie" = 3,"gaussian" = 4,"poisson" = 5,"ippm"=6,{stop( error.msg)} )
   return( disty)
 }
 
@@ -412,7 +412,7 @@
 #' @param form formula to simulate species_mix data, needs to have the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2
 #' @param dat a matrix of variables to simulate data from.
 #' @param theta coefficents for each species archetype. Matrix of G x number of parameters. Each row is a different species archetype.
-#' @param distribution Which statistical distribution to simulate data for. 'bernoulli', 'gaussian', 'ipp', 'negative_binomial','poisson' and 'tweedie'.
+#' @param distribution Which statistical distribution to simulate data for. 'bernoulli', 'gaussian', 'ippm', 'negative_binomial','poisson' and 'tweedie'.
 #' @export
 #' @examples
 #' form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
@@ -420,10 +420,10 @@
 #' dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
 #' simulated_data <- simulate_species_mix_data(form,data,theta,dist="bernoulli")
 
-## need to update this to take the new formula framework and simulate ipp data.
+## need to update this to take the new formula framework and simulate ippm data.
 "simulate_species_mix_data" <-  function (form, dat, theta, distribution = "bernoulli"){
 
-	if(distribution=='ipp')stop('simulation of ipp data has not been set up yet, watch this space')
+	if(distribution=='ippm')stop('simulation of ippm data has not been set up yet, watch this space')
 	S <- length(form[[2]])-1
 	#update the formula to old format.
 	form_org <- form
@@ -1424,7 +1424,7 @@
         covar = var, aic_full = -2 * logL_full +  2 * d, bic_full = -2 * logL_full + log(S) * d, pars = parms,weights = weights))
 }
 
-"fitmix_ipp_cpp" <- function (form, datsp, sp, G=2,pars=NA,trace=TRUE,calc.hes=FALSE){
+"fitmix_ippm_cpp" <- function (form, datsp, sp, G=2,pars=NA,trace=TRUE,calc.hes=FALSE){
     if(!is.numeric(sp)){
       sp <- as.integer(factor(sp))
     }
@@ -3010,7 +3010,7 @@
   }
 }
 
-#ipp stuff
+#ippm stuff
 "species_data_check" <- function(x){
   stopifnot(is.matrix(x)|is.data.frame(x))
   stopifnot(all(is.finite(x)))
@@ -3030,7 +3030,7 @@
 }
 
 "get_weights_sam"  <- function(mf,S,distribution){
-  if(distribution=='poisson'|distribution=='ipp'){
+  if(distribution=='poisson'|distribution=='ippm'){
     sp_names <- colnames(model.response(mf))
     wts <- model.weights(mf)
     if(!is.null(wts)){
@@ -3044,7 +3044,7 @@
   return(wts)
 }
 
-"skrink_taus_ipp" <- function( taus, max_tau=0.7, G){
+"skrink_taus_ippm" <- function( taus, max_tau=0.7, G){
   if( G==1)
     return( taus)
   alpha <- (1-max_tau*G) / ( max_tau*(2-G)-1)
@@ -3075,74 +3075,29 @@
   return(list(X = X, dat.means = dat.means, dat.sds = dat.sds))
 }
 
-# fit tau for poisson model using glm.fit style inputs
-# fix this to correctly include weights/
-#apply_glm_ipp_tau <- function (i, y, X, tau, y_is_na){
-#
-#  Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
-#  X_no_NA <- list()
-#    for (jj in 1:ncol(y)){
-#    X_no_NA[[jj]] <- X[!y_is_na[,jj],]
-#  }
-#  X_tau <- do.call(rbind, X_no_NA)
-#  n_ys <- sapply(X_no_NA,nrow)
-#  wts_tau <- rep(tau[,i],n_ys)
-#  f_mix <- glm.fit(x = X_tau, y = Y_tau, weights = wts_tau, family=poisson())
-#  sp_int <- rep(f_mix$coef[1],dim(tau)[1])
-#  first_fit_tau <- list(x=X_tau,y=Y_tau)
-#  return(list(coef=f_mix$coef[-1],sp_intercept=sp_int,first_fit_tau))
-#  #return(list(coef=f_mix$coef,first_fit_tau))
-#}
-
-# fit tau for poisson model using glm.fit style inputs
-# fix this to correctly include weights/
-"apply_glm_ipp_sp_tau" <- function (ss, y, X, y_is_na, weights, offset, tau, G, S, fits){
+"apply_glm_ippm_sp_tau" <- function (ss, y, X, y_is_na, weights, offset, tau, G, S, fits){
   Y_sp_tau <- as.matrix(rep(y[!y_is_na[,ss],ss],G))
-  ipp_weights_sp_tau <- as.matrix(rep(weights[!y_is_na[,ss],ss],G))
-  z_sp_tau <- as.matrix(Y_sp_tau/ipp_weights_sp_tau)
+  ippm_weights_sp_tau <- as.matrix(rep(weights[!y_is_na[,ss],ss],G))
+  z_sp_tau <- as.matrix(Y_sp_tau/ippm_weights_sp_tau)
   X_sp_tau <- do.call(rbind, replicate(G, X[!y_is_na[,ss],], simplify=FALSE))
   wts_sp_tau <- rep(tau[ss,],each=length(y[!y_is_na[,ss],ss]))
-  wts_sp_ippXtau <- wts_sp_tau*ipp_weights_sp_tau
+  wts_sp_ippmXtau <- wts_sp_tau*ippm_weights_sp_tau
   offy <- rep(offset[!y_is_na[,ss]],G)
   offy2 <-  as.matrix(X[!y_is_na[,ss],-1]) %*% t(fits$mix_coefs)
   offy <- as.numeric(offy2)+offy
-  f_mix <- glm.fit(x = X_sp_tau, y = z_sp_tau, weights = wts_sp_ippXtau, offset = offy, family=poisson())
+  f_mix <- glm.fit(x = X_sp_tau, y = z_sp_tau, weights = wts_sp_ippmXtau, offset = offy, family=poisson())
   return(sp_coef=f_mix$coef)
 }
 
-# This is the fit with weights.
-# y is a matrix n * S.
-# weights is a matrix of n * S. This will be important for ipp weights.
-"apply_glm_ipp" <- function(i, y, X, weights, offset, y_is_na){
+"apply_glm_ippm" <- function(i, y, X, weights, offset, y_is_na){
   ids_i <- !y_is_na[,i]
-  f_ipp <- glm.fit(x=X[ids_i,],y=y[ids_i,i]/weights[ids_i,i],weights=weights[ids_i,i],offset=offset[ids_i],family=poisson())
-  f_ipp$coef
+  f_ippm <- glm.fit(x=X[ids_i,],y=y[ids_i,i]/weights[ids_i,i],weights=weights[ids_i,i],offset=offset[ids_i],family=poisson())
+  f_ippm$coef
 }
 
-#"estimate_pi_ipp"<- function (j,fits,pis,G,first_fit){
-#  tmp_like <- rep(0,G)
-#  tau <- rep(0,G)
-#  sp_site_id <- !first_fit$y_is_na[,j]
-#  for(i in 1:G) {
-#    # cat(c(fits$sp_intercepts[j],fits$mix_coefs[i,]),"\n\n")
-#    log_lambda <- as.matrix(first_fit$x[sp_site_id,])%*%c(c(fits$sp_intercepts[j],fits$mix_coefs[i,]))+first_fit$offset[sp_site_id]
-#    tmp_like[i] <- first_fit$y[sp_site_id,j] %*% log_lambda - first_fit$weights[sp_site_id,j] %*% exp(log_lambda)
-
-#  }
-#  cat(tmp_like,'\n')
-#  #log for of the likelihoods to estimate tau.
-#  eps <- max(tmp_like)
-#  sum_like <- (log(sum(pis*exp((tmp_like)-(eps))))+(eps))
-#  for(i in 1:G) {
-#    tau[i] <- exp((log(pis[i]) + tmp_like[i]) - sum_like)
-#  }
-#  cat("taus:\n",tau,'\n')
-#  return(list(tau=tau,sum_like=sum_like))
-#}
-
-"initiate_fit_ipp" <- function(y, X, weights, offset, y_is_na, G, S, cores, inits='kmeans', init.sd=1){
-  fm_ipp <- plapply(1:S,apply_glm_ipp, y, X, weights, offset, y_is_na, .parallel = cores)
-  all_coefs <- do.call(rbind,fm_ipp)
+"initiate_fit_ippm" <- function(y, X, weights, offset, y_is_na, G, S, cores, inits='kmeans', init.sd=1){
+  fm_ippm <- plapply(1:S,apply_glm_ippm, y, X, weights, offset, y_is_na, .parallel = cores)
+  all_coefs <- do.call(rbind,fm_ippm)
   mix_coefs <- all_coefs[,-1] # drop intercepts
   # print(all_coefs)
   if(inits=='kmeans'){
@@ -3172,14 +3127,14 @@
   return(results)
 }
 
-"get_initial_values_ipp" <- function(y, X, weights, offset, y_is_na, G, S, cores, inits='kmeans', init.sd=1){
-  starting_values <- initiate_fit_ipp(y, X, weights, offset, y_is_na, G, S, cores, inits, init.sd)
+"get_initial_values_ippm" <- function(y, X, weights, offset, y_is_na, G, S, cores, inits='kmeans', init.sd=1){
+  starting_values <- initiate_fit_ippm(y, X, weights, offset, y_is_na, G, S, cores, inits, init.sd)
   fits <- list(mix_coefs=starting_values$mix_coefs,sp_intercepts=starting_values$sp_intercepts)
   first_fit <- list(x = X, y = y, offset=offset, weights=weights, y_is_na=y_is_na)
-  logls <- get_logls_ipp(first_fit, fits, G, S)
+  logls <- get_logls_ippm(first_fit, fits, G, S)
   pis <- rep(1/G, G)
-  taus <- get_taus_ipp(pis, logls, G, S)
-  taus <- skrink_taus_ipp(taus,max_tau=1/G + 0.1, G)
+  taus <- get_taus_ippm(pis, logls, G, S)
+  taus <- skrink_taus_ippm(taus,max_tau=1/G + 0.1, G)
   res <- list()
   res$fits <- fits
   res$first_fit <- first_fit
@@ -3195,7 +3150,7 @@
   return(t1)
 }
 
-"fitmix_ipp" <- function(y, X, G, weights, offset, control, y_is_na, estimate_variance){
+"fitmix_ippm" <- function(y, X, G, weights, offset, control, y_is_na, estimate_variance){
   S <- ncol(y)
   cat("Fitting Group", G, "\n")
   if (control$trace)
@@ -3206,7 +3161,7 @@
   logl_new <- -88888888
 
   # Get responable starting values for EM estimation. #first e-step.
-  starting_values <- get_initial_values_ipp(y, X, weights, offset, y_is_na, G, S, control$cores, inits=control$init_method, control$init.sd)
+  starting_values <- get_initial_values_ippm(y, X, weights, offset, y_is_na, G, S, control$cores, inits=control$init_method, control$init.sd)
 
   pis <- starting_values$pis
   fits <- starting_values$fits
@@ -3224,7 +3179,7 @@
     cat(pis,"\n")
 
     if (any(pis == 0)) {
-    starting_values <- get_initial_values_ipp(y, X, weights, offset, y_is_na, G, S, control$cores, control$init_method, control$init_sd)
+    starting_values <- get_initial_values_ippm(y, X, weights, offset, y_is_na, G, S, control$cores, control$init_method, control$init_sd)
     pis <- starting_values$pis
     fits <- starting_values$fits
     taus <- starting_values$taus
@@ -3234,26 +3189,26 @@
 
     # this updates the mixture coefs
     if(control$method=="Nelder-Meld"){
-    tmp <- optim(par=fits$mix_coefs, fn=incom_logl_ipp, gr = NULL,first_fit=first_fit, pis=pis, fits=fits, G=G, S=S,  method = "Nelder-Mead",control = list(trace=control$nlminb_trace), hessian = FALSE)
+    tmp <- optim(par=fits$mix_coefs, fn=incom_logl_ippm, gr = NULL,first_fit=first_fit, pis=pis, fits=fits, G=G, S=S,  method = "Nelder-Mead",control = list(trace=control$nlminb_trace), hessian = FALSE)
     }
     if(control$method=="nlminb"){
-    tmp <- nlminb(start=fits$mix_coefs, objective=incom_logl_ipp, gradient=NULL, hessian=NULL, first_fit=first_fit, pis=pis, fits=fits, G=G, S=S,control=list(trace=control$nlminb_trace))
+    tmp <- nlminb(start=fits$mix_coefs, objective=incom_logl_ippm, gradient=NULL, hessian=NULL, first_fit=first_fit, pis=pis, fits=fits, G=G, S=S,control=list(trace=control$nlminb_trace))
 	  }
     fits$mix_coefs <- update_mix_coefs(fits$mix_coefs, tmp$par)
 
     # update species intercepts
-    fm_ipp <- plapply(1:S, apply_glm_ipp_sp_tau, first_fit$y, first_fit$x, first_fit$y_is_na, first_fit$weights,first_fit$offset, taus, S, G, fits,  .parallel = control$cores)
-    sp_int <- do.call(rbind,fm_ipp)[,1]
+    fm_ippm <- plapply(1:S, apply_glm_ippm_sp_tau, first_fit$y, first_fit$x, first_fit$y_is_na, first_fit$weights,first_fit$offset, taus, S, G, fits,  .parallel = control$cores)
+    sp_int <- do.call(rbind,fm_ippm)[,1]
     fits$sp_intercepts <- update_sp_coefs(fits$sp_intercepts,sp_int)
 
     # E-step
     # get the log-likes and taus
-    logls <- get_logls_ipp(first_fit, fits, G, S)
-    taus <- get_taus_ipp(pis, logls, G, S)
+    logls <- get_logls_ippm(first_fit, fits, G, S)
+    taus <- get_taus_ippm(pis, logls, G, S)
 
     #update the likelihood
     logl_old <- logl_new
-    logl_new <- get_incomplete_logl_ipp(pi, first_fit, fits, G, S)
+    logl_new <- get_incomplete_logl_ippm(pi, first_fit, fits, G, S)
     new_time <- Sys.time() - old_time
     if (control$trace){
       cat(ite, "  |  ", logl_new, "\n")
@@ -3275,12 +3230,12 @@
   logl_full <- logl_new
 
   # estimate log-likelihood
-  logl_new <- get_incomplete_logl_ipp( pi, first_fit, fits, G, S)
+  logl_new <- get_incomplete_logl_ippm( pi, first_fit, fits, G, S)
 
   if(estimate_variance){
     message('Numerically estimating the derivates for mixing coefs and sp intercepts, this could take a while. Soz.')
     var <- 0
-    fun_est_var <- function(x){-logLmix_ipp(x,first_fit,G,S)}
+    fun_est_var <- function(x){-logLmix_ippm(x,first_fit,G,S)}
     var <- solve(nH2(pt=parms, fun=fun_est_var))
     colnames(var) <- rownames(var) <- names(parms)
   } else {
@@ -3308,23 +3263,23 @@
   return( tmp)
 }
 
-"incom_logl_ipp" <- function(x, first_fit, pis, fits, G, S){ #fits == fmM
+"incom_logl_ippm" <- function(x, first_fit, pis, fits, G, S){ #fits == fmM
   fits$mix_coefs <- matrix(x,nrow=nrow(fits$mix_coef),ncol=ncol(fits$mix_coef))
-  tmp <- get_incomplete_logl_ipp_function(pis, first_fit, fits, G, S)
+  tmp <- get_incomplete_logl_ippm_function(pis, first_fit, fits, G, S)
   return(-tmp)
 }
 
-"get_incomplete_logl_ipp_function" <- function(pis, first_fit, fits, G, S, theta.range=c(0.01, 10), pen.parm=1.25){
-  logl_sp_ipp <- matrix(NA, nrow=S, ncol=G)
+"get_incomplete_logl_ippm_function" <- function(pis, first_fit, fits, G, S, theta.range=c(0.01, 10), pen.parm=1.25){
+  logl_sp_ippm <- matrix(NA, nrow=S, ncol=G)
   incomplete.logl <- 0
   for(ss in 1:S){
     sp_idx<-!first_fit$y_is_na[,ss]
     for(gg in 1:G){
       eta <- first_fit$x[sp_idx,1] * fits$sp_intercepts[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$mix_coefs[gg,] + first_fit$offset[sp_idx] #eta is the same as log_lambda (linear predictor)
-      logl_sp_ipp[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
+      logl_sp_ippm[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
     }
   }
-  ak <- logl_sp_ipp + matrix( rep( log( pis), each=S), nrow=S, ncol=G)
+  ak <- logl_sp_ippm + matrix( rep( log( pis), each=S), nrow=S, ncol=G)
   am <- apply( ak, 1, max)
   ak <- exp(ak-am)
   sppLogls <- am + log( rowSums( ak))
@@ -3332,20 +3287,20 @@
   return( logl)
 }
 
-"get_logls_ipp" <- function(first_fit, fits, G, S){
-  logl_sp_ipp <- matrix(NA, nrow=S, ncol=G)
+"get_logls_ippm" <- function(first_fit, fits, G, S){
+  logl_sp_ippm <- matrix(NA, nrow=S, ncol=G)
   for(ss in 1:S){
     sp_idx<-!first_fit$y_is_na[,ss]
     for(gg in 1:G){
       #eta is the same as log_lambda (linear predictor)
       eta <- first_fit$x[sp_idx,1] * fits$sp_intercepts[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$mix_coefs[gg,] + first_fit$offset[sp_idx]
-      logl_sp_ipp[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
+      logl_sp_ippm[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
     }
   }
-  return(logl_sp_ipp)
+  return(logl_sp_ippm)
 }
 
-"get_taus_ipp" <- function(pi, logls, G, S){
+"get_taus_ippm" <- function(pi, logls, G, S){
   fullLogPis <- matrix( rep( log(pi), each=S), nrow=S, ncol=G)
   a_k <- fullLogPis + logls
   a_m <- apply( a_k, 1, max)
@@ -3354,18 +3309,18 @@
   return( exp( a_k - log_denom))
 }
 
-"get_incomplete_logl_ipp" <-  function(pis, first_fit, fits, G, S){
+"get_incomplete_logl_ippm" <-  function(pis, first_fit, fits, G, S){
   incomplete.logl <- 0
-  logl_sp_ipp <- matrix(NA, nrow=S, ncol=G)
+  logl_sp_ippm <- matrix(NA, nrow=S, ncol=G)
   for(ss in 1:S){
     sp_idx<-!first_fit$y_is_na[,ss]
     for(gg in 1:G){
       #eta is the same as log_lambda (linear predictor)
       eta <- first_fit$x[sp_idx,1] * fits$sp_intercepts[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$mix_coefs[gg,] + first_fit$offset[sp_idx]
-      logl_sp_ipp[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
+      logl_sp_ippm[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
     }
   }
-  ak <- logl_sp_ipp + matrix( rep( log( pis), each=S), nrow=S, ncol=G)
+  ak <- logl_sp_ippm + matrix( rep( log( pis), each=S), nrow=S, ncol=G)
   am <- apply( ak, 1, max)
   ak <- exp( ak-am)
   sppLogls <- am + log( rowSums( ak))
@@ -3373,7 +3328,7 @@
   return( logl)
 }
 
-"logLmix_ipp" <-  function(pars, first_fit, G, S){
+"logLmix_ippm" <-  function(pars, first_fit, G, S){
   tau <- matrix(0,S,G)
   ##tau,out.tau=FALSE
   if(G>1){
@@ -3393,16 +3348,16 @@
   }
 
   complete.logl <- 0
-  logl_sp_ipp <- matrix(NA, nrow=S, ncol=G)
+  logl_sp_ippm <- matrix(NA, nrow=S, ncol=G)
   for(ss in 1:S){
     sp_idx<-!first_fit$y_is_na[,ss]
     for(gg in 1:G){
       #eta is the same as log_lambda (linear predictor)
       eta <- first_fit$x[sp_idx,1] * sp_int[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fm[gg,] + first_fit$offset[sp_idx]
-      logl_sp_ipp[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
+      logl_sp_ippm[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
     }
   }
-  ak <- logl_sp_ipp + matrix( rep( log( pis), each=S), nrow=S, ncol=G)
+  ak <- logl_sp_ippm + matrix( rep( log( pis), each=S), nrow=S, ncol=G)
   am <- apply( ak, 1, max)
   ak <- exp( ak-am)
   sppLogls <- am + log( rowSums( ak))
