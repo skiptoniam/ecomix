@@ -70,10 +70,9 @@ public:
  
 };
 
+// SpeciesMix external functions. Need to remember the vmin uses C not cpp
 extern "C"  SEXP SpeciesMix(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEXP R_tau, SEXP R_gradient, SEXP R_offset, SEXP R_model_type);
-
 extern "C"  SEXP Calculate_Gradient(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEXP R_tau, SEXP R_gradient, SEXP R_offset, SEXP R_model_type);
-
 double optimise_function(int n, double *pars, void *ex);
 void gradient_function(int n, double *pars, double *gr, void *ex );
 
@@ -81,7 +80,6 @@ vector<double> calc_logl(const vector<double> &pars, Optimise_data &data);
 double like_function(vector <double> &estpi, vector < double > &coef, const double *y, const double *X, int Xr, int Xc, int start, int end, double *tau, int s, vector<double> &sum_f_species, vector<double> &deriv_f_B);
 double link_function(double p, int link_type);
 double inv_link_function(double lpre, int link_type);
-
 void additive_logistic(vector< double> &x,int inv);
 
 // Negative binomial external calls
@@ -92,12 +90,11 @@ void gradient_nbinom(int n, double *pars, double *gr, void *ex );
 double NBlogl(vector<double> &pars, Optimise_data_nbinom &data );
 
 // ippm external calls
-extern "C"  SEXP Neg_Bin(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_gradient, SEXP R_fitted_values);
-extern "C"  SEXP Neg_Bin_Gradient(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_gradient);
-double optimise_nbinom(int n, double *pars, void *ex);
-void gradient_nbinom(int n, double *pars, double *gr, void *ex );
+extern "C"  SEXP IPPM(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_gradient, SEXP R_fitted_values);
+extern "C"  SEXP IPPM_Gradient(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_gradient);
+double optimise_ippm(int n, double *pars, void *ex);
+void gradient_ippm(int n, double *pars, double *gr, void *ex );
 double ippm_logl(vector<double> &pars, Optimise_data_ippm &data );
-
 
 // ippm mix
 double optimise_mix_ippm_function(int n, double *pars, void *ex); // *ex is all the other stuff.
