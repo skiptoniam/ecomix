@@ -138,7 +138,7 @@ double optimise_function(int n, double *pars, void *ex){
 
 }
 
-double optimise_ipp_function(int n, double *pars, void *ex){
+double optimise_ippm_function(int n, double *pars, void *ex){
 
   Optimise_data *data = (Optimise_data *) ex;
   //Optimise_data data =  * (Optimise_data *) ex;
@@ -149,7 +149,7 @@ double optimise_ipp_function(int n, double *pars, void *ex){
   
   for(i=0;i<n;i++) x.at(i) = pars[i];
 
-  logl = calc_ipp_logl(x,*data);
+  logl = calc_ippm_logl(x,*data);
 
   //logl = data->F.Forward(0,x);
 
@@ -910,7 +910,7 @@ void gradient_mix_ipp_function(int n, double *pars, double *gr, void *ex ){
   Xc=data->Xc;
   for(i=0;i<n;i++) x.at(i) = pars[i];
  
-  logl = calc_mixnbinom_logl(x,*data);
+  logl = calc_mix_ippm_logl(x,*data);
 
   for(g=0;g<(G-1);g++){ 
       add_log_trans+=exp(x.at(g)); //add up transformed pi's
@@ -1031,7 +1031,7 @@ void gradient_mixnbinom_function(int n, double *pars, double *gr, void *ex ){
 }
 
 //Calculate the ipp logl
- vector <double> calc_mix_ipp_logl(const vector<double> &pars, Optimise_data &data){
+ vector <double> calc_mix_ippm_logl(const vector<double> &pars, Optimise_data &data){
   int G,S,Xr,Xc;
   G=data.G; //groups
   S=data.S; //species
@@ -1040,7 +1040,7 @@ void gradient_mixnbinom_function(int n, double *pars, double *gr, void *ex ){
   vector< double > estpi(G-1,0); //vector to hold pi's
   vector< double > coef(Xc*G,0); //vector to hold all coefficents *DOES NOT INCLUDE INTERCEPT*
   vector< double > sp_int(S,0); // vector for species intercepts
-  vector< double > sp_dispersion(S,0); //vector for species specific dispersion parameter
+  //vector< double > sp_dispersion(S,0); //vector for species specific dispersion parameter
   //vector< double > logl( S * G ,0); //output log likelihood
   vector< double > logl(1 ,0), tlog(1 ,0); //output log likelihood
   //  double sumlogl=0;
@@ -1074,9 +1074,9 @@ void gradient_mixnbinom_function(int n, double *pars, double *gr, void *ex ){
   for(i= (G*Xc + G-1); i<(G*Xc + G-1 + S) ; i++) {sp_int.at(i-(G*Xc + G-1)) = pars.at(i);
     // Rprintf("%f,",sp_int.at(i-(G*Xc + G-1)) );
 }
-  for(i=(G*Xc + G-1 + S) ; i< data.lpar; i++) {sp_dispersion.at(i-(G*Xc + G-1 + S)) = pars.at(i);
+  //for(i=(G*Xc + G-1 + S) ; i< data.lpar; i++) {sp_dispersion.at(i-(G*Xc + G-1 + S)) = pars.at(i);
     // Rprintf("%f,",sp_dispersion.at(i-(G*Xc + G-1 + S)) );
-}
+//}
 
   //Rprintf("\n");
   /*  for(g=0;g<G;g++){
@@ -1090,7 +1090,7 @@ void gradient_mixnbinom_function(int n, double *pars, double *gr, void *ex ){
       start = data.StartEndPos.at(s*2);
       end = data.StartEndPos.at(s*2+1);
 
-      tlog.at(0) = like_mixnbinom_function(estpi, coef,sp_int,sp_dispersion,data.y,data.X,Xr,Xc,start,end, data.tau, s ,data.sum_f_species,data.deriv_f_B,data.deriv_f_alphaS,data.deriv_f_dispersionS,data.log_y_factorial,data.offset);
+      tlog.at(0) = like_mix_ippm_function(estpi, coef, sp_int, data.y, data.X, Xr, Xc, start, end, data.tau, s ,data.sum_f_species,data.deriv_f_B,data.deriv_f_alphaS,data.deriv_f_dispersionS,data.log_y_factorial,data.offset);
       logl.at(0)+= tlog.at(0);
   
       data.species_l_contrib.at(s) = tlog.at(0);
@@ -1170,7 +1170,7 @@ void gradient_mixnbinom_function(int n, double *pars, double *gr, void *ex ){
 
 //likelihood function for ipp
 
-double like_mix_ipp_function(vector< double > &estpi, vector < double > &coef, vector < double > &sp_int, vector < double > &sp_dispersion, const double *y, const double *X, int Xr, int Xc, int start, int end, double *tau, int s, vector<double> &sum_f_species, vector<double> &deriv_f_B, vector<double> &deriv_f_alphaS, vector<double> &deriv_f_dispersionS, vector<double> &log_y_factorial, const double *offset){
+double like_mix_ippm_function(vector< double > &estpi, vector < double > &coef, vector < double > &sp_int, vector < double > &sp_dispersion, const double *y, const double *X, int Xr, int Xc, int start, int end, double *tau, int s, vector<double> &sum_f_species, vector<double> &deriv_f_B, vector<double> &deriv_f_alphaS, vector<double> &deriv_f_dispersionS, vector<double> &log_y_factorial, const double *offset){
   int len,i,j,G,g;
   len=end-start+1;
   //vector< AD<double > > p(len,0);
@@ -1184,8 +1184,7 @@ double like_mix_ipp_function(vector< double > &estpi, vector < double > &coef, v
     for(i=0;i<len;i++){
       lpre=offset[i]+sp_int.at(s);
       for(j=0;j<Xc;j++){ 
-	lpre +=  X[MAT_RF(i,j,Xr)] * coef[MAT_RF(g,j,G)];
-
+	      lpre +=  X[MAT_RF(i,j,Xr)] * coef[MAT_RF(g,j,G)];
       }
     
       p.at(0)=exp(lpre);  // mu for each archetype at site k
