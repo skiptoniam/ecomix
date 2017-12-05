@@ -634,12 +634,12 @@ extern "C"
 {
   SEXP IPPM(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_weights, SEXP R_y_is_na, SEXP R_offset, SEXP R_gradient, SEXP R_fitted_values){
     // tau is the parameter vector, 
-    // od is the overdispersion parameter, 
     // X is the design matrix, 
     // N is the NB distributed variable
     int Xr, Xc;
-    double *pars=NULL, *y=NULL, *X=NULL, *w=NULL,*offset=NULL,*r_pointer=NULL, *gradient=NULL, *fitted_values=NULL;
+    double *pars=NULL, *y=NULL, *X=NULL, *w=NULL, *weights, *offset=NULL,*r_pointer=NULL, *gradient=NULL, *fitted_values=NULL;
     double logl;
+    int *y_is_na;
     int lpar,i;
     double abstol,reltol;
     int fncount, grcount, ifail,trace,nREPORT;
@@ -665,7 +665,7 @@ extern "C"
     Xc=INTEGER(dimensions)[1];
 
     Optimise_data_nbinom data;
-    data.SetVars(y,X, w, *offset,Xr,Xc);
+    data.SetVars(y,X, w, weights, y_is_na, *offset,Xr,Xc);
 
     abstol = 1e-8;
     reltol = 1e-8;
@@ -677,12 +677,12 @@ extern "C"
     vector <int> mask (lpar,1); 
     vector < double > logl_out(lpar,0);
 
-    vmmin(lpar, pars, &logl_out.at(0), optimise_nbinom, gradient_nbinom, 1000, trace, &mask.at(0),  abstol,  reltol,  nREPORT, &data, &fncount, &grcount, &ifail);
+    vmmin(lpar, pars, &logl_out.at(0), optimise_ippm, gradient_ippm, 1000, trace, &mask.at(0),  abstol,  reltol,  nREPORT, &data, &fncount, &grcount, &ifail);
     
     //std::cout << "ifail = " << ifail << "\n" ;
     logl=1;
-    logl = optimise_nbinom(lpar, pars, &data);
-    gradient_nbinom(lpar,pars,gradient,&data);
+    logl = optimise_ippm(lpar, pars, &data);
+    gradient_ippm(lpar,pars,gradient,&data);
     for(i=0;i<Xr;i++) fitted_values[i] = data.lp.at(i);
 
     R_logl = allocVector(REALSXP,1);
@@ -691,17 +691,19 @@ extern "C"
     return(R_logl);
   }
 }
+
 extern "C" 
 {
-  SEXP Neg_Bin_Gradient(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_gradient){
+  SEXP IPPM_Gradient(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_y_is_na, SEXP R_offset, SEXP R_offset, SEXP R_gradient){
     // tau is the parameter vector, 
     // od is the overdispersion parameter, 
     // X is the design matrix, 
     // N is the NB distributed variable
     int Xr, Xc;
-    double *pars=NULL, *y=NULL, *X=NULL, *w=NULL ,*offset=NULL,*r_pointer=NULL, *gradient=NULL;
+    double *pars=NULL, *y=NULL, *X=NULL, *w=NULL, *weights, *offset=NULL,*r_pointer=NULL, *gradient=NULL, *fitted_values=NULL;
     double logl;
-    int lpar;
+    int *y_is_na;
+    int lpar,i;
     double abstol,reltol;
     int fncount, grcount, ifail,trace,nREPORT;
     SEXP dimensions, R_logl;
@@ -713,10 +715,11 @@ extern "C"
     y=REAL(R_y);
     X=REAL(R_X);
     w=REAL(R_w);
+    weights=REAL(R_weights);
+    y_is_na=INTEGER(R_y_is_na);
     offset=REAL(R_offset);
     gradient=REAL(R_gradient);
-  
-
+    fitted_values=REAL(R_fitted_values);
 
     dimensions=getAttrib(R_X, R_DimSymbol);
     Xr=INTEGER(dimensions)[0];
