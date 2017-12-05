@@ -630,6 +630,124 @@ extern "C"
   }
 }
 
+extern "C" 
+{
+  SEXP IPPM(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_weights, SEXP R_y_is_na, SEXP R_offset, SEXP R_gradient, SEXP R_fitted_values){
+    // tau is the parameter vector, 
+    // od is the overdispersion parameter, 
+    // X is the design matrix, 
+    // N is the NB distributed variable
+    int Xr, Xc;
+    double *pars=NULL, *y=NULL, *X=NULL, *w=NULL,*offset=NULL,*r_pointer=NULL, *gradient=NULL, *fitted_values=NULL;
+    double logl;
+    int lpar,i;
+    double abstol,reltol;
+    int fncount, grcount, ifail,trace,nREPORT;
+    SEXP dimensions, R_logl;
+    lpar = LENGTH(R_pars);
+
+    //    vector<double> prams( lpar );
+    vector< double > params(lpar);
+    pars=REAL(R_pars);
+    y=REAL(R_y);
+    X=REAL(R_X);
+    w=REAL(R_w);
+    weights=REAL(R_weights);
+    y_is_na=INTEGER(R_y_is_na);
+    offset=REAL(R_offset);
+    gradient=REAL(R_gradient);
+    fitted_values=REAL(R_fitted_values);
+  
+
+
+    dimensions=getAttrib(R_X, R_DimSymbol);
+    Xr=INTEGER(dimensions)[0];
+    Xc=INTEGER(dimensions)[1];
+
+    Optimise_data_nbinom data;
+    data.SetVars(y,X, w, *offset,Xr,Xc);
+
+    abstol = 1e-8;
+    reltol = 1e-8;
+    nREPORT = 50;//how often to report
+    fncount=0;
+    grcount=0;
+    ifail=0;
+    trace=0;
+    vector <int> mask (lpar,1); 
+    vector < double > logl_out(lpar,0);
+
+    vmmin(lpar, pars, &logl_out.at(0), optimise_nbinom, gradient_nbinom, 1000, trace, &mask.at(0),  abstol,  reltol,  nREPORT, &data, &fncount, &grcount, &ifail);
+    
+    //std::cout << "ifail = " << ifail << "\n" ;
+    logl=1;
+    logl = optimise_nbinom(lpar, pars, &data);
+    gradient_nbinom(lpar,pars,gradient,&data);
+    for(i=0;i<Xr;i++) fitted_values[i] = data.lp.at(i);
+
+    R_logl = allocVector(REALSXP,1);
+    r_pointer = REAL(R_logl);
+    *r_pointer = logl;
+    return(R_logl);
+  }
+}
+extern "C" 
+{
+  SEXP Neg_Bin_Gradient(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_gradient){
+    // tau is the parameter vector, 
+    // od is the overdispersion parameter, 
+    // X is the design matrix, 
+    // N is the NB distributed variable
+    int Xr, Xc;
+    double *pars=NULL, *y=NULL, *X=NULL, *w=NULL ,*offset=NULL,*r_pointer=NULL, *gradient=NULL;
+    double logl;
+    int lpar;
+    double abstol,reltol;
+    int fncount, grcount, ifail,trace,nREPORT;
+    SEXP dimensions, R_logl;
+    lpar = LENGTH(R_pars);
+
+    //    vector<double> prams( lpar );
+    vector< double > params(lpar);
+    pars=REAL(R_pars);
+    y=REAL(R_y);
+    X=REAL(R_X);
+    w=REAL(R_w);
+    offset=REAL(R_offset);
+    gradient=REAL(R_gradient);
+  
+
+
+    dimensions=getAttrib(R_X, R_DimSymbol);
+    Xr=INTEGER(dimensions)[0];
+    Xc=INTEGER(dimensions)[1];
+
+    Optimise_data_nbinom data;
+    data.SetVars(y,X,w,*offset,Xr,Xc);
+
+    abstol = 1e-8;
+    reltol = 1e-8;
+    nREPORT = 5;//how often to report
+    fncount=0;
+    grcount=0;
+    ifail=0;
+    trace=1;
+    vector <int> mask (lpar,1); 
+    vector < double > logl_out(lpar,0);
+
+      
+    logl=1;
+    logl = optimise_nbinom(lpar, pars, &data);
+    gradient_nbinom(lpar,pars,gradient,&data);
+
+    R_logl = allocVector(REALSXP,1);
+    r_pointer = REAL(R_logl);
+    *r_pointer = logl;
+    return(R_logl);
+  }
+}
+
+
 
 double optimise_nbinom(int n, double *pars, void *ex){
 
