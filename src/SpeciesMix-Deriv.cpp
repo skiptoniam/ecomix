@@ -138,25 +138,6 @@ double optimise_function(int n, double *pars, void *ex){
 
 }
 
-double optimise_ippm_function(int n, double *pars, void *ex){
-
-  Optimise_data *data = (Optimise_data *) ex;
-  //Optimise_data data =  * (Optimise_data *) ex;
-  
-  vector<double> logl(1,0);
-  int i;
-  vector<double> x (n,0);
-  
-  for(i=0;i<n;i++) x.at(i) = pars[i];
-
-  logl = calc_ippm_logl(x,*data);
-
-  //logl = data->F.Forward(0,x);
-
-  return(0-logl.at(0));
-
-}
-
 void gradient_function(int n, double *pars, double *gr, void *ex ){
   Optimise_data *data = (Optimise_data *) ex;
   //Optimise_data data = *(Optimise_data *) ex;
@@ -694,13 +675,13 @@ extern "C"
 
 extern "C" 
 {
-  SEXP IPPM_Gradient(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_y_is_na, SEXP R_offset, SEXP R_offset, SEXP R_gradient){
+  SEXP IPPM_Gradient(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_y_is_na, SEXP R_offset, SEXP R_offset, SEXP R_gradient){
     // tau is the parameter vector, 
     // od is the overdispersion parameter, 
     // X is the design matrix, 
     // N is the NB distributed variable
     int Xr, Xc;
-    double *pars=NULL, *y=NULL, *X=NULL, *w=NULL, *weights, *offset=NULL,*r_pointer=NULL, *gradient=NULL, *fitted_values=NULL;
+    double *pars=NULL, *y=NULL, *X=NULL, *ippm_weights, *y_is_na, *offset=NULL,*r_pointer=NULL, *gradient=NULL, *fitted_values=NULL;
     double logl;
     int *y_is_na;
     int lpar,i;
@@ -714,8 +695,7 @@ extern "C"
     pars=REAL(R_pars);
     y=REAL(R_y);
     X=REAL(R_X);
-    w=REAL(R_w);
-    weights=REAL(R_weights);
+    ippm_weights=REAL(R_weights);
     y_is_na=INTEGER(R_y_is_na);
     offset=REAL(R_offset);
     gradient=REAL(R_gradient);
@@ -753,6 +733,27 @@ extern "C"
 
 
 double optimise_nbinom(int n, double *pars, void *ex){
+
+  Optimise_data_nbinom *data = (Optimise_data_nbinom *) ex;
+  //Optimise_data data =  * (Optimise_data *) ex;
+  
+  vector<double> logl(1,0);
+  int i;
+  vector<double> x (n,0);
+  //pars[0]=1;
+  
+  for(i=0;i<n;i++) x.at(i) = pars[i];
+
+
+  logl.at(0) = NBlogl(x,*data);
+ 
+  //logl = data->F.Forward(0,x);
+
+  return(0-logl.at(0));
+
+}
+
+double optimise_ippm(int n, double *pars, void *ex){
 
   Optimise_data_nbinom *data = (Optimise_data_nbinom *) ex;
   //Optimise_data data =  * (Optimise_data *) ex;
@@ -893,6 +894,7 @@ double optimise_mixnbinom_function(int n, double *pars, void *ex){
 
 }
 
+
 void gradient_mix_ipp_function(int n, double *pars, double *gr, void *ex ){
   Optimise_data *data = (Optimise_data *) ex;
   //Optimise_data data = *(Optimise_data *) ex;
@@ -959,6 +961,7 @@ void gradient_mix_ipp_function(int n, double *pars, double *gr, void *ex ){
   for(i=0;i<n;i++) gr[i] = 0-ad_g.at(i); 
 
 }
+
 
 // this is main gradient function. This is the expression of the derivates what we have. 
 void gradient_mixnbinom_function(int n, double *pars, double *gr, void *ex ){
