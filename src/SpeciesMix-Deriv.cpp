@@ -637,7 +637,7 @@ extern "C"
     // X is the design matrix, 
     // N is the NB distributed variable
     int Xr, Xc;
-    double *pars=NULL, *y=NULL, *X=NULL, *w=NULL, *weights, *offset=NULL,*r_pointer=NULL, *gradient=NULL, *fitted_values=NULL;
+    double *pars=NULL, *y=NULL, *X=NULL, *w=NULL, *ippm_weights, *y_is_na, *offset=NULL,*r_pointer=NULL, *gradient=NULL, *fitted_values=NULL;
     double logl;
     int *y_is_na;
     int lpar,i;
@@ -652,7 +652,7 @@ extern "C"
     y=REAL(R_y);
     X=REAL(R_X);
     w=REAL(R_w);
-    weights=REAL(R_weights);
+    ippm_weights=REAL(R_ippm_weights);
     y_is_na=INTEGER(R_y_is_na);
     offset=REAL(R_offset);
     gradient=REAL(R_gradient);
