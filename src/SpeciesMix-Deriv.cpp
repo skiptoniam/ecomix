@@ -10,7 +10,7 @@ extern "C"
     // ID_names is vector length S of unique ID
     // tau is easy pass out of matrix of tau
     // estpi is easy pass out of pi
-    // model_type selects model, 1 = binomial, 2 = negative binomial, 3 = tweedie, 4 = ipp
+    // model_type selects model, 1 = binomial, 2 = negative binomial, 3 = tweedie, poisson = 4, ippm = 5.
     // pars is pi, coef matrix (including intercept in the binomial case), species intercept (in case of neg bin, tweedie),  dispersion (in case of neg bin, tweedie)
     double *pars=NULL, *y=NULL, *X=NULL, *estpi=NULL, *tau=NULL, *pi=NULL, *r_pointer=NULL, *gradient=NULL, *offset=NULL;
     int *ID=NULL;
@@ -45,7 +45,7 @@ extern "C"
 
     dimensions=getAttrib(R_X, R_DimSymbol);
     Xr=INTEGER(dimensions)[0];
-    Xc=INTEGER(dimensions)[1];34
+    Xc=INTEGER(dimensions)[1];
 
     dimensions=getAttrib(R_tau, R_DimSymbol);
     S=INTEGER(dimensions)[0];
@@ -419,7 +419,7 @@ extern "C"
     tau=REAL(R_tau);
     ID=INTEGER(R_ID);
     gradient=REAL(R_gradient);
-     offset=REAL(R_offset);
+    offset=REAL(R_offset);
     model_type=*INTEGER(R_model_type);
 
       for(i=0;i<lpar;i++){ params.at(i) = pars[i]; }
@@ -613,14 +613,14 @@ extern "C"
 
 extern "C" 
 {
-  SEXP IPPM(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_weights, SEXP R_y_is_na, SEXP R_offset, SEXP R_gradient, SEXP R_fitted_values){
+  SEXP IPPM(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_ippm_weights, SEXP R_y_is_na, SEXP R_offset, SEXP R_gradient, SEXP R_fitted_values){
     // tau is the parameter vector, 
     // X is the design matrix, 
     // N is the NB distributed variable
     int Xr, Xc;
-    double *pars=NULL, *y=NULL, *X=NULL, *w=NULL, *ippm_weights, *y_is_na, *offset=NULL,*r_pointer=NULL, *gradient=NULL, *fitted_values=NULL;
+    double *pars=NULL, *y=NULL, *X=NULL, *ippm_weights=NULL, *offset=NULL,*r_pointer=NULL, *gradient=NULL, *fitted_values=NULL;
     double logl;
-    int *y_is_na;
+    int *y_is_na=NULL;
     int lpar,i;
     double abstol,reltol;
     int fncount, grcount, ifail,trace,nREPORT;
@@ -632,7 +632,7 @@ extern "C"
     pars=REAL(R_pars);
     y=REAL(R_y);
     X=REAL(R_X);
-    w=REAL(R_w);
+    //w=REAL(R_w);
     ippm_weights=REAL(R_ippm_weights);
     y_is_na=INTEGER(R_y_is_na);
     offset=REAL(R_offset);
@@ -645,8 +645,8 @@ extern "C"
     Xr=INTEGER(dimensions)[0];
     Xc=INTEGER(dimensions)[1];
 
-    Optimise_data_nbinom data;
-    data.SetVars(y,X, w, weights, y_is_na, *offset,Xr,Xc);
+    Optimise_data_ippm data;
+    data.SetVars(y,X, ippm_weights, y_is_na, *offset, Xr, Xc);
 
     abstol = 1e-8;
     reltol = 1e-8;
@@ -705,8 +705,8 @@ extern "C"
     Xr=INTEGER(dimensions)[0];
     Xc=INTEGER(dimensions)[1];
 
-    Optimise_data_nbinom data;
-    data.SetVars(y,X,w,*offset,Xr,Xc);
+    Optimise_data_ippm data;
+    data.SetVars(y,X,ippm_weights,y_is_na,*offset,Xr,Xc);
 
     abstol = 1e-8;
     reltol = 1e-8;
@@ -720,7 +720,7 @@ extern "C"
 
       
     logl=1;
-    logl = optimise_nbinom(lpar, pars, &data);
+    logl = optimise_ipp(lpar, pars, &data);
     gradient_nbinom(lpar,pars,gradient,&data);
 
     R_logl = allocVector(REALSXP,1);
@@ -855,6 +855,28 @@ void Optimise_data_nbinom::SetVars(double *ty, double *tX, double *tw, double to
   Xr=tXr;
   Xc=tXc;
   w=tw;
+  offset=toffset;
+  for(i=0;i<Xr;i++){
+    lp.push_back(0); //fitted values
+    tmp=0;
+    yt = (int)y[i];
+    for(j=1;j<=yt;j++){tmp+=log((double) j); }
+    log_y_factorial.push_back(tmp); 
+  }
+}
+
+Optimise_data_ippm::Optimise_data_ippm(){}
+Optimise_data_ippm::~Optimise_data_ippm(){}
+
+void Optimise_data_ippm::SetVars(double *ty, double *tX, double *tippm_weights, int *ty_is_na, double toffset, int tXr, int tXc){
+  int i,j,yt;
+  double tmp;
+  y=ty;
+  X=tX;
+  Xr=tXr;
+  Xc=tXc;
+  ippm_weights=tippm_weights;
+  y_is_na = ty_is_na;
   offset=toffset;
   for(i=0;i<Xr;i++){
     lp.push_back(0); //fitted values

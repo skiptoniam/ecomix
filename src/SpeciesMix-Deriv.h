@@ -60,7 +60,8 @@ public:
   Optimise_data_ippm();
   ~Optimise_data_ippm();
   
-  double *y, *X, *ippm_weights, *y_is_na, offset; // ippm_weights is a matrix of weights; y_is_na is a matrix of 0/1s
+  double *y, *X, *ippm_weights, offset; // ippm_weights is a matrix of weights; y_is_na is a matrix of 0/1s
+  int *y_is_na;
   int  Xr, Xc;
   vector<double> lp;
  
@@ -90,8 +91,8 @@ void gradient_nbinom(int n, double *pars, double *gr, void *ex );
 double NBlogl(vector<double> &pars, Optimise_data_nbinom &data );
 
 // ippm external calls
-extern "C"  SEXP IPPM(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_ippm_weights, SEXP R_y_is_na, SEXP R_offset, SEXP R_gradient, SEXP R_fitted_values);
-extern "C"  SEXP IPPM_Gradient(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_ippm_weights, SEXP R_y_is_na, SEXP R_offset, SEXP R_gradient);
+extern "C"  SEXP IPPM(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_ippm_weights, SEXP R_y_is_na, SEXP R_offset, SEXP R_gradient, SEXP R_fitted_values);
+extern "C"  SEXP IPPM_Gradient(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_ippm_weights, SEXP R_y_is_na, SEXP R_offset, SEXP R_gradient);
 double optimise_ippm(int n, double *pars, void *ex);
 void gradient_ippm(int n, double *pars, double *gr, void *ex );
 double ippm_logl(vector<double> &pars, Optimise_data_ippm &data );
