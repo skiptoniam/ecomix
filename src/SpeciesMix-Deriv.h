@@ -60,7 +60,7 @@ public:
   Optimise_data_ippm();
   ~Optimise_data_ippm();
   
-  double *y, *X, *w, *ippm_weights, *y_is_na, offset; // ippm_weights is a matrix of weights; y_is_na is a matrix of 0/1s
+  double *y, *X, *ippm_weights, *y_is_na, offset; // ippm_weights is a matrix of weights; y_is_na is a matrix of 0/1s
   int  Xr, Xc;
   vector<double> lp;
  
@@ -96,12 +96,6 @@ double optimise_ippm(int n, double *pars, void *ex);
 void gradient_ippm(int n, double *pars, double *gr, void *ex );
 double ippm_logl(vector<double> &pars, Optimise_data_ippm &data );
 
-// ippm mix
-double optimise_mix_ippm_function(int n, double *pars, void *ex); // *ex is all the other stuff.
-void gradient_mix_ippm_function(int n, double *pars, double *gr, void *ex );
-vector <double> calc_mix_ippm_logl(const vector<double> &pars, Optimise_data &data);
-double like_mix_ippm_function(vector< double > &estpi, vector < double > &coef, vector < double > &sp_int, vector < double > &sp_dispersion, const double *y, const double *X, int Xr, int Xc, int start, int end, double *tau, int s, vector<double> &sum_f_species, vector<double> &deriv_f_B, vector<double> &deriv_f_alphaS, vector<double> &deriv_f_dispersionS, vector<double> &log_y_factorial, const double *offset);
-
 // nbinom mix
 double optimise_mixnbinom_function(int n, double *pars, void *ex);
 void gradient_mixnbinom_function(int n, double *pars, double *gr, void *ex );
@@ -113,3 +107,10 @@ double optimise_tweedie_function(int n, double *pars, void *ex);
 void gradient_tweedie_function(int n, double *pars, double *gr, void *ex );
 vector <double> calc_tweedie_logl(const vector<double> &pars, Optimise_data &data);
 double like_tweedie_function(vector< double > &estpi, vector < double > &coef, vector < double > &sp_int, vector < double > &sp_dispersion, const double *y, const double *X, int Xr, int Xc, int start, int end, double *tau, int s, vector<double> &sum_f_species, vector<double> &deriv_f_B, vector<double> &deriv_f_alphaS, vector<double> &deriv_f_dispersionS, vector<double> &log_y_factorial, const double *offset);
+
+// ippm mix
+double optimise_mix_ippm_function(int n, double *pars, void *ex); // *ex is all the other stuff.
+void gradient_mix_ippm_function(int n, double *pars, double *gr, void *ex );
+vector <double> calc_mix_ippm_logl(const vector<double> &pars, Optimise_data &data);
+double like_mix_ippm_function(vector< double > &estpi, vector < double > &coef, vector < double > &sp_int, vector < double > &sp_dispersion, const double *y, const double *X, int Xr, int Xc, int start, int end, double *tau, int s, vector<double> &sum_f_species, vector<double> &deriv_f_B, vector<double> &deriv_f_alphaS, vector<double> &deriv_f_dispersionS, vector<double> &log_y_factorial, const double *offset);
+
