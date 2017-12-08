@@ -71,8 +71,8 @@ public:
 };
 
 // SpeciesMix external functions. Need to remember the vmin uses C not cpp
-extern "C"  SEXP SpeciesMix(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEXP R_tau, SEXP R_gradient, SEXP R_offset, SEXP R_model_type);
-extern "C"  SEXP Calculate_Gradient(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEXP R_tau, SEXP R_gradient, SEXP R_offset, SEXP R_model_type);
+extern "C"  SEXP species_mix_cpp(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEXP R_tau, SEXP R_gradient, SEXP R_offset, SEXP R_model_type);
+extern "C"  SEXP species_mix_gradient_cpp(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEXP R_tau, SEXP R_gradient, SEXP R_offset, SEXP R_model_type);
 double optimise_function(int n, double *pars, void *ex);
 void gradient_function(int n, double *pars, double *gr, void *ex );
 
