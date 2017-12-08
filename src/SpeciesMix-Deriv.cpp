@@ -2,7 +2,7 @@
 
 extern "C" 
 { 
-  SEXP SpeciesMix(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEXP R_tau, SEXP R_gradient, SEXP R_offset, SEXP R_model_type){
+  SEXP species_mix_cpp(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEXP R_tau, SEXP R_gradient, SEXP R_offset, SEXP R_model_type){
 
     // y is response
     // X is design matrix
@@ -389,7 +389,7 @@ void Optimise_data::SetVars(double *ty, double *tX, int *tID, int tS, int tG, in
 
 extern "C" 
 { 
-  SEXP Calculate_Gradient(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEXP R_tau, SEXP R_gradient, SEXP R_offset, SEXP R_model_type){
+  SEXP species_mix_gradient_cpp(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEXP R_tau, SEXP R_gradient, SEXP R_offset, SEXP R_model_type){
     // y is response
     //X is design matrix
     // ID is vector length(y) with species names for each observation
