@@ -111,12 +111,14 @@ Minima is found using vmmin (BFGS) and the gradients are calculated using CPPAD 
 Currently only 'bernoulli', 'negative_binomial' and 'tweedie' distributions use fitmix.cpp so the other statistical distributions could be slow.
 }
 \examples{
+\dontrun{
 form <- as.formula(paste0("cbind(",paste(paste0('spp',1:20),collapse = ','),")~1+x"))
 theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9),4,2,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),x=runif(100,0,2.5))
 simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
 model_data <- make_mixture_data(species_data = simulated_data$species_data, covariate_data = simulated_data$covariate_data)
 fm_species_mix <- species_mix(formula, data=model_data,distribution='bernoulli',n_mixtures=5)
+}
 fm1 <- species_mix(form,data)
 preds_fm1 <- predict(fm1,newdata)
 form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))

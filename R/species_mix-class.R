@@ -79,7 +79,7 @@
   X <- model.matrix(formula,mf)
 
   #get distribution
-  disty.cases <- c("bernoulli","negative_binomial","tweedie","normal","poisson","ippm")
+  disty.cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","normal")#new disty.cases for sams.
   disty <- get_distribution_sam(disty.cases, distribution)
 
   # get offsets and weights
@@ -88,9 +88,9 @@
 
   if(distribution=='ippm'){
     if(!all(colnames(y)%in%colnames(wts)))
-      stop('When modelling a inhomogenous poisson point process weights colnames must match species data colnames')
+      stop('When modelling a inhomogenous poisson point process model, weights colnames must match species data colnames')
     if(any(dim(y)!=dim(wts)))
-      stop('Weights needs to have the same dimensions at the species data - n_sites x n_species')
+      stop('When modelling a inhomogenous poisson point process model, weights needs to have the same dimensions at the species data - n_sites x n_species')
   }
 
   s.means = NULL
@@ -321,7 +321,7 @@
 
 "get_distribution_sam" <- function( disty.cases, dist1) {
   error.msg <- paste( c( "Distribution not implemented. Options are: ", disty.cases, "-- Exitting Now"), collapse=" ")
-  disty <- switch( dist1, "bernoulli" = 1,"negative_binomial" = 2,"tweedie" = 3,"gaussian" = 4,"poisson" = 5,"ippm"=6,{stop( error.msg)} )
+  disty <- switch( dist1, "bernoulli" = 1, "poisson" = 2, "ippm"=3, "negative_binomial" = 4, "tweedie" = 5, "gaussian" = 6,{stop( error.msg)} )
   return( disty)
 }
 
@@ -1499,8 +1499,6 @@
     list(logl=loglike,pi=pi,coef=coef,sp.intercept=sp.int,tau=round(exp(r.logl$tau),4),aic=AIC,bic=BIC,hessian=hes,gradient=gradient,covar=covar)#,r.grad=r.grad)
 
   }
-
-
 
 
 "fitmix_nbinom.cpp" <-
