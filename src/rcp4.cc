@@ -3,7 +3,7 @@
 
 extern "C" { SEXP RCP_C( SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP Rwts,
 				     SEXP RS, SEXP RG, SEXP Rp, SEXP Rpw, SEXP RnObs, SEXP Rdisty,
-					 SEXP Ralpha, SEXP Rtau, SEXP Rbeta, SEXP Rgamma, SEXP Rdisps, SEXP Rpowers, 
+					 SEXP Ralpha, SEXP Rtau, SEXP Rbeta, SEXP Rgamma, SEXP Rdisps, SEXP Rpowers,
 					 SEXP Rconc, SEXP Rsd, SEXP RsdGamma, SEXP RdispLocat, SEXP RdispScale,
 					 SEXP RderivsAlpha, SEXP RderivsTau, SEXP RderivsBeta, SEXP RderivsGamma, SEXP RderivsDisps, SEXP Rscores,
 					 SEXP Rpis, SEXP Rmus, SEXP RlogDens, SEXP Rlogli,
@@ -98,7 +98,7 @@ double mixLogl( const myData &dat, const myParms &parms, myFits &fits)
 	}
 	penTau = calcTauPen( dat, parms);
 	penGamma = calcGammaPen( dat, parms);
-	
+
 	res += pen;
 	res += penTau;
 	res += penGamma;
@@ -113,7 +113,7 @@ double mixLogl( const myData &dat, const myParms &parms, myFits &fits)
 double calcDispPen( const myData &dat, const myParms &parms)
 {
 	double pen = 0.0, penContr = 0.0;//, sig;
-	
+
 	for( int s=0; s<dat.nS; s++){
 		penContr = - (parms.Disp[s]-parms.dispLocat) * (parms.Disp[s]-parms.dispLocat) / (2*parms.dispScale*parms.dispScale);	//dispersions are log-normally distributed (params are normally distributed)
 //		Rprintf( "Species: %i, param: %f, penalty: %f, Cumulative %f \n", s, parms.Disp[s], penContr, pen);
@@ -138,11 +138,11 @@ double calcTauPen( const myData &dat, const myParms &parms)
 double calcGammaPen( const myData &dat, const myParms &parms)
 {
 	double penGamma = 0.0;
-	
+
 	for( int s=0; s<dat.nS; s++)
 		for( int p=0; p<dat.npw; p++)
 			penGamma += -parms.Gamma[MATREF(s,p,dat.nS)]*parms.Gamma[MATREF(s,p,dat.nS)] / (2*parms.sdGamma*parms.sdGamma);
-	
+
 	return( penGamma);
 }
 
@@ -176,7 +176,7 @@ void calcLogPis( vector<double> &logPis, vector<double> &pis, const myData &dat,
 	pis.at(dat.nG-1) = 1-sumpi;
 	for( int k=0; k<dat.nG; k++)
 		logPis.at(k) = log( pis.at(k));
-		
+
 	for( int k=0; k<dat.nG; k++){
 		if( logPis.at(k)>=0)
 			logPis.at(k) = -DBL_MIN;	//Smallest (absolute) non-zero number on your machine
@@ -203,9 +203,9 @@ void calcLogCondDens( vector<double> &condDens, const vector<double> &fits, cons
 				case 3:
 					condDensSG.at(MATREF(g,s,dat.nG)) = logNegBin( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
 					break;
-				case 4:
-					condDensSG.at(MATREF(g,s,dat.nG)) = logTweedie( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s], parms.Power[s]);
-//					Rprintf("%f\t",condDensSG.at(MATREF(g,s,dat.nG)));
+// 				case 4:
+// 					condDensSG.at(MATREF(g,s,dat.nG)) = logTweedie( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s], parms.Power[s]);
+// //					Rprintf("%f\t",condDensSG.at(MATREF(g,s,dat.nG)));
 					break;
 				case 5:
 					condDensSG.at(MATREF(g,s,dat.nG)) = logNormal( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
@@ -239,7 +239,7 @@ void calcMuFits( vector<double> &fits, const myData &dat, const myParms &parms)
 				for( int p=0; p<dat.npw; p++)
 					lp += dat.W[MATREF(i,p,dat.nObs)] * parms.Gamma[MATREF(s,p,dat.nS)];
 				switch( dat.disty){
-					case 1: 
+					case 1:
 						fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = invLogit( lp);
 						break;
 					case 2:
@@ -272,7 +272,7 @@ double logPoisson( const double &y, const double &mu)
 	tmp = y * log( mu);
 	tmp -= lgammafn(y+1);
 	tmp -= mu;
-	return( tmp);	
+	return( tmp);
 }
 
 double logNegBin( const double &y, const double &mu, const double &od)
@@ -285,31 +285,31 @@ double logNegBin( const double &y, const double &mu, const double &od)
 	tmp1 += theta*log( theta);
 	tmp1 -= ( theta+y)*log(mu+theta);
 	tmp1 -= lgamma(y+1);// this shouldn't be needed, but it is...  I can't understand why.  Perhaps there is something funny going on with errors cancelling?  Can't be, I think.*/
-	
+
 	tmp = dnbinom_mu(y, theta, mu, 1);
 	//Equivalent to before but possibly more stable -- use this!
-	
-	return( tmp);	
-}
 
-double logTweedie( const double &y, const double &mu, const double &phi, const double &p)
-{
-	double lambda, alpha, tau, muZ, tmp, phi1;
-	phi1 = exp( phi);
-	lambda = R_pow( mu, (2-p)) / ( phi1*(2-p));
-	alpha = ( 2-p) / ( p-1);
-	tau = phi1*(p-1)*R_pow(mu,(p-1));
-	muZ = alpha * tau;
-	
-	tmp = dTweedie( y, lambda, muZ, alpha, 1);
 	return( tmp);
 }
+
+// double logTweedie( const double &y, const double &mu, const double &phi, const double &p)
+// {
+// 	double lambda, alpha, tau, muZ, tmp, phi1;
+// 	phi1 = exp( phi);
+// 	lambda = R_pow( mu, (2-p)) / ( phi1*(2-p));
+// 	alpha = ( 2-p) / ( p-1);
+// 	tau = phi1*(p-1)*R_pow(mu,(p-1));
+// 	muZ = alpha * tau;
+//
+// 	tmp = dTweedie( y, lambda, muZ, alpha, 1);
+// 	return( tmp);
+// }
 
 double logNormal( const double &y, const double &mu, const double &sig)
 {
 	double tmp, sig1;
 	sig1 = exp( sig);
-	
+
 	tmp = -log( sig1);
 	tmp -= (y-mu)*(y-mu)/(2*sig1*sig1);
 	return( tmp);
@@ -348,7 +348,7 @@ void loglDerivs( const myData &dat, const myParms &parms, myDerivs &derivs, myFi
 	double wi, tmp1;
 	vector<double> wij( dat.nG, dat.NAnum);
 	int m;	//location of the maximum group contribution
-	
+
 	vector<double> muDerivsI( dat.nG*dat.nS, dat.NAnum);
 	vector<double> etaDerivsI( dat.nG*dat.nS, dat.NAnum);
 	vector<double> alphaDerivsI( dat.nS, dat.NAnum);
@@ -406,7 +406,7 @@ void weightDerivs( vector<double> &alphaDerivsI, vector<double> &tauDerivsI, vec
 	for( size_t s=0; s<betaDerivsI.size(); s++)
 		betaDerivsI.at(s) *= dat.wts[i];
 	for( size_t s=0; s<dispDerivsI.size(); s++)
-		dispDerivsI.at(s) *= dat.wts[i];		
+		dispDerivsI.at(s) *= dat.wts[i];
 }
 
 void calcDispDeriv( vector<double> &dispDerivsI, const vector<double> &fits, const myData &dat, const myParms &parms, const double &wi, const vector<double> &wij, const int &m, const int &i)
@@ -416,22 +416,22 @@ void calcDispDeriv( vector<double> &dispDerivsI, const vector<double> &fits, con
 
 	if( !dat.isDispersion())
 		return;	//nothing to do here, move along please
-			
+
 	for( int s=0; s<dat.nS; s++)
 		for( int g=0; g<dat.nG; g++){
 			switch( dat.disty){
 				case 3:
 					tmpDerivs.at(MATREF(g,s,dat.nG)) = logNegBinDispDer( dat.y[MATREF(i,s,dat.nObs)], fits.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), parms.Disp[s]);
 					break;
-				case 4:
-					tmpDerivs.at(MATREF(g,s,dat.nG)) = logTweedieDispDer( dat.y[MATREF(i,s,dat.nObs)], fits.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), parms.Disp[s], parms.Power[s]);
-					break;
+				// case 4:
+				// 	tmpDerivs.at(MATREF(g,s,dat.nG)) = logTweedieDispDer( dat.y[MATREF(i,s,dat.nObs)], fits.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), parms.Disp[s], parms.Power[s]);
+				// 	break;
 				case 5:
 					tmpDerivs.at(MATREF(g,s,dat.nG)) = logNormalDispDer( dat.y[MATREF(i,s,dat.nObs)], fits.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), parms.Disp[s]);
 					break;
 			}
 		}
-	
+
 	dispDerivsI.assign(dispDerivsI.size(), 0.0);
 	for( int s=0; s<dat.nS; s++){
 		summand = 0.0;
@@ -452,10 +452,10 @@ void calcDispPenDeriv( vector<double> &dispDerivsI, const myData &dat, const myP
 double logNegBinDispDer( double y, double fit, double dispParm)
 {
 	double theta, sig, res=0.0;
-	
+
 	sig = exp( dispParm);
 	theta = 1 / sig;
-	
+
 	res = digamma( theta+y);
 	res -= digamma( theta);
 	res += 1 + log( theta) - log( fit+theta) - (theta+y)/(theta+fit);
@@ -465,27 +465,27 @@ double logNegBinDispDer( double y, double fit, double dispParm)
 	return( res);
 }
 
-double logTweedieDispDer( double y, double fit, double dispParm , double p)
-{
-	double phi, tmp;
-	
-	phi = exp( dispParm);
-	
-	tmp = dTweediePhi( y, fit, phi, p);
-	tmp *= phi;
-	
-	return( tmp);	
-}
+// double logTweedieDispDer( double y, double fit, double dispParm , double p)
+// {
+// 	double phi, tmp;
+//
+// 	phi = exp( dispParm);
+//
+// 	tmp = dTweediePhi( y, fit, phi, p);
+// 	tmp *= phi;
+//
+// 	return( tmp);
+// }
 
 double logNormalDispDer( double y, double fit, double dispParm)
 {
 	double sig, res=0.0;
-	
+
 	sig = exp( dispParm);
 	res = (y-fit)*(y-fit) / (sig*sig*sig);
 	res -= 1/sig;
 	res *= sig; //for the change of variable dispParm --> sig
-	
+
 	return( res);
 }
 
@@ -498,7 +498,7 @@ void calcDerivMu( vector<double> &muDerivs, const vector<double> &fits, const my
 	for( int g=0; g<dat.nG; g++)
 		for( int s=0; s<dat.nS; s++)
 			switch( dat.disty){
-				case 1: 
+				case 1:
 					tmpDerivs.at(MATREF(g,s,dat.nG)) = logBernDer( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 					break;
 				case 2:
@@ -507,14 +507,14 @@ void calcDerivMu( vector<double> &muDerivs, const vector<double> &fits, const my
 				case 3:
 					tmpDerivs.at(MATREF(g,s,dat.nG)) = logNegBinLocatDer( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
 					break;
-				case 4:
-					tmpDerivs.at(MATREF(g,s,dat.nG)) = 	dTweedieMu( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp( parms.Disp[s]), parms.Power[s]);
-					break;
+				// case 4:
+				// 	tmpDerivs.at(MATREF(g,s,dat.nG)) = 	dTweedieMu( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp( parms.Disp[s]), parms.Power[s]);
+				// 	break;
 				case 5:
 					tmpDerivs.at(MATREF(g,s,dat.nG)) = logNormalLocatDer( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
-					break;					
+					break;
 			}
-		
+
 
 	for( int s=0; s<dat.nS; s++){
 		muDerivs.at(MATREF(m,s,dat.nG)) = 0.0;
@@ -535,7 +535,7 @@ void calcDerivEtaMu( vector<double> &etaDerivsI, const myData &dat, const vector
 	for( int g=0; g<dat.nG; g++)
 		for( int s=0; s<dat.nS; s++)
 			switch( dat.disty){
-				case 1: 
+				case 1:
 					etaDerivsI.at(MATREF(g,s,dat.nG)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * (1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS))) * muDerivsI.at(MATREF(g,s,dat.nG));	//logit link
 					break;
 				case 2:
@@ -568,7 +568,7 @@ double logPoissonDer( const double &y, const double &mu)
 	double tmp;
 	tmp = y/mu;
 	tmp -= 1;
-	
+
 	return( tmp);
 }
 
@@ -584,8 +584,8 @@ double logNegBinLocatDer( const double &y, const double &mu, const double &od)
 double logNormalLocatDer( const double &y, const double &mu, const double &sig)
 {
 	double tmp, sig1;
-	
-	sig1 = exp( sig);	
+
+	sig1 = exp( sig);
 	tmp = (y-mu) / (sig1*sig1);
 	return( tmp);
 }
@@ -710,7 +710,7 @@ double ALLoptimise( allClasses &all)
 	all.parms.getArray( vmminParms, all.data);
 	all.parms.getArray( vmminParmsIn, all.data);	//del
 	vmmin( all.parms.nTot, vmminParms, vmminLogl, optimise_function, gradient_function, all.contr.maxitQN, all.contr.traceQN, myMask, all.contr.abstol, all.contr.reltol, all.contr.nReport, &all, &all.contr.fnKount, &all.contr.grKount, &all.contr.ifail);
-//	nmmin( all.parms.nTot, vmminParmsIn, vmminParms, vmminLogl, optimise_function, &all.contr.ifail, all.contr.abstol, all.contr.reltol, &all, 1.0, 0.5, 2.0, all.contr.traceQN, &all.contr.fnKount, all.contr.maxitQN);	
+//	nmmin( all.parms.nTot, vmminParmsIn, vmminParms, vmminLogl, optimise_function, &all.contr.ifail, all.contr.abstol, all.contr.reltol, &all, 1.0, 0.5, 2.0, all.contr.traceQN, &all.contr.fnKount, all.contr.maxitQN);
 	//update parameters
 	all.parms.update( vmminParms, all.data);
 	gradient_function(all.parms.nTot, vmminParms, vmminGrad, &all);
@@ -740,7 +740,7 @@ double optimise_function(int n, double *par, void *ex)
 
 	all->parms.update( par, all->data);
 	logl = mixLogl( all->data, all->parms, all->fits);
-	
+
 	return( (0.0-logl));
 }
 

@@ -31,7 +31,7 @@ The response variable (left hand side of the formula) needs to be either 'presen
 
 \item{model_data}{a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containng the covariate data for each site. Names of columns must match that given in \code{rcp_formula} and \code{species_formula}.}
 
-\item{distribution}{The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data.}
+\item{distribution}{The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial" and "gaussian" distributions are possible and applicable to specific types of data.}
 
 \item{initialise}{a characture string which defines the method used to initialise finite mixture model clustering. #Will have to synergise this function call across RCP and SpeciesMix. Looks like SpeciesMix uses a em.prefit to setup initialisations. regional_mix has a number of methods. This seems like a good place to setup the bivariate clusting step - cobra function.}
 }
@@ -45,4 +45,3 @@ spp_form <- observations ~ 1 + w1 + w2
 model_data <- list('species_data' = Y, 'covariate_data' = X)
 fm_regional_mix <- regional_mix(rcp_form,spp_form,data=model_data,distribution='bernoulli',n_mixtures=5)
 }
-

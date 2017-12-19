@@ -6,7 +6,7 @@
 #include<Rinternals.h>
 #include<R_ext/Applic.h>
 #include<vector>
-#include"Tweedie.h"
+//#include"Tweedie.h"
 
 #undef length
 #include <iostream>
@@ -32,7 +32,7 @@ class myData
 		myData();
 		~myData();
 		void setVals( const SEXP &Ry, const SEXP &RX, const SEXP &RW, const SEXP &Roffset, const SEXP &RS, const SEXP &RG, const SEXP &Rp, const SEXP &Rpw, const SEXP &RnObs, const SEXP &Rdisty, const SEXP &RoptiDisp, const SEXP &RlogWts);
-		bool isDispersion() const;		
+		bool isDispersion() const;
 		bool doOptiDisp() const;
 		void printVals( int printX, int printW, int printy);
 
@@ -113,12 +113,12 @@ class myOptContr
 
 class myFits
 {
-	public: 
+	public:
 		myFits();
 		~myFits();
 		void initialise( const int &nObs, const int &nG, const int &nS, const int &NAnum);
 		void zero(const int &NAnum);
-		
+
 		vector< vector<double> > allPis;	//2D array for the fitted pis
 		vector<double> allMus; 	//3D array for the fitted mus (note that indexing must be done with MATREF3D)
 		vector< vector<double> > allLogDens;	//2D array for the logls, conditional on RCP type
@@ -144,7 +144,7 @@ class allClasses
 ////////////////////////////////////////////////////////
 extern "C" SEXP RCP_C( SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP Rwts,
 						 SEXP RS, SEXP RG, SEXP Rp, SEXP Rpw, SEXP RnObs, SEXP Rdisty,
-						 SEXP Ralpha, SEXP Rtau, SEXP Rbeta, SEXP Rgamma, SEXP Rdisps, SEXP Rpowers, 
+						 SEXP Ralpha, SEXP Rtau, SEXP Rbeta, SEXP Rgamma, SEXP Rdisps, SEXP Rpowers,
 						 SEXP Rconc, SEXP Rsd, SEXP RsdGamma, SEXP RdispLocat, SEXP RdispScale,
 						 SEXP RderivsAlpha, SEXP RderivsTau, SEXP RderivsBeta, SEXP RderivsGamma, SEXP RderivsDisps, SEXP Rscores,
 						 SEXP Rpis, SEXP Rmus, SEXP RlogDens, SEXP Rlogli,
