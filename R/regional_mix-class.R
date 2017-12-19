@@ -677,13 +677,13 @@ function( titbits, outcomes, X, W, offset, wts, form.RCP, form.spp, control, dis
       logls[ss] <- sum( dnbinom( x=outcomes[,ss], size=tmp.fm$theta, mu=tmp.fm$fitted, log = TRUE))
       disp[ss] <- log( 1/tmp.fm$theta)
     }
-    if( disty==4){  #Tweedie
-      df3 <- as.data.frame( cbind( y=outcomes[,ss], offy=offy, W))
-      tmp.fm <- fishMod::tglm( y~.-1-offy+offset(offy), wts=wts, data=df3, p=power[ss], vcov=FALSE, residuals=FALSE, trace=0)
-      logls[ss] <- sum( fishMod::dTweedie( y=outcomes[,ss], mu=tmp.fm$fitted, phi=tmp.fm$coef["phi"], p=power[ss], LOG=TRUE))
-      disp[ss] <- log( tmp.fm$coef["phi"])
-      tmp.fm$coef <- tmp.fm$coef[names( tmp.fm$coef) != "phi"]
-    }
+    # if( disty==4){  #Tweedie
+    #   df3 <- as.data.frame( cbind( y=outcomes[,ss], offy=offy, W))
+    #   tmp.fm <- fishMod::tglm( y~.-1-offy+offset(offy), wts=wts, data=df3, p=power[ss], vcov=FALSE, residuals=FALSE, trace=0)
+    #   logls[ss] <- sum( fishMod::dTweedie( y=outcomes[,ss], mu=tmp.fm$fitted, phi=tmp.fm$coef["phi"], p=power[ss], LOG=TRUE))
+    #   disp[ss] <- log( tmp.fm$coef["phi"])
+    #   tmp.fm$coef <- tmp.fm$coef[names( tmp.fm$coef) != "phi"]
+    # }
     if( disty==5){  #gaussian
       tmp.fm <- lm( outcomes[,ss] ~-1+W, offset=offy, weights=wts)
       disp[ss] <- log(summary(tmp.fm)$sigma)
@@ -1373,7 +1373,7 @@ function( fm, mf, nboot)
 #' @param species_formula an object of class "formula" (or an object that can be coerced to that class). The left hand side of this formula should be left empty (it is removed if it is not empty). The right hand side of this formula specifies the dependence of the species"'" data on covariates (typically different covariates to \code{rcp_formula} to avoid confusing confounding). An example formula is observations ~ gear_type + time_of_day, where gear_type describes the different sampling gears and time_of_day describes the time of the sample. #maybe could call this detection/bias
 #' @param model_data a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containng the covariate data for each site. Names of columns must match that given in \code{rcp_formula} and \code{species_formula}.
 #' @param nRCP The number of mixing components (groups) to fit.
-#' @param distribution The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data.
+#' @param distribution The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial" and "gaussian" distributions are possible and applicable to specific types of data.
 #' @param offset a numeric vector of length nrow( data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the unobserved RCP type. Note that offsets cannot be included as part of the rcp_formula or species_formula arguments ??? only through this argument.
 #' @param weights a numeric vector of length nrow( data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1.
 #' @param control a list of control parameters for optimisation and calculation. See details. From \code{control} control.
@@ -1484,12 +1484,12 @@ function( outcomes, W, X, offy, wts, disty, nRCP, power, inits, control, n, S, p
     #doing the optimisation
     if( !control$quiet)
       message( "Quasi-Newton Optimisation")
-    if( disty != 4){ #not Tweedie
+    # if( disty != 4){ #not Tweedie
       optimiseDisp <- TRUE
       tmp <- notTweedieOptimise( outcomes, X, W, offy, wts, S, nRCP, p.x, p.w, nrow( X), disty, start.vals, power, control)
-    }
-    else #Tweedie -- quite convoluted in comparison
-      tmp <- TweedieOptimise( outcomes, X, W, offy, wts, S, nRCP, p.x, p.w, nrow( X), disty, start.vals, power, control)
+    # }
+    # else #Tweedie -- quite convoluted in comparison
+    #   tmp <- TweedieOptimise( outcomes, X, W, offy, wts, S, nRCP, p.x, p.w, nrow( X), disty, start.vals, power, control)
 
     return( tmp)
 
@@ -1551,8 +1551,8 @@ function (form.RCP = NULL, form.spp = NULL, data, nRCP = 3, dist="bernoulli", of
     #get distribution
     disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie","gaussian")
     disty <- get_dist_rcp( disty.cases, dist)
-    #get power params for Tweedie
-    power <- get_power_rcp( disty, power)
+    # #get power params for Tweedie
+    # power <- get_power_rcp( disty, power)
     #summarising data to console
     print.data.summ( data, dat, S, form.RCP, form.spp, disty.cases, disty, control$quiet)
 
@@ -1595,7 +1595,7 @@ function (form.RCP = NULL, form.spp = NULL, data, nRCP = 3, dist="bernoulli", of
 
 #' @rdname regional_mix-class
 #' @name residuals
-#' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep). The result is one residual per species per site and they all should be standard 
+#' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep). The result is one residual per species per site and they all should be standard
 #' normal variates. Within a site they are likely to be correlated (as they share a common latent factor), but across sampling locations they will be independent.
 
 #'  The deviance residuals (as used here), are actually just square root of minus two times the log-likelihood contribution for each sampling location. We do #' not subtract the log-likelihood of the saturated model as, at the time of writing, we are unsure what this log-likelihood should be (latent factors confuse #' things here). This implies that the residuals will not have mean zero and their variance might also be heteroskedastic. This was not realised when writing #' the original RCP paper (Foster et al, 2013), obviously. We still believe that these residuals have some utility, but we are unsure where that utility stops. #' For general useage, the "RQR" residuals should probably be preferred.}
@@ -1619,7 +1619,7 @@ function( object, ..., type="RQR", quiet=FALSE)
       bernoulli = { fn <- function(y,mu,logdisp,power) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
       poisson = { fn <- function(y,mu,logdisp,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
       negative_binomial = { fn <- function(y,mu,logdisp,power) pnbinom( q=y, mu=mu, size=1/exp( logdisp), lower.tail=TRUE)},
-      tweedie = { fn <- function(y,mu,logdisp,power) fishMod::pTweedie( q=y, mu=mu, phi=exp( logdisp), p=power)},#CHECK!!!
+      # tweedie = { fn <- function(y,mu,logdisp,power) fishMod::pTweedie( q=y, mu=mu, phi=exp( logdisp), p=power)},#CHECK!!!
       gaussian = { fn <- function(y,mu,logdisp,power) pnorm( q=y, mean=mu, sd=exp( logdisp), lower.tail=TRUE)})
 
     for( ss in 1:object$S){
@@ -1636,16 +1636,16 @@ function( object, ..., type="RQR", quiet=FALSE)
         resids[,ss] <- runif( object$n, min=tmpLower, max=tmpUpper)
         resids[,ss] <- qnorm( resids[,ss])
       }
-      if( object$dist == "tweedie"){
-        nonzero <- object$titbits$Y[,ss]>0
-        tmpObs <- matrix( rep( object$titbits$Y[,ss], object$nRCP), ncol=object$nRCP)
-        tmp <- matrix( fn( as.numeric( tmpObs[nonzero,]), as.numeric( object$mus[nonzero,ss,]), object$coefs$disp[ss], object$titbits$power[ss]), ncol=object$nRCP)
-        tmp <- rowSums( tmp * object$pis[nonzero,])
-        resids[nonzero,ss] <- qnorm( tmp)
-        tmp <- matrix( fn( as.numeric( tmpObs[!nonzero,]), as.numeric( object$mus[!nonzero,ss,]), object$coefs$disp[ss], object$titbits$power[ss]), ncol=object$nRCP)
-        tmp <- rowSums( tmp * object$pis[!nonzero,])
-        resids[!nonzero,ss] <- qnorm( runif( sum( !nonzero), min=0, max=tmp))
-      }
+      # if( object$dist == "tweedie"){
+      #   nonzero <- object$titbits$Y[,ss]>0
+      #   tmpObs <- matrix( rep( object$titbits$Y[,ss], object$nRCP), ncol=object$nRCP)
+      #   tmp <- matrix( fn( as.numeric( tmpObs[nonzero,]), as.numeric( object$mus[nonzero,ss,]), object$coefs$disp[ss], object$titbits$power[ss]), ncol=object$nRCP)
+      #   tmp <- rowSums( tmp * object$pis[nonzero,])
+      #   resids[nonzero,ss] <- qnorm( tmp)
+      #   tmp <- matrix( fn( as.numeric( tmpObs[!nonzero,]), as.numeric( object$mus[!nonzero,ss,]), object$coefs$disp[ss], object$titbits$power[ss]), ncol=object$nRCP)
+      #   tmp <- rowSums( tmp * object$pis[!nonzero,])
+      #   resids[!nonzero,ss] <- qnorm( runif( sum( !nonzero), min=0, max=tmp))
+      # }
       if( object$dist == "gaussian"){
         tmp <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$disp[ss], object$titbits$power[ss])
         tmp <- rowSums( tmp * object$pis)
@@ -1791,14 +1791,14 @@ function (nRCP=3, S=20, n=200, p.x=3, p.w=0, alpha=NULL, tau=NULL, beta=NULL, ga
       message( "Random values for overdispersions")
       logDisps <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
     }
-    if( dist=="tweedie" & (is.null( logDisps) | length( logDisps) != S)){
-      message( "Random values for species' dispersion parameters")
-      logDisps <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
-    }
-    if( dist=="tweedie" & (is.null( powers) | length( powers) != S)) {
-      message( "Power parameter assigned to 1.6 for each species")
-      powers <- rep( 1.6, S)
-    }
+    # if( dist=="tweedie" & (is.null( logDisps) | length( logDisps) != S)){
+    #   message( "Random values for species' dispersion parameters")
+    #   logDisps <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
+    # }
+    # if( dist=="tweedie" & (is.null( powers) | length( powers) != S)) {
+    #   message( "Power parameter assigned to 1.6 for each species")
+    #   powers <- rep( 1.6, S)
+    # }
     if( dist=="gaussian" & (is.null( logDisps) | length( logDisps) != S)){
       message( "Random values for species' variance parameters")
       logDisps <- log( 1 + rgamma( n+S, shape=1, scale=0.75))
@@ -1843,7 +1843,7 @@ function (nRCP=3, S=20, n=200, p.x=3, p.w=0, alpha=NULL, tau=NULL, beta=NULL, ga
 
     if( dist=="bernoulli")
       mu <- inv.logit(etaMu)
-    if( dist %in% c("poisson","negative_binomial","tweedie"))
+    if( dist %in% c("poisson","negative_binomial"))#,"tweedie"))
       mu <- exp( etaMu)
     if( dist == "gaussian")
       mu <- etaMu
@@ -1858,8 +1858,8 @@ function (nRCP=3, S=20, n=200, p.x=3, p.w=0, alpha=NULL, tau=NULL, beta=NULL, ga
       outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
     if( dist=="negative_binomial")
       outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp( logDisps), each=n)), nrow = n, ncol = S)
-    if( dist=="tweedie")
-      outcomes <- matrix( fishMod::rTweedie( n * S, mu=as.numeric( fitted), phi=rep( exp( logDisps), each=n), p=rep( powers, each=n)), nrow=n, ncol=S)
+    # if( dist=="tweedie")
+    #   outcomes <- matrix( fishMod::rTweedie( n * S, mu=as.numeric( fitted), phi=rep( exp( logDisps), each=n), p=rep( powers, each=n)), nrow=n, ncol=S)
     if( dist=="gaussian")
       outcomes <- matrix( rnorm( n=n*S, mean=as.numeric( fitted), sd=rep( exp( logDisps), each=n)), nrow=n, ncol=S)
 
@@ -1923,126 +1923,126 @@ function (object, ...)
 }
 
 
-"TweedieOptimise" <-
-function( outcomes, X, W, offy, wts, S, nRCP, p.x, p.w, n, disty, start.vals, power, control)
-{
-  Tw.phi.func <- function( phi1, spp3){
-    disp3 <- disp
-    disp3[spp3] <- phi1
-    tmp1 <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
-      as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
-      alpha, tau, beta, gamma, disp3, power,
-      as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
-      alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
-      pis, mus, logCondDens, logls,
-      as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-      as.integer(FALSE), as.integer(TRUE), as.integer( FALSE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "RCPmod")
-    return( -as.numeric( tmp1))
-  }
+# "TweedieOptimise" <-
+# function( outcomes, X, W, offy, wts, S, nRCP, p.x, p.w, n, disty, start.vals, power, control)
+# {
+#   Tw.phi.func <- function( phi1, spp3){
+#     disp3 <- disp
+#     disp3[spp3] <- phi1
+#     tmp1 <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
+#       as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
+#       alpha, tau, beta, gamma, disp3, power,
+#       as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
+#       alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
+#       pis, mus, logCondDens, logls,
+#       as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
+#       as.integer(FALSE), as.integer(TRUE), as.integer( FALSE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "RCPmod")
+#     return( -as.numeric( tmp1))
+#   }
 
-  Tw.phi.func.grad <- function( phi1, spp3){
-    disp3 <- disp
-    disp3[spp3] <- phi1
-    tmp.disp.score <- rep( -99999, S)
-    tmp1 <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
-      as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
-      alpha, tau, beta, gamma, disp3, power,
-      as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
-      alpha.score, tau.score, beta.score, gamma.score, tmp.disp.score, scoreContri,
-      pis, mus, logCondDens, logls,
-      as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-      as.integer(FALSE), as.integer(FALSE), as.integer(TRUE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "RCPmod")
-    return( -as.numeric( tmp.disp.score[spp3]))
-  }
-
-  inits <- c(start.vals$alpha, start.vals$tau, start.vals$beta, start.vals$gamma, start.vals$disp)
-  alpha <- start.vals$alpha; tau <- as.numeric( start.vals$tau); beta <- as.numeric( start.vals$beta); gamma <- as.numeric( start.vals$gamma); disp <- start.vals$disp
-  #scores
-  alpha.score <- as.numeric(rep(NA, S))
-  tau.score <- as.numeric(matrix(NA, ncol = S, nrow = nRCP - 1))
-  beta.score <- as.numeric(matrix(NA, ncol = ncol(X), nrow = nRCP - 1))
-  if( p.w > 0)
-    gamma.score <- as.numeric(matrix( NA, nrow=S, ncol=ncol(W)))
-  else
-    gamma.score <- -999999
-  if( disty %in% 3:5)
-    disp.score <- as.numeric( rep( NA, S))
-  else
-    disp.score <- -999999
-  scoreContri <- -999999  #as.numeric(matrix(NA, ncol = length(inits), nrow = n))
-  #model quantities
-  pis <- as.numeric(matrix(NA, nrow = n, ncol = nRCP))  #container for the fitted RCP model
-  mus <- as.numeric(array( NA, dim=c( n, S, nRCP)))  #container for the fitted spp model
-  logCondDens <- as.numeric(matrix(NA, nrow = n, ncol = nRCP))
-  logls <- as.numeric(rep(NA, n))
-  conv <- as.integer(0)
-
-  optimiseDisp <- FALSE
-  kount <- 1
-  tmp.new <- tmp.old <- -999999
-  if( control$optimise){
-    while( (abs( abs( tmp.new - tmp.old) / ( abs( tmp.old) + control$reltol)) > control$reltol | kount==1) & (kount < 15)){
-      kount <- kount + 1
-      tmp.old <- tmp.new
-      message( "Updating Location Parameters: ", appendLF=FALSE)
-      tmp <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
-        as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
-        alpha, tau, beta, gamma, disp, power,
-        as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
-        alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
-        pis, mus, logCondDens, logls,
-        as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-        as.integer(control$optimise), as.integer(TRUE), as.integer( FALSE), as.integer(optimiseDisp), as.integer( FALSE), PACKAGE = "RCPmod")
-      message( "Updating Dispersion Parameters: ", appendLF=FALSE)
-      for( ii in 1:S){
-        tmp1 <- nlminb( disp[ii], Tw.phi.func, Tw.phi.func.grad, spp3=ii, control=list( trace=0))
-        disp[ii] <- tmp1$par
-        message( tmp1$objective, " ")
-      }
-      message( "")
-      tmp.new <- -tmp1$objective
-    }
-  }
-  tmp <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
-    as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
-    alpha, tau, beta, gamma, disp, power,
-    as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
-    alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
-    pis, mus, logCondDens, logls,
-    as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-    as.integer(FALSE), as.integer( TRUE), as.integer(TRUE), as.integer(TRUE), as.integer( FALSE), PACKAGE = "RCPmod")
-
-  ret <- list()
-
-  ret$pis <- matrix(pis, ncol = nRCP)
-    ret$mus <- array( mus, dim=c(n,S,nRCP))
-  ret$coefs <- list(alpha = alpha, tau = tau, beta = beta, gamma=gamma, disp=disp)
-  if( any( ret$coefs$gamma==-999999, na.rm=TRUE))
-    ret$coefs$gamma <- NULL
-  if( any( ret$coefs$disp==-999999, na.rm=TRUE))
-    ret$coefs$disp <- NULL
-  ret$names <- list( spp=colnames( outcomes), RCPs=paste( "RCP", 1:nRCP, sep=""), Xvars=colnames( X))
-  if( p.w>0)
-    ret$names$Wvars <- colnames( W)
-  else
-    ret$names$Wvars <- NA
-  ret$scores <- list(alpha = alpha.score, tau = tau.score, beta = beta.score, gamma = gamma.score, disp=disp.score)
-  if( any( ret$scores$gamma==-999999, na.rm=TRUE))
-    ret$scores$gamma <- NULL
-  if( any( ret$scores$disp==-999999, na.rm=TRUE))
-    ret$scores$disp <- NULL
-  ret$logCondDens <- matrix(logCondDens, ncol = nRCP)
-  if( control$optimise)
-    ret$conv <- conv
-  else
-    ret$conv <- "not optimised"
-  ret$S <- S; ret$nRCP <- nRCP; ret$p.x <- p.x; ret$p.w <- p.w; ret$n <- n
-  ret$start.vals <- inits
-  ret$logl <- tmp
-  ret$logl.sites <- logls  #for residuals
-
-  return( ret)
- }
+ #  Tw.phi.func.grad <- function( phi1, spp3){
+ #    disp3 <- disp
+ #    disp3[spp3] <- phi1
+ #    tmp.disp.score <- rep( -99999, S)
+ #    tmp1 <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
+ #      as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
+ #      alpha, tau, beta, gamma, disp3, power,
+ #      as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
+ #      alpha.score, tau.score, beta.score, gamma.score, tmp.disp.score, scoreContri,
+ #      pis, mus, logCondDens, logls,
+ #      as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
+ #      as.integer(FALSE), as.integer(FALSE), as.integer(TRUE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "RCPmod")
+ #    return( -as.numeric( tmp.disp.score[spp3]))
+ #  }
+ #
+ #  inits <- c(start.vals$alpha, start.vals$tau, start.vals$beta, start.vals$gamma, start.vals$disp)
+ #  alpha <- start.vals$alpha; tau <- as.numeric( start.vals$tau); beta <- as.numeric( start.vals$beta); gamma <- as.numeric( start.vals$gamma); disp <- start.vals$disp
+ #  #scores
+ #  alpha.score <- as.numeric(rep(NA, S))
+ #  tau.score <- as.numeric(matrix(NA, ncol = S, nrow = nRCP - 1))
+ #  beta.score <- as.numeric(matrix(NA, ncol = ncol(X), nrow = nRCP - 1))
+ #  if( p.w > 0)
+ #    gamma.score <- as.numeric(matrix( NA, nrow=S, ncol=ncol(W)))
+ #  else
+ #    gamma.score <- -999999
+ #  if( disty %in% 3:5)
+ #    disp.score <- as.numeric( rep( NA, S))
+ #  else
+ #    disp.score <- -999999
+ #  scoreContri <- -999999  #as.numeric(matrix(NA, ncol = length(inits), nrow = n))
+ #  #model quantities
+ #  pis <- as.numeric(matrix(NA, nrow = n, ncol = nRCP))  #container for the fitted RCP model
+ #  mus <- as.numeric(array( NA, dim=c( n, S, nRCP)))  #container for the fitted spp model
+ #  logCondDens <- as.numeric(matrix(NA, nrow = n, ncol = nRCP))
+ #  logls <- as.numeric(rep(NA, n))
+ #  conv <- as.integer(0)
+ #
+ #  optimiseDisp <- FALSE
+ #  kount <- 1
+ #  tmp.new <- tmp.old <- -999999
+ #  if( control$optimise){
+ #    while( (abs( abs( tmp.new - tmp.old) / ( abs( tmp.old) + control$reltol)) > control$reltol | kount==1) & (kount < 15)){
+ #      kount <- kount + 1
+ #      tmp.old <- tmp.new
+ #      message( "Updating Location Parameters: ", appendLF=FALSE)
+ #      tmp <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
+ #        as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
+ #        alpha, tau, beta, gamma, disp, power,
+ #        as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
+ #        alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
+ #        pis, mus, logCondDens, logls,
+ #        as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
+ #        as.integer(control$optimise), as.integer(TRUE), as.integer( FALSE), as.integer(optimiseDisp), as.integer( FALSE), PACKAGE = "RCPmod")
+ #      message( "Updating Dispersion Parameters: ", appendLF=FALSE)
+ #      for( ii in 1:S){
+ #        tmp1 <- nlminb( disp[ii], Tw.phi.func, Tw.phi.func.grad, spp3=ii, control=list( trace=0))
+ #        disp[ii] <- tmp1$par
+ #        message( tmp1$objective, " ")
+ #      }
+ #      message( "")
+ #      tmp.new <- -tmp1$objective
+ #    }
+ #  }
+ #  tmp <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
+ #    as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
+ #    alpha, tau, beta, gamma, disp, power,
+ #    as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
+ #    alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
+ #    pis, mus, logCondDens, logls,
+ #    as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
+ #    as.integer(FALSE), as.integer( TRUE), as.integer(TRUE), as.integer(TRUE), as.integer( FALSE), PACKAGE = "RCPmod")
+ #
+ #  ret <- list()
+ #
+ #  ret$pis <- matrix(pis, ncol = nRCP)
+ #    ret$mus <- array( mus, dim=c(n,S,nRCP))
+ #  ret$coefs <- list(alpha = alpha, tau = tau, beta = beta, gamma=gamma, disp=disp)
+ #  if( any( ret$coefs$gamma==-999999, na.rm=TRUE))
+ #    ret$coefs$gamma <- NULL
+ #  if( any( ret$coefs$disp==-999999, na.rm=TRUE))
+ #    ret$coefs$disp <- NULL
+ #  ret$names <- list( spp=colnames( outcomes), RCPs=paste( "RCP", 1:nRCP, sep=""), Xvars=colnames( X))
+ #  if( p.w>0)
+ #    ret$names$Wvars <- colnames( W)
+ #  else
+ #    ret$names$Wvars <- NA
+ #  ret$scores <- list(alpha = alpha.score, tau = tau.score, beta = beta.score, gamma = gamma.score, disp=disp.score)
+ #  if( any( ret$scores$gamma==-999999, na.rm=TRUE))
+ #    ret$scores$gamma <- NULL
+ #  if( any( ret$scores$disp==-999999, na.rm=TRUE))
+ #    ret$scores$disp <- NULL
+ #  ret$logCondDens <- matrix(logCondDens, ncol = nRCP)
+ #  if( control$optimise)
+ #    ret$conv <- conv
+ #  else
+ #    ret$conv <- "not optimised"
+ #  ret$S <- S; ret$nRCP <- nRCP; ret$p.x <- p.x; ret$p.w <- p.w; ret$n <- n
+ #  ret$start.vals <- inits
+ #  ret$logl <- tmp
+ #  ret$logl.sites <- logls  #for residuals
+ #
+ #  return( ret)
+ # }
 
 
 "vcov.regional_mix" <-
