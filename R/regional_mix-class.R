@@ -187,7 +187,7 @@ function( model, ..., oosSize=1, times=model$n, mc.cores=1, quiet=FALSE)
           alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
           as.numeric( tmpmodel$pis), as.numeric( tmpmodel$mus), logCondDens, logls,
           as.integer(model$titbits$control$maxit), as.integer(model$titbits$control$trace), as.integer(model$titbits$control$nreport), as.numeric(model$titbits$control$abstol), as.numeric(model$titbits$control$reltol), as.integer(conv),
-          as.integer(FALSE), as.integer(TRUE), as.integer(FALSE), as.integer(FALSE), as.integer(FALSE), PACKAGE = "RCPmod")
+          as.integer(FALSE), as.integer(TRUE), as.integer(FALSE), as.integer(FALSE), as.integer(FALSE), PACKAGE = "ecomix")
     ret.logl <- rep( NA, model$n)
     ret.logl[OOBag] <- logls[OOBag]
 
@@ -752,7 +752,7 @@ function( titbits, outcomes, X, W, offset, wts, form.RCP, form.spp, control, dis
           alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
           pis, mus, logCondDens, logls,
           as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-          as.integer( control$optimise), as.integer(control$loglOnly), as.integer( control$derivOnly), as.integer( TRUE), as.integer( FALSE), PACKAGE = "RCPmod")
+          as.integer( control$optimise), as.integer(control$loglOnly), as.integer( control$derivOnly), as.integer( TRUE), as.integer( FALSE), PACKAGE = "ecomix")
 
   ret <- list()
   ret$pis <- matrix(pis, ncol = nRCP)
@@ -967,7 +967,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
           alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
           pis, mus, logCondDens, logls,
           as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-          as.integer( FALSE), as.integer( TRUE), as.integer( FALSE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "RCPmod")
+          as.integer( FALSE), as.integer( TRUE), as.integer( FALSE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "ecomix")
 
           allResids[, s] <- get_residuals_rcp(logls, Y, x$dist, x$coef, nRCP, type="deviance", powers=power, quiet=TRUE)
       }
@@ -1193,7 +1193,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
             as.numeric(myContr$penalty.disp[2]), as.numeric(alphaBoot[bootSampsToUse,]),
             as.numeric(tauBoot[bootSampsToUse,]), as.numeric(betaBoot[bootSampsToUse,]),
             as.integer(nboot), as.numeric(ptPreds), as.numeric(bootPreds), as.integer(1),
-            PACKAGE = "RCPmod")
+            PACKAGE = "ecomix")
         if (nboot == 0) {
             ret <- matrix(ptPreds, nrow = nrow(X), ncol = predCol)
             colnames(ret) <- nam
@@ -1936,7 +1936,7 @@ function (object, ...)
 #       alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
 #       pis, mus, logCondDens, logls,
 #       as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-#       as.integer(FALSE), as.integer(TRUE), as.integer( FALSE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "RCPmod")
+#       as.integer(FALSE), as.integer(TRUE), as.integer( FALSE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "ecomix")
 #     return( -as.numeric( tmp1))
 #   }
 
@@ -1951,7 +1951,7 @@ function (object, ...)
  #      alpha.score, tau.score, beta.score, gamma.score, tmp.disp.score, scoreContri,
  #      pis, mus, logCondDens, logls,
  #      as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
- #      as.integer(FALSE), as.integer(FALSE), as.integer(TRUE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "RCPmod")
+ #      as.integer(FALSE), as.integer(FALSE), as.integer(TRUE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "ecomix")
  #    return( -as.numeric( tmp.disp.score[spp3]))
  #  }
  #
@@ -1992,7 +1992,7 @@ function (object, ...)
  #        alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
  #        pis, mus, logCondDens, logls,
  #        as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
- #        as.integer(control$optimise), as.integer(TRUE), as.integer( FALSE), as.integer(optimiseDisp), as.integer( FALSE), PACKAGE = "RCPmod")
+ #        as.integer(control$optimise), as.integer(TRUE), as.integer( FALSE), as.integer(optimiseDisp), as.integer( FALSE), PACKAGE = "ecomix")
  #      message( "Updating Dispersion Parameters: ", appendLF=FALSE)
  #      for( ii in 1:S){
  #        tmp1 <- nlminb( disp[ii], Tw.phi.func, Tw.phi.func.grad, spp3=ii, control=list( trace=0))
@@ -2010,7 +2010,7 @@ function (object, ...)
  #    alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
  #    pis, mus, logCondDens, logls,
  #    as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
- #    as.integer(FALSE), as.integer( TRUE), as.integer(TRUE), as.integer(TRUE), as.integer( FALSE), PACKAGE = "RCPmod")
+ #    as.integer(FALSE), as.integer( TRUE), as.integer(TRUE), as.integer(TRUE), as.integer( FALSE), PACKAGE = "ecomix")
  #
  #  ret <- list()
  #
@@ -2124,7 +2124,7 @@ function (object, ..., object2=NULL, method = "FiniteDifference", nboot = 1000, 
         alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
         pis, mus, logCondDens, logls,
         as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-        as.integer( FALSE), as.integer( FALSE), as.integer( TRUE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "RCPmod")
+        as.integer( FALSE), as.integer( FALSE), as.integer( TRUE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "ecomix")
 
         tmp1 <- c(alpha.score, tau.score, beta.score)
         if( p.w > 0)#class( object$titbits$form.spp) == "formula")
@@ -2171,7 +2171,7 @@ function (object, ..., object2=NULL, method = "FiniteDifference", nboot = 1000, 
       alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
       pis, mus, logCondDens, logls,
       as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-      as.integer( FALSE), as.integer( FALSE), as.integer( TRUE), as.integer( TRUE), as.integer( TRUE), PACKAGE = "RCPmod")
+      as.integer( FALSE), as.integer( FALSE), as.integer( TRUE), as.integer( TRUE), as.integer( TRUE), PACKAGE = "ecomix")
     scoreContri <- matrix( scoreContri, nrow=n)
     summy <- matrix( 0, ncol=ncol( scoreContri), nrow=ncol( scoreContri))
     for( ii in 1:n){
