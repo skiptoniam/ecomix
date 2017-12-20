@@ -709,11 +709,11 @@ double ALLoptimise( allClasses &all)
 	//optimise
 	all.parms.getArray( vmminParms, all.data);
 	all.parms.getArray( vmminParmsIn, all.data);	//del
-	vmmin( all.parms.nTot, vmminParms, vmminLogl, optimise_function, gradient_function, all.contr.maxitQN, all.contr.traceQN, myMask, all.contr.abstol, all.contr.reltol, all.contr.nReport, &all, &all.contr.fnKount, &all.contr.grKount, &all.contr.ifail);
-//	nmmin( all.parms.nTot, vmminParmsIn, vmminParms, vmminLogl, optimise_function, &all.contr.ifail, all.contr.abstol, all.contr.reltol, &all, 1.0, 0.5, 2.0, all.contr.traceQN, &all.contr.fnKount, all.contr.maxitQN);
+	vmmin( all.parms.nTot, vmminParms, vmminLogl, optimise_function_rcp, gradient_function_rcp, all.contr.maxitQN, all.contr.traceQN, myMask, all.contr.abstol, all.contr.reltol, all.contr.nReport, &all, &all.contr.fnKount, &all.contr.grKount, &all.contr.ifail);
+//	nmmin( all.parms.nTot, vmminParmsIn, vmminParms, vmminLogl, optimise_function_rcp, &all.contr.ifail, all.contr.abstol, all.contr.reltol, &all, 1.0, 0.5, 2.0, all.contr.traceQN, &all.contr.fnKount, all.contr.maxitQN);
 	//update parameters
 	all.parms.update( vmminParms, all.data);
-	gradient_function(all.parms.nTot, vmminParms, vmminGrad, &all);
+	gradient_function_rcp(all.parms.nTot, vmminParms, vmminGrad, &all);
 	all.derivs.update( vmminGrad, all.data);
 
 	return( vmminLogl[0]);
@@ -733,7 +733,7 @@ bool converged( double *oldP, double *newP, const myOptContr &contr, int nTot)
 
 }
 
-double optimise_function(int n, double *par, void *ex)
+double optimise_function_rcp(int n, double *par, void *ex)
 {
 	allClasses *all = (allClasses *) ex;
 	double logl;
@@ -744,7 +744,7 @@ double optimise_function(int n, double *par, void *ex)
 	return( (0.0-logl));
 }
 
-void gradient_function(int n, double *par, double *gr, void *ex)
+void gradient_function_rcp(int n, double *par, double *gr, void *ex)
 {
 	allClasses *all = (allClasses *) ex;
 

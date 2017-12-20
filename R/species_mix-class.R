@@ -26,7 +26,6 @@
 #' simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
 #' model_data <- make_mixture_data(species_data = simulated_data$species_data, covariate_data = simulated_data$covariate_data)
 #' fm_species_mix <- species_mix(formula, data=model_data,distribution='bernoulli',n_mixtures=5)
-#' }
 
 "species_mix" <- function(formula = NULL, data, n_mixtures = 3, distribution="poisson",
   offset=NULL, weights=NULL, control=species_mix.control(), inits=NULL, standardise = FALSE){

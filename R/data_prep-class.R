@@ -58,6 +58,7 @@ make_mixture_data <- function(species_data,covariate_data){
   #check covariate data
   covariate_data_check(covariate_data)
 
+
   if(!identical(dim(species_data)[1],dim(covariate_data)[1]))
     stop('dimensions of species matrix sites (rows) and covariate data at sites (rows) do not match, have another look')
 

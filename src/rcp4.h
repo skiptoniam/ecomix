@@ -189,8 +189,8 @@ void calcPiDeriv( vector<double> &piDerivs, const myData &dat, const myParms &pa
 void calcBetaDeriv( vector<double> &betaDerivsI, const vector<double> &piDerivsI, const vector<double> &pis, const myData &dat, int i);
 double ALLoptimise( allClasses &all);
 bool converged( double *oldP, double *newP, const myOptContr &contr, int nTot);
-double optimise_function(int n, double *par, void *ex);
-void gradient_function(int n, double *par, double *gr, void *ex);
+double optimise_function_rcp(int n, double *par, void *ex);
+void gradient_function_rcp(int n, double *par, double *gr, void *ex);
 
 
 
