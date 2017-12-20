@@ -25,7 +25,7 @@
 #' dat <- data.frame(y=rep(1,100),x=runif(100,0,2.5))
 #' simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
 #' model_data <- make_mixture_data(species_data = simulated_data$species_data, covariate_data = simulated_data$covariate_data)
-#' fm_species_mix <- species_mix(formula, data=model_data,distribution='bernoulli',n_mixtures=5)
+#' fm_species_mix <- species_mix(formula, data=model_data,distribution='bernoulli',n_mixtures=5)}
 
 "species_mix" <- function(formula = NULL, data, n_mixtures = 3, distribution="poisson",
   offset=NULL, weights=NULL, control=species_mix.control(), inits=NULL, standardise = FALSE){
@@ -193,8 +193,9 @@
 #'@param new_obs a matrix of new observations for prediction.
 #'@description Predicts SAM probabilities at a series of sites. Confidence intervals can be calculated if variance-covariance matrix is estimated during species_mix model fit.
 #'@examples
+#'\dontrun{
 #'fm1 <- species_mix(form,data)
-#'preds_fm1 <- predict(fm1,newdata)
+#'preds_fm1 <- predict(fm1,newdata)}
 "species_mix.predict" <-function (object, new_obs, ...){
   mixture.model <- object
   if (class(mixture.model)[2] == "bernoulli") {
@@ -414,11 +415,11 @@
 #' @param distribution Which statistical distribution to simulate data for. 'bernoulli', 'gaussian', 'ippm', 'negative_binomial','poisson' and 'tweedie'.
 #' @export
 #' @examples
+#' \dontrun{
 #' form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
 #' theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
 #' dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
-#' simulated_data <- simulate_species_mix_data(form,data,theta,dist="bernoulli")
-
+#' simulated_data <- simulate_species_mix_data(form,data,theta,dist="bernoulli")}
 ## need to update this to take the new formula framework and simulate ippm data.
 "simulate_species_mix_data" <-  function (form, dat, theta, distribution = "bernoulli"){
 
@@ -817,7 +818,7 @@
     if( length( alpha) != length( y))
       alpha <- rep( alpha, length( y))
 
-    res <- .Call( "dTweedie", as.numeric( y), as.numeric( mu.N), as.numeric( mu.Z), as.numeric( alpha), as.integer( LOG),PACKAGE="SpeciesMix")
+    res <- .Call( "dTweedie", as.numeric( y), as.numeric( mu.N), as.numeric( mu.Z), as.numeric( alpha), as.integer( LOG),PACKAGE="ecomix")
 
     return( res)
 
@@ -861,7 +862,7 @@
         alpha <- rep( alpha, length( y))
     }
 
-    res <- .Call( "dTweedieDeriv", as.numeric( y), as.numeric( mu.N), as.numeric( mu.Z), as.numeric( alpha),PACKAGE="SpeciesMix")
+    res <- .Call( "dTweedieDeriv", as.numeric( y), as.numeric( mu.N), as.numeric( mu.Z), as.numeric( alpha),PACKAGE="ecomix")
     colnames( res) <- c("lambda","mu.Z","alpha")
     return( res)
 
@@ -1107,11 +1108,11 @@
     gradient <- rep(0,length(pars))
     tau <- matrix(0,S,G) ##must leave this in as defines S & G
     model.type<- as.integer(1)
-    loglike <- try(.Call("SpeciesMix",pars,y,X,sp,tau,gradient,offset,model.type,PACKAGE="SpeciesMix"))
+    loglike <- try(.Call("SpeciesMix",pars,y,X,sp,tau,gradient,offset,model.type,PACKAGE="ecomix"))
 
     calc_deriv <- function(p){
       gradient <- rep(0,length(pars))
-      ll <- .Call("Calculate_Gradient",p,y,X,sp,tau,gradient,offset,as.integer(1),PACKAGE="SpeciesMix")
+      ll <- .Call("Calculate_Gradient",p,y,X,sp,tau,gradient,offset,as.integer(1),PACKAGE="ecomix")
       return(gradient)
     }
     hes <- 0
@@ -1455,11 +1456,11 @@
     gradient <- rep(0,length(pars))
     tau <- matrix(0,S,G) ##must leave this in as defines S & G
 
-    loglike <- try(.Call("SpeciesMix",pars,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="SpeciesMix"))
+    loglike <- try(.Call("SpeciesMix",pars,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="ecomix"))
 
     calc_deriv <- function(p){
       gradient <- rep(0,length(pars))
-      ll <- .Call("Calculate_Gradient",p,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="SpeciesMix")
+      ll <- .Call("Calculate_Gradient",p,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="ecomix")
       return(gradient)
     }
     r.deriv <- function(p){ logLmix_nbinom(p,list(y=y,x=model.matrix(form, data = datsp)),G,S,sp,sp.name,out.tau=FALSE)}
@@ -1534,11 +1535,11 @@
     gradient <- rep(0,length(pars))
     tau <- matrix(0,S,G) ##must leave this in as defines S & G
 
-    loglike <- try(.Call("SpeciesMix",pars,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="SpeciesMix"))
+    loglike <- try(.Call("SpeciesMix",pars,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="ecomix"))
 
     calc_deriv <- function(p){
       gradient <- rep(0,length(pars))
-      ll <- .Call("Calculate_Gradient",p,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="SpeciesMix")
+      ll <- .Call("Calculate_Gradient",p,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="ecomix")
       return(gradient)
     }
     r.deriv <- function(p){ logLmix_nbinom(p,list(y=y,x=model.matrix(form, data = datsp)),G,S,sp,sp.name,out.tau=FALSE)}
@@ -1710,11 +1711,11 @@
     gradient <- rep(0, length(pars))
     tau <- matrix(0, S, G)
     loglike <- try(.Call("SpeciesMix", pars, y, X, sp, tau, gradient,
-      offset, as.integer(3),PACKAGE="SpeciesMix"))
+      offset, as.integer(3),PACKAGE="ecomix"))
     calc_deriv <- function(p) {
       gradient <- rep(0, length(pars))
       ll <- .Call("Calculate_Gradient", p, y, X, sp, tau, gradient,
-        offset, as.integer(3),PACKAGE="SpeciesMix")
+        offset, as.integer(3),PACKAGE="ecomix")
       return(gradient)
     }
     hes <- 0
@@ -1769,13 +1770,13 @@
     gradient <- rep(0,ncol(X)+1)
     if(is.null(mustart)){ pars <- gradient+1} else{pars <- mustart}
     fitted.values <- rep(0,length(y))
-    logl <- .Call("Neg_Bin",pars,X,y,weights,offset,gradient,fitted.values,PACKAGE="SpeciesMix")
+    logl <- .Call("Neg_Bin",pars,X,y,weights,offset,gradient,fitted.values,PACKAGE="ecomix")
     vcov <- 0
     se <- rep(0,length(pars))
     if(est_var) {
       calc_deriv <- function(p){
         gradient <- rep(0,length(pars))
-        ll <- .Call("Neg_Bin_Gradient",p,X,y,weights,offset,gradient,PACKAGE="SpeciesMix")
+        ll <- .Call("Neg_Bin_Gradient",p,X,y,weights,offset,gradient,PACKAGE="ecomix")
         return(gradient)
       }
       hes <- nd2(pars,calc_deriv)
@@ -1803,13 +1804,13 @@
     if(is.null(mustart)){ pars <- gradient+1}else{pars <- mustart}
     fitted.values <- rep(0,length(y))
 
-    logl <- .Call("Neg_Bin",pars,X,y,weights,offset,gradient,fitted.values,PACKAGE="SpeciesMix")
+    logl <- .Call("Neg_Bin",pars,X,y,weights,offset,gradient,fitted.values,PACKAGE="ecomix")
     vcov <- 0
     se <- rep(0,length(pars))
     if(est_var) {
       calc_deriv <- function(p){
         gradient <- rep(0,length(pars))
-        ll <- .Call("Neg_Bin_Gradient",p,X,y,weights,offset,gradient,PACKAGE="SpeciesMix")
+        ll <- .Call("Neg_Bin_Gradient",p,X,y,weights,offset,gradient,PACKAGE="ecomix")
         return(gradient)
       }
       hes <- nd2(pars,calc_deriv)
