@@ -1,5 +1,5 @@
 #' @useDynLib ecomix
-# #' @importFrom Rcpp sourceCpp
+#' @importFrom Rcpp sourceCpp
 NULL
 
 #' @title ecomix package
