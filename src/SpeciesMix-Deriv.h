@@ -64,9 +64,8 @@ public:
   int *y_is_not_na, *ID, Xr, Xc, S, G, lpar, ly;
   vector<double> lp;
   double *y, *X, *w, *tau, *offset;
-  vector<int> StartEndPos;
   
-  void SetVars(double *ty, double *tX, double *tw, double toffset, int *y_is_not_na, int *tID, int tS, int tG, int tXr, int tXc, int tlpar, int tlobs, double *ttau);
+  void set_vars_ippm(double *ty, double *tX, double *tw, double toffset, int *y_is_not_na, int *tID, int tS, int tG, int tXr, int tXc, int tlpar, int tlobs, double *ttau);
     
   double logl;
   vector<double> sum_f_species; // log( f(yi,Bi)) S*G long

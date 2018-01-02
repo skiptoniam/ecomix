@@ -1149,7 +1149,7 @@ double like_tweedie_function(vector< double > &estpi, vector < double > &coef, v
 
 
 
-extern "C" {  SEXP ippm_sam_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_y_is_not_na, SEXP R_gradient, SEXP R_fitted_values){
+extern "C" {  SEXP ippm_sam_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_y_is_not_na, SEXP R_ID, SEXP R_gradient, SEXP R_fitted_values){
     // tau is the parameter vector, 
     // od is the overdispersion parameter, 
     // X is the design matrix, 
@@ -1169,6 +1169,7 @@ extern "C" {  SEXP ippm_sam_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP 
     y=REAL(R_y);
     X=REAL(R_X);
     w=REAL(R_w);
+    ID=INTEGER(R_ID);
     offset=REAL(R_offset);
     y_is_not_na=INTEGER(R_y_is_not_na);
     gradient=REAL(R_gradient);
@@ -1178,8 +1179,14 @@ extern "C" {  SEXP ippm_sam_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP 
     Xr=INTEGER(dimensions)[0];
     Xc=INTEGER(dimensions)[1];
 
+    dimensions=getAttrib(R_tau, R_DimSymbol);
+    S=INTEGER(dimensions)[0];
+    G=INTEGER(dimensions)[1];
+
     Optimise_data_ippm data;
-    data.SetVars(y, X, w, *offset, y_is_not_na, Xr, Xc);
+    
+    data.set_vars_ippm(y, X, w, *offset, y_is_not_na, ID, S, G, Xr, Xc, lpar, ly, tau)
+    //data.SetVars(y, X, w, *offset, y_is_not_na, Xr, Xc);
 
     abstol = 1e-8;
     reltol = 1e-8;
@@ -1354,7 +1361,7 @@ double ippm_logl(vector<double> &pars, Optimise_data_ippm &data ){//vector<doubl
 Optimise_data_ippm::Optimise_data_ippm(){}
 Optimise_data_ippm::~Optimise_data_ippm(){}
 
-void Optimise_data_ippm::SetVars(double *ty, double *tX, double *tw, double *toffset, int *ty_is_not_na, int *tID, int tS, int tG, int tXr, int tXc, int tlpar, int tly, double *ttau){
+void Optimise_data_ippm::set_vars_ippm(double *ty, double *tX, double *tw, double *toffset, int *ty_is_not_na, int *tID, int tS, int tG, int tXr, int tXc, int tlpar, int tly, double *ttau){
   
   int i, s, j;
   double tmp,yt;
@@ -1373,9 +1380,7 @@ void Optimise_data_ippm::SetVars(double *ty, double *tX, double *tw, double *tof
   
   lpar=tlpar;
   ly = tly;
-  //vector<int> StartEndPos(S*2);
-
-  StartEndPos.push_back(0);
+ 
   //s=1;
   for(i=0;i<G;i++){ // vectors of length G
     parpi.push_back(0);
@@ -1392,25 +1397,6 @@ void Optimise_data_ippm::SetVars(double *ty, double *tX, double *tw, double *tof
   }
 
   s=ID[0];
-
-  for(i=0;i<ly;i++) // find start & end positions of each species data
-    if(ID[i]!=s){
-      StartEndPos.push_back(i-1);
-      //s++; // index to next species
-      //std::cout << s << "," << ID[i] << "," << i <<"\n" ; 
-      s=ID[i];
-      StartEndPos.push_back(i); // next species start pos
-    }
-  
-  StartEndPos.push_back(ly-1);  //add final position
-
-
-  //for(i=0;i<ly;i++){
-    //tmp=0;
-    //yt = y[i];
-    //for(j=1;j<=yt;j++){tmp+=log((double) j); }
-    //log_y_factorial.push_back(tmp); 
-  //}
  
 }
  
@@ -1455,17 +1441,6 @@ double optimise_mix_ippm_function(int n, double *pars, void *ex){
 
   return(0-logl.at(0));
 
-}
-
-
-// log-ippm-derivative - this will be used for dfdlogalpha and dfdlogbeta.
-double log_ippm_derivative( const double &y, const double &mu, const double &wts){
-	double tmp, z;
-	z = y/wts;
-	tmp = z/mu;
-	tmp -= 1;
-	tmp *= wts;
-	return( tmp);
 }
 
 void gradient_mix_ippm_function(int n, double *pars, double *gr, void *ex ){
@@ -1591,10 +1566,10 @@ void gradient_mix_ippm_function(int n, double *pars, double *gr, void *ex ){
   logl.at(0) = 0;
 
   for(s=0;s<S;s++){
-      start = data.StartEndPos.at(s*2);
-      end = data.StartEndPos.at(s*2+1);
+      //start = data.StartEndPos.at(s*2); // y is now a matrix so this is obsolte.
+      //end = data.StartEndPos.at(s*2+1);
 
-      tlog.at(0) = like_mix_ippm_function(estpi, coef, sp_int, data.y, data.X, Xr, Xc, start, end, data.tau, s, data.sum_f_species, data.deriv_f_B, data.deriv_f_alphaS, data.log_y_factorial, data.offset, data.y_is_not_na);
+      tlog.at(0) = like_mix_ippm_function(estpi, coef, sp_int, data.y, data.X, Xr, Xc, data.tau, s, data.sum_f_species, data.deriv_f_B, data.deriv_f_alphaS, data.log_y_factorial, data.offset, data.y_is_not_na);
       logl.at(0)+= tlog.at(0);
   
       // this is the species loglike contribution. 
@@ -1604,6 +1579,15 @@ void gradient_mix_ippm_function(int n, double *pars, double *gr, void *ex ){
 
 }
 
+// log-ippm-derivative - this will be used for dfdlogalpha and dfdlogbeta.
+double log_ippm_derivative( const double &y, const double &mu, const double &wts){
+	double tmp, z;
+	z = y/wts;
+	tmp = z/mu;
+	tmp -= 1;
+	tmp *= wts;
+	return( tmp);
+}
 
 double like_mix_ippm_function(vector< double > &estpi, vector < double > &coef, vector < double > &sp_int, const double *y, const double *X, const double *wts, int Xr, int Xc, int start, int end, double *tau, int s, vector<double> &sum_f_species, vector<double> &deriv_f_B, vector<double> &deriv_f_alphaS, vector<double> &deriv_f_dispersionS, vector<double> &log_y_factorial, const double *offset, const int *y_is_not_na){
   int len,i,j,G,g;
@@ -1633,7 +1617,7 @@ double like_mix_ippm_function(vector< double > &estpi, vector < double > &coef, 
 
       //if(y[start+i]==0) p.at(0) = 1-p.at(0);
 
-      sump.at(g) += (lgammafn(y[start+i]) + y[start+i]*log(p.at(0)) - (y[start+i])*log(p.at(0)) - log_y_factorial.at(start+i));
+      sump.at(g) += (lgammafn(y[MAT_RF(i,s,Xr)]) + y[MAT_RF(i,s,Xr)]*log(p.at(0)) - (y[MAT_RF(i,s,Xr)])*log(p.at(0)));
 	  }
     }
      
