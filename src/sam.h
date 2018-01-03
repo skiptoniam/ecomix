@@ -119,6 +119,25 @@ class spmix_data {
         vector<double> log_y_factorial; //calculation of factorial for nbinom
 };
 
+class spmix_derivs
+{
+	public:
+		spmix_derivs();
+		~spmix_derivs();
+		void setVals( const myData &dat, SEXP &RderivsAlpha, SEXP &RderivsBeta, SEXP &RderivsTau, SEXP &RderivsDisp, SEXP &RgetScores, SEXP &Rscores);
+		void zeroDerivs( const myData &dat);
+		void updateDerivs( const myData &dat, const vector<double> &alphaDerivsI, const vector<double> &betaDerivsI, const vector<double> &tauDerivsI, const vector<double> &dispDerivsI, const int &i);
+		void update( double *grArr, const myData &dat);
+		void getArray( double *grArr, const myData &dat);
+
+		int getScoreFlag;	//Should the scores be calculated for empirical information
+		double 	*Alpha, //the derivatives of logl w.r.t. alpha
+				*Tau, 	//the derivatives of logl w.r.t. tau
+				*Beta,	//the derivatives of logl w.r.t. beta
+				*Disp,	//the derivative of logl w.r.t. dispersions
+				*Scores;//the score contribution for each site (for empirical information)
+};
+
 // control functions for species mix.
 class spmix_opt_contr
 {
@@ -131,6 +150,21 @@ class spmix_opt_contr
 		double abstol, reltol, denomEps;
 };
 
+class spmix_fits
+{
+	public:
+		spmix_fits();
+		~spmix_fits();
+		void initialise( const int &nObs, const int &nG, const int &nS, const int &NAnum);
+		void zero(const int &NAnum);
+
+		vector< vector<double> > allPis;	//2D array for the fitted pis
+		vector<double> allMus; 	//3D array for the fitted mus (note that indexing must be done with MATREF3D)
+		vector< vector<double> > allLogDens;	//2D array for the logls, conditional on RCP type
+		vector<double> allLogls; //Vector for marginal logls
+
+};
+
 // a wrapper around all data classes. 
 class spmix_all_classes
 {
@@ -140,9 +174,9 @@ class spmix_all_classes
 
 	spmix_data data;
 	//myParms parms;
-	//myDerivs derivs;
+	//spmix_derivs derivs;
 	spmix_opt_contr contr;
-	//myFits fits;
+	//spmix_fits fits;
 };
 
 ////////////////////////////////////////////////////////

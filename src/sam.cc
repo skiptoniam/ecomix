@@ -19,7 +19,17 @@ extern "C" { SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rwts, SEX
 	all.fits.initialise( all.data.nObs, all.data.nG, all.data.nS, all.data.NAnum);
 
 	double logl = -999999;
-									  
+	
+	//doing the optimising
+	if( *INTEGER(Roptimise) == 1)
+		logl = ALLoptimise( all);
+
+	//re-running to get pis and mus
+	if( *INTEGER(RloglOnly) == 1)
+		logl = mixLogl( all.data, all.parms, all.fits);
+	//and derivatives (inlcuding scores, for empirical info, if requested)
+	if( *INTEGER(RderivsOnly) == 1)
+		loglDerivs( all.data, all.parms, all.derivs, all.fits);								  
 									  
 									  
 									  }	
@@ -98,35 +108,11 @@ extern "C" { SEXP species_mix_bernoulli_cpp(SEXP R_pars, SEXP R_y, SEXP R_X, SEX
     vector <int> mask (lpar,1); 
     vector < double > logl_out(lpar,0);
     
-    
-    //if(model_type==1){
-      vmmin(lpar, pars, &logl_out.at(0), optimise_function_sam, gradient_function_sam, 1000, trace, &mask.at(0),  abstol,  reltol,  nREPORT, &data, &fncount, &grcount, &ifail);
-    //}
-    //if(model_type==2){
-      //vmmin(lpar, pars, &logl_out.at(0), optimise_mixnbinom_function, gradient_mixnbinom_function, 1000, trace, &mask.at(0),  abstol,  reltol,  nREPORT, &data, &fncount, &grcount, &ifail);
-    //}
-    //if(model_type==3){
-      //for(i=(G*Xc + G-1 + S) ; i< data.lpar; i++) mask.at(i)=0;
-      //for(i=(G*Xc + G-1 + S+G) ; i< data.lpar; i++) mask.at(i)=0;
-      //vmmin(lpar, pars, &logl_out.at(0), optimise_tweedie_function, gradient_tweedie_function, 1000, trace, &mask.at(0),  abstol,  reltol,  nREPORT, &data, &fncount, &grcount, &ifail);
-    //}
+    vmmin(lpar, pars, &logl_out.at(0), optimise_function_sam, gradient_function_sam, 1000, trace, &mask.at(0),  abstol,  reltol,  nREPORT, &data, &fncount, &grcount, &ifail);
 
     logl=1;
-
-     
-    // fitmix only does bernoulli.
-    //if(model_type==1){
-      logl = optimise_function_sam(lpar, pars, &data);
-      gradient_function_sam(lpar, pars, &grd.at(0),&data);
-    //}
-    //if(model_type==2){
-      //logl = optimise_mixnbinom_function(lpar, pars, &data);
-      //gradient_mixnbinom_function(lpar, pars, &grd.at(0),&data);
-    //}
-    //if(model_type==3){
-      //logl = optimise_tweedie_function(lpar, pars, &data);
-      //gradient_tweedie_function(lpar, pars, &grd.at(0),&data);
-    //}
+    logl = optimise_function_sam(lpar, pars, &data);
+    gradient_function_sam(lpar, pars, &grd.at(0),&data);
   
     for(i=0;i<lpar;i++){
       gradient[i] = grd.at(i);
