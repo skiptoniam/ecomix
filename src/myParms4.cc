@@ -92,10 +92,10 @@ void myParms::getAllTaus( vector<double> &newTau, const myData &dat) const
 	for( int s=0; s<dat.nS; s++){
 		su = 0.0;
 		for( int g=0; g<(dat.nG-1); g++){
-			newTau.at( MATREF(g,s,dat.nG)) = Tau[MATREF(g,s,(dat.nG-1))];
-			su += Tau[MATREF(g,s,(dat.nG-1))];
+			newTau.at( MATREF2D(g,s,dat.nG)) = Tau[MATREF2D(g,s,(dat.nG-1))];
+			su += Tau[MATREF2D(g,s,(dat.nG-1))];
 		}
-		newTau.at( MATREF((dat.nG-1),s,dat.nG)) = -su;
+		newTau.at( MATREF2D((dat.nG-1),s,dat.nG)) = -su;
 	}
 
 }
@@ -108,20 +108,20 @@ void myParms::printParms( const myData &dat){
 	Rprintf( "TAU:\n");
 	for( int g=0; g<(dat.nG-1); g++){
 		for( int i=0; i<dat.nS; i++)
-			Rprintf( "%3.2f\t", Tau[MATREF(g,i,(dat.nG-1))]);
+			Rprintf( "%3.2f\t", Tau[MATREF2D(g,i,(dat.nG-1))]);
 		Rprintf( "\n");
 	}
 	Rprintf( "BETA:\n");
 	for( int g=0; g<(dat.nG-1); g++){
 		for( int i=0; i<dat.np; i++)
-			Rprintf( "%3.2f\t", Beta[MATREF(g,i,(dat.nG-1))]);
+			Rprintf( "%3.2f\t", Beta[MATREF2D(g,i,(dat.nG-1))]);
 		Rprintf( "\n");
 	}
 	if( dat.npw > 0){
 		Rprintf( "GAMMA:\n");
 		for( int g=0; g<dat.nS; g++){
 			for( int i=0; i<dat.npw; i++)
-				Rprintf( "%3.2f\t", Gamma[MATREF(g,i,dat.nS)]);
+				Rprintf( "%3.2f\t", Gamma[MATREF2D(g,i,dat.nS)]);
 			Rprintf( "\n");
 		}
 	}

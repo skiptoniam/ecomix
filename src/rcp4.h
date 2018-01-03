@@ -19,7 +19,7 @@ using std::cout;
 /////////////	Inline Function Definitions	//////////////
 ////////////////////////////////////////////////////////
 
-#define MATREF( i, j, nrow) i + j*nrow	//indices start at 0
+#define MATREF2D( i, j, nrow) i + j*nrow	//indices start at 0
 #define MATREF3D( i, j, k, nrow, ncol) i + j*nrow + k*nrow*ncol	//indices start at 0 and nrow (ncol) is the number of rows (cols) of a single face of 3D array.
 
 ////////////////////////////////////////////////////////

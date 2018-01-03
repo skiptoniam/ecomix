@@ -35,13 +35,13 @@ void myDerivs::updateDerivs( const myData &dat, const vector<double> &alphaDeriv
 		Alpha[s] += alphaDerivsI.at(s);
 	for( int g=0; g<(dat.nG-1); g++)
 		for( int s=0; s<dat.nS; s++)
-			Tau[MATREF(g,s,(dat.nG-1))] += tauDerivsI.at(MATREF(g,s,(dat.nG-1)));
+			Tau[MATREF2D(g,s,(dat.nG-1))] += tauDerivsI.at(MATREF2D(g,s,(dat.nG-1)));
 	for( int g=0; g<(dat.nG-1); g++)
 		for( int p=0; p<dat.np; p++)
-			Beta[MATREF(g,p,(dat.nG-1))] += betaDerivsI.at(MATREF(g,p,(dat.nG-1)));
+			Beta[MATREF2D(g,p,(dat.nG-1))] += betaDerivsI.at(MATREF2D(g,p,(dat.nG-1)));
 	for( int s=0; s<dat.nS; s++)
 		for( int p=0; p<dat.npw; p++)
-			Gamma[MATREF(s,p,dat.nS)] += gammaDerivsI.at(MATREF(s,p,dat.nS));
+			Gamma[MATREF2D(s,p,dat.nS)] += gammaDerivsI.at(MATREF2D(s,p,dat.nS));
 	if( dat.isDispersion() & dat.doOptiDisp())
 		for( int s=0; s<dat.nS; s++)
 			Disp[s] += dispDerivsI.at(s);
@@ -52,37 +52,37 @@ void myDerivs::updateDerivs( const myData &dat, const vector<double> &alphaDeriv
 	int k = 0;
 	if( i != -1){
 		for( int s=0; s<dat.nS; s++)
-			Scores[MATREF(i,k++,dat.nObs)] = alphaDerivsI.at(s);
+			Scores[MATREF2D(i,k++,dat.nObs)] = alphaDerivsI.at(s);
 		for( int s=0; s<dat.nS; s++)
 			for( int g=0; g<(dat.nG-1); g++)
-				Scores[MATREF(i,k++,dat.nObs)] = tauDerivsI.at(MATREF(g,s,(dat.nG-1)));
+				Scores[MATREF2D(i,k++,dat.nObs)] = tauDerivsI.at(MATREF2D(g,s,(dat.nG-1)));
 		for( int p=0; p<dat.np; p++)
 			for( int g=0; g<(dat.nG-1); g++)
-				Scores[MATREF(i,k++,dat.nObs)] = betaDerivsI.at(MATREF(g,p,(dat.nG-1)));
+				Scores[MATREF2D(i,k++,dat.nObs)] = betaDerivsI.at(MATREF2D(g,p,(dat.nG-1)));
 		for( int p=0; p<dat.npw; p++)
 			for( int s=0; s<dat.nS; s++)
-				Scores[MATREF(i,k++, dat.nObs)] = gammaDerivsI.at(MATREF(s,p,dat.nS));
+				Scores[MATREF2D(i,k++, dat.nObs)] = gammaDerivsI.at(MATREF2D(s,p,dat.nS));
 		if( dat.isDispersion())
 			for( int s=0; s<dat.nS; s++)
-				Scores[MATREF(i,k++, dat.nObs)] = dispDerivsI.at(s);
+				Scores[MATREF2D(i,k++, dat.nObs)] = dispDerivsI.at(s);
 	}
 	else{
 		for( int i=0; i<dat.nObs; i++){
 			k = 0;
 			for( int s=0; s<dat.nS; s++)
-				Scores[MATREF(i,k++,dat.nObs)] += dat.wts[i]*alphaDerivsI.at(s) / dat.nObs;
+				Scores[MATREF2D(i,k++,dat.nObs)] += dat.wts[i]*alphaDerivsI.at(s) / dat.nObs;
 			for( int s=0; s<dat.nS; s++)
 				for( int g=0; g<(dat.nG-1); g++)
-					Scores[MATREF(i,k++,dat.nObs)] += dat.wts[i]*tauDerivsI.at(MATREF(g,s,(dat.nG-1))) / dat.nObs;
+					Scores[MATREF2D(i,k++,dat.nObs)] += dat.wts[i]*tauDerivsI.at(MATREF2D(g,s,(dat.nG-1))) / dat.nObs;
 			for( int p=0; p<dat.np; p++)
 				for( int g=0; g<(dat.nG-1); g++)
-					Scores[MATREF(i,k++,dat.nObs)] += dat.wts[i]*betaDerivsI.at(MATREF(g,p,(dat.nG-1))) / dat.nObs;
+					Scores[MATREF2D(i,k++,dat.nObs)] += dat.wts[i]*betaDerivsI.at(MATREF2D(g,p,(dat.nG-1))) / dat.nObs;
 			for( int p=0; p<dat.npw; p++)
 				for( int s=0; s<dat.nS; s++)
-					Scores[MATREF(i,k++,dat.nObs)] += dat.wts[i]*gammaDerivsI.at(MATREF(s,p,dat.nS)) / dat.nObs;
+					Scores[MATREF2D(i,k++,dat.nObs)] += dat.wts[i]*gammaDerivsI.at(MATREF2D(s,p,dat.nS)) / dat.nObs;
 			if( dat.isDispersion())
 				for( int s=0; s<dat.nS; s++)
-					Scores[MATREF(i,k++,dat.nObs)] += dat.wts[i]*dispDerivsI.at(s) / dat.nObs;
+					Scores[MATREF2D(i,k++,dat.nObs)] += dat.wts[i]*dispDerivsI.at(s) / dat.nObs;
 		}
 	}
 }

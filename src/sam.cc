@@ -1,6 +1,33 @@
-#include"SpeciesMix-Deriv.h"
+#include"sam.h"
 
-extern "C" { SEXP species_mix_cpp(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEXP R_tau, SEXP R_gradient, SEXP R_offset, SEXP R_model_type){
+extern "C" { SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rwts, SEXP Ry_not_na,
+								  SEXP RS, SEXP RG, SEXP Rp, SEXP RnObs, SEXP Rdisty,
+								  SEXP Ralpha, SEXP Rbeta, SEXP Rtau, SEXP Rdisps, SEXP Rpowers,
+					              //SEXP Rconc, SEXP Rsd, SEXP RsdGamma, SEXP RdispLocat, SEXP RdispScale,
+								  SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsTau, SEXP RderivsDisps, SEXP Rscores,
+								  SEXP Rpis, SEXP Rmus, SEXP RlogDens, SEXP Rloglike,
+								  SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv,
+								  SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp, SEXP RgetScores){
+	
+	allClasses all;
+
+	//initialise the data structures -- they are mostly just pointers to REAL()s...
+	all.data.setVals( Ry, RX, RW, Roffset, RS, RG, Rp, Rpw, RnObs, Rdisty, RoptiDisp, Rwts);	//read in the data
+	all.parms.setVals( all.data, Ralpha, Rbeta, Rtau, Rgamma, Rdisps, Rpowers, Rconc, Rsd, RsdGamma, RdispLocat, RdispScale);	//read in the parameters
+	all.derivs.setVals( all.data, RderivsAlpha, RderivsTau, RderivsBeta, RderivsGamma, RderivsDisps, RgetScores, Rscores);
+	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv);
+	all.fits.initialise( all.data.nObs, all.data.nG, all.data.nS, all.data.NAnum);
+
+	double logl = -999999;
+									  
+									  
+									  
+									  }	
+	}
+
+
+extern "C" { SEXP species_mix_bernoulli_cpp(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEXP R_tau, SEXP R_gradient, SEXP R_offset,
+											SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv){
 
     // y is response
     // X is design matrix
@@ -16,10 +43,15 @@ extern "C" { SEXP species_mix_cpp(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEX
     int S,G, Xr, Xc, lpar,s,i ,ly;
     SEXP dimensions, R_logl=NULL;
     double abstol,reltol;
-    int fncount, grcount, ifail,trace,nREPORT, model_type;
+    int fncount, grcount, ifail, trace, nREPORT, model_type;
   
-  
-    Optimise_data data;
+    // call classes which should make the data and the control parameters public. 
+    spmix_data data;
+    spmix_opt_contr contr;
+
+    data.setVals( Ry, RX, Roffset, Rwts, Ry_not_na, RS, RG, Rp, RnObs, Rdisty, RoptiDisp); 
+    contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv);
+
 
     //R_pars has length = length(pi) + length( G* (number of covariates + intercept))
     // ordered so that first G elements are pi and remaining elements are coefficents. all coefficents from same group are together
@@ -33,7 +65,7 @@ extern "C" { SEXP species_mix_cpp(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEX
     tau=REAL(R_tau);
     ID=INTEGER(R_ID);
     gradient=REAL(R_gradient);
-    model_type=*INTEGER(R_model_type);
+    //model_type=*INTEGER(R_model_type);
     offset=REAL(R_offset);
 
  
@@ -67,32 +99,34 @@ extern "C" { SEXP species_mix_cpp(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEX
     vector < double > logl_out(lpar,0);
     
     
-    if(model_type==1){
+    //if(model_type==1){
       vmmin(lpar, pars, &logl_out.at(0), optimise_function_sam, gradient_function_sam, 1000, trace, &mask.at(0),  abstol,  reltol,  nREPORT, &data, &fncount, &grcount, &ifail);
-    }
-    if(model_type==2){
-      vmmin(lpar, pars, &logl_out.at(0), optimise_mixnbinom_function, gradient_mixnbinom_function, 1000, trace, &mask.at(0),  abstol,  reltol,  nREPORT, &data, &fncount, &grcount, &ifail);
-    }
-    if(model_type==3){
+    //}
+    //if(model_type==2){
+      //vmmin(lpar, pars, &logl_out.at(0), optimise_mixnbinom_function, gradient_mixnbinom_function, 1000, trace, &mask.at(0),  abstol,  reltol,  nREPORT, &data, &fncount, &grcount, &ifail);
+    //}
+    //if(model_type==3){
       //for(i=(G*Xc + G-1 + S) ; i< data.lpar; i++) mask.at(i)=0;
       //for(i=(G*Xc + G-1 + S+G) ; i< data.lpar; i++) mask.at(i)=0;
-      vmmin(lpar, pars, &logl_out.at(0), optimise_tweedie_function, gradient_tweedie_function, 1000, trace, &mask.at(0),  abstol,  reltol,  nREPORT, &data, &fncount, &grcount, &ifail);
-    }
+      //vmmin(lpar, pars, &logl_out.at(0), optimise_tweedie_function, gradient_tweedie_function, 1000, trace, &mask.at(0),  abstol,  reltol,  nREPORT, &data, &fncount, &grcount, &ifail);
+    //}
 
     logl=1;
 
-    if(model_type==1){
+     
+    // fitmix only does bernoulli.
+    //if(model_type==1){
       logl = optimise_function_sam(lpar, pars, &data);
       gradient_function_sam(lpar, pars, &grd.at(0),&data);
-    }
-    if(model_type==2){
-      logl = optimise_mixnbinom_function(lpar, pars, &data);
-      gradient_mixnbinom_function(lpar, pars, &grd.at(0),&data);
-    }
-    if(model_type==3){
-      logl = optimise_tweedie_function(lpar, pars, &data);
-      gradient_tweedie_function(lpar, pars, &grd.at(0),&data);
-    }
+    //}
+    //if(model_type==2){
+      //logl = optimise_mixnbinom_function(lpar, pars, &data);
+      //gradient_mixnbinom_function(lpar, pars, &grd.at(0),&data);
+    //}
+    //if(model_type==3){
+      //logl = optimise_tweedie_function(lpar, pars, &data);
+      //gradient_tweedie_function(lpar, pars, &grd.at(0),&data);
+    //}
   
     for(i=0;i<lpar;i++){
       gradient[i] = grd.at(i);
@@ -152,31 +186,31 @@ void gradient_function_sam(int n, double *pars, double *gr, void *ex ){
 
       for(j=0;j<Xc;j++){
 	for(s=0;s<S;s++){
-	  ad_g.at((G-1)+ MAT_RF(g,j,G)) += exp( -1*data->species_l_contrib.at(s) + log(data->parpi.at(g)) + data->sum_f_species.at(MAT_RF(g,s,G))) *data->deriv_f_B.at(MAT_3D(g,j,s,G,Xc));
-	  if(j==0) dl_dpi.at(g) += exp(  -1*data->species_l_contrib.at(s)+ data->sum_f_species.at(MAT_RF(g,s,G)));
+	  ad_g.at((G-1)+ MATREF2D(g,j,G)) += exp( -1*data->species_l_contrib.at(s) + log(data->parpi.at(g)) + data->sum_f_species.at(MATREF2D(g,s,G))) *data->deriv_f_B.at(MATREF3D(g,j,s,G,Xc));
+	  if(j==0) dl_dpi.at(g) += exp(  -1*data->species_l_contrib.at(s)+ data->sum_f_species.at(MATREF2D(g,s,G)));
 	}
       }
 
       for(i=0;i<(G-1);i++){ // go through eta's
 	if(g<(G-1)){
 	  if(i==g){
-	    pi_mat_deriv.at(MAT_RF(i,g,(G-1))) = exp(x.at(i))/add_log_trans - exp(2*x.at(i))/(add_log_trans*add_log_trans);// diag
-	    pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) += pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
+	    pi_mat_deriv.at(MATREF2D(i,g,(G-1))) = exp(x.at(i))/add_log_trans - exp(2*x.at(i))/(add_log_trans*add_log_trans);// diag
+	    pi_mat_deriv.at(MATREF2D(i,(G-1),(G-1))) += pi_mat_deriv.at(MATREF2D(i,g,(G-1)));
 	  }else{
-	    pi_mat_deriv.at(MAT_RF(i,g,(G-1))) = -exp(x.at(i))*exp(x.at(g)) / (add_log_trans*add_log_trans); //off-diag
-	    pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) += pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
+	    pi_mat_deriv.at(MATREF2D(i,g,(G-1))) = -exp(x.at(i))*exp(x.at(g)) / (add_log_trans*add_log_trans); //off-diag
+	    pi_mat_deriv.at(MATREF2D(i,(G-1),(G-1))) += pi_mat_deriv.at(MATREF2D(i,g,(G-1)));
 	  }
 	}
       }
 
   }
-  for(i=0;i<(G-1);i++) pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) *= -1;
+  for(i=0;i<(G-1);i++) pi_mat_deriv.at(MATREF2D(i,(G-1),(G-1))) *= -1;
 
 
 
     for(i=0;i<(G-1);i++){
       for(g=0;g<G;g++){
-	ad_g.at(i) += dl_dpi.at(g)* pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
+	ad_g.at(i) += dl_dpi.at(g)* pi_mat_deriv.at(MATREF2D(i,g,(G-1)));
       }
     }
 
@@ -209,8 +243,8 @@ void gradient_function_sam(int n, double *pars, double *gr, void *ex ){
   for(i=0;i<G;i++){
     data.parpi.at(i) = estpi.at(i);
     for(s=0;s<S;s++){ 
-      data.sum_f_species.at(MAT_RF(i,s,G))=0;
-      for(j=0;j<Xc;j++) data.deriv_f_B.at(MAT_3D(i,j,s,G,Xc)) =0;
+      data.sum_f_species.at(MATREF2D(i,s,G))=0;
+      for(j=0;j<Xc;j++) data.deriv_f_B.at(MATREF3D(i,j,s,G,Xc)) =0;
     }
   }
  
@@ -245,11 +279,11 @@ double like_function(vector< double > &estpi, vector < double > &coef, const dou
     for(i=0;i<len;i++){
       lpre=0;
       for(j=0;j<Xc;j++){ 
-	lpre +=  X[MAT_RF(i,j,Xr)] * coef[MAT_RF(g,j,G)];
+	lpre +=  X[MATREF2D(i,j,Xr)] * coef[MATREF2D(g,j,G)];
       }
       p.at(0)=inv_link_function(lpre,0);  // mu for each archetype at site k
  
-      for(j=0;j<Xc;j++) {deriv_f_B.at(MAT_3D(g,j,s,G,Xc)) +=   (y[start+i] - p.at(0)) * X[MAT_RF(i,j,Xr)] ;} 
+      for(j=0;j<Xc;j++) {deriv_f_B.at(MATREF3D(g,j,s,G,Xc)) +=   (y[start+i] - p.at(0)) * X[MATREF2D(i,j,Xr)] ;} 
 
       if(y[start+i]==0) p.at(0) = 1-p.at(0);
 
@@ -262,7 +296,7 @@ double like_function(vector< double > &estpi, vector < double > &coef, const dou
   }
 
   for(g=0;g<G;g++){
-    sum_f_species.at(MAT_RF(g,s,G)) = sump.at(g);
+    sum_f_species.at(MATREF2D(g,s,G)) = sump.at(g);
     glogl+= estpi.at(g)*exp(sump.at(g) - eps);
   }
   // code for taus can go here
@@ -373,7 +407,7 @@ void Optimise_data::SetVars(double *ty, double *tX, int *tID, int tS, int tG, in
 
 
 extern "C" { 
-  SEXP species_mix_gradient_cpp(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEXP R_tau, SEXP R_gradient, SEXP R_offset, SEXP R_model_type){
+  SEXP species_mix_bernoulli_gradient_cpp(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEXP R_tau, SEXP R_gradient, SEXP R_offset){//, SEXP R_model_type){
     // y is response
     //X is design matrix
     // ID is vector length(y) with species names for each observation
@@ -389,7 +423,7 @@ extern "C" {
     int fncount, grcount, ifail,trace,nREPORT,model_type=0;
   
   
-     Optimise_data data;
+    Optimise_data data;
 
     //R_pars has length = length(pi) + length( G* (number of covariates + intercept))
     // ordered so that first G elements are pi and remaining elements are coefficents. all coefficents from same group are together
@@ -404,7 +438,7 @@ extern "C" {
     ID=INTEGER(R_ID);
     gradient=REAL(R_gradient);
      offset=REAL(R_offset);
-    model_type=*INTEGER(R_model_type);
+    //model_type=*INTEGER(R_model_type);
 
       for(i=0;i<lpar;i++){ params.at(i) = pars[i]; }
 
@@ -436,33 +470,15 @@ extern "C" {
     // vector < double > logl_out(lpar,0);
 
     logl=1;
-    if(model_type==1){
-      logl = optimise_function_sam(lpar, pars, &data);
+  
+    logl = optimise_function_sam(lpar, pars, &data);
 
-    //std::cout << "Optimise = " << logl << "\n";
-       gradient_function_sam(lpar, pars, &grd.at(0),&data);
+    gradient_function_sam(lpar, pars, &grd.at(0),&data);
 
-    }
-    if(model_type==2){
-      logl = optimise_mixnbinom_function(lpar, pars, &data);
-
-    //std::cout << "Optimise = " << logl << "\n";
-      gradient_mixnbinom_function(lpar, pars, &grd.at(0),&data);
-    }
- if(model_type==3){
-      logl = optimise_tweedie_function(lpar, pars, &data);
-
-    //std::cout << "Optimise = " << logl << "\n";
-      gradient_tweedie_function(lpar, pars, &grd.at(0),&data);
-    }
-
-    // std::cout << "Gradient  = ";
     for(i=0;i<lpar;i++){
       //  std::cout << i<< " : " << grd.at(i) << ", ";
        gradient[i] = grd.at(i);
     }
-
-    // std::cout << "\n";
 
 
     R_logl = allocVector(REALSXP,1);
@@ -480,8 +496,7 @@ extern "C" {
  */
   
 
-extern "C" {
-  SEXP negative_binomial_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_gradient, SEXP R_fitted_values){
+extern "C" { SEXP species_mix_negative_binomial_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_gradient, SEXP R_fitted_values){
     // tau is the parameter vector, 
     // od is the overdispersion parameter, 
     // X is the design matrix, 
@@ -538,9 +553,8 @@ extern "C" {
     return(R_logl);
   }
 }
-extern "C" 
-{
-  SEXP negative_binomial_gradient_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_gradient){
+
+extern "C" { SEXP species_mix_negative_binomial_gradient_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_gradient){
     // tau is the parameter vector, 
     // od is the overdispersion parameter, 
     // X is the design matrix, 
@@ -628,7 +642,7 @@ void gradient_nbinom(int n, double *pars, double *gr, void *ex ){
   for(i=0;i<Xr;i++){
     d1=data->y[i]/data->lp.at(i)-(pars[0]+data->y[i])/(data->lp.at(i)+pars[0]);
     for(j=1;j<=Xc;j++){
-      gr[j]+=(d1*data->lp.at(i)*data->X[MAT_RF(i,(j-1),Xr)])*data->w[i];
+      gr[j]+=(d1*data->lp.at(i)*data->X[MATREF2D(i,(j-1),Xr)])*data->w[i];
 
     }
     // gradient for theta
@@ -651,7 +665,7 @@ double negative_binomial_logl(vector<double> &pars, Optimise_data_nbinom &data )
   for(i=0;i<Xr;i++){
     lp.at(i)=offset;
     for(j=0;j<Xc;j++){
-       lp.at(i)+=data.X[MAT_RF(i,j,Xr)]*pars.at(j+1);
+       lp.at(i)+=data.X[MATREF2D(i,j,Xr)]*pars.at(j+1);
     }
     lp.at(i)=exp(lp.at(i));
     data.lp.at(i)=lp.at(i); //fitted values
@@ -739,38 +753,38 @@ void gradient_mixnbinom_function(int n, double *pars, double *gr, void *ex ){
 
       for(j=0;j<Xc;j++){
 	for(s=0;s<S;s++){
-	  ad_g.at((G-1)+ MAT_RF(g,j,G)) += exp( -1*data->species_l_contrib.at(s) + log(data->parpi.at(g)) + data->sum_f_species.at(MAT_RF(g,s,G))) *data->deriv_f_B.at(MAT_3D(g,j,s,G,Xc));
-	  if(j==0) dl_dpi.at(g) += exp(  -1*data->species_l_contrib.at(s)+ data->sum_f_species.at(MAT_RF(g,s,G)));
+	  ad_g.at((G-1)+ MATREF2D(g,j,G)) += exp( -1*data->species_l_contrib.at(s) + log(data->parpi.at(g)) + data->sum_f_species.at(MATREF2D(g,s,G))) *data->deriv_f_B.at(MATREF3D(g,j,s,G,Xc));
+	  if(j==0) dl_dpi.at(g) += exp(  -1*data->species_l_contrib.at(s)+ data->sum_f_species.at(MATREF2D(g,s,G)));
 	}
       }
 
       for(i=0;i<(G-1);i++){ // go through eta's
 	if(g<(G-1)){
 	  if(i==g){
-	    pi_mat_deriv.at(MAT_RF(i,g,(G-1))) = exp(x.at(i))/add_log_trans - exp(2*x.at(i))/(add_log_trans*add_log_trans);// diag
-	    pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) += pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
+	    pi_mat_deriv.at(MATREF2D(i,g,(G-1))) = exp(x.at(i))/add_log_trans - exp(2*x.at(i))/(add_log_trans*add_log_trans);// diag
+	    pi_mat_deriv.at(MATREF2D(i,(G-1),(G-1))) += pi_mat_deriv.at(MATREF2D(i,g,(G-1)));
 	  }else{
-	    pi_mat_deriv.at(MAT_RF(i,g,(G-1))) = -exp(x.at(i))*exp(x.at(g)) / (add_log_trans*add_log_trans); //off-diag
-	    pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) += pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
+	    pi_mat_deriv.at(MATREF2D(i,g,(G-1))) = -exp(x.at(i))*exp(x.at(g)) / (add_log_trans*add_log_trans); //off-diag
+	    pi_mat_deriv.at(MATREF2D(i,(G-1),(G-1))) += pi_mat_deriv.at(MATREF2D(i,g,(G-1)));
 	  }
 	}
       }
 
       for(s=0;s<S;s++){
       //calculate for alphas
-	ad_g.at((G*Xc + G-1)+s)+= exp(data->sum_f_species.at(MAT_RF(g,s,G)) - data->species_l_contrib.at(s)+ log(data->parpi.at(g)))* data->deriv_f_alphaS.at(MAT_RF(g,s,G));
+	ad_g.at((G*Xc + G-1)+s)+= exp(data->sum_f_species.at(MATREF2D(g,s,G)) - data->species_l_contrib.at(s)+ log(data->parpi.at(g)))* data->deriv_f_alphaS.at(MATREF2D(g,s,G));
 	
       //calculate for dispersion
-	ad_g.at((G*Xc + G-1 + S)+s)+= exp(data->sum_f_species.at(MAT_RF(g,s,G)) - data->species_l_contrib.at(s)+ log(data->parpi.at(g)))* data->deriv_f_dispersionS.at(MAT_RF(g,s,G));
+	ad_g.at((G*Xc + G-1 + S)+s)+= exp(data->sum_f_species.at(MATREF2D(g,s,G)) - data->species_l_contrib.at(s)+ log(data->parpi.at(g)))* data->deriv_f_dispersionS.at(MATREF2D(g,s,G));
       }
   }
-  for(i=0;i<(G-1);i++) pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) *= -1;
+  for(i=0;i<(G-1);i++) pi_mat_deriv.at(MATREF2D(i,(G-1),(G-1))) *= -1;
 
 
 
     for(i=0;i<(G-1);i++){
       for(g=0;g<G;g++){
-	ad_g.at(i) += dl_dpi.at(g)* pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
+	ad_g.at(i) += dl_dpi.at(g)* pi_mat_deriv.at(MATREF2D(i,g,(G-1)));
       }
     }
 
@@ -807,10 +821,10 @@ void gradient_mixnbinom_function(int n, double *pars, double *gr, void *ex ){
   for(i=0;i<G;i++){
     data.parpi.at(i) = estpi.at(i);
     for(s=0;s<S;s++){ 
-      data.sum_f_species.at(MAT_RF(i,s,G))=0;
-      data.deriv_f_dispersionS.at(MAT_RF(i,s,G))=0;
-      data.deriv_f_alphaS.at(MAT_RF(i,s,G))=0;
-      for(j=0;j<Xc;j++) data.deriv_f_B.at(MAT_3D(i,j,s,G,Xc)) =0;
+      data.sum_f_species.at(MATREF2D(i,s,G))=0;
+      data.deriv_f_dispersionS.at(MATREF2D(i,s,G))=0;
+      data.deriv_f_alphaS.at(MATREF2D(i,s,G))=0;
+      for(j=0;j<Xc;j++) data.deriv_f_B.at(MATREF3D(i,j,s,G,Xc)) =0;
     }
   }
 
@@ -829,7 +843,7 @@ void gradient_mixnbinom_function(int n, double *pars, double *gr, void *ex ){
   //Rprintf("\n");
   /*  for(g=0;g<G;g++){
     for(j=0;j<Xc;j++)
-      Rprintf("%f, ",coef[MAT_RF(g,j,G)]);
+      Rprintf("%f, ",coef[MATREF2D(g,j,G)]);
     Rprintf("| %d\n",g);
     }*/
   logl.at(0) = 0;
@@ -862,7 +876,7 @@ double like_mix_nbinom_function(vector< double > &estpi, vector < double > &coef
     for(i=0;i<len;i++){
       lpre=offset[i]+sp_int.at(s);
       for(j=0;j<Xc;j++){ 
-	lpre +=  X[MAT_RF(i,j,Xr)] * coef[MAT_RF(g,j,G)];
+	lpre +=  X[MATREF2D(i,j,Xr)] * coef[MATREF2D(g,j,G)];
 
       }
     
@@ -870,11 +884,11 @@ double like_mix_nbinom_function(vector< double > &estpi, vector < double > &coef
       // datalp.at(i) = p.at(0);
       //Rprintf("%f,",lpre);
 
-      deriv_f_dispersionS.at(MAT_RF(g,s,G)) += (digamma(sp_dispersion.at(s)+y[start+i]) - digamma(sp_dispersion.at(s)) + log(sp_dispersion.at(s)) + 1 - log( p.at(0) + sp_dispersion.at(s)) - (sp_dispersion.at(s)+y[start+i])/(p.at(0) + sp_dispersion.at(s))); // df/dtheta for theta0
+      deriv_f_dispersionS.at(MATREF2D(g,s,G)) += (digamma(sp_dispersion.at(s)+y[start+i]) - digamma(sp_dispersion.at(s)) + log(sp_dispersion.at(s)) + 1 - log( p.at(0) + sp_dispersion.at(s)) - (sp_dispersion.at(s)+y[start+i])/(p.at(0) + sp_dispersion.at(s))); // df/dtheta for theta0
       
       d1=y[start+i]/p.at(0)-(sp_dispersion.at(s)+y[start+i])/(p.at(0)+sp_dispersion.at(s));
-      for(j=0;j<Xc;j++) {deriv_f_B.at(MAT_3D(g,j,s,G,Xc)) +=  (d1*p.at(0)*X[MAT_RF(i,j,Xr)]);} 
-      deriv_f_alphaS.at(MAT_RF(g,s,G))+= (d1*p.at(0)*1);
+      for(j=0;j<Xc;j++) {deriv_f_B.at(MATREF3D(g,j,s,G,Xc)) +=  (d1*p.at(0)*X[MATREF2D(i,j,Xr)]);} 
+      deriv_f_alphaS.at(MATREF2D(g,s,G))+= (d1*p.at(0)*1);
 
       //if(y[start+i]==0) p.at(0) = 1-p.at(0);
 
@@ -885,7 +899,7 @@ double like_mix_nbinom_function(vector< double > &estpi, vector < double > &coef
  
     /*Rprintf("%d, %d, %f, %f, %f \n",s,g, sump.at(g), sp_int.at(s),sp_dispersion.at(s));
       for(j=0;j<Xc;j++)
-	Rprintf("%f, ",coef[MAT_RF(g,j,G)]);
+	Rprintf("%f, ",coef[MATREF2D(g,j,G)]);
       Rprintf("\n");
     */
 
@@ -896,7 +910,7 @@ double like_mix_nbinom_function(vector< double > &estpi, vector < double > &coef
   }
 
   for(g=0;g<G;g++){
-    sum_f_species.at(MAT_RF(g,s,G)) = sump.at(g);
+    sum_f_species.at(MATREF2D(g,s,G)) = sump.at(g);
     glogl+= estpi.at(g)*exp(sump.at(g) - eps);
   }
   // code for taus can go here
@@ -962,38 +976,38 @@ void gradient_tweedie_function(int n, double *pars, double *gr, void *ex ){
 
       for(j=0;j<Xc;j++){
 	for(s=0;s<S;s++){
-	  ad_g.at((G-1)+ MAT_RF(g,j,G)) += exp( -1*data->species_l_contrib.at(s) + log(data->parpi.at(g)) + data->sum_f_species.at(MAT_RF(g,s,G))) *data->deriv_f_B.at(MAT_3D(g,j,s,G,Xc));
-	  if(j==0) dl_dpi.at(g) += exp(  -1*data->species_l_contrib.at(s)+ data->sum_f_species.at(MAT_RF(g,s,G)));
+	  ad_g.at((G-1)+ MATREF2D(g,j,G)) += exp( -1*data->species_l_contrib.at(s) + log(data->parpi.at(g)) + data->sum_f_species.at(MATREF2D(g,s,G))) *data->deriv_f_B.at(MATREF3D(g,j,s,G,Xc));
+	  if(j==0) dl_dpi.at(g) += exp(  -1*data->species_l_contrib.at(s)+ data->sum_f_species.at(MATREF2D(g,s,G)));
 	}
       }
 
       for(i=0;i<(G-1);i++){ // go through eta's
 	if(g<(G-1)){
 	  if(i==g){
-	    pi_mat_deriv.at(MAT_RF(i,g,(G-1))) = exp(x.at(i))/add_log_trans - exp(2*x.at(i))/(add_log_trans*add_log_trans);// diag
-	    pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) += pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
+	    pi_mat_deriv.at(MATREF2D(i,g,(G-1))) = exp(x.at(i))/add_log_trans - exp(2*x.at(i))/(add_log_trans*add_log_trans);// diag
+	    pi_mat_deriv.at(MATREF2D(i,(G-1),(G-1))) += pi_mat_deriv.at(MATREF2D(i,g,(G-1)));
 	  }else{
-	    pi_mat_deriv.at(MAT_RF(i,g,(G-1))) = -exp(x.at(i))*exp(x.at(g)) / (add_log_trans*add_log_trans); //off-diag
-	    pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) += pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
+	    pi_mat_deriv.at(MATREF2D(i,g,(G-1))) = -exp(x.at(i))*exp(x.at(g)) / (add_log_trans*add_log_trans); //off-diag
+	    pi_mat_deriv.at(MATREF2D(i,(G-1),(G-1))) += pi_mat_deriv.at(MATREF2D(i,g,(G-1)));
 	  }
 	}
       }
 
       for(s=0;s<S;s++){
       //calculate for alphas
-	ad_g.at((G*Xc + G-1)+s)+= exp(data->sum_f_species.at(MAT_RF(g,s,G)) - data->species_l_contrib.at(s)+ log(data->parpi.at(g)))* data->deriv_f_alphaS.at(MAT_RF(g,s,G));
+	ad_g.at((G*Xc + G-1)+s)+= exp(data->sum_f_species.at(MATREF2D(g,s,G)) - data->species_l_contrib.at(s)+ log(data->parpi.at(g)))* data->deriv_f_alphaS.at(MATREF2D(g,s,G));
 	
       //calculate for dispersion
-	ad_g.at((G*Xc + G-1 + S)+s)+= exp(data->sum_f_species.at(MAT_RF(g,s,G)) - data->species_l_contrib.at(s)+ log(data->parpi.at(g)))* data->deriv_f_dispersionS.at(MAT_RF(g,s,G));
+	ad_g.at((G*Xc + G-1 + S)+s)+= exp(data->sum_f_species.at(MATREF2D(g,s,G)) - data->species_l_contrib.at(s)+ log(data->parpi.at(g)))* data->deriv_f_dispersionS.at(MATREF2D(g,s,G));
       }
   }
-  for(i=0;i<(G-1);i++) pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) *= -1;
+  for(i=0;i<(G-1);i++) pi_mat_deriv.at(MATREF2D(i,(G-1),(G-1))) *= -1;
 
 
 
     for(i=0;i<(G-1);i++){
       for(g=0;g<G;g++){
-	ad_g.at(i) += dl_dpi.at(g)* pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
+	ad_g.at(i) += dl_dpi.at(g)* pi_mat_deriv.at(MATREF2D(i,g,(G-1)));
       }
     }
 
@@ -1030,10 +1044,10 @@ void gradient_tweedie_function(int n, double *pars, double *gr, void *ex ){
   for(i=0;i<G;i++){
     data.parpi.at(i) = estpi.at(i);
     for(s=0;s<S;s++){ 
-      data.sum_f_species.at(MAT_RF(i,s,G))=0;
-      data.deriv_f_dispersionS.at(MAT_RF(i,s,G))=0;
-      data.deriv_f_alphaS.at(MAT_RF(i,s,G))=0;
-      for(j=0;j<Xc;j++) data.deriv_f_B.at(MAT_3D(i,j,s,G,Xc)) =0;
+      data.sum_f_species.at(MATREF2D(i,s,G))=0;
+      data.deriv_f_dispersionS.at(MATREF2D(i,s,G))=0;
+      data.deriv_f_alphaS.at(MATREF2D(i,s,G))=0;
+      for(j=0;j<Xc;j++) data.deriv_f_B.at(MATREF3D(i,j,s,G,Xc)) =0;
     }
   }
 
@@ -1054,7 +1068,7 @@ void gradient_tweedie_function(int n, double *pars, double *gr, void *ex ){
   //Rprintf("\n");
   /*  for(g=0;g<G;g++){
     for(j=0;j<Xc;j++)
-      Rprintf("%f, ",coef[MAT_RF(g,j,G)]);
+      Rprintf("%f, ",coef[MATREF2D(g,j,G)]);
     Rprintf("| %d\n",g);
     }*/
   logl.at(0) = 0;
@@ -1097,9 +1111,9 @@ double like_tweedie_function(vector< double > &estpi, vector < double > &coef, v
       X_for_deriv.at(0) = 1;
       outDerivs.at(0)=0;
       for(j=0;j<Xc;j++){ 
-	mu +=  X[MAT_RF(i,j,Xr)] * coef[MAT_RF(g,j,G)];
-	beta_for_deriv.at(j+1) = coef[MAT_RF(g,j,G)];
-	X_for_deriv.at(j+1) = X[MAT_RF(i,j,Xr)];
+	mu +=  X[MATREF2D(i,j,Xr)] * coef[MATREF2D(g,j,G)];
+	beta_for_deriv.at(j+1) = coef[MATREF2D(g,j,G)];
+	X_for_deriv.at(j+1) = X[MATREF2D(i,j,Xr)];
 	outDerivs.at(j+1)=0;
       }
       outDerivs.at(Xc+1)=0;
@@ -1112,10 +1126,10 @@ double like_tweedie_function(vector< double > &estpi, vector < double > &coef, v
       // datalp.at(i) = p.at(0);
       //Rprintf("%f,",lpre);
       dTGLM(outDerivs, X_for_deriv, y[start+i], offset[i], beta_for_deriv, sp_dispersion.at(s), power); //changed
-      deriv_f_dispersionS.at(MAT_RF(g,s,G)) += 0-outDerivs.at(Xc+1);
+      deriv_f_dispersionS.at(MATREF2D(g,s,G)) += 0-outDerivs.at(Xc+1);
             
-      for(j=0;j<Xc;j++) {deriv_f_B.at(MAT_3D(g,j,s,G,Xc)) +=  0-outDerivs.at(j+1);}
-      deriv_f_alphaS.at(MAT_RF(g,s,G))+= 0-outDerivs.at(0);
+      for(j=0;j<Xc;j++) {deriv_f_B.at(MATREF3D(g,j,s,G,Xc)) +=  0-outDerivs.at(j+1);}
+      deriv_f_alphaS.at(MATREF2D(g,s,G))+= 0-outDerivs.at(0);
       //if(y[start+i]==0) p.at(0) = 1-p.at(0);
 
       sump.at(g) += p.at(0);
@@ -1125,7 +1139,7 @@ double like_tweedie_function(vector< double > &estpi, vector < double > &coef, v
  
     //Rprintf("%d, %d, %f, %f, %f \n",s,g, sump.at(g), sp_int.at(s),sp_dispersion.at(s));
       /*   for(j=0;j<Xc;j++)
-	Rprintf("%f, ",coef[MAT_RF(g,j,G)]);
+	Rprintf("%f, ",coef[MATREF2D(g,j,G)]);
       Rprintf("\n");
     */
 
@@ -1136,7 +1150,7 @@ double like_tweedie_function(vector< double > &estpi, vector < double > &coef, v
   }
 
   for(g=0;g<G;g++){
-    sum_f_species.at(MAT_RF(g,s,G)) = sump.at(g);
+    sum_f_species.at(MATREF2D(g,s,G)) = sump.at(g);
     glogl+= estpi.at(g)*exp(sump.at(g) - eps);
   }
   // code for taus can go here
@@ -1149,7 +1163,15 @@ double like_tweedie_function(vector< double > &estpi, vector < double > &coef, v
 
 
 
-extern "C" {  SEXP ippm_sam_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_y_is_not_na, SEXP R_ID, SEXP R_gradient, SEXP R_fitted_values){
+extern "C" {  SEXP species_mix_ippm_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_y_is_not_na,
+										SEXP R_gradient, SEXP R_fitted_values,
+										SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv){
+											
+	allClasses all;
+	
+	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv);										
+	
+											
     // tau is the parameter vector, 
     // od is the overdispersion parameter, 
     // X is the design matrix, 
@@ -1169,7 +1191,7 @@ extern "C" {  SEXP ippm_sam_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP 
     y=REAL(R_y);
     X=REAL(R_X);
     w=REAL(R_w);
-    ID=INTEGER(R_ID);
+    //ID=INTEGER(R_ID);
     offset=REAL(R_offset);
     y_is_not_na=INTEGER(R_y_is_not_na);
     gradient=REAL(R_gradient);
@@ -1188,6 +1210,8 @@ extern "C" {  SEXP ippm_sam_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP 
     data.set_vars_ippm(y, X, w, *offset, y_is_not_na, ID, S, G, Xr, Xc, lpar, ly, tau)
     //data.SetVars(y, X, w, *offset, y_is_not_na, Xr, Xc);
 
+
+    //all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv);
     abstol = 1e-8;
     reltol = 1e-8;
     nREPORT = 50;//how often to report
@@ -1212,8 +1236,7 @@ extern "C" {  SEXP ippm_sam_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP 
     return(R_logl);
   }
 }
-extern "C" {
-	SEXP ippm_sam_cpp_gradient(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_y_is_not_na, SEXP R_gradient){
+extern "C" { SEXP species_mix_ippm_gradient_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_y_is_not_na, SEXP R_gradient){
     // tau is the parameter vector, 
     // od is the overdispersion parameter, 
     // X is the design matrix, 
@@ -1277,15 +1300,15 @@ void gradient_ippm(int n, double *pars, double *gr, void *ex ){
   for(j=0;j<n;j++) gr[j]=0;
 
   
-  // need to setup wts based on MAT_RF so w[MAT_RF(i,(j-1),Xr] should do the trick...
-  // need to setup y_is_not_na based on MAT_RF so y_is_not_na[MAT_RF(i,(j-1),Xr] should also do the trick...
+  // need to setup wts based on MATREF2D so w[MATREF2D(i,(j-1),Xr] should do the trick...
+  // need to setup y_is_not_na based on MATREF2D so y_is_not_na[MATREF2D(i,(j-1),Xr] should also do the trick...
   
   //This is estimates the gradient for betas.  
   for(i=0;i<Xr;i++){
 	  
     d1=data->y[i]/data->lp.at(i)-(pars[0]+data->y[i])/(data->lp.at(i)+pars[0]); //But where is the alphas? maybe pars[0]
     for(j=1;j<=Xc;j++){
-      gr[j]+=(d1*data->lp.at(i)*data->X[MAT_RF(i,(j-1),Xr)])*data->w[i];
+      gr[j]+=(d1*data->lp.at(i)*data->X[MATREF2D(i,(j-1),Xr)])*data->w[i];
 
     }
     // gradient for theta
@@ -1309,8 +1332,8 @@ double ippm_logl(vector<double> &pars, Optimise_data_ippm &data ){//vector<doubl
   
   for(i=0;i<Xr;i++){
 	 for(j=0;j<Xc;j++){
-	   if(data.y_is_not_na[MAT_RF(i,j,Xr)]>0){
-	   lp.at(i)+=data.X[MAT_RF(i,j,Xr)]*pars.at(j+1);
+	   if(data.y_is_not_na[MATREF2D(i,j,Xr)]>0){
+	   lp.at(i)+=data.X[MATREF2D(i,j,Xr)]*pars.at(j+1);
 	   lp.at(i)+=offset;
 	   }
     }
@@ -1472,39 +1495,39 @@ void gradient_mix_ippm_function(int n, double *pars, double *gr, void *ex ){
    for(j=0;j<Xc;j++){
 	   
 	for(s=0;s<S;s++){
-	  ad_g.at((G-1)+ MAT_RF(g,j,G)) += exp( -1*data->species_l_contrib.at(s) + log(data->parpi.at(g)) + data->sum_f_species.at(MAT_RF(g,s,G))) *data->deriv_f_B.at(MAT_3D(g,j,s,G,Xc));
-	  if(j==0) dl_dpi.at(g) += exp(  -1*data->species_l_contrib.at(s)+ data->sum_f_species.at(MAT_RF(g,s,G)));
+	  ad_g.at((G-1)+ MATREF2D(g,j,G)) += exp( -1*data->species_l_contrib.at(s) + log(data->parpi.at(g)) + data->sum_f_species.at(MATREF2D(g,s,G))) *data->deriv_f_B.at(MATREF3D(g,j,s,G,Xc));
+	  if(j==0) dl_dpi.at(g) += exp(  -1*data->species_l_contrib.at(s)+ data->sum_f_species.at(MATREF2D(g,s,G)));
 	}
       }
 
       for(i=0;i<(G-1);i++){ // go through eta's
 	if(g<(G-1)){
 	  if(i==g){
-	    pi_mat_deriv.at(MAT_RF(i,g,(G-1))) = exp(x.at(i))/add_log_trans - exp(2*x.at(i))/(add_log_trans*add_log_trans);// diag
-	    pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) += pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
+	    pi_mat_deriv.at(MATREF2D(i,g,(G-1))) = exp(x.at(i))/add_log_trans - exp(2*x.at(i))/(add_log_trans*add_log_trans);// diag
+	    pi_mat_deriv.at(MATREF2D(i,(G-1),(G-1))) += pi_mat_deriv.at(MATREF2D(i,g,(G-1)));
 	  }else{
-	    pi_mat_deriv.at(MAT_RF(i,g,(G-1))) = -exp(x.at(i))*exp(x.at(g)) / (add_log_trans*add_log_trans); //off-diag
-	    pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) += pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
+	    pi_mat_deriv.at(MATREF2D(i,g,(G-1))) = -exp(x.at(i))*exp(x.at(g)) / (add_log_trans*add_log_trans); //off-diag
+	    pi_mat_deriv.at(MATREF2D(i,(G-1),(G-1))) += pi_mat_deriv.at(MATREF2D(i,g,(G-1)));
 	  }
 	}
       }
 
       for(s=0;s<S;s++){
       //calculate for alphas
-	ad_g.at((G*Xc + G-1)+s)+= exp(data->sum_f_species.at(MAT_RF(g,s,G)) - data->species_l_contrib.at(s)+ log(data->parpi.at(g)))* data->deriv_f_alphaS.at(MAT_RF(g,s,G));
+	ad_g.at((G*Xc + G-1)+s)+= exp(data->sum_f_species.at(MATREF2D(g,s,G)) - data->species_l_contrib.at(s)+ log(data->parpi.at(g)))* data->deriv_f_alphaS.at(MATREF2D(g,s,G));
 	
 	  // remove the dispersion parameters. We don't need this for ippm
       ////calculate for dispersion
-	//ad_g.at((G*Xc + G-1 + S)+s)+= exp(data->sum_f_species.at(MAT_RF(g,s,G)) - data->species_l_contrib.at(s)+ log(data->parpi.at(g)))* data->deriv_f_dispersionS.at(MAT_RF(g,s,G));
+	//ad_g.at((G*Xc + G-1 + S)+s)+= exp(data->sum_f_species.at(MATREF2D(g,s,G)) - data->species_l_contrib.at(s)+ log(data->parpi.at(g)))* data->deriv_f_dispersionS.at(MATREF2D(g,s,G));
       }
   }
-  for(i=0;i<(G-1);i++) pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) *= -1;
+  for(i=0;i<(G-1);i++) pi_mat_deriv.at(MATREF2D(i,(G-1),(G-1))) *= -1;
 
 
 
     for(i=0;i<(G-1);i++){
       for(g=0;g<G;g++){
-	ad_g.at(i) += dl_dpi.at(g)* pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
+	ad_g.at(i) += dl_dpi.at(g)* pi_mat_deriv.at(MATREF2D(i,g,(G-1)));
       }
     }
 
@@ -1541,10 +1564,10 @@ void gradient_mix_ippm_function(int n, double *pars, double *gr, void *ex ){
   for(i=0;i<G;i++){
     data.parpi.at(i) = estpi.at(i);
     for(s=0;s<S;s++){ 
-      data.sum_f_species.at(MAT_RF(i,s,G))=0;
-      //  data.deriv_f_dispersionS.at(MAT_RF(i,s,G))=0;
-      data.deriv_f_alphaS.at(MAT_RF(i,s,G))=0;
-      for(j=0;j<Xc;j++) data.deriv_f_B.at(MAT_3D(i,j,s,G,Xc)) =0;
+      data.sum_f_species.at(MATREF2D(i,s,G))=0;
+      //  data.deriv_f_dispersionS.at(MATREF2D(i,s,G))=0;
+      data.deriv_f_alphaS.at(MATREF2D(i,s,G))=0;
+      for(j=0;j<Xc;j++) data.deriv_f_B.at(MATREF3D(i,j,s,G,Xc)) =0;
     }
   }
 
@@ -1560,7 +1583,7 @@ void gradient_mix_ippm_function(int n, double *pars, double *gr, void *ex ){
   //Rprintf("\n");
   /*  for(g=0;g<G;g++){
     for(j=0;j<Xc;j++)
-      Rprintf("%f, ",coef[MAT_RF(g,j,G)]);
+      Rprintf("%f, ",coef[MATREF2D(g,j,G)]);
     Rprintf("| %d\n",g);
     }*/
   logl.at(0) = 0;
@@ -1601,30 +1624,30 @@ double like_mix_ippm_function(vector< double > &estpi, vector < double > &coef, 
  
   for(g=0;g<G;g++){
     for(i=0;i<len;i++){
-	  if(y_is_not_na[MAT_RF(i,s,Xr)]>0){ //hopefully this will result in only selecting sites which have data. 
+	  if(y_is_not_na[MATREF2D(i,s,Xr)]>0){ //hopefully this will result in only selecting sites which have data. 
       lpre=offset[i]+sp_int.at(s);
       for(j=0;j<Xc;j++){ 
-		lpre +=  X[MAT_RF(i,j,Xr)] * coef[MAT_RF(g,j,G)];
+		lpre +=  X[MATREF2D(i,j,Xr)] * coef[MATREF2D(g,j,G)];
       }
     
       p.at(0)=exp(lpre);  // mu for each archetype at site k
       // datalp.at(i) = p.at(0);
       //Rprintf("%f,",lpre);
-      dl = log_ippm_derivative(y[MAT_RF(i,s,Xr)], p.at(0), wts[MAT_RF(i,s,Xr)]);
+      dl = log_ippm_derivative(y[MATREF2D(i,s,Xr)], p.at(0), wts[MATREF2D(i,s,Xr)]);
       //d1=y[start+i]/p.at(0)-(y[start+i])/(p.at(0));
-      for(j=0;j<Xc;j++) {deriv_f_B.at(MAT_3D(g,j,s,G,Xc)) +=  (d1*p.at(0)*X[MAT_RF(i,j,Xr)]);} 
-      deriv_f_alphaS.at(MAT_RF(g,s,G))+= (d1*p.at(0)*1);
+      for(j=0;j<Xc;j++) {deriv_f_B.at(MATREF3D(g,j,s,G,Xc)) +=  (d1*p.at(0)*X[MATREF2D(i,j,Xr)]);} 
+      deriv_f_alphaS.at(MATREF2D(g,s,G))+= (d1*p.at(0)*1);
 
       //if(y[start+i]==0) p.at(0) = 1-p.at(0);
 
-      sump.at(g) += (lgammafn(y[MAT_RF(i,s,Xr)]) + y[MAT_RF(i,s,Xr)]*log(p.at(0)) - (y[MAT_RF(i,s,Xr)])*log(p.at(0)));
+      sump.at(g) += (lgammafn(y[MATREF2D(i,s,Xr)]) + y[MATREF2D(i,s,Xr)]*log(p.at(0)) - (y[MATREF2D(i,s,Xr)])*log(p.at(0)));
 	  }
     }
      
  
     /*Rprintf("%d, %d, %f, %f, %f \n",s,g, sump.at(g), sp_int.at(s),sp_dispersion.at(s));
       for(j=0;j<Xc;j++)
-	Rprintf("%f, ",coef[MAT_RF(g,j,G)]);
+	Rprintf("%f, ",coef[MATREF2D(g,j,G)]);
       Rprintf("\n");
     */
 
@@ -1635,7 +1658,7 @@ double like_mix_ippm_function(vector< double > &estpi, vector < double > &coef, 
   }
 
   for(g=0;g<G;g++){
-    sum_f_species.at(MAT_RF(g,s,G)) = sump.at(g);
+    sum_f_species.at(MATREF2D(g,s,G)) = sump.at(g);
     glogl+= estpi.at(g)*exp(sump.at(g) - eps);
   }
   // code for taus can go here

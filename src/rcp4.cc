@@ -40,7 +40,7 @@ extern "C" { SEXP RCP_C( SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP Rwts,
 	double *tmpPi = REAL( Rpis);
 	for( int i=0; i<all.data.nObs; i++)
 		for( int g=0; g<all.data.nG; g++)
-			tmpPi[MATREF(i,g,all.data.nObs)] = all.fits.allPis.at(i).at(g);
+			tmpPi[MATREF2D(i,g,all.data.nObs)] = all.fits.allPis.at(i).at(g);
 	//the fitted expectations
 	double *tmpMus = REAL( Rmus);
 	for( size_t i=0; i<all.fits.allMus.size(); i++)
@@ -49,7 +49,7 @@ extern "C" { SEXP RCP_C( SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP Rwts,
 	double *tmpDens = REAL( RlogDens);
 	for( int g=0; g<all.data.nG;g++)
 		for( int i=0; i<all.data.nObs; i++)
-				tmpDens[MATREF(i,g,all.data.nObs)] = all.fits.allLogDens.at(i).at(g);
+				tmpDens[MATREF2D(i,g,all.data.nObs)] = all.fits.allLogDens.at(i).at(g);
 	//the logl contributions
 	double *tmplogls = REAL( Rlogli);
 	for( int i=0; i<all.data.nObs; i++)
@@ -131,7 +131,7 @@ double calcTauPen( const myData &dat, const myParms &parms)
 
 	for( int g=0; g<dat.nG; g++)
 		for( int s=0; s<dat.nS; s++)
-			penTau += -newTau.at(MATREF(g,s,dat.nG))*newTau.at(MATREF(g,s,dat.nG)) / (2*parms.sd*parms.sd);
+			penTau += -newTau.at(MATREF2D(g,s,dat.nG))*newTau.at(MATREF2D(g,s,dat.nG)) / (2*parms.sd*parms.sd);
 	return( penTau);
 }
 
@@ -141,7 +141,7 @@ double calcGammaPen( const myData &dat, const myParms &parms)
 
 	for( int s=0; s<dat.nS; s++)
 		for( int p=0; p<dat.npw; p++)
-			penGamma += -parms.Gamma[MATREF(s,p,dat.nS)]*parms.Gamma[MATREF(s,p,dat.nS)] / (2*parms.sdGamma*parms.sdGamma);
+			penGamma += -parms.Gamma[MATREF2D(s,p,dat.nS)]*parms.Gamma[MATREF2D(s,p,dat.nS)] / (2*parms.sdGamma*parms.sdGamma);
 
 	return( penGamma);
 }
@@ -165,7 +165,7 @@ void calcLogPis( vector<double> &logPis, vector<double> &pis, const myData &dat,
 	lp.assign( (dat.nG-1), 0.0);
 	for( int k=0; k<(dat.nG-1); k++){
 		for( int p=0; p<dat.np; p++)
-			lp.at(k) += parms.Beta[MATREF(k,p,(dat.nG-1))] * dat.X[MATREF(i,p,dat.nObs)];
+			lp.at(k) += parms.Beta[MATREF2D(k,p,(dat.nG-1))] * dat.X[MATREF2D(i,p,dat.nObs)];
 		lp.at(k) = exp( lp.at(k));
 		sumlp += lp.at(k);
 	}
@@ -195,20 +195,20 @@ void calcLogCondDens( vector<double> &condDens, const vector<double> &fits, cons
 		for( int s=0; s<dat.nS; s++)
 			switch( dat.disty){
 				case 1:
-					condDensSG.at(MATREF(g,s,dat.nG)) = logBernoulli( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
+					condDensSG.at(MATREF2D(g,s,dat.nG)) = logBernoulli( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 					break;
 				case 2:
-					condDensSG.at(MATREF(g,s,dat.nG)) = logPoisson( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
+					condDensSG.at(MATREF2D(g,s,dat.nG)) = logPoisson( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 					break;
 				case 3:
-					condDensSG.at(MATREF(g,s,dat.nG)) = logNegBin( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
+					condDensSG.at(MATREF2D(g,s,dat.nG)) = logNegBin( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
 					break;
 // 				case 4:
-// 					condDensSG.at(MATREF(g,s,dat.nG)) = logTweedie( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s], parms.Power[s]);
-// //					Rprintf("%f\t",condDensSG.at(MATREF(g,s,dat.nG)));
+// 					condDensSG.at(MATREF2D(g,s,dat.nG)) = logTweedie( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s], parms.Power[s]);
+// //					Rprintf("%f\t",condDensSG.at(MATREF2D(g,s,dat.nG)));
 					break;
 				case 5:
-					condDensSG.at(MATREF(g,s,dat.nG)) = logNormal( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
+					condDensSG.at(MATREF2D(g,s,dat.nG)) = logNormal( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
 					break;
 			}
 //		Rprintf("\n");
@@ -217,7 +217,7 @@ void calcLogCondDens( vector<double> &condDens, const vector<double> &fits, cons
 	for( int g=0; g<dat.nG; g++){
 		condDens.at(g) = 0.0;
 		for( int s=0; s<dat.nS; s++)
-			condDens.at(g) += condDensSG.at(MATREF(g,s,dat.nG));
+			condDens.at(g) += condDensSG.at(MATREF2D(g,s,dat.nG));
 	}
 }
 
@@ -233,11 +233,11 @@ void calcMuFits( vector<double> &fits, const myData &dat, const myParms &parms)
 	//calcualte the G*S*n fits
 	for( int g=0; g<dat.nG; g++)
 		for( int s=0; s<dat.nS; s++){
-			lps.at(MATREF(g,s,dat.nG)) = parms.Alpha[s] + newTau[MATREF(g,s,dat.nG)];
+			lps.at(MATREF2D(g,s,dat.nG)) = parms.Alpha[s] + newTau[MATREF2D(g,s,dat.nG)];
 			for( int i=0; i<dat.nObs; i++){
-				lp = lps.at(MATREF(g,s,dat.nG)) + dat.offset[i];
+				lp = lps.at(MATREF2D(g,s,dat.nG)) + dat.offset[i];
 				for( int p=0; p<dat.npw; p++)
-					lp += dat.W[MATREF(i,p,dat.nObs)] * parms.Gamma[MATREF(s,p,dat.nS)];
+					lp += dat.W[MATREF2D(i,p,dat.nObs)] * parms.Gamma[MATREF2D(s,p,dat.nS)];
 				switch( dat.disty){
 					case 1:
 						fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = invLogit( lp);
@@ -421,13 +421,13 @@ void calcDispDeriv( vector<double> &dispDerivsI, const vector<double> &fits, con
 		for( int g=0; g<dat.nG; g++){
 			switch( dat.disty){
 				case 3:
-					tmpDerivs.at(MATREF(g,s,dat.nG)) = logNegBinDispDer( dat.y[MATREF(i,s,dat.nObs)], fits.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), parms.Disp[s]);
+					tmpDerivs.at(MATREF2D(g,s,dat.nG)) = logNegBinDispDer( dat.y[MATREF2D(i,s,dat.nObs)], fits.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), parms.Disp[s]);
 					break;
 				// case 4:
-				// 	tmpDerivs.at(MATREF(g,s,dat.nG)) = logTweedieDispDer( dat.y[MATREF(i,s,dat.nObs)], fits.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), parms.Disp[s], parms.Power[s]);
+				// 	tmpDerivs.at(MATREF2D(g,s,dat.nG)) = logTweedieDispDer( dat.y[MATREF2D(i,s,dat.nObs)], fits.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), parms.Disp[s], parms.Power[s]);
 				// 	break;
 				case 5:
-					tmpDerivs.at(MATREF(g,s,dat.nG)) = logNormalDispDer( dat.y[MATREF(i,s,dat.nObs)], fits.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), parms.Disp[s]);
+					tmpDerivs.at(MATREF2D(g,s,dat.nG)) = logNormalDispDer( dat.y[MATREF2D(i,s,dat.nObs)], fits.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), parms.Disp[s]);
 					break;
 			}
 		}
@@ -436,8 +436,8 @@ void calcDispDeriv( vector<double> &dispDerivsI, const vector<double> &fits, con
 	for( int s=0; s<dat.nS; s++){
 		summand = 0.0;
 		for( int g=0; g<dat.nG; g++)
-			summand += wij.at(g) * (tmpDerivs.at(MATREF(g,s,dat.nG)) - tmpDerivs.at(MATREF(m,s,dat.nG)));
-		dispDerivsI.at(s) = tmpDerivs.at(MATREF(m,s,dat.nG)) + summand / wi;
+			summand += wij.at(g) * (tmpDerivs.at(MATREF2D(g,s,dat.nG)) - tmpDerivs.at(MATREF2D(m,s,dat.nG)));
+		dispDerivsI.at(s) = tmpDerivs.at(MATREF2D(m,s,dat.nG)) + summand / wi;
 	}
 }
 
@@ -499,32 +499,32 @@ void calcDerivMu( vector<double> &muDerivs, const vector<double> &fits, const my
 		for( int s=0; s<dat.nS; s++)
 			switch( dat.disty){
 				case 1:
-					tmpDerivs.at(MATREF(g,s,dat.nG)) = logBernDer( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
+					tmpDerivs.at(MATREF2D(g,s,dat.nG)) = logBernDer( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 					break;
 				case 2:
-					tmpDerivs.at(MATREF(g,s,dat.nG)) = logPoissonDer( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
+					tmpDerivs.at(MATREF2D(g,s,dat.nG)) = logPoissonDer( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 					break;
 				case 3:
-					tmpDerivs.at(MATREF(g,s,dat.nG)) = logNegBinLocatDer( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
+					tmpDerivs.at(MATREF2D(g,s,dat.nG)) = logNegBinLocatDer( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
 					break;
 				// case 4:
-				// 	tmpDerivs.at(MATREF(g,s,dat.nG)) = 	dTweedieMu( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp( parms.Disp[s]), parms.Power[s]);
+				// 	tmpDerivs.at(MATREF2D(g,s,dat.nG)) = 	dTweedieMu( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp( parms.Disp[s]), parms.Power[s]);
 				// 	break;
 				case 5:
-					tmpDerivs.at(MATREF(g,s,dat.nG)) = logNormalLocatDer( dat.y[MATREF(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
+					tmpDerivs.at(MATREF2D(g,s,dat.nG)) = logNormalLocatDer( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
 					break;
 			}
 
 
 	for( int s=0; s<dat.nS; s++){
-		muDerivs.at(MATREF(m,s,dat.nG)) = 0.0;
+		muDerivs.at(MATREF2D(m,s,dat.nG)) = 0.0;
 		for( int g=0; g<dat.nG; g++){
 			if( m!=g){
-				muDerivs.at(MATREF(g,s,dat.nG)) = tmpDerivs.at(MATREF(g,s,dat.nG)) * wij.at(g) / wi;
-				muDerivs.at(MATREF(m,s,dat.nG)) -= tmpDerivs.at(MATREF(m,s,dat.nG)) * wij.at(g) / wi;
+				muDerivs.at(MATREF2D(g,s,dat.nG)) = tmpDerivs.at(MATREF2D(g,s,dat.nG)) * wij.at(g) / wi;
+				muDerivs.at(MATREF2D(m,s,dat.nG)) -= tmpDerivs.at(MATREF2D(m,s,dat.nG)) * wij.at(g) / wi;
 			}
 			else
-				muDerivs.at(MATREF(g,s,dat.nG)) += tmpDerivs.at(MATREF(g,s,dat.nG));
+				muDerivs.at(MATREF2D(g,s,dat.nG)) += tmpDerivs.at(MATREF2D(g,s,dat.nG));
 		}
 	}
 }
@@ -536,15 +536,15 @@ void calcDerivEtaMu( vector<double> &etaDerivsI, const myData &dat, const vector
 		for( int s=0; s<dat.nS; s++)
 			switch( dat.disty){
 				case 1:
-					etaDerivsI.at(MATREF(g,s,dat.nG)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * (1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS))) * muDerivsI.at(MATREF(g,s,dat.nG));	//logit link
+					etaDerivsI.at(MATREF2D(g,s,dat.nG)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * (1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS))) * muDerivsI.at(MATREF2D(g,s,dat.nG));	//logit link
 					break;
 				case 2:
 				case 3:
 				case 4:
-					etaDerivsI.at(MATREF(g,s,dat.nG)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivsI.at(MATREF(g,s,dat.nG));	//log link
+					etaDerivsI.at(MATREF2D(g,s,dat.nG)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivsI.at(MATREF2D(g,s,dat.nG));	//log link
 					break;
 				case 5:
-					etaDerivsI.at(MATREF(g,s,dat.nG)) = muDerivsI.at(MATREF(g,s,dat.nG));	//identity link
+					etaDerivsI.at(MATREF2D(g,s,dat.nG)) = muDerivsI.at(MATREF2D(g,s,dat.nG));	//identity link
 					break;
 			}
 }
@@ -595,7 +595,7 @@ void calcAlphaDeriv( vector<double> &alphaDerivsI, const vector<double> &etaDeri
 	alphaDerivsI.assign(alphaDerivsI.size(), 0.0);
 	for( int s=0; s<dat.nS; s++)
 		for( int g=0; g<dat.nG; g++)
-			alphaDerivsI.at(s) += etaDerivs.at(MATREF(g,s,dat.nG));
+			alphaDerivsI.at(s) += etaDerivs.at(MATREF2D(g,s,dat.nG));
 }
 
 void calcTauDeriv( vector<double> &tauDerivsI, const vector<double> &etaDerivs, const myData &dat, const myParms &parms)
@@ -605,8 +605,8 @@ void calcTauDeriv( vector<double> &tauDerivsI, const vector<double> &etaDerivs, 
 	tauDerivsI.assign(tauDerivsI.size(), 0.0);
 	for( int s=0; s<dat.nS; s++){
 		for( int g=0; g<(dat.nG-1); g++){
-			tauDerivsI.at(MATREF(g,s,(dat.nG-1))) = etaDerivs.at(MATREF(g,s,dat.nG));
-			tauDerivsI.at(MATREF(g,s,(dat.nG-1))) -= etaDerivs.at(MATREF((dat.nG-1),s,dat.nG));
+			tauDerivsI.at(MATREF2D(g,s,(dat.nG-1))) = etaDerivs.at(MATREF2D(g,s,dat.nG));
+			tauDerivsI.at(MATREF2D(g,s,(dat.nG-1))) -= etaDerivs.at(MATREF2D((dat.nG-1),s,dat.nG));
 		}
 	}
 }
@@ -619,7 +619,7 @@ void calcGammaDeriv( vector<double> &gammaDerivsI, const vector<double> &etaDeri
 	for( int s=0; s<dat.nS; s++)
 		for( int p=0; p<dat.npw;p++)
 			for( int g=0; g<dat.nG; g++)
-				gammaDerivsI.at(MATREF(s,p,dat.nS)) += etaDerivs.at(MATREF(g,s,dat.nG)) * dat.W[MATREF(i,p,dat.nObs)];
+				gammaDerivsI.at(MATREF2D(s,p,dat.nS)) += etaDerivs.at(MATREF2D(g,s,dat.nG)) * dat.W[MATREF2D(i,p,dat.nObs)];
 }
 
 void calcTauPenDeriv( vector<double> &tauDerivsI, const myData &dat, const myParms &parms)
@@ -630,7 +630,7 @@ void calcTauPenDeriv( vector<double> &tauDerivsI, const myData &dat, const myPar
 	parms.getAllTaus( newTau, dat);
 	for( int s=0; s<dat.nS; s++)
 		for( int g=0; g<(dat.nG-1); g++){
-			tauDerivsI.at(MATREF(g,s,(dat.nG-1))) += - ( newTau.at( MATREF(g,s,dat.nG)) - newTau.at( MATREF((dat.nG-1),s,dat.nG))) / (parms.sd*parms.sd);
+			tauDerivsI.at(MATREF2D(g,s,(dat.nG-1))) += - ( newTau.at( MATREF2D(g,s,dat.nG)) - newTau.at( MATREF2D((dat.nG-1),s,dat.nG))) / (parms.sd*parms.sd);
 	}
 }
 
@@ -639,7 +639,7 @@ void calcGammaPenDeriv( vector<double> &gammaDerivsI, const myData &dat, const m
 	gammaDerivsI.assign(gammaDerivsI.size(), 0.0);
 	for( int s=0; s<dat.nS; s++)
 		for( int p=0; p<dat.npw; p++)
-			gammaDerivsI.at( MATREF(s,p,dat.nS)) += - parms.Gamma[MATREF(s,p,dat.nS)] / (parms.sdGamma*parms.sdGamma);
+			gammaDerivsI.at( MATREF2D(s,p,dat.nS)) += - parms.Gamma[MATREF2D(s,p,dat.nS)] / (parms.sdGamma*parms.sdGamma);
 }
 
 void calcPiDeriv( vector<double> &piDerivsI, const myData &dat, const myParms &parms, const vector<double> &pis, const double wi, const vector<double> &wig, int m)
@@ -667,27 +667,27 @@ void calcBetaDeriv( vector<double> &betaDerivsI, const vector<double> &piDerivsI
 
 	//derivs of pi w.r.t. eta (all (G-1) of 'em)
 	for( int g=0; g<(dat.nG-1); g++){
-		dpideta.at(MATREF(g,g,dat.nG)) += pis.at(g);
+		dpideta.at(MATREF2D(g,g,dat.nG)) += pis.at(g);
 		for( int h=0; h<(dat.nG-1); h++)
-			dpideta.at(MATREF(g,h,dat.nG)) += -pis.at(g) * pis.at(h);
+			dpideta.at(MATREF2D(g,h,dat.nG)) += -pis.at(g) * pis.at(h);
 	}
 	for( int g=0; g<(dat.nG-1); g++){
-		dpideta.at(MATREF((dat.nG-1),g,dat.nG)) = 0.0;
+		dpideta.at(MATREF2D((dat.nG-1),g,dat.nG)) = 0.0;
 		for( int h=0; h<(dat.nG-1); h++)
-			dpideta.at(MATREF((dat.nG-1),g,dat.nG)) -= dpideta.at(MATREF(h,g,dat.nG));
+			dpideta.at(MATREF2D((dat.nG-1),g,dat.nG)) -= dpideta.at(MATREF2D(h,g,dat.nG));
 	}
 
 	//deriv is dldpi X dpideta X detadbeta_h, for lp number h (of course)
 	//logl_i w.r.t eta first: a 1x(G-1) vector
 	for( int h=0; h<(dat.nG-1); h++)
 		for( int g=0; g<dat.nG; g++)
-			dldeta.at(h) += piDerivsI.at(g)*dpideta.at(MATREF(g,h,dat.nG));
+			dldeta.at(h) += piDerivsI.at(g)*dpideta.at(MATREF2D(g,h,dat.nG));
 
 	//now for each of the beta_h vectors
 	betaDerivsI.assign( betaDerivsI.size(), 0.0);
 	for( int h=0; h<(dat.nG-1); h++)
 		for( int p=0; p<dat.np; p++)
-			betaDerivsI.at(MATREF(h,p,(dat.nG-1))) += dldeta.at(h)*dat.X[MATREF(i,p,dat.nObs)];
+			betaDerivsI.at(MATREF2D(h,p,(dat.nG-1))) += dldeta.at(h)*dat.X[MATREF2D(i,p,dat.nObs)];
 
 }
 
