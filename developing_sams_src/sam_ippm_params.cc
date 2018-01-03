@@ -1,16 +1,16 @@
 #include"sam.h"
 
-spmix_params::spmix_params(){};
-spmix_params::~spmix_params(){};
+sam_ippm_params::sam_ippm_params(){};
+sam_ippm_params::~sam_ippm_params(){};
 
-void spmix_params::setVals( const spmix_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Rtau, SEXP &Rdisps){ //, SEXP &Rpowers, SEXP &Rconc, SEXP &Rsd, SEXP &RsdGamma, SEXP &RdispLocat, SEXP &RdispScale)
+void sam_ippm_params::setVals( const sam_ippm_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Rtau){ //, SEXP &Rpowers, SEXP &Rconc, SEXP &Rsd, SEXP &RsdGamma, SEXP &RdispLocat, SEXP &RdispScale)
 {
 //	double *tmpD;
 
 	Alpha = REAL( Ralpha);
 	Beta = REAL( Rbeta);
 	Tau = REAL( Rtau);
-	Disp = REAL( Rdisps);
+	//Disp = REAL( Rdisps);
 	//Power = REAL( Rpowers);
 	//conc = *(REAL( Rconc));
 	//sd = *(REAL( Rsd));
@@ -21,14 +21,14 @@ void spmix_params::setVals( const spmix_data &dat, SEXP &Ralpha, SEXP &Rbeta, SE
 	nalpha = dat.nS;
 	nbeta = (dat.nG-1)*dat.np;
 	ntau = (dat.nG-1)*dat.nS;
-	if( dat.isDispersion())
-		ndisp = dat.nS;
-	else
-		ndisp = 0;
-	nTot = nalpha + ntau + nbeta + ngamma + ndisp;
+	//if( dat.isDispersion())
+		//ndisp = dat.nS;
+	//else
+		//ndisp = 0;
+	nTot = nalpha + nbeta + ntau // + ngamma + ndisp;
 }
 
-void spmix_params::getArray(double *parArr, const spmix_data &dat) const
+void sam_ippm_params::getArray(double *parArr, const sam_ippm_data &dat) const
 {
 	int kount=0;
 	for( int i=0; i<dat.nS; i++){
@@ -43,14 +43,14 @@ void spmix_params::getArray(double *parArr, const spmix_data &dat) const
 		parArr[kount] = Tau[i];
 		kount++;
 	}
-	if( dat.isDispersion())
-		for( int i=0; i<dat.nS; i++){
-			parArr[kount] = Disp[i];
-			kount++;
-		}
+	//if( dat.isDispersion())
+		//for( int i=0; i<dat.nS; i++){
+			//parArr[kount] = Disp[i];
+			//kount++;
+		//}
 }
 
-void spmix_params::update( double *parArr, const spmix_data &dat)
+void sam_ippm_params::update( double *parArr, const sam_ippm_data &dat)
 {
 	int kount=0;
 	for( int i=0; i<dat.nS; i++){
@@ -65,14 +65,14 @@ void spmix_params::update( double *parArr, const spmix_data &dat)
 		Tau[i] = parArr[kount];
 		kount++;
 	}
-	if( dat.isDispersion() & dat.doOptiDisp())
-		for( int i=0; i<dat.nS; i++){
-			Disp[i] = parArr[kount];
-			kount++;
-		}
+	//if( dat.isDispersion() & dat.doOptiDisp())
+		//for( int i=0; i<dat.nS; i++){
+			//Disp[i] = parArr[kount];
+			//kount++;
+		//}
 }
 
-void spmix_params::getAllTaus( vector<double> &newTau, const spmix_data &dat) const
+void sam_ippm_params::getAllTaus( vector<double> &newTau, const sam_ippm_data &dat) const
 {
 	double su;
 
@@ -89,7 +89,8 @@ void spmix_params::getAllTaus( vector<double> &newTau, const spmix_data &dat) co
 
 }
 
-void spmix_params::printParms( const spmix_data &dat){
+void sam_ippm_params::printParms( const sam_ippm_data &dat){
+	
 	Rprintf( "ALPHA:\n");
 	for( int i=0; i<dat.nS; i++)
 		Rprintf( "%3.2f\t", Alpha[i]);
@@ -106,12 +107,12 @@ void spmix_params::printParms( const spmix_data &dat){
 			Rprintf( "%3.2f\t", Tau[MATREF2D(g,i,(dat.nG-1))]);
 		Rprintf( "\n");
 	}
-	if( dat.isDispersion()==true){
-		Rprintf("DISPERSION:\n");
-		for( int i=0; i<dat.nS; i++)
-			Rprintf( "%3.2f\t", Disp[i]);
-		Rprintf( "\n");
-	}
+	//if( dat.isDispersion()==true){
+		//Rprintf("DISPERSION:\n");
+		//for( int i=0; i<dat.nS; i++)
+			//Rprintf( "%3.2f\t", Disp[i]);
+		//Rprintf( "\n");
+	//}
 		
 		
 }

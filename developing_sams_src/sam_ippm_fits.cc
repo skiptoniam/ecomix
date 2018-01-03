@@ -1,9 +1,9 @@
 #include"sam.h"
 
-spmix_fits::spmix_fits(){};
-spmix_fits::~spmix_fits(){};
+sam_ippm_fits::sam_ippm_fits(){};
+sam_ippm_fits::~sam_ippm_fits(){};
 
-void spmix_fits::initialise( const int &nObs, const int &nG, const int &nS, const int &NAnum){
+void sam_ippm_fits::initialise( const int &nObs, const int &nG, const int &nS, const int &NAnum){
 	
 	allPis.resize(nObs);
 	for( int i=0; i<nObs; i++)
@@ -19,7 +19,7 @@ void spmix_fits::initialise( const int &nObs, const int &nG, const int &nS, cons
 };
 
 
-void spmix_fits::zero(const int &NAnum){
+void sam_ippm_fits::zero(const int &NAnum){
 	for( int i=0; i<(int)allPis.size(); i++)
 		allPis.at(i).assign(allPis.at(i).size(),NAnum); 
 	allMus.assign( allMus.size(), NAnum);
