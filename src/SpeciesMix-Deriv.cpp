@@ -45,7 +45,7 @@ extern "C"
 
     dimensions=getAttrib(R_X, R_DimSymbol);
     Xr=INTEGER(dimensions)[0];
-    Xc=INTEGER(dimensions)[1];34
+    Xc=INTEGER(dimensions)[1];
 
     dimensions=getAttrib(R_tau, R_DimSymbol);
     S=INTEGER(dimensions)[0];
