@@ -29,7 +29,7 @@ extern "C" { SEXP RCP_predict_C( SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP R
 		calcLogPis( logPis, allPis.at(i), all.data, all.parms, i);
 	for( int g=0; g<all.data.nG; g++)
 		for( int i=0; i<all.data.nObs; i++)
-			ptPreds[MATREF(i,g,all.data.nObs)] = allPis.at(i).at(g);
+			ptPreds[MATREF2D(i,g,all.data.nObs)] = allPis.at(i).at(g);
 
 	//setting up the bootstrap values for alpha, tau, beta, disps
 	bootalpha = REAL( RalphaBoot);
@@ -42,15 +42,15 @@ extern "C" { SEXP RCP_predict_C( SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP R
 	for( int b=0; b<nboot; b++){
 		kount = 0;
 		for( int i=0; i<all.parms.nalpha; i++){
-			bootParms[kount] = bootalpha[MATREF(b,i,nboot)];
+			bootParms[kount] = bootalpha[MATREF2D(b,i,nboot)];
 			kount++;
 		}
 		for( int i=0; i<all.parms.ntau; i++){
-			bootParms[kount] = boottau[MATREF(b,i,nboot)];
+			bootParms[kount] = boottau[MATREF2D(b,i,nboot)];
 			kount++;
 		}
 		for( int i=0; i<all.parms.nbeta; i++){
-			bootParms[kount] = bootbeta[MATREF(b,i,nboot)];
+			bootParms[kount] = bootbeta[MATREF2D(b,i,nboot)];
 			kount++;
 		}
 		all.parms.update( bootParms, all.data);
@@ -61,7 +61,7 @@ extern "C" { SEXP RCP_predict_C( SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP R
 			calcLogPis( logPis, allPis.at(i), all.data, all.parms, i);
 		for( int g=0; g<all.data.nG; g++)
 			for( int i=0; i<all.data.nObs; i++){
-				place = MATREF3D(i,g,b,all.data.nObs, all.data.nG);//MATREF( MATREF(i,g,all.data.nObs),b,(all.data.nObs*all.data.nG));
+				place = MATREF3D(i,g,b,all.data.nObs, all.data.nG);//MATREF2D( MATREF2D(i,g,all.data.nObs),b,(all.data.nObs*all.data.nG));
 				bootPreds[place] = allPis.at(i).at(g);
 			}
 	}
@@ -82,9 +82,9 @@ extern "C" { SEXP RCP_predict_C( SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP R
 {
 	for( int i=0; i<dat.nObs; i++)
 		for( int s=0; s<dat.nS; s++){
-			ptPreds[MATREF(MATREF(i,s,dat.nObs),bootCount,(dat.nObs*dat.nS))] = 0.0;
+			ptPreds[MATREF2D(MATREF2D(i,s,dat.nObs),bootCount,(dat.nObs*dat.nS))] = 0.0;
 			for( int g=0; g<dat.nG; g++)
-				ptPreds[MATREF(MATREF(i,s,dat.nObs),bootCount,(dat.nObs*dat.nS))] += allMus.at(MATREF(g,s,dat.nG))*allPis.at(i).at(g);
+				ptPreds[MATREF2D(MATREF2D(i,s,dat.nObs),bootCount,(dat.nObs*dat.nS))] += allMus.at(MATREF2D(g,s,dat.nG))*allPis.at(i).at(g);
 		}
 
 }*/

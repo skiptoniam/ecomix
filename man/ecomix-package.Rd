@@ -6,6 +6,6 @@
 \title{ecomix package}
 \description{
 ecomix is a package for implementing species archetype models (SAM) and region of
-common profile models (RCP) in R. The two main functions are \code{species_mix} and \code{regional_mix}, 
-which fits either a Species Archetype Model (SAM) or Region of Common Profile Model (RCP) based on input parameters.
+common profile models (RCP) in R. The main function is \code{ecomix}, which fits either a SAM or RCP
+based on input parameters.
 }
