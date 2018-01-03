@@ -25,6 +25,78 @@ extern "C" { SEXP species_mix_ippm_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rwts
 
 	double logl = -999999;
 	
+	
+	allClasses all;
+	
+	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv);										
+	
+											
+    // tau is the parameter vector, 
+    // od is the overdispersion parameter, 
+    // X is the design matrix, 
+    // N is the NB distributed variable
+    int *y_is_not_na=NULL, Xr, Xc;
+    double *pars=NULL, *y=NULL, *X=NULL, *w=NULL,*offset=NULL,*r_pointer=NULL, *gradient=NULL, *fitted_values=NULL;
+    double logl;
+    int lpar,i;
+    double abstol,reltol;
+    int fncount, grcount, ifail,trace,nREPORT;
+    SEXP dimensions, R_logl;
+    lpar = LENGTH(R_pars);
+
+    //    vector<double> prams( lpar );
+    vector< double > params(lpar);
+    pars=REAL(R_pars);
+    y=REAL(R_y);
+    X=REAL(R_X);
+    w=REAL(R_w);
+    //ID=INTEGER(R_ID);
+    offset=REAL(R_offset);
+    y_is_not_na=INTEGER(R_y_is_not_na);
+    gradient=REAL(R_gradient);
+    fitted_values=REAL(R_fitted_values);
+  
+    dimensions=getAttrib(R_X, R_DimSymbol);
+    Xr=INTEGER(dimensions)[0];
+    Xc=INTEGER(dimensions)[1];
+
+    dimensions=getAttrib(R_tau, R_DimSymbol);
+    S=INTEGER(dimensions)[0];
+    G=INTEGER(dimensions)[1];
+
+    Optimise_data_ippm data;
+    
+    data.set_vars_ippm(y, X, w, *offset, y_is_not_na, ID, S, G, Xr, Xc, lpar, ly, tau)
+    //data.SetVars(y, X, w, *offset, y_is_not_na, Xr, Xc);
+
+
+    //all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv);
+    abstol = 1e-8;
+    reltol = 1e-8;
+    nREPORT = 50;//how often to report
+    fncount=0;
+    grcount=0;
+    ifail=0;
+    trace=0;
+    vector <int> mask (lpar,1); 
+    vector < double > logl_out(lpar,0);
+
+    vmmin(lpar, pars, &logl_out.at(0), optimise_ippm, gradient_ippm, 1000, trace, &mask.at(0),  abstol,  reltol,  nREPORT, &data, &fncount, &grcount, &ifail);
+    
+    //std::cout << "ifail = " << ifail << "\n" ;
+    logl=1;
+    logl = optimise_ippm(lpar, pars, &data);
+    gradient_ippm(lpar,pars,gradient,&data);
+    for(i=0;i<Xr;i++) fitted_values[i] = data.lp.at(i);
+
+    R_logl = allocVector(REALSXP,1);
+    r_pointer = REAL(R_logl);
+    *r_pointer = logl;
+    return(R_logl);
+  }
+	
+	
+	
 	//doing the optimising
 	if( *INTEGER(Roptimise) == 1)
 		logl = ALLoptimise( all);
