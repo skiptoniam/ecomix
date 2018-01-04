@@ -1,6 +1,6 @@
 #include"sam.h"
 
-void sam_ippm_data::setVals( const SEXP &Ry, const SEXP &RX, const SEXP &Roffset, const SEXP &Rwts, const SEXP &Ry_not_na, const SEXP &RS, const SEXP &RG, const SEXP &Rp, const SEXP &RnObs, const SEXP &Rdisty, const SEXP &RdoOptiDisp){
+void sam_ippm_data::setVals( const SEXP &Ry, const SEXP &RX, const SEXP &Roffset, const SEXP &Rwts, const SEXP &Ry_not_na, const SEXP &RS, const SEXP &RG, const SEXP &Rp, const SEXP &RnObs){//, const SEXP &Rdisty, const SEXP &RdoOptiDisp){
 
 //	double *tmpD;
 

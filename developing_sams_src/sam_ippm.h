@@ -7,7 +7,7 @@
 #include <vector>
 #include<algorithm>
 #include <iostream>
-#include"Tweedie.h"
+
 
 //set up matref
 #define MATREF2D(i,j,nx) i+nx*j
@@ -31,9 +31,7 @@ class sam_ippm_data {
 		int np, 		//the number of parameters in each of the (G-1) habitat lps, same as lpar
 			nG,			//the number of habitats
 			nS, 		//the number of species
-			nobs,		//the number of observations ly
-			//disty,		//the distrbution code
-			//optiDisp,	//should the dispersions be optimised
+			nobs,		//the number of observations
 			NAnum;	//a common number to insert for NAs
 
 		double 	*X, //the design matrix in vector form (nObs x np)
@@ -42,17 +40,6 @@ class sam_ippm_data {
 				*wts;  //the wts for the logl (typically all zero and of length nObs).
 		int 	*y_not_na; //a matrix which keeps track of NAs in ippm data. If non-ippm model all == 1.		
 		
-		//// this will all be setup in params and derivs.
-		
-		//double logl;
-		//vector<double> lp;//linear predictor.
-		//vector<double> sum_f_species; // log( f(yi,Bi)) S*G long
-		//vector<double> deriv_f_B;  //  d(log f(yi,Bi)) / d( Bi) G*Xc*S long
-        //vector<double> deriv_f_alphaS; //d(log(yi,alphai,Bi)/d(alphai) S long
-        //vector<double> parpi; // vector containing calculated pi's G long
-        //vector<double> species_l_contrib; // vector of each species likelihood contribution // S long
-        //vector<double> species_group_l_contrib; // matrix holding likelihood contribution for each combination of species & group
-        //vector<double> log_y_factorial; //calculation of factorial for nbinom
 };
 
 class sam_ippm_derivs
@@ -70,7 +57,6 @@ class sam_ippm_derivs
 		double 	*Alpha, //the derivatives of logl w.r.t. alpha
 				*Tau, 	//the derivatives of logl w.r.t. tau
 				*Beta,	//the derivatives of logl w.r.t. beta
-				//*Disp,	//the derivative of logl w.r.t. dispersions
 				*Scores;//the score contribution for each site (for empirical information)
 };
 
@@ -119,49 +105,13 @@ class sam_ippm_all_classes
 /////////////	Function Definitions	////////////////
 ////////////////////////////////////////////////////////
 
-extern "C"  SEXP species_mix_bernoulli_cpp(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEXP R_tau, SEXP R_gradient, SEXP R_offset);//, SEXP R_model_type);
-extern "C"  SEXP species_mix_bernoulli_gradient_cpp(SEXP R_pars, SEXP R_y, SEXP R_X, SEXP R_ID,SEXP R_tau, SEXP R_gradient, SEXP R_offset);//, SEXP R_model_type);
+extern "C" SEXP species_mix_ippm_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rwts, SEXP Ry_not_na,
+									 SEXP RnS, SEXP RnG, SEXP RnP, SEXP RnObs,
+									 SEXP Ralpha, SEXP Rbeta, SEXP Rtau, 
+									 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsTau, SEXP Rscores,
+									 SEXP Rpis, SEXP Rmus, SEXP RlogDens, SEXP Rloglike,
+									 SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv,
+									 SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp, SEXP RgetScores);
+									 
+double sam_optimise(sam_ippm_all_classes &all);
 
-double optimise_function_sam(int n, double *pars, void *ex);
-void gradient_function_sam(int n, double *pars, double *gr, void *ex );
-
-vector<double> calc_logl(const vector<double> &pars, Optimise_data &data);
-double like_function(vector <double> &estpi, vector < double > &coef, const double *y, const double *X, int Xr, int Xc, int start, int end, double *tau, int s, vector<double> &sum_f_species, vector<double> &deriv_f_B);
-double link_function(double p, int link_type);
-double inv_link_function(double lpre, int link_type);
-
-void additive_logistic(vector< double> &x,int inv);
-
-// negative binom 
-extern "C"  SEXP species_mix_negative_binomial_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_gradient, SEXP R_fitted_values);
-extern "C"  SEXP species_mix_negative_binomial_gradient_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_gradient);
-double optimise_nbinom(int n, double *pars, void *ex);
-void gradient_nbinom(int n, double *pars, double *gr, void *ex );
-double negative_binomial_logl(vector<double> &pars, Optimise_data_nbinom &data );
-
-// nbinom mix
-double optimise_mixnbinom_function(int n, double *pars, void *ex);
-void gradient_mixnbinom_function(int n, double *pars, double *gr, void *ex );
-vector <double> calc_mixnbinom_logl(const vector<double> &pars, Optimise_data &data);
-double like_mixnbinom_function(vector< double > &estpi, vector < double > &coef, vector < double > &sp_int, vector < double > &sp_dispersion, const double *y, const double *X, int Xr, int Xc, int start, int end, double *tau, int s, vector<double> &sum_f_species, vector<double> &deriv_f_B, vector<double> &deriv_f_alphaS, vector<double> &deriv_f_dispersionS, vector<double> &log_y_factorial, const double *offset);
-
-//ippm functions
-extern "C"  SEXP species_mix_ippm_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_y_is_not_na, SEXP R_gradient, SEXP R_fitted_values);
-extern "C"  SEXP species_mix_ippm_gradient_cpp(SEXP R_pars, SEXP R_X, SEXP R_y, SEXP R_w, SEXP R_offset, SEXP R_y_is_not_na, SEXP R_gradient);
-double optimise_ippm(int n, double *pars, void *ex);
-void gradient_ippm(int n, double *pars, double *gr, void *ex );
-double ippm_logl(vector<double> &pars, Optimise_data_ippm &data );
-
-// ippm mix functions
-double optimise_mix_ippm_function(int n, double *pars, void *ex);
-void gradient_mix_ippm_function(int n, double *pars, double *gr, void *ex );
-vector <double> calc_mix_ippm_logl(const vector<double> &pars, Optimise_data_ippm &data);
-double like_mix_ippm_function(vector< double > &estpi, vector < double > &coef, vector < double > &sp_int, const double *y, const double *X, int Xr, int Xc, int start, int end, double *tau, int s, vector<double> &sum_f_species, vector<double> &deriv_f_B, vector<double> &deriv_f_alphaS, vector<double> &log_y_factorial, const double *offset);
-double log_ippm_derivative(double y, double mu, double wts);
-
-
-// tweedie mix
-double optimise_tweedie_function(int n, double *pars, void *ex);
-void gradient_tweedie_function(int n, double *pars, double *gr, void *ex );
-vector <double> calc_tweedie_logl(const vector<double> &pars, Optimise_data &data);
-double like_tweedie_function(vector< double > &estpi, vector < double > &coef, vector < double > &sp_int, vector < double > &sp_dispersion, const double *y, const double *X, int Xr, int Xc, int start, int end, double *tau, int s, vector<double> &sum_f_species, vector<double> &deriv_f_B, vector<double> &deriv_f_alphaS, vector<double> &deriv_f_dispersionS, vector<double> &log_y_factorial, const double *offset);

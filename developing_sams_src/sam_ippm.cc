@@ -6,8 +6,11 @@
  * I have tried to set this up like RCP, which makes more sense to me, in the future I can adapt Piers code into a single species_mix_cpp function.
  */
 
-extern "C" { SEXP species_mix_ippm_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rwts, SEXP Ry_not_na,
-								  SEXP RS, SEXP RG, SEXP Rp, SEXP RnObs,
+// this is the external C call which will be called by R using .Call.
+
+extern "C" { 
+		SEXP species_mix_ippm_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rwts, SEXP Ry_not_na,
+								  SEXP RnS, SEXP RnG, SEXP RnP, SEXP RnObs,
 								  SEXP Ralpha, SEXP Rbeta, SEXP Rtau, 
 								  SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsTau, SEXP Rscores,
 								  SEXP Rpis, SEXP Rmus, SEXP RlogDens, SEXP Rloglike,
@@ -17,7 +20,7 @@ extern "C" { SEXP species_mix_ippm_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rwts
 	sam_ippm_all_classes all;
 
 	//initialise the data structures -- they are mostly just pointers to REAL()s...
-	all.data.setVals(Ry, RX, Roffset, RS, RG, Rp, RnObs, Rwts);	//read in the data
+	all.data.setVals(Ry, RX, Roffset, Rwts, Ry_not_na, RnS, RnG, RnP, RnObs);	//read in the data
 	all.parms.setVals(all.data, Ralpha, Rbeta, Rtau, Rgamma, Rdisps, Rpowers, Rconc, Rsd, RsdGamma, RdispLocat, RdispScale);	//read in the parameters
 	all.derivs.setVals(all.data, RderivsAlpha, RderivsTau, RderivsBeta, RderivsGamma, RderivsDisps, RgetScores, Rscores);
 	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv);
@@ -25,93 +28,309 @@ extern "C" { SEXP species_mix_ippm_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rwts
 
 	double logl = -999999;
 	
-	
-	allClasses all;
-	
-	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv);										
-	
-											
-    // tau is the parameter vector, 
-    // od is the overdispersion parameter, 
-    // X is the design matrix, 
-    // N is the NB distributed variable
-    int *y_is_not_na=NULL, Xr, Xc;
-    double *pars=NULL, *y=NULL, *X=NULL, *w=NULL,*offset=NULL,*r_pointer=NULL, *gradient=NULL, *fitted_values=NULL;
-    double logl;
-    int lpar,i;
-    double abstol,reltol;
-    int fncount, grcount, ifail,trace,nREPORT;
-    SEXP dimensions, R_logl;
-    lpar = LENGTH(R_pars);
-
-    //    vector<double> prams( lpar );
-    vector< double > params(lpar);
-    pars=REAL(R_pars);
-    y=REAL(R_y);
-    X=REAL(R_X);
-    w=REAL(R_w);
-    //ID=INTEGER(R_ID);
-    offset=REAL(R_offset);
-    y_is_not_na=INTEGER(R_y_is_not_na);
-    gradient=REAL(R_gradient);
-    fitted_values=REAL(R_fitted_values);
-  
-    dimensions=getAttrib(R_X, R_DimSymbol);
-    Xr=INTEGER(dimensions)[0];
-    Xc=INTEGER(dimensions)[1];
-
-    dimensions=getAttrib(R_tau, R_DimSymbol);
-    S=INTEGER(dimensions)[0];
-    G=INTEGER(dimensions)[1];
-
-    Optimise_data_ippm data;
-    
-    data.set_vars_ippm(y, X, w, *offset, y_is_not_na, ID, S, G, Xr, Xc, lpar, ly, tau)
-    //data.SetVars(y, X, w, *offset, y_is_not_na, Xr, Xc);
-
-
-    //all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv);
-    abstol = 1e-8;
-    reltol = 1e-8;
-    nREPORT = 50;//how often to report
-    fncount=0;
-    grcount=0;
-    ifail=0;
-    trace=0;
-    vector <int> mask (lpar,1); 
-    vector < double > logl_out(lpar,0);
-
-    vmmin(lpar, pars, &logl_out.at(0), optimise_ippm, gradient_ippm, 1000, trace, &mask.at(0),  abstol,  reltol,  nREPORT, &data, &fncount, &grcount, &ifail);
-    
-    //std::cout << "ifail = " << ifail << "\n" ;
-    logl=1;
-    logl = optimise_ippm(lpar, pars, &data);
-    gradient_ippm(lpar,pars,gradient,&data);
-    for(i=0;i<Xr;i++) fitted_values[i] = data.lp.at(i);
-
-    R_logl = allocVector(REALSXP,1);
-    r_pointer = REAL(R_logl);
-    *r_pointer = logl;
-    return(R_logl);
-  }
-	
-	
-	
 	//doing the optimising
 	if( *INTEGER(Roptimise) == 1)
-		logl = ALLoptimise( all);
-
+		logl = sam_optimise( all);
 	//re-running to get pis and mus
 	if( *INTEGER(RloglOnly) == 1)
-		logl = mixLogl( all.data, all.parms, all.fits);
+		logl = sam_ippm_mix_loglike( all.data, all.parms, all.fits);
 	//and derivatives (inlcuding scores, for empirical info, if requested)
 	if( *INTEGER(RderivsOnly) == 1)
-		loglDerivs( all.data, all.parms, all.derivs, all.fits);								  
-									  
-									  
-									  }	
-	}
+		loglDerivs( all.data, all.parms, all.derivs, all.fits);	
+		
+		//bundling up things to return
+	//first the fitted pis
+	double *tmpPi = REAL( Rpis);
+	for( int i=0; i<all.data.nObs; i++)
+		for( int g=0; g<all.data.nG; g++)
+			tmpPi[MATREF2D(i,g,all.data.nObs)] = all.fits.allPis.at(i).at(g);
+	//the fitted expectations
+	double *tmpMus = REAL( Rmus);
+	for( size_t i=0; i<all.fits.allMus.size(); i++)
+		tmpMus[i] = all.fits.allMus.at(i);
+	//the log conditional densities
+	double *tmpDens = REAL( RlogDens);
+	for( int g=0; g<all.data.nG;g++)
+		for( int i=0; i<all.data.nObs; i++)
+				tmpDens[MATREF2D(i,g,all.data.nObs)] = all.fits.allLogDens.at(i).at(g);
+	//the logl contributions
+	double *tmplogls = REAL( Rlogli);
+	for( int i=0; i<all.data.nObs; i++)
+		tmplogls[i] = all.fits.allLogls.at(i);
+	//Convergence code
+	int *tmpconv = INTEGER( Rconv);
+	tmpconv[0] = all.contr.ifail;
+	//the logl
+	SEXP Rres;	//R object to return -- it is the logl!
+	Rres = PROTECT( allocVector(REALSXP,1));
+    REAL( Rres)[0] = logl;
+	UNPROTECT(1);
+	return( Rres);	
+											
+  }
+}
 
+
+double sam_optimise( allClasses &all){
+	double *vmminGrad, *vmminParms, *oldParms;	//arrays to pass to vmmin
+	double *vmminParmsIn;	//del
+	vmminParms = (double *) R_alloc(all.parms.nTot,sizeof(double));
+	vmminParmsIn = (double *) R_alloc(all.parms.nTot,sizeof(double));	//Del
+	oldParms = (double *) R_alloc(all.parms.nTot,sizeof(double));
+	vmminGrad = (double *) R_alloc(all.parms.nTot,sizeof(double));
+	int *myMask;
+	vector<int> vecMask(all.parms.nTot, 1);
+	double vmminLogl[1];
+
+//	Rprintf( "Quasi-Newton iterations\n");
+	all.parms.getArray( oldParms, all.data);
+	myMask = &vecMask[0];
+	//optimise
+	all.parms.getArray( vmminParms, all.data);
+	all.parms.getArray( vmminParmsIn, all.data);	//del
+	vmmin( all.parms.nTot, vmminParms, vmminLogl, optimise_function_ippm_sam, gradient_function_ippm_sam, all.contr.maxitQN, all.contr.traceQN, myMask, all.contr.abstol, all.contr.reltol, all.contr.nReport, &all, &all.contr.fnKount, &all.contr.grKount, &all.contr.ifail);
+//	nmmin( all.parms.nTot, vmminParmsIn, vmminParms, vmminLogl, optimise_function_rcp, &all.contr.ifail, all.contr.abstol, all.contr.reltol, &all, 1.0, 0.5, 2.0, all.contr.traceQN, &all.contr.fnKount, all.contr.maxitQN);
+	//update parameters
+	all.parms.update( vmminParms, all.data);
+	gradient_function_ippm_sam(all.parms.nTot, vmminParms, vmminGrad, &all);
+	all.derivs.update( vmminGrad, all.data);
+
+	return( vmminLogl[0]);
+}
+
+double optimise_function_ippm_sam(int n, double *par, void *ex)
+{
+	allClasses *all = (allClasses *) ex;
+	double logl;
+
+	all->parms.update( par, all->data);
+	logl = sam_ippm_mix_loglike( all->data, all->parms, all->fits);
+
+	return( (0.0-logl));
+}
+
+double sam_ippm_mix_loglike( const sam_ippm_data &dat, const sam_ippm_params &parms, sam_ippm_fits &fits){
+	
+	vector<double> logPis(dat.nG, dat.NAnum);//, pis( dat.nG, dat.NAnum);
+	double loglike;	//for coding purposes really -- note that this is NOT related to the spp design matrix W
+	vector<double> wij( dat.nG, dat.NAnum);	//for coding purposes -- note that this is NOT related to the spp design matrix W
+	int m;	//for coding purposes
+
+	fits.zero( dat.NAnum);
+
+	//calculate fitted values (constant over i)
+	calc_mu_fits(fits.allMus, dat, parms);// this should return the fitted valyes for all species, sites and groups.
+	
+	for( int i=0; i<dat.nObs; i++){
+		calcLogPis( logPis, fits.allPis.at(i), dat, parms, i); // this should estimate the pis per group
+		calcLogCondDens( fits.allLogDens.at(i), fits.allMus, dat, parms, i); // this should give the log-densities for ippm. 
+		loglike += calcMixSum( logPis, fits.allLogDens.at(i), wi, wij, m); // this should give the mix loglike. ippm weights are calculated in this bit.
+	}
+	return(loglike);
+}
+
+// calculate mu fits for ippm
+// this should calculate all the etas and mus for species and archetypes. 
+
+
+void calc_mu_fits( vector<double> &fits, const sam_ipp_data &dat, const sam_ippm_params &parms){
+	//fits is a G*S matrix of the fitted values if dat.npw==0 and a G*S*nObs array if npw>0
+	//vector<double> newTau( dat.nG*dat.nS, dat.NAnum);
+	vector<double> lps(dat.nG*dat.nS, dat.NAnum);	//the nG x nS intercepts
+	double lp=0.0;	//the lin pred for the gth group, sth species and ith site
+
+	//calcualte the G*S*n fits
+	for( int g=0; g<dat.nG; g++){
+		for( int s=0; s<dat.nS; s++){
+			lps.at(MATREF2D(g,s,dat.nG)) = parms.Alpha[s];
+			for( int i=0; i<dat.nObs; i++){
+				// need logical flag which deals with NA data.
+				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
+				lp = lps.at(MATREF2D(g,s,dat.nG)) + dat.offset[i];
+					for( int j=0;j<dat.np; j++){
+						lp += parms.Beta[MATREF2D(g,j,(dat.nG-1))] * dat.X[MATREF2D(i,j,dat.nObs)];
+				   	}
+				fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
+				}
+			}
+		}
+	}	
+
+}
+
+// now we want to calculate the log densities. ippm has a slightly different derivation to logPoisson.
+
+void calcLogCondDens( vector<double> &condDens, const vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &parms, int i)
+{
+	vector<double> condDensSG( dat.nG*dat.nS, dat.NAnum);
+
+	//calcualte the G*S log conditional densities
+	for( int g=0; g<dat.nG; g++){
+		for( int s=0; s<dat.nS; s++){
+			if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
+		    condDensSG.at(MATREF2D(g,s,dat.nG)) = log_ippm(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.wts[MATREF2D(i,s,dat.nObs)]);
+		    }
+		    // here are all the other options for other distributions. 
+		    
+			//switch( dat.disty){
+				//case 1:
+					//condDensSG.at(MATREF2D(g,s,dat.nG)) = logBernoulli( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
+					//break;
+				//case 2:
+					//condDensSG.at(MATREF2D(g,s,dat.nG)) = logPoisson( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
+					//break;
+				//case 3:
+					//condDensSG.at(MATREF2D(g,s,dat.nG)) = logNegBin( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
+					//break;
+// 				case 4:
+// 					condDensSG.at(MATREF2D(g,s,dat.nG)) = logTweedie( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s], parms.Power[s]);
+// //					Rprintf("%f\t",condDensSG.at(MATREF2D(g,s,dat.nG)));
+					//break;
+				//case 5:
+					//condDensSG.at(MATREF2D(g,s,dat.nG)) = logNormal( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
+					//break;
+			}
+//		Rprintf("\n");
+	}
+	//calculate the G log conditional densities (under independence)
+	for( int g=0; g<dat.nG; g++){
+		condDens.at(g) = 0.0;
+		for( int s=0; s<dat.nS; s++)
+			condDens.at(g) += condDensSG.at(MATREF2D(g,s,dat.nG));
+	}
+}
+
+// this should give the log-density for the ippm. fingers crossed...
+
+double log_ippm(const double &y, const double &mu, const double &wts){
+	double tmp, z;
+	z = y/wts;
+	tmp = z * log(mu);
+	tmp -= mu;
+	tmp *= wts;
+	return( tmp);
+}
+
+
+//double ippm_logl(vector<double> &pars, Optimise_data_ippm &data ){//vector<double> &tau, double theta, vector<double> &X, vector<double> &y, double offset){
+  //vector<double> lp(data.Xr,0);
+  //int Xr,Xc,i,j;
+  //double offset=0,logl=0;
+  ////int *y_is_not_na=NULL;
+  //Xr=data.Xr;
+  //Xc=data.Xc;
+  //offset=data.offset;
+  ////y_is_not_na = data.y_is_not_na;
+  
+  //for(i=0;i<Xr;i++){
+	 //for(j=0;j<Xc;j++){
+	   //if(data.y_is_not_na[MATREF2D(i,j,Xr)]>0){
+	   //lp.at(i)+=data.X[MATREF2D(i,j,Xr)]*pars.at(j+1);
+	   //lp.at(i)+=offset;
+	   //}
+    //}
+    //lp.at(i)=exp(lp.at(i));
+    //data.lp.at(i)=lp.at(i); //fitted values
+   
+   ////loglikespp sum(first_fit$weights[sp_idx,ss]*(((first_fit$y[sp_idx,ss]/first_fit$weights[sp_idx,ss])*eta) -exp(eta)))
+   
+    //logl+=(lgammafn(pars.at(0)+data.y[i]) - lgammafn(pars.at(0)) + data.y[i]*log(lp.at(i)) + pars.at(0)*log(pars.at(0)) - (pars.at(0) + data.y[i])*log(lp.at(i)+pars.at(0)) - data.log_y_factorial.at(i))*(data.w[i]) ;
+  //}
+  //return( logl);
+
+//} 
+
+//double optimise_ippm(int n, double *pars, void *ex){
+
+  //Optimise_data_ippm *data = (Optimise_data_ippm *) ex;
+  ////Optimise_data data =  * (Optimise_data *) ex;
+  
+  //vector<double> logl(1,0);
+  //int i;
+  //vector<double> x (n,0);
+  ////pars[0]=1;
+  
+  //for(i=0;i<n;i++) x.at(i) = pars[i];
+
+
+  //logl.at(0) = ippm_logl(x,*data);
+ 
+  ////logl = data->F.Forward(0,x);
+
+  //return(0-logl.at(0));
+
+//}
+
+
+
+// Gradient functions for IPPM. 
+// This is the wrapper for vmmin and it takes the sam_ippm_all_classes to 
+void gradient_function_ippm_sam(int n, double *par, double *gr, void *ex){
+	sam_ippm_all_classes *all = (sam_ippm_all_classes *) ex;
+
+	logl_derivs_ippm( all->data, all->parms, all->derivs, all->fits);
+
+	all->derivs.getArray(gr, all->data);
+
+	for( int i=0; i<n; i++)
+		gr[i] = 0-gr[i];
+}
+
+
+// this function should work out the derivatives.
+void logl_derivs_ippm( const sam_ippm_data &dat, const sam_ippm_params &parms, sam_ippm_derivs &derivs, sam_ippm_fits &fits)
+{
+	vector<double> logPis(dat.nG, dat.NAnum), pis( dat.nG, dat.NAnum);
+	vector<double> logCondDens( dat.nG, dat.NAnum);
+	double wi, tmp1;
+	vector<double> wij( dat.nG, dat.NAnum);
+	int m;	//location of the maximum group contribution
+
+	vector<double> muDerivsI( dat.nG*dat.nS, dat.NAnum);
+	vector<double> etaDerivsI( dat.nG*dat.nS, dat.NAnum);
+	vector<double> alphaDerivsI( dat.nS, dat.NAnum);
+	vector<double> tauDerivsI( (dat.nG-1)*dat.nS, dat.NAnum);
+	vector<double> piDerivsI( dat.nG, dat.NAnum);
+	vector<double> betaDerivsI( (dat.nG-1)*dat.np, dat.NAnum);
+	//vector<double> gammaDerivsI( dat.nS*dat.npw, dat.NAnum);
+	//vector<double> dispDerivsI( dat.nS, dat.NAnum);
+
+	vector<double> tmpPiDerivs( dat.nG*dat.nS, 0.0);
+
+	calcMuFits( fits.allMus, dat, parms);
+	derivs.zeroDerivs( dat);
+	for( int i=0; i<dat.nObs; i++){
+		//calculating the w_i and the {w_ig}
+		calcLogPis( logPis, pis, dat, parms, i);
+		calcLogCondDens( logCondDens, fits.allMus, dat, parms, i);
+		tmp1 = calcMixSum( logPis, logCondDens, wi, wij, m);
+		//calc deriv w.r.t. mu and the eta (all of them)
+		calcDerivMu( muDerivsI, fits.allMus, dat, parms, wi, wij, m, i);
+		calcDerivEtaMu( etaDerivsI, dat, muDerivsI, fits.allMus, i);
+		//calc deriv w.r.t. alpha and then tau and then gamma
+		calcAlphaDeriv( alphaDerivsI, etaDerivsI, dat);
+		calcTauDeriv( tauDerivsI, etaDerivsI, dat, parms);
+		calcGammaDeriv( gammaDerivsI, etaDerivsI, dat, parms, i);
+		//calc deriv w.r.t. beta
+		calcPiDeriv( piDerivsI, dat, parms, pis, wi, wij, m);
+		calcBetaDeriv( betaDerivsI, piDerivsI, pis, dat, i);
+		//calc deriv w.r.t. dispersions
+		calcDispDeriv( dispDerivsI, fits.allMus, dat, parms, wi, wij, m, i);	//if dat.disty specifies no dispersion then a vector of zeros is returned (and not used)
+		//put on weights
+		weightDerivs( alphaDerivsI, tauDerivsI, gammaDerivsI, betaDerivsI, dispDerivsI, dat, i);
+		//update derivatives
+		derivs.updateDerivs( dat, alphaDerivsI, tauDerivsI, betaDerivsI, gammaDerivsI, dispDerivsI, i);	//if dat.disty specifies no dispersion then no place for disp derivs (and are not updated, of course)
+	}
+	calcTauPenDeriv( tauDerivsI, dat, parms);
+	calcGammaPenDeriv( gammaDerivsI, dat, parms);
+	calcDispPenDeriv( dispDerivsI, dat, parms);
+
+	alphaDerivsI.assign(alphaDerivsI.size(), 0.0);
+	betaDerivsI.assign(betaDerivsI.size(), 0.0);
+
+	derivs.updateDerivs( dat, alphaDerivsI, tauDerivsI, betaDerivsI, gammaDerivsI, dispDerivsI, -1);
+	(void)tmp1;	//tmp1 is not used again, this is just a little trick to avoid a compile warning.
+}
 
 void additive_logistic(vector< double > &x,int inv){
   int i; 
@@ -344,91 +563,6 @@ double ippm_logl(vector<double> &pars, Optimise_data_ippm &data ){//vector<doubl
   //}
 //}
 
-
-Optimise_data_ippm::Optimise_data_ippm(){}
-Optimise_data_ippm::~Optimise_data_ippm(){}
-
-void Optimise_data_ippm::set_vars_ippm(double *ty, double *tX, double *tw, double *toffset, int *ty_is_not_na, int *tID, int tS, int tG, int tXr, int tXc, int tlpar, int tly, double *ttau){
-  
-  int i, s, j;
-  double tmp,yt;
-  tau = ttau;
-  y=ty;
-  X=tX;
-  ly = tly;
-  w=tw;
-  offset=toffset;
-  y_is_not_na=ty_is_not_na;
-  ID=tID;
-  S=tS;
-  G=tG;
-  Xr=tXr;
-  Xc=tXc;
-  
-  lpar=tlpar;
-  ly = tly;
- 
-  //s=1;
-  for(i=0;i<G;i++){ // vectors of length G
-    parpi.push_back(0);
-    for(s=0;s<S;s++){ 
-      sum_f_species.push_back(0);
-      species_group_l_contrib.push_back(0);
-      deriv_f_alphaS.push_back(0);
-      for(j=0;j<Xc;j++) deriv_f_B.push_back(0);
-    }
-  }
-
-  for(s=0;s<S;s++) {
-    species_l_contrib.push_back(0);
-  }
-
-  s=ID[0];
- 
-}
- 
-
-double optimise_ippm(int n, double *pars, void *ex){
-
-  Optimise_data_ippm *data = (Optimise_data_ippm *) ex;
-  //Optimise_data data =  * (Optimise_data *) ex;
-  
-  vector<double> logl(1,0);
-  int i;
-  vector<double> x (n,0);
-  //pars[0]=1;
-  
-  for(i=0;i<n;i++) x.at(i) = pars[i];
-
-
-  logl.at(0) = ippm_logl(x,*data);
- 
-  //logl = data->F.Forward(0,x);
-
-  return(0-logl.at(0));
-
-}
-
-// Not sure what the difference between these two are? Anyway - I've followed Piers' wacky method.
-
-double optimise_mix_ippm_function(int n, double *pars, void *ex){
-
-  Optimise_data_ippm *data = (Optimise_data_ippm *) ex;
-  //Optimise_data data =  * (Optimise_data *) ex;
-  
-  vector<double> logl(1,0);
-  int i;
-  vector<double> x (n,0);
-  
-  for(i=0;i<n;i++) x.at(i) = pars[i];
-
-  logl = calc_mix_ippm_logl(x,*data);
-
-  //logl = data->F.Forward(0,x);
-
-  return(0-logl.at(0));
-
-}
 
 void gradient_mix_ippm_function(int n, double *pars, double *gr, void *ex ){
   Optimise_data_ippm *data = (Optimise_data_ippm *) ex;
