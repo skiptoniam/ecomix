@@ -1,3 +1,6 @@
+#ifndef sam_ippm_hh
+#define sam_ippm_hh
+
 #include<R.h>
 #include<Rinternals.h>
 #include<Rmath.h>
@@ -113,5 +116,18 @@ extern "C" SEXP species_mix_ippm_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rwts, 
 									 SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv,
 									 SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp, SEXP RgetScores);
 									 
+// functions for optimisation.									 
 double sam_optimise(sam_ippm_all_classes &all);
 
+// functions for calculating ippm likelihood.
+double optimise_function_sam_ippm(int n, double *par, void *ex)
+double sam_ippm_mix_loglike( const sam_ippm_data &dat, const sam_ippm_params &parms, sam_ippm_fits &fits)
+void calc_mu_fits( vector<double> &fits, const sam_ipp_data &dat, const sam_ippm_params &parms)
+void calc_log_cond_dens( vector<double> &condDens, const vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &parms, int i)
+double log_ippm(const double &y, const double &mu, const double &wts)
+
+//// functions for calculating ippm derivatives.
+//void gradient_function_sam_ippm(int n, double *par, double *gr, void *ex)
+//double log_ippm_derivative( const double &y, const double &mu, const double &wts)
+
+#endif
