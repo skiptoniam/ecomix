@@ -30,13 +30,13 @@ extern "C" {
 	
 	//doing the optimising
 	if( *INTEGER(Roptimise) == 1)
-		logl = sam_optimise( all);
+		logl = sam_optimise(all);
 	//re-running to get pis and mus
 	if( *INTEGER(RloglOnly) == 1)
 		logl = sam_ippm_mix_loglike( all.data, all.parms, all.fits);
 	//and derivatives (inlcuding scores, for empirical info, if requested)
 	if( *INTEGER(RderivsOnly) == 1)
-		loglDerivs( all.data, all.parms, all.derivs, all.fits);	
+		sam_ippm_mix_logl_derivs( all.data, all.parms, all.derivs, all.fits);	
 		
 		//bundling up things to return
 	//first the fitted pis
@@ -122,8 +122,8 @@ double sam_ippm_mix_loglike( const sam_ippm_data &dat, const sam_ippm_params &pa
 	calc_mu_fits(fits.allMus, dat, parms);// this should return the fitted valyes for all species, sites and groups.
 	
 	for( int i=0; i<dat.nObs; i++){
-		calcLogPis( logPis, fits.allPis.at(i), dat, parms, i); // this should estimate the pis per group
-		calcLogCondDens( fits.allLogDens.at(i), fits.allMus, dat, parms, i); // this should give the log-densities for ippm. 
+		calc_log_pis( logPis, fits.allPis.at(i), dat, parms, i); // this should estimate the pis per group
+		calc_log_cond_dens( fits.allLogDens.at(i), fits.allMus, dat, parms, i); // this should give the log-densities for ippm. 
 		loglike += calcMixSum( logPis, fits.allLogDens.at(i), wi, wij, m); // this should give the mix loglike. ippm weights are calculated in this bit.
 	}
 	return(loglike);
@@ -155,6 +155,51 @@ void calc_mu_fits( vector<double> &fits, const sam_ipp_data &dat, const sam_ippm
 	}	
 
 }
+
+// this should calculate the log_pis for
+calc_log_pis( logPis, fits.allPis.at(i), dat, parms, i); // this should estimate the pis per group
+
+void calcLogPis( vector<double> &logPis, vector<double> &pis, const myData &dat, const myParms &parms, int i)
+{
+	vector<double> lp((dat.nG-1),0.0);
+	double sumlp=0.0, sumpi=0.0;
+
+	lp.assign( (dat.nG-1), 0.0);
+	for( int k=0; k<(dat.nG-1); k++){
+		for( int p=0; p<dat.np; p++)
+			lp.at(k) += parms.Beta[MATREF2D(k,p,(dat.nG-1))] * dat.X[MATREF2D(i,p,dat.nObs)];
+		lp.at(k) = exp( lp.at(k));
+		sumlp += lp.at(k);
+	}
+	for( int k=0; k<(dat.nG-1); k++){
+		pis.at(k) = lp.at(k) / ( 1+sumlp);
+		sumpi += pis.at(k);
+	}
+	pis.at(dat.nG-1) = 1-sumpi;
+	for( int k=0; k<dat.nG; k++)
+		logPis.at(k) = log( pis.at(k));
+
+	for( int k=0; k<dat.nG; k++){
+		if( logPis.at(k)>=0)
+			logPis.at(k) = -DBL_MIN;	//Smallest (absolute) non-zero number on your machine
+		if( !R_FINITE(logPis.at(k)))
+			logPis.at(k) = -DBL_MAX;	//Smallest (most negative) number on your machine
+	}
+
+}
+
+get_taus_ippm <- function(pi, logls, G, S){
+  fullLogPis <- matrix( rep( log(pi), each=S), nrow=S, ncol=G)
+  a_k <- fullLogPis + logls
+  a_m <- apply( a_k, 1, max)
+  tmp <- exp( a_k - rep( a_m, times=G))
+  log_denom <- a_m + log( rowSums( tmp))
+  return( exp( a_k - log_denom))
+}
+
+colSums(taus)/S
+
+
 
 // now we want to calculate the log densities. ippm has a slightly different derivation to logPoisson.
 
@@ -189,8 +234,6 @@ double log_ippm(const double &y, const double &mu, const double &wts){
 	return( tmp);
 }
 
-
-
 // Gradient functions for IPPM. 
 // This is the wrapper for vmmin and it takes the sam_ippm_all_classes to 
 void gradient_function_sam_ippm(int n, double *par, double *gr, void *ex){
@@ -206,7 +249,7 @@ void gradient_function_sam_ippm(int n, double *par, double *gr, void *ex){
 
 
 // this function should work out the derivatives.
-void logl_derivs_ippm( const sam_ippm_data &dat, const sam_ippm_params &parms, sam_ippm_derivs &derivs, sam_ippm_fits &fits)
+void sam_ippm_mix_logl_derivs( const sam_ippm_data &dat, const sam_ippm_params &parms, sam_ippm_derivs &derivs, sam_ippm_fits &fits)
 {
 	vector<double> logPis(dat.nG, dat.NAnum), pis( dat.nG, dat.NAnum);
 	vector<double> logCondDens( dat.nG, dat.NAnum);
@@ -282,6 +325,37 @@ void additive_logistic(vector< double > &x,int inv){
 
 }
 
+// this should calculate the derivate w.r.t alpha.
+
+void calcAlphaDeriv( vector<double> &alphaDerivsI, const sam_ippm_data &dat, const double &mu){
+	
+	
+	
+	
+	
+	
+	
+	}
+
+// this should calculate the derivate w.r.t beta.
+
+void calcBetaDeriv( vector<double> &betaDerivsI, const sam_ippm_data &dat, const double &mu){
+	
+	
+	
+	
+	
+	}
+
+// this should calculate the derivate w.r.t tau.
+
+void calcTauDeriv( vector<double> &tauDerivsI, const vector<double> &etaDerivs, const sam_ippm_data &dat, const sam_ippm_data &parms){
+	
+	
+	
+	
+	
+	}
 
 //void gradient_ippm(int n, double *pars, double *gr, void *ex ){
   //Optimise_data_ippm *data = (Optimise_data_ippm *) ex;
@@ -450,7 +524,7 @@ void additive_logistic(vector< double > &x,int inv){
 //}
 
 // log-ippm-derivative - this will be used for dfdlogalpha and dfdlogbeta.
-double log_ippm_derivative( const double &y, const double &mu, const double &wts){
+double log_df_dalpha_ippm( const double &y, const double &mu, const double &wts){
 	double tmp, z;
 	z = y/wts;
 	tmp = z/mu;
