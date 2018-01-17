@@ -15,7 +15,7 @@ void sam_ippm_data::setVals( const SEXP &Ry, const SEXP &RX, const SEXP &Roffset
 	X = REAL( RX);
 	offset = REAL( Roffset);
 	wts = REAL( Rwts);
-	y_is_not_na = INTEGER(Ry_not_na));		
+	y_not_na = INTEGER(Ry_not_na));		
 }
 
 // remove dispersion calls for now.
