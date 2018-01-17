@@ -120,15 +120,14 @@ double sam_ippm_mix_loglike( const sam_ippm_data &dat, const sam_ippm_params &pa
 	additive_logistic(fits.estpi,1) // additive logistic transformation of pis.
 
 	for( int s=0; s<dat.nS; s++){
-		tloglike.at(0) = calc_ippmsam_per_species(estpi, log_densitySG, fits.allMus, dat, parms, s); // this should give the mix loglike. ippm weights are calculated in this bit.
+		tloglike.at(0) = calc_ippmsam_loglike_per_species(estpi, log_densitySG, fits.allMus, dat, parms, s); // this should give the mix loglike. ippm weights are calculated in this bit.
 		fits.allSpecies_loglike_contribution.at(s) = tloglike.at(0);
 		loglike.at(0) += tloglike.at(0);
 	}
 	return(loglike);
 }
 
-// calculate mu fits for ippm
-// this should calculate all the etas and mus for species and archetypes. 
+// calculate mu fits for ippm this should calculate all the etas and mus for species and archetypes. 
 void calc_mu_fits( vector<double> &fits, const sam_ipp_data &dat, const sam_ippm_params &parms){
 	//fits is a G*S matrix of the fitted values if dat.npw==0 and a G*S*nObs array if npw>0
 	//vector<double> newTau( dat.nG*dat.nS, dat.NAnum);
@@ -155,8 +154,7 @@ void calc_mu_fits( vector<double> &fits, const sam_ipp_data &dat, const sam_ippm
 }
 
 // now we want to calculate the species specific likelihoods.
-
-double calc_ippmsam_like_per_species(vector<double> &estpi, vector<double> &log_densitySG, const vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &parms, int s){
+double calc_ippmsam_loglike_per_species(vector<double> &estpi, vector<double> &log_densitySG, const vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &parms, int s){
 	
 	double eps=0, glogl=0;
     
@@ -221,354 +219,122 @@ void additive_logistic(vector< double > &x,int inv){
 
 // Gradient functions for IPPM. 
 // This is the wrapper for vmmin and it takes the sam_ippm_all_classes to 
-//void gradient_function_sam_ippm(int n, double *par, double *gr, void *ex){
-	//sam_ippm_all_classes *all = (sam_ippm_all_classes *) ex;
+void gradient_function_sam_ippm(int n, double *par, double *gr, void *ex){
+	sam_ippm_all_classes *all = (sam_ippm_all_classes *) ex;
 
-	//logl_derivs_ippm( all->data, all->parms, all->derivs, all->fits);
+	sam_ippm_mix_gradient_function( all->data, all->parms, all->derivs, all->fits);
 
-	//all->derivs.getArray(gr, all->data);
+	all->derivs.getArray(gr, all->data);
 
-	//for( int i=0; i<n; i++)
-		//gr[i] = 0-gr[i];
-//}
+	for( int i=0; i<n; i++)
+		gr[i] = 0-gr[i];
+}
 
 
 //// this function should work out the derivatives.
-//void sam_ippm_mix_logl_derivs( const sam_ippm_data &dat, const sam_ippm_params &parms, sam_ippm_derivs &derivs, sam_ippm_fits &fits)
-//{
-	//vector<double> logPis(dat.nG, dat.NAnum), pis( dat.nG, dat.NAnum);
-	//vector<double> logCondDens( dat.nG, dat.NAnum);
-	//double wi, tmp1;
-	//vector<double> wij( dat.nG, dat.NAnum);
-	//int m;	//location of the maximum group contribution
+void sam_ippm_mix_gradient_function( const sam_ippm_data &dat, const sam_ippm_params &parms, sam_ippm_derivs &derivs, sam_ippm_fits &fits){
+	
+	vector<double> alphaDerivsI( dat.nS, dat.NAnum);
+	vector<double> betaDerivsI( (dat.nG-1)*dat.np, dat.NAnum);
+	vector<double> piDerivsI( dat.nG*dat.nG, dat.NAnum);
 
-	//vector<double> muDerivsI( dat.nG*dat.nS, dat.NAnum);
-	//vector<double> etaDerivsI( dat.nG*dat.nS, dat.NAnum);
-	//vector<double> alphaDerivsI( dat.nS, dat.NAnum);
-	//vector<double> tauDerivsI( (dat.nG-1)*dat.nS, dat.NAnum);
-	//vector<double> piDerivsI( dat.nG, dat.NAnum);
-	//vector<double> betaDerivsI( (dat.nG-1)*dat.np, dat.NAnum);
-	////vector<double> gammaDerivsI( dat.nS*dat.npw, dat.NAnum);
-	////vector<double> dispDerivsI( dat.nS, dat.NAnum);
 
-	//vector<double> tmpPiDerivs( dat.nG*dat.nS, 0.0);
-
-	//calc_mu_fits( fits.allMus, dat, parms);
-	//derivs.zeroDerivs( dat);
-	//for( int i=0; i<dat.nObs; i++){
-		////calculating the w_i and the {w_ig}
-		//calcLogPis( logPis, pis, dat, parms, i);
-		//calcLogCondDens( logCondDens, fits.allMus, dat, parms, i);
-		//tmp1 = calcMixSum( logPis, logCondDens, wi, wij, m);
-		
-		////calc deriv w.r.t. mu and the eta (all of them)
-		//calcDerivMu( muDerivsI, fits.allMus, dat, parms, wi, wij, m, i);
-		//calcDerivEtaMu( etaDerivsI, dat, muDerivsI, fits.allMus, i);
-		
-		////calc deriv w.r.t. alpha and then tau and then gamma
-		//calcAlphaDeriv( alphaDerivsI, etaDerivsI, dat);
-		//calcTauDeriv( tauDerivsI, etaDerivsI, dat, parms);
-		
-		////calc deriv w.r.t. beta
-		//calcBetaDeriv( betaDerivsI, piDerivsI, pis, dat, i);
-		
-		////update derivatives
-		//derivs.updateDerivs( dat, alphaDerivsI, tauDerivsI, betaDerivsI, gammaDerivsI, dispDerivsI, i);	//if dat.disty specifies no dispersion then no place for disp derivs (and are not updated, of course)
-	//}
-	//calcTauPenDeriv( tauDerivsI, dat, parms);
-	//calcGammaPenDeriv( gammaDerivsI, dat, parms);
-	//calcDispPenDeriv( dispDerivsI, dat, parms);
-
-	//alphaDerivsI.assign(alphaDerivsI.size(), 0.0);
-	//betaDerivsI.assign(betaDerivsI.size(), 0.0);
-
-	//derivs.updateDerivs( dat, alphaDerivsI, tauDerivsI, betaDerivsI, gammaDerivsI, dispDerivsI, -1);
-	//(void)tmp1;	//tmp1 is not used again, this is just a little trick to avoid a compile warning.
-//}
-
-//void additive_logistic(vector< double > &x,int inv){
-  //int i; 
-  //// inv == 1 gives transfornmation
-  ////inv = 0 give inverse transformatio
-  //if(inv==0){
-    //for(i=0;i<x.size();i++) x.at(i) = log(x.at(i)/x.back());
-    //return;
-  //}
+	//calculate fitted values (constant over i)
+	calc_mu_fits(fits.allMus, dat, parms);// this should return the fitted valyes for all species, sites and groups.
+	additive_logistic(fits.estpi,1) // additive logistic transformation of pis.
     
-  //vector< double > xt (x.size(),0);
-  //double sumx=0, sumxt=0;
+   	//derivate w.r.t alpha 
+	calc_alpha_deriv(alphaDerivsI, dat, fits.allMus)
+		
+	//derivate w.r.t beta
+	calc_beta_deriv(betaDerivI, dat, fits.allMus)		
+				
+	//derivate w.r.t pi 
+	calc_pi_deriv(piDerivsI, dat, fits.allMus)
 
-  //for(i=0;i<x.size();i++){
-    //xt.at(i) = exp(x.at(i));
-    //sumx+=xt.at(i);
-  //}
-  //for(i=0;i<x.size();i++){
-    //x.at(i) = xt.at(i)/(1+sumx);
-    //sumxt+=x.at(i);
-  //}
-  //x.push_back(1-sumxt);
+	//update the derivates for each g.
+	derivs.updateDerivs( dat, alphaDerivsI, betaDerivsI, piDerivsI);	//if dat.disty specifies no dispersion then no place for disp derivs (and are not updated, of course)
+	     	  
+	(void)tmp1;	//tmp1 is not used again, this is just a little trick to avoid a compile warning.
+}
 
-//}
+double log_poisson_deriv( const double &y, const double &mu){
+	double tmp, z;
+	z = y/wts;
+	tmp = z/mu;
+	tmp -= 1;
+	return( tmp);
+}
 
-//// this should calculate the derivate w.r.t alpha.
-
-//void calcAlphaDeriv( vector<double> &alphaDerivsI, const sam_ippm_data &dat, const double &mu){
+// this should calculate the derivate w.r.t alpha.
+void calc_dlog_dalpha(){
 	
+	vector<double> dlogdalpha(dat.nG*dat.nS, dat.NAnum);
+	double tmp_lpd;
 	
+	for(int g=0; g<dat.nG; g++){	
+		for(int s=0;s<dat.nS; s++){
+			for(int i=0; i<dat.nObs; i++){
+				if(dat.y_not_na[MATREF2D()]>0){
+					tmp_lpd = log_poisson_deriv(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	
+					dlogdalpha.at(MATREF2D(s,g,(dat.nG)) +=	(dat.wts[MATREF2D(i,s,dat.nObs)] * tmp_ldp * fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS) * 1);
+				}
+			}
+		}
+	}				
+}
+
+
+//
+
+void calc_alpha_deriv( vector<double> &alphaDerivsI, const sam_ippm_data &dat, const double &mu, int g){
+
+
+
 	
+	for(g=0; g<dat.nG; g++){	
+		for(s=0;s<S;s++){
+			//calculate for alphas
+			alphaDerivsI.at(s) += exp(data->sum_f_species.at(MAT_RF(g,s,G)) - data->species_l_contrib.at(s)+ log(data->parpi.at(g)))* data->deriv_f_alphaS.at(MAT_RF(g,s,G));
+			}
+	}			
+				
+}
+
+// this should calculate the derivate w.r.t beta.
+
+void calc_beta_deriv( vector<double> &betaDerivsI, const sam_ippm_data &dat, const double &mu, int g){
+
+	for(g=0; g<dat.nG; g++){	
+	    for(j=0; j<dat.np; j++){
+			for(s=0; s<dat.nS; s++){
+			// calculate for betas. 
+			ad_g.at((G-1)+ MAT_RF(g,j,G)) += exp( -1*data->species_l_contrib.at(s) + log(data->parpi.at(g)) + data->sum_f_species.at(MAT_RF(g,s,G))) *data->deriv_f_B.at(MAT_3D(g,j,s,G,Xc));
+			if(j==0) dl_dpi.at(g) += exp(  -1*data->species_l_contrib.at(s)+ data->sum_f_species.at(MAT_RF(g,s,G)));
+			}
+		}
+	}
+}
+
+// this should calculate the derivate w.r.t tau.
+void calc_pi_deriv( vector<double> &piDerivsI, const sam_ippm_data &dat, const double &mu, int g){
 	
+  for(g=0;g<(G-1);g++){ 
+      add_log_trans+=exp(x.at(g)); //add up transformed pi's
+  }
+  add_log_trans+=1;
 	
-	
-	
-	//}
-
-//// this should calculate the derivate w.r.t beta.
-
-//void calcBetaDeriv( vector<double> &betaDerivsI, const sam_ippm_data &dat, const double &mu){
-	
-	
-	
-	
-	
-	//}
-
-//// this should calculate the derivate w.r.t tau.
-
-//void calcTauDeriv( vector<double> &tauDerivsI, const vector<double> &etaDerivs, const sam_ippm_data &dat, const sam_ippm_data &parms){
-	
-	
-	
-	
-	
-	//}
-
-//void gradient_ippm(int n, double *pars, double *gr, void *ex ){
-  //Optimise_data_ippm *data = (Optimise_data_ippm *) ex;
-  //int Xr,Xc,i,j;
-  //double d1;
-  //Xr=data->Xr;
-  //Xc=data->Xc;
-  ////pars[0]=1;
-  //for(j=0;j<n;j++) gr[j]=0;
-
-  
-  //// need to setup wts based on MATREF2D so w[MATREF2D(i,(j-1),Xr] should do the trick...
-  //// need to setup y_is_not_na based on MATREF2D so y_is_not_na[MATREF2D(i,(j-1),Xr] should also do the trick...
-  
-  ////This is estimates the gradient for betas.  
-  //for(i=0;i<Xr;i++){
-	  
-    //d1=data->y[i]/data->lp.at(i)-(pars[0]+data->y[i])/(data->lp.at(i)+pars[0]); //But where is the alphas? maybe pars[0]
-    //for(j=1;j<=Xc;j++){
-      //gr[j]+=(d1*data->lp.at(i)*data->X[MATREF2D(i,(j-1),Xr)])*data->w[i];
-
-    //}
-    //// gradient for theta
-    //gr[0] += (digamma(pars[0]+data->y[i]) - digamma(pars[0]) + log(pars[0]) + 1 - log( data->lp.at(i) + pars[0]) - (pars[0]+data->y[i])/(data->lp.at(i) + pars[0]))*data->w[i];
-  //}
-  ////gr[0]=0;
-  //for(i=0;i<n;i++) gr[i]=0-gr[i];
-
-//}
-
-
-//void gradient_mix_ippm_function(int n, double *pars, double *gr, void *ex ){
-  //Optimise_data_ippm *data = (Optimise_data_ippm *) ex;
-  ////Optimise_data data = *(Optimise_data *) ex;
-  //vector<double> ad_g(n,0);
-  //vector<double> x (n,0);
-  //int i,G,g,j,Xc,s,S;
-  //double add_log_trans=0;
-  //vector<double> logl(1,0);
-
-  //G=data->G;
-  //S=data->S;
-  //vector<double> pi_mat_deriv(G*(G-1),0);
-  //vector<double> dl_dpi(G,0);
-
-  //Xc=data->Xc;
-  //for(i=0;i<n;i++) x.at(i) = pars[i];
- 
-  //logl = calc_mix_ippm_logl(x,*data);
-
-  //for(g=0;g<(G-1);g++){ 
-      //add_log_trans+=exp(x.at(g)); //add up transformed pi's
-  //}
-  //add_log_trans+=1;
- 
-  //for(g=0;g<G;g++){ //GO through all pi's
-
-   //for(j=0;j<Xc;j++){
-	   
-	//for(s=0;s<S;s++){
-	  //ad_g.at((G-1)+ MATREF2D(g,j,G)) += exp( -1*data->species_l_contrib.at(s) + log(data->parpi.at(g)) + data->sum_f_species.at(MATREF2D(g,s,G))) *data->deriv_f_B.at(MATREF3D(g,j,s,G,Xc));
-	  //if(j==0) dl_dpi.at(g) += exp(  -1*data->species_l_contrib.at(s)+ data->sum_f_species.at(MATREF2D(g,s,G)));
-	//}
-      //}
-
-      //for(i=0;i<(G-1);i++){ // go through eta's
-	//if(g<(G-1)){
-	  //if(i==g){
-	    //pi_mat_deriv.at(MATREF2D(i,g,(G-1))) = exp(x.at(i))/add_log_trans - exp(2*x.at(i))/(add_log_trans*add_log_trans);// diag
-	    //pi_mat_deriv.at(MATREF2D(i,(G-1),(G-1))) += pi_mat_deriv.at(MATREF2D(i,g,(G-1)));
-	  //}else{
-	    //pi_mat_deriv.at(MATREF2D(i,g,(G-1))) = -exp(x.at(i))*exp(x.at(g)) / (add_log_trans*add_log_trans); //off-diag
-	    //pi_mat_deriv.at(MATREF2D(i,(G-1),(G-1))) += pi_mat_deriv.at(MATREF2D(i,g,(G-1)));
-	  //}
-	//}
-      //}
-
-      //for(s=0;s<S;s++){
-      ////calculate for alphas
-	//ad_g.at((G*Xc + G-1)+s)+= exp(data->sum_f_species.at(MATREF2D(g,s,G)) - data->species_l_contrib.at(s)+ log(data->parpi.at(g)))* data->deriv_f_alphaS.at(MATREF2D(g,s,G));
-	
-	  //// remove the dispersion parameters. We don't need this for ippm
-      //////calculate for dispersion
-	////ad_g.at((G*Xc + G-1 + S)+s)+= exp(data->sum_f_species.at(MATREF2D(g,s,G)) - data->species_l_contrib.at(s)+ log(data->parpi.at(g)))* data->deriv_f_dispersionS.at(MATREF2D(g,s,G));
-      //}
-  //}
-  //for(i=0;i<(G-1);i++) pi_mat_deriv.at(MATREF2D(i,(G-1),(G-1))) *= -1;
-
-
-
-    //for(i=0;i<(G-1);i++){
-      //for(g=0;g<G;g++){
-	//ad_g.at(i) += dl_dpi.at(g)* pi_mat_deriv.at(MATREF2D(i,g,(G-1)));
-      //}
-    //}
-
-  //for(i=0;i<n;i++) gr[i] = 0-ad_g.at(i); 
-
-//}
-
-// going to have to fix this up to exclude NA data...
-
- //vector <double> calc_mix_ippm_logl(const vector<double> &pars, Optimise_data &data){
-  //int G,S,Xr,Xc;
-  //G=data.G;
-  //S=data.S;
-  //Xr=data.Xr;
-  //Xc=data.Xc;
-  //vector< double > estpi(G-1,0); //vector to hold pi's
-  //vector< double > coef(Xc*G,0); //vector to hold all coefficents *DOES NOT INCLUDE INTERCEPT*
-  //vector< double > sp_int(S,0); // vector for species intercepts
-  ////vector< double > sp_dispersion(S,0); //vector for species specific dispersion parameter
-  //vector< double > logl(1 ,0), tlog(1 ,0); //output log likelihood
-  ////  double sumlogl=0;
-  //int i,s,g,j;
-  //int start, end;
-  //double tmp;
-  
-  
-  //for(i=0;i<(G-1);i++){
-    //estpi.at(i) = pars.at(i); //G-1 values for pi
-  //}
-
-  //additive_logistic(estpi,1); // additive logistic transfor on pi;
-  ////for(i=0;i<G;i++) Rprintf("%f,",estpi.at(i));
-  ////Rprintf("\n");
-  //for(i=0;i<G;i++){
-    //data.parpi.at(i) = estpi.at(i);
-    //for(s=0;s<S;s++){ 
-      //data.sum_f_species.at(MATREF2D(i,s,G))=0;
-      ////  data.deriv_f_dispersionS.at(MATREF2D(i,s,G))=0;
-      //data.deriv_f_alphaS.at(MATREF2D(i,s,G))=0;
-      //for(j=0;j<Xc;j++) data.deriv_f_B.at(MATREF3D(i,j,s,G,Xc)) =0;
-    //}
-  //}
-
- 
-
-  //for(i=(G-1);i<(G*Xc + G-1);i++){coef.at(i-(G-1))= pars.at(i);
-    ////Rprintf("%f,",coef.at(i-(G-1)));
-  //}
-  //for(i= (G*Xc + G-1); i<(G*Xc + G-1 + S) ; i++) {sp_int.at(i-(G*Xc + G-1)) = pars.at(i);
-    //// Rprintf("%f,",sp_int.at(i-(G*Xc + G-1)) );
-//}
-
-  ////Rprintf("\n");
-  //// for(g=0;g<G;g++){
-    //for(j=0;j<Xc;j++)
-      //Rprintf("%f, ",coef[MATREF2D(g,j,G)]);
-    //Rprintf("| %d\n",g);
-    //}*/
-  //logl.at(0) = 0;
-
-  //for(s=0;s<S;s++){
-      ////start = data.StartEndPos.at(s*2); // y is now a matrix so this is obsolte.
-      ////end = data.StartEndPos.at(s*2+1);
-
-      //tlog.at(0) = like_mix_ippm_function(estpi, coef, sp_int, data.y, data.X, Xr, Xc, data.tau, s, data.sum_f_species, data.deriv_f_B, data.deriv_f_alphaS, data.log_y_factorial, data.offset, data.y_is_not_na);
-      //logl.at(0)+= tlog.at(0);
-  
-      //// this is the species loglike contribution. 
-      //data.species_l_contrib.at(s) = tlog.at(0);
-  //}
-  //return(logl);
-
-//}
-
-// log-ippm-derivative - this will be used for dfdlogalpha and dfdlogbeta.
-//double log_df_dalpha_ippm( const double &y, const double &mu, const double &wts){
-	//double tmp, z;
-	//z = y/wts;
-	//tmp = z/mu;
-	//tmp -= 1;
-	//tmp *= wts;
-	//return( tmp);
-//}
-
-//double like_mix_ippm_function(vector< double > &estpi, vector < double > &coef, vector < double > &sp_int, const double *y, const double *X, const double *wts, int Xr, int Xc, int start, int end, double *tau, int s, vector<double> &sum_f_species, vector<double> &deriv_f_B, vector<double> &deriv_f_alphaS, vector<double> &deriv_f_dispersionS, vector<double> &log_y_factorial, const double *offset, const int *y_is_not_na){
-  //int len,i,j,G,g;
-  //len=end-start+1;
-  ////vector< AD<double > > p(len,0);
-  //vector< double  > p(1,0);
-  //double lpre=0, eps=0,glogl=0, d1=0;
-  //G = estpi.size();
-  //vector< double  > sump(G,0);
-
- 
-  //for(g=0;g<G;g++){
-    //for(i=0;i<len;i++){
-	  //if(y_is_not_na[MATREF2D(i,s,Xr)]>0){ //hopefully this will result in only selecting sites which have data. 
-      //lpre=offset[i]+sp_int.at(s);
-      //for(j=0;j<Xc;j++){ 
-		//lpre +=  X[MATREF2D(i,j,Xr)] * coef[MATREF2D(g,j,G)];
-      //}
-    
-      //p.at(0)=exp(lpre);  // mu for each archetype at site k
-      //// datalp.at(i) = p.at(0);
-      ////Rprintf("%f,",lpre);
-      //dl = log_ippm_derivative(y[MATREF2D(i,s,Xr)], p.at(0), wts[MATREF2D(i,s,Xr)]);
-      ////d1=y[start+i]/p.at(0)-(y[start+i])/(p.at(0));
-      //for(j=0;j<Xc;j++) {deriv_f_B.at(MATREF3D(g,j,s,G,Xc)) +=  (d1*p.at(0)*X[MATREF2D(i,j,Xr)]);} 
-      //deriv_f_alphaS.at(MATREF2D(g,s,G))+= (d1*p.at(0)*1);
-
-      ////if(y[start+i]==0) p.at(0) = 1-p.at(0);
-
-      //sump.at(g) += (lgammafn(y[MATREF2D(i,s,Xr)]) + y[MATREF2D(i,s,Xr)]*log(p.at(0)) - (y[MATREF2D(i,s,Xr)])*log(p.at(0)));
-	  //}
-    //}
-     
- 
-    //for(j=0;j<Xc;j++)
-	//Rprintf("%f, ",coef[MATREF2D(g,j,G)]);
-      //Rprintf("\n");
-    //*/
-
-    //if(g==0) eps = sump.at(g);
-    //if(sump.at(g) > eps) eps = sump.at(g);
-
-    
-  //}
-
-  //for(g=0;g<G;g++){
-    //sum_f_species.at(MATREF2D(g,s,G)) = sump.at(g);
-    //glogl+= estpi.at(g)*exp(sump.at(g) - eps);
-  //}
-  //// code for taus can go here
-  //glogl = log(glogl) + eps;
- 
-  //return(glogl);
-
-//}
+	for(g=0; g<dat.nG; g++){
+		for(i=0;i<(G-1);i++){ // go through eta's
+		   if(g<(G-1)){
+				if(i==g){
+					pi_mat_deriv.at(MAT_RF(i,g,(G-1))) = exp(x.at(i))/add_log_trans - exp(2*x.at(i))/(add_log_trans*add_log_trans);// diag
+					pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) += pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
+				}else{
+					pi_mat_deriv.at(MAT_RF(i,g,(G-1))) = -exp(x.at(i))*exp(x.at(g)) / (add_log_trans*add_log_trans); //off-diag
+					pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) += pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
+				}
+			}
+		}
+   }
+}	
