@@ -1,4 +1,4 @@
-#include"sam.h"
+#include"sam_ippm.h"
 
 sam_ippm_opt_contr::sam_ippm_opt_contr(){};
 sam_ippm_opt_contr::~sam_ippm_opt_contr(){};

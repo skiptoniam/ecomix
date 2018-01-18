@@ -1,10 +1,9 @@
-#include"sam.h"
+#include"sam_ippm.h"
 
 sam_ippm_params::sam_ippm_params(){};
 sam_ippm_params::~sam_ippm_params(){};
 
-void sam_ippm_params::setVals( const sam_ippm_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Rpi){ 
-{
+void sam_ippm_params::setVals( const sam_ippm_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Rpi){
 //	double *tmpD;
 
 	Alpha = REAL( Ralpha);
@@ -18,8 +17,7 @@ void sam_ippm_params::setVals( const sam_ippm_data &dat, SEXP &Ralpha, SEXP &Rbe
 	nTot = nalpha + nbeta + npi; 
 }
 
-void sam_ippm_params::getArray(double *parArr, const sam_ippm_data &dat) const
-{
+void sam_ippm_params::getArray(double *parArr, const sam_ippm_data &dat){
 	int kount=0;
 	for( int i=0; i<dat.nS; i++){
 		parArr[kount] = Alpha[i];
@@ -47,7 +45,7 @@ void sam_ippm_params::update( double *parArr, const sam_ippm_data &dat){
 		kount++;
 	}
 	for( int i=0; i<((dat.nG-1)); i++){
-		Tau[i] = parArr[kount];
+		Pi[i] = parArr[kount];
 		kount++;
 	}
 }
