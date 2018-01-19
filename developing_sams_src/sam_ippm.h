@@ -27,13 +27,13 @@ class sam_ippm_data {
 		//bool doOptiDisp() const;
 		void printVals( int printX, int printy);
 
-		int np, 		//the number of parameters in each of the (G-1) habitat lps, same as lpar
+		int nP, 		//the number of parameters in each of the (G-1) habitat lps, same as lpar
 			nG,			//the number of habitats
 			nS, 		//the number of species
 			nObs,		//the number of observations
 			NAnum;	//a common number to insert for NAs
 
-		double 	*X, //the design matrix in vector form (nObs x np)
+		double 	*X, //the design matrix in vector form (nObs x nP)
 				*y,	//the outcome matrix, in vector form (nObs x nS)
 				*offset, //the offset vector (length nObs)
 				*wts;  //the wts for the logl (typically all zero and of length nObs).
@@ -93,14 +93,18 @@ class sam_ippm_fits {
 	public:
 		sam_ippm_fits();
 		~sam_ippm_fits();
-		void initialise( const int &nObs, const int &nG, const int &nS, const int &NAnum);
+		void initialise( const int &nObs, const int &nG, const int &nS, const int &nP, const int &NAnum);
 		void zero(const int &NAnum);
 
-		vector<double> allPis;	//2D array for the fitted pis
+		//vector<double> allPis;	//2D array for the fitted pis
 		vector<double> estpi;	//a vector for transformed pis
 		vector<double> allMus; 	//3D array for the fitted mus (note that indexing must be done with MATREF3D)
 		vector<double> log_like_species_group_contrib; // 2D array of loglikes species and groups.	
 		vector<double> log_like_species_contrib; //vector of species logls.
+		vector<double> dlogdalpha;
+		vector<double> dlogdbeta;
+		vector<double> dlogdpi;
+		
 
 };
 
@@ -135,9 +139,9 @@ double sam_ippm_optimise(sam_ippm_all_classes &all);
 
 // functions for calculating ippm likelihood.
 double optimise_function_ippm(int n, double *par, void *ex);
-double sam_ippm_mix_loglike( const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits);
+double sam_ippm_mix_loglike( const sam_ippm_data &dat, sam_ippm_params &params, sam_ippm_fits &fits);
 void calc_mu_fits( vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &params);
-void calc_ippm_loglike_per_species( vector<double> &condDens, const vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &params, int i);
+double calc_ippm_loglike_per_species( const sam_ippm_data &dat, sam_ippm_params &params, sam_ippm_fits &fits, int i);
 double log_ippm(const double &y, const double &mu, const double &wts);
 void additive_logistic(vector< double > &x,int inv);
 
@@ -148,8 +152,8 @@ double log_poisson_deriv( const double &y, const double &mu);
 void calc_dlog_dalpha(const sam_ippm_data &dat, sam_ippm_fits &fits);
 void calc_dlog_dbeta(const sam_ippm_data &dat, sam_ippm_fits &fits);
 //void calc_dlog_dpi(const sam_ippm_data &dat, sam_ippm_fits &fits) create a function which calculates dldpi.
-void calc_alpha_deriv( vector<double> &alphaDerivs, const sam_ippm_data &dat, const double &mu);
-void calc_beta_deriv( vector<double> &betaDerivs, const sam_ippm_data &dat, const double &mu);
-void calc_pi_deriv( vector<double> &piDerivs, const sam_ippm_data &dat, const double &mu, const double &dldpi);
+void calc_alpha_deriv( vector<double> &alphaDerivs, const sam_ippm_data &dat, sam_ippm_fits &fits);
+void calc_beta_deriv( vector<double> &betaDerivs, const sam_ippm_data &dat, sam_ippm_fits &fits);
+void calc_pi_deriv( vector<double> &piDerivs, const sam_ippm_data &dat, sam_ippm_derivs &derivs, sam_ippm_fits &fits);
 
 #endif

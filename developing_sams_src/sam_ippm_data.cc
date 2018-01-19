@@ -4,7 +4,7 @@ void sam_ippm_data::setVals( const SEXP &Ry, const SEXP &RX, const SEXP &Roffset
 
 	nS = *(INTEGER( RS));
 	nG = *(INTEGER( RG));
-	np = *(INTEGER( Rp));
+	nP = *(INTEGER( Rp));
 	nObs = *(INTEGER( RnObs));
 	NAnum = -999999;
 	y = REAL( Ry);
@@ -25,7 +25,7 @@ void sam_ippm_data::printVals( int printX=0, int printy = 0){
 	
 	if( printX == 1)
 		for( int i=0; i<nObs; i++){
-			for( int j=0; j<np; j++)
+			for( int j=0; j<nP; j++)
 				Rprintf( "%3.2f\t", X[MATREF2D(i,j,nObs)]);
 				Rprintf( "\n");
 		}
