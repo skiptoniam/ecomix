@@ -15,7 +15,7 @@ void sam_ippm_derivs::zeroDerivs( const sam_ippm_data &dat){
 	
 	for( int i=0; i<(dat.nS-1); i++)
 		Alpha[i] = 0.0;
-	for( int i=0; i<((dat.nG*dat.np)-1); i++)
+	for( int i=0; i<((dat.nG*dat.nP)-1); i++)
 		Beta[i] = 0.0;
 	for( int i=0; i<(dat.nG-1); i++)
 		Pi[i] = 0.0;	

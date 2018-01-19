@@ -151,7 +151,6 @@ void sam_ippm_mix_gradient_function( const sam_ippm_data &dat, const sam_ippm_pa
 double log_poisson_deriv( const double &y, const double &mu);
 void calc_dlog_dalpha(const sam_ippm_data &dat, sam_ippm_fits &fits);
 void calc_dlog_dbeta(const sam_ippm_data &dat, sam_ippm_fits &fits);
-//void calc_dlog_dpi(const sam_ippm_data &dat, sam_ippm_fits &fits) create a function which calculates dldpi.
 void calc_alpha_deriv( vector<double> &alphaDerivs, const sam_ippm_data &dat, sam_ippm_fits &fits);
 void calc_beta_deriv( vector<double> &betaDerivs, const sam_ippm_data &dat, sam_ippm_fits &fits);
 void calc_pi_deriv( vector<double> &piDerivs, const sam_ippm_data &dat, sam_ippm_derivs &derivs, sam_ippm_fits &fits);

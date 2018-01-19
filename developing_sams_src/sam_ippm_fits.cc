@@ -6,7 +6,7 @@ sam_ippm_fits::~sam_ippm_fits(){};
 void sam_ippm_fits::initialise( const int &nObs, const int &nG, const int &nS, const int &nP, const int &NAnum){
 	
 	// vector for storing pis
-	allPis.resize(nG, NAnum);
+	//allPis.resize(nG, NAnum);
 
 	// vector for storing transformed pis
 	estpi.resize(nG-1, NAnum);
@@ -33,14 +33,14 @@ void sam_ippm_fits::initialise( const int &nObs, const int &nG, const int &nS, c
 
 void sam_ippm_fits::zero(const int &NAnum){
 	
-	allPis.assign(allPis.size(),NAnum); 
+	//allPis.assign(allPis.size(),NAnum); 
 	estpi.assign(estpi.size(),NAnum); 
 	allMus.assign(allMus.size(), NAnum);
 	log_like_species_contrib.assign(log_like_species_contrib.size(), NAnum);
 	log_like_species_group_contrib.assign(log_like_species_group_contrib.size(), NAnum);
-	dlogdalpha.assign(dlogdalpha.resize(), NAnum);
-	dlogdbeta.assign(dlogdbeta.resize(), NAnum);
-	dlogdpi.assign(dlogdpi.resize(), NAnum);
+	dlogdalpha.assign(dlogdalpha.size(), NAnum);
+	dlogdbeta.assign(dlogdbeta.size(), NAnum);
+	dlogdpi.assign(dlogdpi.size(), NAnum);
 			
 };
 
