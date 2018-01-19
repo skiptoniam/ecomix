@@ -10,7 +10,7 @@
 
 extern "C" { 
 	SEXP species_mix_ippm_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rwts, SEXP Ry_not_na,
-							  SEXP RnS, SEXP RnG, SEXP RnP, SEXP RnObs,
+							  SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs,
 							  SEXP Ralpha, SEXP Rbeta, SEXP Rpi, 
 							  SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsPi,
 							  SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
@@ -20,7 +20,7 @@ extern "C" {
 	sam_ippm_all_classes all;
 
 	//initialise the data structures -- they are mostly just pointers to REAL()s...
-	all.data.setVals(Ry, RX, Roffset, Rwts, Ry_not_na, RnS, RnG, RnP, RnObs);	//read in the data
+	all.data.setVals(Ry, RX, Roffset, Rwts, Ry_not_na, RnS, RnG, Rp, RnObs);	//read in the data
 	all.params.setVals(all.data, Ralpha, Rbeta, Rpi);	//read in the parameters
 	all.derivs.setVals(all.data, RderivsAlpha, RderivsBeta, RderivsPi);//, RgetScores, Rscores);
 	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv);
@@ -374,3 +374,18 @@ void calc_pi_deriv( vector<double> &piDerivs, const sam_ippm_data &dat, sam_ippm
 		}
     }
 }	
+
+
+bool converged( double *oldP, double *newP, const sam_ippm_opt_contr &contr, int nTot)
+{
+	double tmp, eps=1e-5;
+
+	for( int i=0; i<nTot; i++){
+		tmp = fabs(newP[i]-oldP[i]);
+		tmp /= fabs(oldP[i])+eps;
+		if( tmp > contr.reltol)
+			return( false);
+	}
+	return( true);
+
+}

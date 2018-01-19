@@ -22,7 +22,7 @@ class sam_ippm_data {
 		sam_ippm_data();
 		~sam_ippm_data();
 		void setVals( const SEXP &Ry, const SEXP &RX, const SEXP &Roffset, const SEXP &Rwts, const SEXP &Ry_not_na,
-					  const SEXP &RS, const SEXP &RG, const SEXP &RnP, const SEXP &RnObs);
+					  const SEXP &RS, const SEXP &RG, const SEXP &Rp, const SEXP &RnObs);
 		//bool isDispersion() const;
 		//bool doOptiDisp() const;
 		void printVals( int printX, int printy);
@@ -127,15 +127,17 @@ class sam_ippm_all_classes
 ////////////////////////////////////////////////////////
 
 extern "C" SEXP species_mix_ippm_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rwts, SEXP Ry_not_na,
-									 SEXP RnS, SEXP RnG, SEXP RnP, SEXP RnObs,
+									 SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs,
 									 SEXP Ralpha, SEXP Rbeta, SEXP Rpi, 
-									 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsPi,//, SEXP Rscores,
+									 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsPi,
 									 SEXP Rpis, SEXP Rmus, SEXP logliS, SEXP logliSG, 
 									 SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv,
 									 SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly);
+			 
 									 
 // functions for optimisation.									 
 double sam_ippm_optimise(sam_ippm_all_classes &all);
+bool converged( double *oldP, double *newP, const sam_ippm_opt_contr &contr, int nTot);
 
 // functions for calculating ippm likelihood.
 double optimise_function_ippm(int n, double *par, void *ex);
@@ -154,5 +156,6 @@ void calc_dlog_dbeta(const sam_ippm_data &dat, sam_ippm_fits &fits);
 void calc_alpha_deriv( vector<double> &alphaDerivs, const sam_ippm_data &dat, sam_ippm_fits &fits);
 void calc_beta_deriv( vector<double> &betaDerivs, const sam_ippm_data &dat, sam_ippm_fits &fits);
 void calc_pi_deriv( vector<double> &piDerivs, const sam_ippm_data &dat, sam_ippm_derivs &derivs, sam_ippm_fits &fits);
+
 
 #endif
