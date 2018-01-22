@@ -828,9 +828,9 @@ void gradient_mixnbinom_function(int n, double *pars, double *gr, void *ex ){
   additive_logistic(estpi,1); // additive logistic transfor on pi;
   //for(i=0;i<G;i++) Rprintf("%f,",estpi.at(i));
   //Rprintf("\n");
-  for(i=0;i<G;i++){
+  for(i=0;i<G;i++){// catch pis in data.
     data.parpi.at(i) = estpi.at(i);
-    for(s=0;s<S;s++){ 
+    for(s=0;s<S;s++){ // set everything to zero because Piers is paranoid. 
       data.sum_f_species.at(MAT_RF(i,s,G))=0;
       data.deriv_f_dispersionS.at(MAT_RF(i,s,G))=0;
       data.deriv_f_alphaS.at(MAT_RF(i,s,G))=0;

@@ -38,8 +38,8 @@ extern "C" { SEXP RCP_C( SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP Rwts,
 	//bundling up things to return
 	//first the fitted pis
 	double *tmpPi = REAL( Rpis);
-	for( int i=0; i<all.data.nObs; i++)
 		for( int g=0; g<all.data.nG; g++)
+		  for( int i=0; i<all.data.nObs; i++)
 			tmpPi[MATREF2D(i,g,all.data.nObs)] = all.fits.allPis.at(i).at(g);
 	//the fitted expectations
 	double *tmpMus = REAL( Rmus);
