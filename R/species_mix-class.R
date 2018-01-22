@@ -25,7 +25,9 @@
 #' dat <- data.frame(y=rep(1,100),x=runif(100,0,2.5))
 #' simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
 #' model_data <- make_mixture_data(species_data = simulated_data$species_data, covariate_data = simulated_data$covariate_data)
-#' fm_species_mix <- species_mix(formula, data=model_data,distribution='bernoulli',n_mixtures=5)}
+#' fm_species_mix <- species_mix(form, data=model_data,distribution='bernoulli', n_mixtures=5)
+#' }
+
 
 "species_mix" <- function(formula = NULL, data, n_mixtures = 3, distribution="poisson",
   offset=NULL, weights=NULL, control=species_mix.control(), inits=NULL, standardise = FALSE){
@@ -78,7 +80,8 @@
   X <- model.matrix(formula,mf)
 
   #get distribution
-  disty.cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","normal")#new disty.cases for sams.
+  disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie","gaussian","ippm")
+  # disty.cases <- c("bernoulli","negative_binomial","tweedie","normal","poisson","ippm")#new disty.cases for sams.
   disty <- get_distribution_sam(disty.cases, distribution)
 
   # get offsets and weights
@@ -106,7 +109,7 @@
 
   # use wrapper to run Piers' models.
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
-  tmp <- fit_species_mix_wrapper(y=y, X=X, weights=wts, offset=offy, distribution=disty, G=n_mixtures, inits = inits, control=control, y_is_na=y_is_na, estimate_variance=control$est_var)
+  tmp <- fit_species_mix_wrapper(y=y, X=X, weights=wts, offset=offy, distribution_numeric=disty, n_mixtures=n_mixtures, inits = inits, control=control, y_is_na=y_is_na, estimate_variance=control$est_var)
   return(tmp)
 }
 
@@ -128,14 +131,14 @@
   return(tmp)
 }
 
-"fit_species_mix_wrapper" <- function(formula, y, X, weights, offset, distribution, n_mixtures, inits, control, y_is_na, estimate_variance){
+"fit_species_mix_wrapper" <- function(formula, y, X, weights, offset, distribution_numeric, n_mixtures, inits, control, y_is_na, estimate_variance){
 
-  if(any(distribution!=c('poisson','ippm'))){
+  if(any(distribution_numeric!=c(2,6))){
     sp.form <- update(form,obs~1+.)
     sp.data <- y
     covar.data <- X
     G <- n_mixtures
-    pars <- init
+    pars <- inits
     em_prefit <- control$em_prefit
     em_steps <- control$em_steps
     em_refit <- control$em_refit
@@ -144,10 +147,10 @@
     r1 <- control$r1
     cores <- control$cores
 
-    if(distribution=="bernoulli") fit <- species_mix_bernoulli(sp.form,sp.data,covar.data,G, pars, em_prefit,em_steps, em_refit ,est_var,residuals,trace,r1)
-    if(distribution=="negative_binomial") fit <- species_mix_nbinom(sp.form,sp.data,covar.data,G, pars, em_prefit,em_steps, em_refit ,est_var,residuals,trace)
-    if(distribution=="tweedie") fit <- species_mix_tweedie(sp.form,sp.data,covar.data,G, pars, em_prefit,em_steps, em_refit ,est_var,residuals,trace)
-    if(distribution=="gaussian") fit <- species_mix_gaussian(sp.form,sp.data,covar.data,G, pars, em_prefit,em_steps, em_refit ,est_var,residuals,trace)
+    if(distribution_numeric==1) fit <- species_mix_bernoulli(sp.form,sp.data,covar.data,G, pars, em_prefit,em_steps, em_refit ,est_var,residuals,trace,r1)
+    if(distribution_numeric==3) fit <- species_mix_nbinom(sp.form,sp.data,covar.data,G, pars, em_prefit,em_steps, em_refit ,est_var,residuals,trace)
+    if(distribution_numeric==4) fit <- species_mix_tweedie(sp.form,sp.data,covar.data,G, pars, em_prefit,em_steps, em_refit ,est_var,residuals,trace)
+    if(distribution_numeric==5) fit <- species_mix_gaussian(sp.form,sp.data,covar.data,G, pars, em_prefit,em_steps, em_refit ,est_var,residuals,trace)
   } else {
     fit <- species_mix.fit(y=y, X=X, weights=wts, offset=offy, distribution=disty, G=n_mixtures, control=control, y_is_na=y_is_na, estimate_variance=control$est_var)
     fit$formula <- formula
