@@ -3,12 +3,12 @@
 sam_ippm_derivs::sam_ippm_derivs(){};
 sam_ippm_derivs::~sam_ippm_derivs(){};
 
-void sam_ippm_derivs::setVals( const sam_ippm_data &dat, SEXP &RderivsAlpha, SEXP &RderivsBeta, SEXP &RderivsPi){
+void sam_ippm_derivs::setVals( const sam_ippm_data &dat, SEXP &RderivsAlpha, SEXP &RderivsBeta, SEXP &RderivsPi, SEXP &RgetScores, SEXP &Rscores){
 	Alpha = REAL(RderivsAlpha);
 	Beta = REAL(RderivsBeta);
 	Pi = REAL(RderivsPi);
-	//getScoreFlag = *INTEGER(RgetScores);
-	//Scores = REAL(Rscores);
+	getScoreFlag = *INTEGER(RgetScores);
+	Scores = REAL(Rscores);
 }
 
 void sam_ippm_derivs::zeroDerivs( const sam_ippm_data &dat){
@@ -32,17 +32,17 @@ void sam_ippm_derivs::updateDerivs( const sam_ippm_data &dat, const vector<doubl
 			Pi[g] += piDerivs.at(g); 					
 	
 	////Updating the score contributions for empirical information, if requested.
-	//if( getScoreFlag != 1)
-		//return;
-	//int k = 0;
+	if( getScoreFlag != 1)
+		return;
+	int k = 0;
 	//if( i != -1){
-		//for( int s=0; s<dat.nS; s++)
-			//Scores[MATREF2D(i,k++,dat.nObs)] = alphaDerivs.at(s);
-		//for( int p=0; p<dat.nP; p++)
-			//for( int g=0; g<(dat.nG-1); g++)
-				//Scores[MATREF2D(i,k++,dat.nObs)] = betaDerivs.at(MATREF2D(g,p,(dat.nG-1)));
-		//for( int g=0; g<(dat.nG-1); g++)
-				//Scores[MATREF2D(i,k++,dat.nObs)] = piDerivs.at(g);
+		for( int s=0; s<dat.nS; s++)
+			Scores[k++] = alphaDerivs.at(s);
+		for( int p=0; p<dat.nP; p++)
+			for( int g=0; g<(dat.nG); g++)
+				Scores[k++] = betaDerivs.at(MATREF2D(g,p,(dat.nG)));
+		for( int g=0; g<(dat.nG-1); g++)
+				Scores[k++] = piDerivs.at(g);
 	//}
 	//else{
 		//for( int i=0; i<dat.nObs; i++){

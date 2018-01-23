@@ -66,17 +66,18 @@ class sam_ippm_derivs{
 	public:
 		sam_ippm_derivs();
 		~sam_ippm_derivs();
-		void setVals( const sam_ippm_data &dat, SEXP &RderivsAlpha, SEXP &RderivsBeta, SEXP &RderivsPi);
+		void setVals( const sam_ippm_data &dat, SEXP &RderivsAlpha, SEXP &RderivsBeta, SEXP &RderivsPi, SEXP &RgetScores, SEXP &Rscores);
 		void zeroDerivs( const sam_ippm_data &dat);
 		void updateDerivs( const sam_ippm_data &dat, const vector<double> &alphaDerivs, const vector<double> &betaDerivs, const vector<double> &piDerivs);
 		void update( double *grArr, const sam_ippm_data &dat);
 		void getArray( double *grArr, const sam_ippm_data &dat);
 
-		//int getScoreFlag;	//Should the scores be calculated for empirical information
+        int getScoreFlag;	//Should the scores be calculated for empirical information
 		double 	*Alpha, //the derivatives of logl w.r.t. alpha
 				*Beta,	//the derivatives of logl w.r.t. beta
-				*Pi; 	//the derivatives of logl w.r.t. pi
-				//*Scores;//the score contribution for each site (for empirical information)
+				*Pi, 	//the derivatives of logl w.r.t. pi
+				*Scores;//the score contribution for each site (for empirical information)
+	
 };
 
 // control functions for species mix.
@@ -130,7 +131,7 @@ class sam_ippm_all_classes
 extern "C" SEXP species_mix_ippm_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rwts, SEXP Ry_not_na,
 									 SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs,
 									 SEXP Ralpha, SEXP Rbeta, SEXP Rpi,
-									 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsPi,
+									 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsPi, SEXP RgetScores, SEXP Rscores,
 									 SEXP Rpis, SEXP Rmus, SEXP logliS, SEXP logliSG,
 									 SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv,
 									 SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly);

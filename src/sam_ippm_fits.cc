@@ -9,25 +9,25 @@ void sam_ippm_fits::initialise( const int &nObs, const int &nG, const int &nS, c
 	//allPis.resize(nG, NAnum);
 
 	// vector for storing transformed pis
-	estpi.resize(nG-1, NAnum);
+	estpi.resize(nG, 0);
 	
 	// array for catching Mu	
-	allMus.resize(nObs*nS*nG, NAnum);
+	allMus.resize(nObs*nS*nG, 0);
 	
 	// array for catching species loglike contribution to the model.
-	log_like_species_contrib.resize(nS, NAnum);
+	log_like_species_contrib.resize(nS,0);
 
 	// array for catching species/group loglike contribution to the model.
-	log_like_species_group_contrib.resize(nS*nG, NAnum);
+	log_like_species_group_contrib.resize(nS*nG, 0);
 	
 	// array for catching for dlogdalpha
-	dlogdalpha.resize(nS*nG, NAnum);
+	dlogdalpha.resize(nS*nG, 0);
 	
 	// array for catching for dlogdbeta
-	dlogdbeta.resize(nP*nG, NAnum);
+	dlogdbeta.resize(nP*nG, 0);
 	
 	// array for catching for dlogdpi
-	dlogdpi.resize(nG, NAnum);
+	dlogdpi.resize(nG, 0);
 	
 };
 
