@@ -29,7 +29,7 @@
 #' }
 
 
-"species_mix" <- function(formula = NULL, data, n_mixtures = 3, distribution="poisson",
+"species_mix" <- function(formula = NULL, data, n_mixtures = 3, distribution="bernoulli",
   offset=NULL, weights=NULL, control=species_mix.control(), inits=NULL, standardise = FALSE){
 
   #the control parameters
@@ -112,6 +112,121 @@
   tmp <- fit_species_mix_wrapper(y=y, X=X, weights=wts, offset=offy, distribution_numeric=disty, n_mixtures=n_mixtures, inits = inits, control=control, y_is_na=y_is_na, estimate_variance=control$est_var)
   return(tmp)
 }
+
+"species_mix.multifit" <- function(formula = NULL, data, n_mixtures = 3, distribution="poisson",
+                                   offset=NULL, weights=NULL, control=species_mix.control(), inits=NULL,
+                                   standardise = FALSE, mc.cores=1){
+  #the control parameters
+  control <- set_control_sam(control)
+  if(!control$quiet)
+    message( "SAM modelling")
+  call <- match.call()
+  if(!is.null(formula))
+    formula <- as.formula(formula)
+  else{
+    if(!control$quiet)
+      message("There is no SAM model! Please provide a model (intercept at least) -- exitting now")
+    return(NULL)
+  }
+
+  # Create model matrix
+  mf <- match.call(expand.dots = FALSE)
+  m <- match(c("formula","data","offset","weights"), names(mf), 0L)
+  mf <- mf[c(1L, m)]
+  mf$drop.unused.levels <- TRUE
+  if(distribution=="ippm") mf$na.action <- "na.pass"
+  else mf$na.action <- "na.exclude"
+  mf[[1L]] <- quote(stats::model.frame)
+  mf <- eval(mf, parent.frame())
+
+  # need this for the na.omit step
+  rownames(mf)<-1:nrow(mf)
+
+  # get responses
+  y <- model.response(mf)
+
+  # logical matirx needed for removing NAs from response and weights.
+  if(distribution=='ippm')y_is_na <- is.na(y)
+  else y_is_na <- NULL
+  # print(dim(y_is_na))
+  # check names of reponses
+  S <- check_reponse_sam(y)
+
+  if (!S){
+    if(!control$quiet)
+      message("Two species have the same name -- exitting now")
+    return(NULL)
+  }
+  if( !control$quiet)
+    message( "There are ", n_mixtures, " archtypes to group the species into")
+
+  # get model matrix
+  X <- model.matrix(formula,mf)
+
+  #get distribution
+  disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie","gaussian","ippm")
+  # disty.cases <- c("bernoulli","negative_binomial","tweedie","normal","poisson","ippm")#new disty.cases for sams.
+  disty <- get_distribution_sam(disty.cases, distribution)
+
+  # get offsets and weights
+  offy <- get_offset_sam(mf)
+  wts <- get_weights_sam(mf,S,distribution)
+
+  if(distribution=='ippm'){
+    if(!all(colnames(y)%in%colnames(wts)))
+      stop('When modelling a inhomogenous poisson point process model, weights colnames must match species data colnames')
+    if(any(dim(y)!=dim(wts)))
+      stop('When modelling a inhomogenous poisson point process model, weights needs to have the same dimensions at the species data - n_sites x n_species')
+  }
+
+  s.means = NULL
+  s.sds = NULL
+  if (standardise == TRUE) {
+    stand.X = standardise.X(X[, -1])
+    X = as.matrix(cbind(1, stand.X$X))
+    s.means = stand.X$dat.means
+    s.sds = stand.X$dat.sds
+  }
+
+  # summarising data to console
+  print_input_sam(y, X, S, formula, distribution, quiet=control$quiet)
+
+    tmp.fun <- function(x){
+      if( !control$quiet & nstart>1)
+        setTxtProgressBar(pb, x)
+      tmpQuiet <- control$quiet
+      control$quiet <- TRUE
+      dumbOut <- capture.output(tmp <- fit_species_mix_wrapper(y=y, X=X, weights=wts, offset=offy, distribution_numeric=disty, n_mixtures=n_mixtures, inits = inits, control=control, y_is_na=y_is_na, estimate_variance=control$est_var))
+      control$quiet <- tmpQuiet
+      tmp$dist <- disty.cases[disty]
+      #calculate the posterior probs
+      # if( nRCP>1)
+      #   tmp$postProbs <- calcPostProbs( tmp$pis, tmp$logCondDens)
+      # else
+      #   tmp$postProbs <- rep( 1, nrow( X))
+      #Residuals --not calculating residuals here.  Need to call residuals.regional_mix
+      #Information criteria
+      tmp <- calcInfoCrit(tmp)
+      #titbits object, if wanted/needed.
+      # tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts, form.RCP, form.spp, control, dist, p.w=p.w, power)
+      # tmp$titbits$disty <- disty
+      #the last bit of the regional_mix object puzzle
+      # tmp$call <- call
+      # class(tmp) <- "regional_mix"
+      return( tmp)
+    }
+
+    #    require( parallel)
+    if( !control$quiet & nstart>1)
+      pb <- txtProgressBar(min = 1, max = nstart, style = 3, char = "(-.-)Zzz... ")
+    #Fit the model many times
+    many.starts <- parallel::mclapply(1:nstart, tmp.fun, mc.cores=mc.cores)
+
+    if( !control$quiet)
+      message("")
+
+    return(many.starts)
+  }
 
 #'@rdname species_mix-class
 #'@name species_mix.fit

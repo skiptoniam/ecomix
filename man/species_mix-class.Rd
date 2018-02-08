@@ -11,7 +11,7 @@
 \title{species_mix objects}
 \usage{
 species_mix(formula = NULL, data, n_mixtures = 3,
-  distribution = "poisson", offset = NULL, weights = NULL,
+  distribution = "bernoulli", offset = NULL, weights = NULL,
   control = species_mix.control(), inits = NULL, standardise = FALSE)
 
 species_mix.fit(y, X, G, weights, offset, distribution, control,
