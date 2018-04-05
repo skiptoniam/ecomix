@@ -235,9 +235,9 @@ function( model, ..., oosSize=1, times=model$n, mc.cores=1, quiet=FALSE)
   coef.obj <- coef( object)
   colnammy <- paste( names( coef.obj$alpha), "alpha", sep="_")
   if( "tau" %in% names( coef.obj))
-    colnammy <- c( colnammy, paste( paste( rep( colnames( coef.obj$tau), each=nrow( coef.obj$tau)), paste( "tau", 1:nrow( coef.obj$tau), sep="_"), sep="_")))
+    colnammy <- c( colnammy, paste( paste( rep( colnames( coef.obj$tau), each=nrow( coef.obj$tau)), paste( "tau", seq_len(nrow( coef.obj$tau)), sep="_"), sep="_")))
   if( "beta" %in% names( coef.obj))
-    colnammy <- c( colnammy, paste( paste( rep( colnames( coef.obj$beta), each=nrow( coef.obj$beta)), paste( "beta", 1:nrow( coef.obj$beta), sep="_"), sep="_")))
+    colnammy <- c( colnammy, paste( paste( rep( colnames( coef.obj$beta), each=nrow( coef.obj$beta)), paste( "beta", seq_len(nrow(coef.obj$beta)), sep="_"), sep="_")))
   if( "gamma" %in% names( coef.obj))
     colnammy <- c( colnammy, paste(  paste( rep( rownames( coef.obj$gamma), times=ncol( coef.obj$gamma)), "gamma", sep="_"), rep( colnames( coef.obj$gamma), each=nrow( coef.obj$gamma)), sep="_"))
   if( "logDisp" %in% names( coef.obj))
@@ -340,7 +340,7 @@ function( outcomes, W, X, offy, wts, disty, G, S, power, inits, quiet=FALSE)
 #      df <- cbind( model.matrix( ~-1+as.factor(tmpGrp)), W)
 #    else
 #      df <- cbind( model.matrix( ~-1+as.factor(tmpGrp)))
-    for( ss in 1:ncol( outcomes)){
+    for( ss in seq_len(ncol(outcomes))){
       if( disty != 4){
         tmp.fm <- glmnet::glmnet(y=outcomes[,ss], x=df, family=fam, offset=offy, weights=wts,
           alpha=0, #ridge penalty
@@ -352,13 +352,13 @@ function( outcomes, W, X, offy, wts, disty, G, S, power, inits, quiet=FALSE)
         if( any( is.na( my.coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
           my.coefs <- glmnet::coef.glmnet( tmp.fm, s=lambda.seq)
           lastID <- apply( my.coefs, 2, function(x) !any( is.na( x)))
-          lastID <- tail( (1:length( lastID))[lastID], 1)
+          lastID <- tail( (seq_along( lastID))[lastID], 1)
           my.coefs <- my.coefs[,lastID]
         }
       }
       else{ #Tweedie needs an unconstrained fit.  May cause problems in some cases, especially if there is quasi-separation...
         df3 <- as.data.frame( cbind( y=outcomes[,ss], offy=offy, df))
-        colnames( df3)[-(1:2)] <- c( paste( "grp", 1:G, sep=""), paste( "w",1:ncol( W), sep=""))
+        colnames( df3)[-(1:2)] <- c( paste( "grp", 1:G, sep=""), paste( "w",seq_len(ncol(W)), sep=""))
         tmp.fm1 <- fishMod::tglm( y~-1+.-offy+offset( offy), wts=wts, data=df3, p=power[ss], vcov=FALSE, residuals=FALSE, trace=0)
         my.coefs <- c( NA, tmp.fm1$coef)
         disp[ss] <- log( tmp.fm1$coef["phi"])
@@ -459,7 +459,7 @@ function( titbits, outcomes, X, W, offset, wts, form.RCP, form.spp, control, dis
   else{
     titbits <- list()
     if( "Y" %in% titbits)
-      titbits$Y = outcomes
+      titbits$Y <- outcomes
     if( "X" %in% titbits)
       titbits$X <- X
     if( "W" %in% titbits)
@@ -662,7 +662,7 @@ function( titbits, outcomes, X, W, offset, wts, form.RCP, form.spp, control, dis
   logls <- alpha <- rep( 0, S)
   if( disty>2) disp <- rep( NA, S) else disp <- NULL
   mus <- array( NA, dim=c( n, S, nRCP))  #container for the fitted spp model
-  for( ss in 1:ncol( outcomes)){
+  for( ss in seq_len(ncol(outcomes))){
     if( disty == 1){ #bernoulli
       tmp.fm <- glm( cbind( outcomes[,ss], 1-outcomes[,ss]) ~ -1+W, family=binomial(), offset=offy, weights=wts)
       logls[ss] <- sum( dbinom( outcomes[,ss], size=1, prob=tmp.fm$fitted, log=TRUE))
@@ -794,7 +794,7 @@ function( titbits, outcomes, X, W, offset, wts, form.RCP, form.spp, control, dis
 	perms <- gtools::permutations( length( unique( RCPs)), length( unique( RCPs)))
 	classErr <- rep( NA, ncol( perms))
 	classErrRunnerUp <- classErr
-	for( ii in 1:nrow( perms)){
+	for( ii in seq_len(nrow(perms))){
 		postsTMP <- posts[,perms[ii,]]
 		postsTMP <- apply( postsTMP, 1, which.max)
 		my.tab <- table( RCPs, postsTMP)
@@ -852,7 +852,7 @@ function( titbits, outcomes, X, W, offset, wts, form.RCP, form.spp, control, dis
 	if( !is.null( sample))
 		fm$postProbs <- fm$postProbs[sample,]
 	classErr <- rep( NA, ncol( perms))
-	for( ii in 1:nrow( perms)){
+	for( ii in seq_len(nrow(perms))){
 		my.tab <- t(fm$postProbs) %*% new.fm$postProbs[,perms[ii,]]
 		classErr[ii] <- sum( diag( my.tab)) / sum( my.tab)
 	}
@@ -942,7 +942,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
     else
       disp.score <- -999999
     conv <- FALSE
-    alpha = x$coefs$alpha
+    alpha <- x$coefs$alpha
     tau <- x$coefs$tau
     beta <- x$coefs$beta
     if( !is.null( form.W))
@@ -1029,9 +1029,9 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
         main <- "All Residuals"
       else
         if( length( species)==1)
-          main=species
+          main<-species
         else
-          main=""
+          main<-""
     }
     sub <- match.call( expand.dots=TRUE)$sub
     if( is.null( sub))
@@ -1067,7 +1067,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
     oosDiffs <- diff( c(0,x$oosSizeRange))
     oosWidth <- max( minWidth, min( oosDiffs)) / 2
     histy <- list()
-    for( ii in 1:length( x$oosSizeRange)){
+    for( ii in seq_along( x$oosSizeRange)){
       tmp <- na.exclude( as.numeric( x$predlogls[ii,,]))
       histy[[ii]] <- hist( tmp, breaks=ncuts, plot=FALSE)
     }
@@ -1075,12 +1075,12 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
     if( is.null( ylimmo))
       ylimmo <- range( sapply( histy, function(x) x$breaks))
     plot( 0, 0, ylab = "Pred LogL (OOS)", xlab = "Number of Obs Removed", main = "Stability of Pred Logl", xlim = c(0-oosWidth, max(x$oosSizeRange)+oosWidth), ylim=ylimmo, type = "n")
-    for( ii in 1:length( x$oosSizeRange))
-      for( jj in 1:length( histy[[ii]]$density))
+    for( ii in seq_along( x$oosSizeRange))
+      for( jj in seq_along( histy[[ii]]$density))
         rect( xleft=x$oosSizeRange[ii]-oosWidth, xright=x$oosSizeRange[ii]+oosWidth, ybottom=histy[[ii]]$breaks[jj], ytop=histy[[ii]]$breaks[jj+1], col=rgb( colorRamp( c("#E6FFFF","blue"))(histy[[ii]]$density[jj]/max.dens), maxColorValue=255), border=NA)
     tmp <- na.exclude( as.numeric( x$logl.sites))
     histy <- hist( tmp, breaks=ncuts, plot=FALSE)
-    for( jj in 1:length( histy$density))
+    for( jj in seq_along( histy$density))
       rect( xleft=0-oosWidth, xright=0+oosWidth, ybottom=histy$breaks[jj], ytop=histy$breaks[jj+1], col=rgb( colorRamp( c("#FFE6FF","red"))(histy$density[jj]/max( histy$density)), maxColorValue=255), border=NA)
     lines(c(0, x$oosSizeRange), c(mean(x$logl.sites), apply(x$predlogls,
         1, mean, na.rm = TRUE)), lwd = 2, col = "black")
@@ -1230,7 +1230,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
         colnames(bPreds$fit) <- colnames(bPreds$ses) <- nam
         tmp.fun <- function(x) return(quantile(bootPreds[x, ],
             probs = c(0, alpha) + (1 - alpha)/2, na.rm = TRUE))
-        tmp1 <- parallel::mclapply(1:nrow(bootPreds), tmp.fun,
+        tmp1 <- parallel::mclapply(seq_len(nrow(bootPreds)), tmp.fun,
             mc.cores = mc.cores)
         tmp1 <- do.call("rbind", tmp1)
         tmp1 <- array(tmp1, c(nrow(X), predCol, 2), dimnames = list(NULL,
@@ -1297,7 +1297,7 @@ function (x, ...)
     all.wts <- matrix( sample( 1:object$n, nboot*object$n, replace=TRUE), nrow=nboot, ncol=object$n)
     tmp <- apply( all.wts, 1, table)
     all.wts <- matrix( 0, nrow=nboot, ncol=object$n)
-    for( ii in 1:length( tmp))
+    for( ii in seq_along( tmp))
       all.wts[ii, as.numeric( names( tmp[[ii]]))] <- tmp[[ii]]
   }
   if( type == "BayesBoot")

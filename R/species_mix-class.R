@@ -56,7 +56,7 @@
   mf <- eval(mf, parent.frame())
 
   # need this for the na.omit step
-  rownames(mf)<-1:nrow(mf)
+  rownames(mf)<-seq_len(nrow(mf))
 
   # get responses
   y <- model.response(mf)
@@ -95,13 +95,13 @@
       stop('When modelling a inhomogenous poisson point process model, weights needs to have the same dimensions at the species data - n_sites x n_species')
   }
 
-  s.means = NULL
-  s.sds = NULL
+  s.means <- NULL
+  s.sds <- NULL
   if (standardise == TRUE) {
-    stand.X = standardise.X(X[, -1])
-    X = as.matrix(cbind(1, stand.X$X))
-    s.means = stand.X$dat.means
-    s.sds = stand.X$dat.sds
+    stand.X <- standardise.X(X[, -1])
+    X <- as.matrix(cbind(1, stand.X$X))
+    s.means <- stand.X$dat.means
+    s.sds <- stand.X$dat.sds
   }
 
   # summarising data to console
@@ -140,7 +140,7 @@
   mf <- eval(mf, parent.frame())
 
   # need this for the na.omit step
-  rownames(mf)<-1:nrow(mf)
+  rownames(mf)<-seq_len(nrow(mf))
 
   # get responses
   y <- model.response(mf)
@@ -364,7 +364,7 @@
     for (g in 1:G) {
       s.outvar <- matrix(NA, dim(X)[1], length(sp.int))
       s.outpred <- matrix(NA, dim(X)[1], length(sp.int))
-      for (s in 1:length(sp.int)) {
+      for (s in seq_along(sp.int)) {
         lp <- as.numeric(X %*% c(coef[g, ], sp.int[s]) +
             offset)
         s.outpred[, s] <- exp(lp)
@@ -403,7 +403,7 @@
     for (g in 1:G) {
       s.outvar <- matrix(NA, dim(X)[1], length(sp.int))
       s.outpred <- matrix(NA, dim(X)[1], length(sp.int))
-      for (s in 1:length(sp.int)) {
+      for (s in seq_along(sp.int)) {
         lp <- as.numeric(X %*% c(sp.int[s],coef[g, ]) + offset)
         s.outpred[, s] <- exp(lp)
         dhdB <- exp(lp) * X
@@ -561,7 +561,7 @@
       }
       if (distribution == "negative_binomial") {
         tmp <- rep(1e+05, dim(X)[1])
-        while (max(tmp, na.rm = T) > 5000 | sum(tmp) < 100) {
+        while (max(tmp, na.rm = TRUE) > 5000 | sum(tmp) < 100) {
           theta[g, 1] <- runif(1, -15, 5)
           sp.int[s] <- theta[g, 1]
           lgtp <- X %*% theta[g, ]
@@ -572,7 +572,7 @@
       }
       if (distribution == "poisson") {
         tmp <- rep(1e+05, dim(X)[1])
-        while (max(tmp, na.rm = T) > 5000 | sum(tmp) < 100) {
+        while (max(tmp, na.rm = TRUE) > 5000 | sum(tmp) < 100) {
           theta[g, 1] <- runif(1, -5, 5)
           sp.int[s] <- theta[g, 1]
           lgtp <- X %*% theta[g, ]
@@ -582,7 +582,7 @@
       }
       if (distribution == "tweedie") {
         tmp <- rep(6e+05, dim(X)[1])
-        while (max(tmp, na.rm = T) > 5e+05 | sum(tmp) < 100) {
+        while (max(tmp, na.rm = TRUE) > 5e+05 | sum(tmp) < 100) {
           theta[g, 1] <- runif(1, -15, 5)
           theta[g, 1] <- runif(1, 1, 5)
           sp.int[s] <- theta[g, 1]
@@ -594,7 +594,7 @@
       }
       if (distribution == "gaussian") {
         tmp <- rep(1e+05, dim(X)[1])
-        while (max(tmp, na.rm = T) > 50000 | sum(tmp) < 100) {
+        while (max(tmp, na.rm = TRUE) > 50000 | sum(tmp) < 100) {
           theta[g, 1] <- runif(1, 100, 500)
           lgtp <- X %*% theta[g, ]
           p <- (lgtp)
@@ -630,7 +630,7 @@
 	aic <- rep(0,length(G))
     bic <- rep(0,length(G))
     fm <- list()
-    for(i in 1:length(G))
+    for(i in seq_along(G))
       if(!is.atomic(out[[i]])){
         aic[i] <- out[[i]]$aic
         bic[i] <- out[[i]]$bic
@@ -716,7 +716,7 @@
     fmM <- list()
     for (i in 1:G) {
       B <- matrix(rep(fmmvnorm$centers[i, ], nrow(datsp)),
-        nrow(datsp), ncol(fmmvnorm$centers), byrow = T)
+        nrow(datsp), ncol(fmmvnorm$centers), byrow = TRUE)
       B[, 1] <- rep(starting.fitem$sp.intercepts, each = n)
       fitted <- exp(rowSums(MM * B)+offset)
       fmM[[i]] <- list(coef = fmmvnorm$centers[i, 2:ncol(fmmvnorm$centers)],
@@ -779,7 +779,7 @@
               fmM <- list()
               for (i in 1:G) {
                   B <- matrix(rep(fmmvnorm$centers[i, ], nrow(MM)),
-                      nrow(MM), ncol(fmmvnorm$centers), byrow = T)
+                      nrow(MM), ncol(fmmvnorm$centers), byrow = TRUE)
                   B[, 1] <- rep(starting_fitem$sp_intercepts, each = nrow(y))
                   fitted <- exp(rowSums(MM * B))
                   fmM[[i]] <- list(coef = fmmvnorm$centers[i, 2:ncol(fmmvnorm$centers)],
@@ -856,7 +856,7 @@
     fmM <- list()
     for (i in 1:G) {
       B <- matrix(rep(fmmvnorm$centers[i, ], nrow(datsp)),
-        nrow(datsp), ncol(fmmvnorm$centers), byrow = T)
+        nrow(datsp), ncol(fmmvnorm$centers), byrow = TRUE)
       B[, 1] <- rep(starting.fitem$sp.intercepts, each = n)
       fitted <- exp(rowSums(MM * B)+offset)
       fmM[[i]] <- list(coef = fmmvnorm$centers[i, 2:ncol(fmmvnorm$centers)],
@@ -1016,7 +1016,7 @@
         lpre <- link.fun$linkinv(first.fit$x[sel.sp,]*fmM[[i]]$coef)
       }else{    lpre <- link.fun$linkinv(first.fit$x[sel.sp,]%*%fmM[[i]]$coef)}
       ##lpre <- link.fun$linkinv(first.fit$x[sel.sp,]%*%fmM[[i]]$coef)
-      ## tmp.like[i] <- sum(dbinom(datsp$obs[sel.sp],1,fmM[[i]]$fitted[sel.sp],log=T))
+      ## tmp.like[i] <- sum(dbinom(datsp$obs[sel.sp],1,fmM[[i]]$fitted[sel.sp],log=TRUE))
       obs <- datsp$obs[sel.sp]
       lpre[obs==0]<- 1- lpre[obs==0]
       tmp.like[i] <- sum(log(lpre))
@@ -1946,7 +1946,7 @@
 "ldTweedie.lp" <-
   function ( parms, y, X.p, offsetty, phi, p, wts=rep( 1, length( y)))
   {
-    mu <- exp( X.p %*% parms[1:ncol( X.p)] + offsetty)
+    mu <- exp( X.p %*% parms[seq_len(ncol(X.p))] + offsetty)
 
     if( is.null( phi) & is.null( p)){
       phi <- parms[ncol( X.p) + 1]
@@ -1969,7 +1969,7 @@
 "ldTweedie.lp.deriv" <-
   function ( parms, y, X.p, offsetty, phi, p, wts=rep( 1, length( y)))
   {
-    mu <- exp( X.p %*% parms[1:ncol( X.p)] + offsetty)
+    mu <- exp( X.p %*% parms[seq_len(ncol( X.p))] + offsetty)
 
     p.flag <- phi.flag <- FALSE
     if( is.null( phi) & is.null( p)){
@@ -1993,7 +1993,7 @@
 
     dTweedparms <- -wts * dPoisGamDerivs( y, lambda=lambda, mu.Z=mu.Z, alpha=alpha)
 
-    DTweedparmsDmu <- matrix( c( ( mu^(1-p)) / phi, alpha*phi*( ( p-1)^2)*( mu^(p-2)), rep( 0, length( mu))), nrow=3, byrow=T)
+    DTweedparmsDmu <- matrix( c( ( mu^(1-p)) / phi, alpha*phi*( ( p-1)^2)*( mu^(p-2)), rep( 0, length( mu))), nrow=3, byrow=TRUE)
     tmp <- rowSums( dTweedparms * t( DTweedparmsDmu))
     tmp <- tmp * mu
     tmp <- apply( X.p, 2, function( x) x*tmp)
@@ -2001,14 +2001,14 @@
     derivs <- colSums( tmp)
 
     if( phi.flag){
-      DTweedparmsDphi <- matrix( c( -( ( mu^(2-p)) / ( ( phi^2)*(2-p))), alpha*( p-1)*( mu^( p-1)), rep( 0, length( mu))), nrow=3, byrow=T)
+      DTweedparmsDphi <- matrix( c( -( ( mu^(2-p)) / ( ( phi^2)*(2-p))), alpha*( p-1)*( mu^( p-1)), rep( 0, length( mu))), nrow=3, byrow=TRUE)
       tmpPhi <- rowSums( dTweedparms * t( DTweedparmsDphi))#vectorised way of doing odd calculation
       derivs <- c( derivs, sum( tmpPhi))
       names( derivs)[length( derivs)] <- "phi"
     }
     if( p.flag){
       dalphadp <- -( 1+alpha) / ( p-1)
-      DTweedparmsDp <- matrix( c( lambda*( 1/(2-p) - log( mu)), mu.Z*( dalphadp/alpha + 1/( p-1) + log( mu)), rep( dalphadp, length( y))), nrow=3, byrow=T)
+      DTweedparmsDp <- matrix( c( lambda*( 1/(2-p) - log( mu)), mu.Z*( dalphadp/alpha + 1/( p-1) + log( mu)), rep( dalphadp, length( y))), nrow=3, byrow=TRUE)
       tmpP <- rowSums( dTweedparms * t( DTweedparmsDp))
       derivs <- c( derivs, sum( tmpP))
       names( derivs)[length( derivs)] <- "p"
@@ -2038,8 +2038,8 @@
 #        for(j in 1:dim(fm)[2]){
 #          dBi[s,g,j] <- sum((y[,s]-link.fun$linkinv(lpre))*x[,j])
 #        }
-#        tmp.like[g] <- pi[g]*prod(dbinom(y[,s],1,link.fun$linkinv(lpre),log=F))
-#        lf[g,s] <- prod(dbinom(y[,s],1,link.fun$linkinv(lpre),log=F))
+#        tmp.like[g] <- pi[g]*prod(dbinom(y[,s],1,link.fun$linkinv(lpre),log=FALSE))
+#        lf[g,s] <- prod(dbinom(y[,s],1,link.fun$linkinv(lpre),log=FALSE))
 #      }
 #      lg[s] <- sum(tmp.like)
 #      like <- like*sum(tmp.like)
@@ -2077,7 +2077,7 @@
   {
 
     G <- length(pi)
-    pars <- c(additive_logistic(pi,T)[1:(G-1)],unlist(coef))
+    pars <- c(additive_logistic(pi,TRUE)[1:(G-1)],unlist(coef))
 
     S <- dim(sp.data)[2]
     if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
@@ -2123,7 +2123,7 @@
       for(i in 1:G){
         if(length(fm[i,])==1){lpre <- first.fit$x[sel.sp,]*fm[i,]
         }else{      lpre <- first.fit$x[sel.sp,]%*%fm[i,]}
-        tmp.like[i] <- sum(dbinom(first.fit$y[sel.sp],1,link.fun$linkinv(lpre),log=T))
+        tmp.like[i] <- sum(dbinom(first.fit$y[sel.sp],1,link.fun$linkinv(lpre),log=TRUE))
       }
       eps <- max(tmp.like)
       log.like <- log.like +  (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
@@ -2169,8 +2169,8 @@
       tmp.like <- rep(0,G)
       for(i in 1:G){
         lpre <- cbind(1,first.fit$x[sel.sp,])%*%c(sp.int[j,i],fm[i,])
-        ##tmp.like[i] <- sum(dpois(first.fit$y[sel.sp],exp(lpre),log=T))
-        tmp.like[i] <- sum(dnorm(first.fit$y[sel.sp],mean=lpre,sd=theta[i],log=T))
+        ##tmp.like[i] <- sum(dpois(first.fit$y[sel.sp],exp(lpre),log=TRUE))
+        tmp.like[i] <- sum(dnorm(first.fit$y[sel.sp],mean=lpre,sd=theta[i],log=TRUE))
         eps <- max(tmp.like)
         log.like <- log.like +  (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
         tau[j,] <- log(pi) + tmp.like - (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
@@ -2220,8 +2220,8 @@
       tmp.like <- rep(0,G)
       for(i in 1:G){
         lpre <- cbind(1,first.fit$x[sel.sp,])%*%c(sp.int[j],fm[i,])+first.fit$offset[sel.sp]##,i],fm[i,])
-        ##tmp.like[i] <- sum(dpois(first.fit$y[sel.sp],exp(lpre),log=T))
-        tmp.like[i] <- sum(dnbinom(first.fit$y[sel.sp],mu=exp(lpre),size=sp.dispersion[j],log=T))
+        ##tmp.like[i] <- sum(dpois(first.fit$y[sel.sp],exp(lpre),log=TRUE))
+        tmp.like[i] <- sum(dnbinom(first.fit$y[sel.sp],mu=exp(lpre),size=sp.dispersion[j],log=TRUE))
       }
       # print(tmp.like)
       eps <- max(tmp.like)
@@ -2270,7 +2270,7 @@
     tmp_like <- rep(0,G)
     for(i in 1:G){
       lpre <- first_fit$x%*%c(sp_int[j],fm[i,])+first_fit$offset
-      tmp_like[i] <- sum(dpois(first_fit$y[,j],lambda=exp(lpre),log=T)*first_fit$weights[,j])
+      tmp_like[i] <- sum(dpois(first_fit$y[,j],lambda=exp(lpre),log=TRUE)*first_fit$weights[,j])
     }
       eps <- max(tmp_like)
       log_like <- log_like + (log(sum(pi*exp((tmp_like)-(eps))))+(eps))
@@ -2318,8 +2318,8 @@
       tmp.like <- rep(0,G)
       for(i in 1:G){
         lpre <- cbind(1,first.fit$x[sel.sp,])%*%c(sp.int[j],fm[i,])+first.fit$offset[sel.sp]
-        ##tmp.like[i] <- sum(dpois(first.fit$y[sel.sp],exp(lpre),log=T))
-        tmp.like[i] <- sum(dTweedie(y=first.fit$y[sel.sp],mu=exp(lpre),phi=phi[j],p=p[j],LOG=T))
+        ##tmp.like[i] <- sum(dpois(first.fit$y[sel.sp],exp(lpre),log=TRUE))
+        tmp.like[i] <- sum(dTweedie(y=first.fit$y[sel.sp],mu=exp(lpre),phi=phi[j],p=p[j],LOG=TRUE))
       }
       ##print(tmp.like)
       eps <- max(tmp.like)
@@ -2342,7 +2342,7 @@
 
     PIT <- matrix(NA,S,G)
     for(g in 1:G){
-      for(s in 1:length(spname)){
+      for(s in seq_along(spname)){
         sel.sp <- which(sp==spname[s])
         t.obs <- sum(datsp$obs[sel.sp])
         pre <- link.fun$linkinv(x[sel.sp,]%*%fmM$coef[g,])
@@ -2503,7 +2503,7 @@
     sp.form <- update.formula(sp.form,obs~1+.)
     if(em_prefit | G==1){
       prefit <- species_mix_em(sp.form,sp.data,covar.data,G,ite.max=em_steps,em_refit=em_refit,r1)
-      pars <- c(additive_logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
+      pars <- c(additive_logistic(prefit$pi,TRUE)[1:(G-1)],unlist(prefit$coef))
     }
     S <- dim(sp.data)[2]
     if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
@@ -2519,7 +2519,7 @@
     fmM.out <- fitmix.cpp(sp.form,data,sp,G,pars=pars,calc.hes=est_var,r1)
     while(fmM.out$logl==0) {
       prefit <- species_mix_em(sp.form,t.sp.data,t.covar.data,G,ite.max=em_steps,em_refit=1,r1)
-      pars <- c(additive_logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
+      pars <- c(additive_logistic(prefit$pi,TRUE)[1:(G-1)],unlist(prefit$coef))
       fmM.out <- fitmix.cpp(sp.form,data,sp,G,pars=pars,calc.hes=est_var,r1)
     }
 
@@ -2695,7 +2695,7 @@
     ##if(em_prefit | G==1){
     prefit <- species_mix_em_gaussian(sp.form,sp.data,covar.data,G,ite.max=em_steps,est_var=est_var,em_refit=em_refit)
     return(prefit)
-    ##pars <- c(additive_logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
+    ##pars <- c(additive_logistic(prefit$pi,TRUE)[1:(G-1)],unlist(prefit$coef))
     ##}
     ##S <- dim(sp.data)[2]
     ##if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
@@ -2711,7 +2711,7 @@
     ##fmM.out <- fitmix.cpp(sp.form,data,sp,G,pars=pars,calc.hes=est_var)
     ##while(fmM.out$logl==0) {
     ## prefit <- species_mix_em(sp.form,t.sp.data,t.covar.data,G,ite.max=em_steps,em_refit=1)
-    ## pars <- c(additive_logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
+    ## pars <- c(additive_logistic(prefit$pi,TRUE)[1:(G-1)],unlist(prefit$coef))
     ##fmM.out <- fitmix.cpp(sp.form,data,sp,G,pars=pars,calc.hes=est_var)
     ##}
 
@@ -2733,7 +2733,7 @@
     sp.form <- update.formula(sp.form,obs~1+.)
     if(em_prefit | G==1){
       prefit <- species_mix_em_nbinom(sp.form,sp.data,covar.data,G,ite.max=em_steps,est_var=FALSE,em_refit=em_refit)
-      pars <- prefit$pars#c(additive_logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
+      pars <- prefit$pars#c(additive_logistic(prefit$pi,TRUE)[1:(G-1)],unlist(prefit$coef))
     }
     S <- dim(sp.data)[2]
     if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
@@ -2774,7 +2774,7 @@
     pars <- NA
     if(em_prefit | G==1){
       prefit <- species_mix_em_tweedie(sp.form,sp.data,covar.data,G,ite.max=em_steps,est_var=est_var,em_refit=em_refit)
-      pars <- prefit$pars##pars <- c(additive_logistic(prefit$pi,T)[1:(G-1)],unlist(prefit$coef))
+      pars <- prefit$pars##pars <- c(additive_logistic(prefit$pi,TRUE)[1:(G-1)],unlist(prefit$coef))
     }
     S <- dim(sp.data)[2]
     if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
@@ -2922,7 +2922,7 @@
 
     if( trace !=0)
       print( "Calculating means")
-    mu <- exp( x %*% parms[1:ncol( x)] + offset)
+    mu <- exp( x %*% parms[seq_len(ncol(x))] + offset)
 
     if( residuals){
       if( trace!=0)
@@ -2985,12 +2985,12 @@
     X <- first.fit$x
     sp.mat <- matrix(0,dim(X)[1],length(sp.name))
 
-    for(i in 1:length(sp.name)){
+    for(i in seq_along(sp.name)){
       sp.mat[sp==sp.name[i],i] <- 1
     }
     X <- cbind(sp.mat,X)
     f.mix <- glm.fit(x=X,y=first.fit$y,weights=dat.tau,family=gaussian())
-    sp.intercept <- f.mix$coef[1:length(sp.name)]
+    sp.intercept <- f.mix$coef[seq_along(sp.name)]
     sp.intercept[is.na(sp.intercept)] <- 0
     return(list(coef=f.mix$coef[-1:-length(sp.name)],theta=sqrt(f.mix$deviance/f.mix$df.residual),sp.intercept=sp.intercept,fitted=f.mix$fitted))#,lpre=f.mix$linear.predictors))
 
@@ -3002,12 +3002,12 @@
     X <- first.fit$x
     sp.mat <- matrix(0,dim(X)[1],length(sp.name))
 
-    for(i in 1:length(sp.name)){
+    for(i in seq_along(sp.name)){
       sp.mat[sp==sp.name[i],i] <- 1
     }
     X <- cbind(sp.mat,X)
     f.mix <- glm_fit_nbinom(x=X,y=first.fit$y,offset=first.fit$offset,weights=dat.tau)
-    sp.intercept <- f.mix$coef[1:length(sp.name)]
+    sp.intercept <- f.mix$coef[seq_along(sp.name)]
     sp.intercept[is.na(sp.intercept)] <- 0
     return(list(coef=f.mix$coef[-1:-length(sp.name)],theta=f.mix$theta,sp.intercept=sp.intercept,fitted=f.mix$fitted))#,lpre=f.mix$linear.predictors))
 
@@ -3026,14 +3026,14 @@
 
   #set up indicator matrix
   sp_mat <- matrix(0,dim(X_tau)[1],length(sp_name))
-  for(i in 1:length(sp_name)){
+  for(i in seq_along(sp_name)){
     sp_mat[sp==sp_name[i],i] <- 1
   }
   X_tau <- cbind(sp_mat,X_tau[,-1])
 
   # fit glm per tau weight
   f_mix <- glm.fit(x=X_tau, y=y_tau, weights=dat_tau, family=poisson())
-  sp_intercept <- f_mix$coef[1:length(sp_name)]
+  sp_intercept <- f_mix$coef[seq_along(sp_name)]
   sp_intercept[is.na(sp_intercept)] <- 0
   return(list(coef=f_mix$coef[-1:-length(sp_name)],sp_intercept=sp_intercept,fitted=f_mix$fitted))
 }
