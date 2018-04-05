@@ -38,8 +38,8 @@ extern "C" {
 	if( *INTEGER(RderivsOnly) == 1)
 		sam_ippm_mix_gradient_function( all.data, all.params, all.derivs, all.fits);
 		
-	//for( int i=0; i<(all.params.nTot); i++)
-		//Rprintf( " %f", (REAL(Rscores))[i]);	
+	for( int i=0; i<(all.params.nTot); i++)
+		Rprintf( " %f", (REAL(Rscores))[i]);	
 
 	//bundling up things to return - will need to change these...
 	//first the fitted pis
@@ -121,7 +121,7 @@ double sam_ippm_mix_loglike(sam_ippm_data &dat, sam_ippm_params &params, sam_ipp
 	calc_mu_fits(fits.allMus, dat, params);// this should return the fitted valyes for all species, sites and groups.]
 	for(int g=0; g<(dat.nG); g++) fits.estpi.at(g) = params.Pi[g];
 	
-	for(int g=0; g<(dat.nG); g++) Rprintf( " %f", fits.estpi.at(g));
+	for(int g=0; g<(dat.nG); g++) Rprintf( " %f", fits.estpi.at(g),"\n");
 	Rprintf("\n");
 	additive_logistic_ippm(fits.estpi,1); // additive logistic transformation of pis.
 	
@@ -329,7 +329,7 @@ void calc_alpha_deriv( vector<double> &alphaDerivs, const sam_ippm_data &dat, sa
 			//calculate for alphas
 			////	for( int i=0; i<(all.data.nObs*all.parms.nTot); i++)
     		alphaDerivs.at(s) +=  exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - fits.log_like_species_contrib.at(s) + log(fits.estpi.at(g))) * fits.dlogdalpha.at(MATREF2D(g,s,dat.nG));
-    		Rprintf( " %f", alphaDerivs.at(s));
+    		//Rprintf( " %f", alphaDerivs.at(s));
 			}
 	}
 	Rprintf( "\n");
@@ -346,7 +346,7 @@ void calc_beta_deriv( vector<double> &betaDerivs, const sam_ippm_data &dat, sam_
 			for(int s=0; s<(dat.nS); s++){
 			// calculate for betas.
 			betaDerivs.at(MATREF2D(g,j,dat.nG)) +=  exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - fits.log_like_species_contrib.at(s) + log(fits.estpi.at(g))) * fits.dlogdbeta.at(MATREF2D(g,j,dat.nG));
-			Rprintf( " %f", betaDerivs.at(MATREF2D(g,j,dat.nG)));
+			//Rprintf( " %f", betaDerivs.at(MATREF2D(g,j,dat.nG)));
 			if(j==0) fits.dlogdpi.at(g) += exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - fits.log_like_species_contrib.at(s) + log(fits.estpi.at(g)));
 			}
 		}
@@ -390,7 +390,7 @@ void calc_pi_deriv( vector<double> &piDerivs, const sam_ippm_data &dat, sam_ippm
 	for(int i=0; i<(dat.nG-1); i++){
 		for(int g=0; g<dat.nG; g++){
 			piDerivs.at(i) += fits.dlogdpi.at(g)* pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1)));
-			//Rprintf( " %f", piDerivs.at(i));
+			Rprintf( " %f", piDerivs.at(i));
 		}
     }
 }

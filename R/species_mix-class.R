@@ -25,7 +25,7 @@
 #' dat <- data.frame(y=rep(1,100),x=runif(100,0,2.5))
 #' simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
 #' model_data <- make_mixture_data(species_data = simulated_data$species_data, covariate_data = simulated_data$covariate_data)
-#' fm_species_mix <- species_mix(form, data=model_data,distribution='bernoulli', n_mixtures=5)
+#' fm_species_mix <- species_mix(form, data=model_data, distribution='bernoulli', n_mixtures=5)
 #' }
 
 

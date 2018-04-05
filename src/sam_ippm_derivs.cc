@@ -23,8 +23,9 @@ void sam_ippm_derivs::zeroDerivs( const sam_ippm_data &dat){
 
 void sam_ippm_derivs::updateDerivs( const sam_ippm_data &dat, const vector<double> &alphaDerivs, const vector<double> &betaDerivs, const vector<double> &piDerivs)
 {
-	for(int s=0; s<(dat.nS); s++)
+	for(int s=0; s<(dat.nS); s++){
 			Alpha[s] += alphaDerivs.at(s);
+			Rprintf( " %f", Alpha[s],"\n");}
 	for(int g=0; g<(dat.nG); g++)
 		for( int p=0; p<(dat.nP); p++)
 			Beta[MATREF2D(g,p,(dat.nG))] += betaDerivs.at(MATREF2D(g,p,(dat.nG)));
@@ -35,7 +36,6 @@ void sam_ippm_derivs::updateDerivs( const sam_ippm_data &dat, const vector<doubl
 	if( getScoreFlag != 1)
 		return;
 	int k = 0;
-	//if( i != -1){
 		for( int s=0; s<dat.nS; s++)
 			Scores[k++] = alphaDerivs.at(s);
 		for( int p=0; p<dat.nP; p++)
