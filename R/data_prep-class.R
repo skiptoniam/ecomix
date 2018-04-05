@@ -17,7 +17,7 @@ table_to_species_data <- function(observation_data, site_id = "site_id", species
     cn <- levels(as.factor(observation_data[, species_id]))
     nc <- length(cn)
     nm <- matrix(0, nr, nc, dimnames = list(rn, cn))
-    for (i in 1:length(observation_data[, 1])) {
+    for (i in seq_along(observation_data[, 1])) {
         m <- as.character(observation_data[i, site_id])
         n <- as.character(observation_data[i, species_id])
         if (is.na(m) == TRUE | is.null(m) == TRUE | is.na(n) == TRUE | is.null(n) == TRUE){

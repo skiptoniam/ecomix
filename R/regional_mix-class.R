@@ -986,7 +986,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
         realDiff), sub = "Pointwise Confidence",
         ylab = "Observed - Expected", xlab = "(Observed+Expected)/2",
         type = "n")
-    for (aa in length(alpha.conf):1) polygon(c(realMeans, rev(realMeans)),
+    for (aa in rev(seq_along(alpha.conf))) polygon(c(realMeans, rev(realMeans)),
         c(diff[, aa], rev(diff[, aa + length(alpha.conf)])),
         col = grey(shad[aa]), border = NA)
     points(realMeans, realDiff, pch = 20)
@@ -1002,7 +1002,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
         realDiff), sub = "Global Confidence",
         ylab = "Observed - Expected", xlab = "(Observed+Expected)/2",
         type = "n")
-    for (aa in length(alpha.conf):1)
+    for (aa in rev(seq_along(alpha.conf)))
       polygon(c(realMeans, rev(realMeans)), c(diff[, aa], rev(diff[, aa + length(alpha.conf)])), col = grey(shad[aa]), border = NA)
     points(realMeans, realDiff, pch = 20)
     abline(h = 0)
