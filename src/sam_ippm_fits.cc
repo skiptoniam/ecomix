@@ -24,7 +24,7 @@ void sam_ippm_fits::initialise( const int &nObs, const int &nG, const int &nS, c
 	dlogdalpha.resize(nS*nG, 0);
 	
 	// array for catching for dlogdbeta
-	dlogdbeta.resize(nP*nG, 0);
+	dlogdbeta.resize(nG*nP*nS, 0); // This is actually nG*nP*nSP
 	
 	// array for catching for dlogdpi
 	dlogdpi.resize(nG, 0);

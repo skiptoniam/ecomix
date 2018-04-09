@@ -12,7 +12,7 @@ void sam_ippm_params::setVals( const sam_ippm_data &dat, SEXP &Ralpha, SEXP &Rbe
 
 	nalpha = dat.nS;
 	nbeta = dat.nG*dat.nP;
-	npi = (dat.nG-1);
+	npi = (dat.nG);
 
 	nTot = nalpha + nbeta + npi; 
 }
@@ -27,7 +27,7 @@ void sam_ippm_params::getArray(double *parArr, const sam_ippm_data &dat){
 		parArr[kount] = Beta[i];
 		kount++;
 	}
-	for( int i=0; i<((dat.nG-1)); i++){
+	for( int i=0; i<((dat.nG)); i++){
 		parArr[kount] = Pi[i];
 		kount++;
 	}
@@ -44,7 +44,7 @@ void sam_ippm_params::update( double *parArr, const sam_ippm_data &dat){
 		Beta[i] = parArr[kount];
 		kount++;
 	}
-	for( int i=0; i<((dat.nG-1)); i++){
+	for( int i=0; i<((dat.nG)); i++){
 		Pi[i] = parArr[kount];
 		kount++;
 	}
@@ -63,7 +63,7 @@ void sam_ippm_params::printParms( const sam_ippm_data &dat){
 			Rprintf( "\n");
 	}
 	Rprintf( "PI:\n");
-	for( int g=0; g<(dat.nG-1); g++){
+	for( int g=0; g<(dat.nG); g++){
 		Rprintf( "%3.2f\t", Pi[g]);
 		Rprintf( "\n");
 	}

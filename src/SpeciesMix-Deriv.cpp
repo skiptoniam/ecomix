@@ -767,17 +767,17 @@ void gradient_mixnbinom_function(int n, double *pars, double *gr, void *ex ){
 			}
     }
 
-      for(i=0;i<(G-1);i++){ // go through eta's
-	if(g<(G-1)){
-	  if(i==g){
-	    pi_mat_deriv.at(MAT_RF(i,g,(G-1))) = exp(x.at(i))/add_log_trans - exp(2*x.at(i))/(add_log_trans*add_log_trans);// diag
-	    pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) += pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
-	  }else{
-	    pi_mat_deriv.at(MAT_RF(i,g,(G-1))) = -exp(x.at(i))*exp(x.at(g)) / (add_log_trans*add_log_trans); //off-diag
-	    pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) += pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
-	  }
-	}
-      }
+    for(i=0;i<(G-1);i++){ // go through eta's
+		if(g<(G-1)){
+			if(i==g){
+				pi_mat_deriv.at(MAT_RF(i,g,(G-1))) = exp(x.at(i))/add_log_trans - exp(2*x.at(i))/(add_log_trans*add_log_trans);// diag
+				pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) += pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
+			}else{
+				pi_mat_deriv.at(MAT_RF(i,g,(G-1))) = -exp(x.at(i))*exp(x.at(g)) / (add_log_trans*add_log_trans); //off-diag
+				pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) += pi_mat_deriv.at(MAT_RF(i,g,(G-1)));
+			}
+		}
+    }
 
       for(s=0;s<S;s++){
       //calculate for alphas
@@ -787,6 +787,8 @@ void gradient_mixnbinom_function(int n, double *pars, double *gr, void *ex ){
 	ad_g.at((G*Xc + G-1 + S)+s)+= exp(data->sum_f_species.at(MAT_RF(g,s,G)) - data->species_l_contrib.at(s)+ log(data->parpi.at(g)))* data->deriv_f_dispersionS.at(MAT_RF(g,s,G));
       }
   }
+
+
   for(i=0;i<(G-1);i++) pi_mat_deriv.at(MAT_RF(i,(G-1),(G-1))) *= -1;
 
 
