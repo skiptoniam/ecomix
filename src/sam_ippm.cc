@@ -91,13 +91,14 @@ double sam_ippm_optimise( sam_ippm_all_classes &all){
 	all.params.getArray( vmminParms, all.data);
 	//all.params.getArray( vmminParmsIn, all.data);	//del
 	vmmin( all.params.nTot, vmminParms, vmminLogl, optimise_function_ippm, gradient_function_ippm, all.contr.maxitQN, 
-	all.contr.traceQN, myMask,  all.contr.abstol, all.contr.reltol,  all.contr.nReport, &all, &all.contr.fnKount, &all.contr.grKount, &all.contr.ifail);
+	 all.contr.traceQN, myMask,  all.contr.abstol, all.contr.reltol,  all.contr.nReport, &all, &all.contr.fnKount,
+	 &all.contr.grKount, &all.contr.ifail);
 
 //	nmmin( all.params.nTot, vmminParmsIn, vmminParms, vmminLogl, optimise_function_rcp, &all.contr.ifail, all.contr.abstol, all.contr.reltol, &all, 1.0, 0.5, 2.0, all.contr.traceQN, &all.contr.fnKount, all.contr.maxitQN);
 
 	//update parameters
 	all.params.update( vmminParms, all.data);
-	//all.params.printParms(all.data);
+	all.params.printParms(all.data);
 	gradient_function_ippm(all.params.nTot, vmminParms, vmminGrad, &all);
 	all.derivs.update( vmminGrad, all.data);
 
@@ -251,7 +252,6 @@ void sam_ippm_mix_gradient_function( const sam_ippm_data &dat, const sam_ippm_pa
 	vector<double> alphaDerivs(dat.nS, 0);
 	vector<double> betaDerivs((dat.nG*dat.nP), 0);
 	vector<double> piDerivs(dat.nG-1, 0); // check there should only be g pis
-	//vector<double> estPis(dat.nG-1, 0);
 
 	//calculate fitted values
 	calc_mu_fits(fits.allMus, dat, params);// this should return the fitted valyes for all species, sites and groups.
@@ -269,13 +269,15 @@ void sam_ippm_mix_gradient_function( const sam_ippm_data &dat, const sam_ippm_pa
 	calc_dlog_dbeta(dat, fits);
 	calc_beta_deriv(betaDerivs, dat, fits);
 	
-	//derivate w.r.t pi
+	//transform pis back to additative logistic scale to keep pi_dervis happy.
 	additive_logistic_ippm(fits.pis_loglike,0,dat.nG);	
+
+	//derivate w.r.t pi
 	calc_pi_deriv(piDerivs, dat, derivs, fits);
 
 	//update the derivates.
-	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, piDerivs);	//if dat.disty specifies no dispersion then no place for disp derivs (and are not updated, of course)
-}
+	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, piDerivs);	
+	}
 
 double log_poisson_deriv( const double &y, const double &mu, const double &wts){
 	double tmp, z;
