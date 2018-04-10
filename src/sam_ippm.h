@@ -98,8 +98,10 @@ class sam_ippm_fits {
 		void initialise( const int &nObs, const int &nG, const int &nS, const int &nP, const int &NAnum);
 		void zero(const int &NAnum);
 
-		//vector<double> allPis;	//2D array for the fitted pis
-		vector<double> estpi;	//a vector for transformed pis
+		vector<double> pis_loglike;	
+		//vector<double> pis_grads;
+		//vector<double> grad_pis_trans;	
+		//vector<double> grad_pis_non_trans;
 		vector<double> allMus; 	//3D array for the fitted mus (note that indexing must be done with MATREF3D)
 		vector<double> log_like_species_group_contrib; // 2D array of loglikes species and groups.
 		vector<double> log_like_species_contrib; //vector of species logls.
@@ -147,7 +149,7 @@ double sam_ippm_mix_loglike(sam_ippm_data &dat, sam_ippm_params &params, sam_ipp
 void calc_mu_fits( vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &params);
 double calc_ippm_loglike_per_species(sam_ippm_data &dat, sam_ippm_params &params, sam_ippm_fits &fits, int i);
 double log_ippm(const double &y, const double &mu, const double &wts);
-void additive_logistic_ippm(vector< double > &x,int inv);
+void additive_logistic_ippm(vector< double > &x,int inv, int G);
 
 // functions for calculating the gradient.
 void gradient_function_ippm(int n, double *par, double *gr, void *ex);

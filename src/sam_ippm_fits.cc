@@ -5,11 +5,17 @@ sam_ippm_fits::~sam_ippm_fits(){};
 
 void sam_ippm_fits::initialise( const int &nObs, const int &nG, const int &nS, const int &nP, const int &NAnum){
 	
-	// vector for storing pis
-	//allPis.resize(nG, NAnum);
-
-	// vector for storing transformed pis
-	estpi.resize(nG, 0);
+	// vector for of pis on natural scale
+	pis_loglike.resize(nG-1, 0);
+	
+	// vector for of pis on addiative logitic scale
+	//pis_grads.resize(nG-1, 0);
+	
+	// vector for of pis on natural scale
+	//grad_pis_trans.resize(nG-1, 0);
+	
+	// vector for of pis on addiative logitic scale
+	//grad_pis_non_trans.resize(nG-1, 0);
 	
 	// array for catching Mu	
 	allMus.resize(nObs*nS*nG, 0);
@@ -33,8 +39,11 @@ void sam_ippm_fits::initialise( const int &nObs, const int &nG, const int &nS, c
 
 void sam_ippm_fits::zero(const int &NAnum){
 	
-	//allPis.assign(allPis.size(),NAnum); 
-	estpi.assign(estpi.size(),NAnum); 
+
+	pis_loglike.assign(pis_loglike.size(),NAnum); 
+	//pis_grads.assign(pis_grads.size(),NAnum); 
+	//grad_pis_trans.assign(grad_pis_trans.size(),NAnum); 
+	//grad_pis_non_trans.assign(grad_pis_non_trans.size(),NAnum); 
 	allMus.assign(allMus.size(), NAnum);
 	log_like_species_contrib.assign(log_like_species_contrib.size(), NAnum);
 	log_like_species_group_contrib.assign(log_like_species_group_contrib.size(), NAnum);

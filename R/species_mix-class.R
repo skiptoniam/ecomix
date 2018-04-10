@@ -463,12 +463,13 @@
     if(inv){
       x <- log(x/x[length(x)])
       return(x)
-    }
+    } else {
 
     x.t <- exp(x)
     x.t <- x.t/(1+sum(x.t))
     x.t[length(x.t)+1] <- 1-sum(x.t)
     return(x.t)
+    }
   }
 
 "apply_glm" <-  function (i,form,datsp,tau,n){
