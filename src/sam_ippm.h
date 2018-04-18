@@ -55,7 +55,7 @@ class sam_ippm_params {
 
 		double 	*Alpha, //the species' prevalences (Gx1)==(1xG)
 				*Beta,	//the habitats' free covariate params ((G-1)xp)
-				*Pi;	//the pis - mmmmm pies.
+				*Eta;	//the pis - mmmmm pies.
 		int nalpha, nbeta, npi, nTot;
 };
 
@@ -66,16 +66,16 @@ class sam_ippm_derivs{
 	public:
 		sam_ippm_derivs();
 		~sam_ippm_derivs();
-		void setVals( const sam_ippm_data &dat, SEXP &RderivsAlpha, SEXP &RderivsBeta, SEXP &RderivsPi, SEXP &RgetScores, SEXP &Rscores);
+		void setVals( const sam_ippm_data &dat, SEXP &RderivsAlpha, SEXP &RderivsBeta, SEXP &RderivsEta, SEXP &RgetScores, SEXP &Rscores);
 		void zeroDerivs( const sam_ippm_data &dat);
-		void updateDerivs( const sam_ippm_data &dat, const vector<double> &alphaDerivs, const vector<double> &betaDerivs, const vector<double> &piDerivs);
+		void updateDerivs( const sam_ippm_data &dat, const vector<double> &alphaDerivs, const vector<double> &betaDerivs, const vector<double> &etaDerivs);
 		void update( double *grArr, const sam_ippm_data &dat);
 		void getArray( double *grArr, const sam_ippm_data &dat);
 
         int getScoreFlag;	//Should the scores be calculated for empirical information
-		double 	*Alpha, //the derivatives of logl w.r.t. alpha
-				*Beta,	//the derivatives of logl w.r.t. beta
-				*Pi, 	//the derivatives of logl w.r.t. pi
+		double 	*dfdAlpha, //the derivatives of logl w.r.t. alpha
+				*dfdBeta,	//the derivatives of logl w.r.t. beta
+				*dfdEta, 	//the derivatives of logl w.r.t. eta (transformed pi)
 				*Scores;//the score contribution for each site (for empirical information)
 	
 };
@@ -98,10 +98,8 @@ class sam_ippm_fits {
 		void initialise( const int &nObs, const int &nG, const int &nS, const int &nP, const int &NAnum);
 		void zero(const int &NAnum);
 
-		vector<double> pis_loglike;	
-		//vector<double> pis_grads;
-		//vector<double> grad_pis_trans;	
-		//vector<double> grad_pis_non_trans;
+		vector<double> par_pis;
+		vector<double> par_etas;	
 		vector<double> allMus; 	//3D array for the fitted mus (note that indexing must be done with MATREF3D)
 		vector<double> log_like_species_group_contrib; // 2D array of loglikes species and groups.
 		vector<double> log_like_species_contrib; //vector of species logls.
@@ -132,8 +130,8 @@ class sam_ippm_all_classes
 
 extern "C" SEXP species_mix_ippm_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rwts, SEXP Ry_not_na,
 									 SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs,
-									 SEXP Ralpha, SEXP Rbeta, SEXP Rpi,
-									 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsPi, SEXP RgetScores, SEXP Rscores,
+									 SEXP Ralpha, SEXP Rbeta, SEXP Reta,
+									 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RgetScores, SEXP Rscores,
 									 SEXP Rpis, SEXP Rmus, SEXP logliS, SEXP logliSG,
 									 SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv,
 									 SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly);
@@ -145,21 +143,22 @@ bool converged_ippm( double *oldP, double *newP, const sam_ippm_opt_contr &contr
 
 // functions for calculating ippm likelihood.
 double optimise_function_ippm(int n, double *par, void *ex);
-double sam_ippm_mix_loglike(sam_ippm_data &dat, sam_ippm_params &params, sam_ippm_fits &fits);
-void calc_mu_fits( vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &params);
-double calc_ippm_loglike_per_species(sam_ippm_data &dat, sam_ippm_params &params, sam_ippm_fits &fits, int i);
+double sam_ippm_mix_loglike(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits);
+void calc_mu_fits(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits);
+double calc_ippm_loglike_per_species(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits, int i);
 double log_ippm(const double &y, const double &mu, const double &wts);
 void additive_logistic_ippm(vector< double > &x,int inv, int G);
 
 // functions for calculating the gradient.
 void gradient_function_ippm(int n, double *par, double *gr, void *ex);
-void sam_ippm_mix_gradient_function( const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_derivs &derivs, sam_ippm_fits &fits);
+void sam_ippm_mix_gradient_function(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_derivs &derivs, sam_ippm_fits &fits);
 double log_poisson_deriv( const double &y, const double &mu, const double &wts);
 void calc_dlog_dalpha(const sam_ippm_data &dat, sam_ippm_fits &fits);
 void calc_dlog_dbeta(const sam_ippm_data &dat, sam_ippm_fits &fits);
-void calc_alpha_deriv( vector<double> &alphaDerivs, const sam_ippm_data &dat, sam_ippm_fits &fits);
-void calc_beta_deriv( vector<double> &betaDerivs, const sam_ippm_data &dat, sam_ippm_fits &fits);
-void calc_pi_deriv( vector<double> &piDerivs, const sam_ippm_data &dat, sam_ippm_derivs &derivs, sam_ippm_fits &fits);
+//void calc_dlog_dpi(const sam_ippm_data &dat, sam_ippm_fits &fits);
+void calc_alpha_deriv( vector<double> &alphaDerivs, const sam_ippm_data &dat, const sam_ippm_fits &fits);
+void calc_beta_deriv( vector<double> &betaDerivs, const sam_ippm_data &dat, const sam_ippm_fits &fits);
+void calc_eta_deriv( vector<double> &etaDerivs, const sam_ippm_data &dat, const sam_ippm_fits &fits);
 
 
 #endif

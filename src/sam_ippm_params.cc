@@ -3,12 +3,12 @@
 sam_ippm_params::sam_ippm_params(){};
 sam_ippm_params::~sam_ippm_params(){};
 
-void sam_ippm_params::setVals( const sam_ippm_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Rpi){
+void sam_ippm_params::setVals( const sam_ippm_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Reta){
 //	double *tmpD;
 
 	Alpha = REAL( Ralpha);
 	Beta = REAL( Rbeta);
-	Pi = REAL( Rpi);
+	Eta = REAL( Reta);
 
 	nalpha = dat.nS;
 	nbeta = dat.nG*dat.nP;
@@ -28,8 +28,7 @@ void sam_ippm_params::getArray(double *parArr, const sam_ippm_data &dat){
 		kount++;
 	}
 	for( int i=0; i<((dat.nG-1)); i++){ 
-		parArr[kount] = Pi[i];
-		//Rprintf("%d\n", i);
+		parArr[kount] = Eta[i];
 		kount++;
 	}
 
@@ -46,7 +45,7 @@ void sam_ippm_params::update( double *parArr, const sam_ippm_data &dat){
 		kount++;
 	}
 	for( int i=0; i<((dat.nG-1)); i++){
-		Pi[i] = parArr[kount];
+		Eta[i] = parArr[kount];
 		kount++;
 	}
 }
@@ -63,9 +62,9 @@ void sam_ippm_params::printParms( const sam_ippm_data &dat){
 			Rprintf( "%3.2f\t", Beta[MATREF2D(g,i,(dat.nG))]);
 			Rprintf( "\n");
 	}
-	Rprintf( "PI:\n");
+	Rprintf( "PI (transformed Pi):\n");
 	for( int g=0; g<(dat.nG-1); g++){
-		Rprintf( "%3.2f\t", Pi[g]);
+		Rprintf( "%3.2f\t", Eta[g]);
 		Rprintf( "\n");
 	}
 		

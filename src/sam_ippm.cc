@@ -1,8 +1,6 @@
 #include"sam_ippm.h"
 
 /* Code for inhomogenous poisson point process model.
- * This should be very similar to the negative binomial with y_is_na added in and z and setups data classes for negative binomial.
- *
  * I have tried to set this up like RCP, which makes more sense to me, in the future I can adapt Piers code into a single species_mix_cpp function.
  */
 
@@ -11,8 +9,8 @@
 extern "C" {
 	SEXP species_mix_ippm_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rwts, SEXP Ry_not_na,
 							  SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs,
-							  SEXP Ralpha, SEXP Rbeta, SEXP Rpi,
-							  SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsPi, SEXP RgetScores, SEXP Rscores,
+							  SEXP Ralpha, SEXP Rbeta, SEXP Reta, 
+							  SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RgetScores, SEXP Rscores,
 							  SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
 							  SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv,
 							  SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly){
@@ -21,10 +19,10 @@ extern "C" {
 
 	//initialise the data structures -- they are mostly just pointers to REAL()s...
 	all.data.setVals(Ry, RX, Roffset, Rwts, Ry_not_na, RnS, RnG, Rp, RnObs);	//read in the data
-	all.params.setVals(all.data, Ralpha, Rbeta, Rpi);	//read in the parameters
-	all.derivs.setVals(all.data, RderivsAlpha, RderivsBeta, RderivsPi, RgetScores, Rscores);
+	all.params.setVals(all.data, Ralpha, Rbeta, Reta);	//read in the parameters
+	all.derivs.setVals(all.data, RderivsAlpha, RderivsBeta, RderivsEta, RgetScores, Rscores);
 	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv);
-	all.fits.initialise(all.data.nObs, all.data.nG, all.data.nS, all.data.nP, all.data.NAnum);
+	all.fits.initialise(all.data.nObs, all.data.nG, all.data.nS, all.data.nP, 0);
 
 	double logl = -999999;
 
@@ -32,20 +30,26 @@ extern "C" {
 	if( *INTEGER(Roptimise) == 1)
 		logl = sam_ippm_optimise(all);
 	//re-running to get pis and mus
-	if( *INTEGER(RloglOnly) == 1)
+	if( *INTEGER(RloglOnly) == 1){
+	    //all.params.printParms(all.data);
 		logl = sam_ippm_mix_loglike( all.data, all.params, all.fits);
+		//all.params.printParms(all.data);
+		}
 	//and derivatives (inlcuding scores, for empirical info, if requested)
-	if( *INTEGER(RderivsOnly) == 1)
-		sam_ippm_mix_gradient_function( all.data, all.params, all.derivs, all.fits);
-		
+	if( *INTEGER(RderivsOnly) == 1){
+	    //all.params.printParms(all.data);
+	    sam_ippm_mix_gradient_function( all.data, all.params, all.derivs, all.fits);
+		//all.params.printParms(all.data);
+		}
 	//for( int i=0; i<(all.params.nTot); i++)
 		//Rprintf( " %f", (REAL(Rscores))[i]);	
 
 	//bundling up things to return - will need to change these...
 	//first the fitted pis
-	double *tmpPi = REAL( Rpis);
-	for( int g=0; g<all.data.nG; g++)
-			tmpPi[g] = all.fits.pis_loglike.at(g);
+	//double *tmpPi = REAL( Reta);
+	//additive_logistic_ippm(all.fits.par_pis,1,all.data.nG);
+	//for( int g=0; g<all.data.nG; g++)
+			//tmpPi[g] = all.fits.par_pis.at(g);
 	//the fitted expectations
 	double *tmpMus = REAL( Rmus);
 	for( size_t i=0; i<all.fits.allMus.size(); i++)
@@ -75,7 +79,7 @@ extern "C" {
 
 double sam_ippm_optimise( sam_ippm_all_classes &all){
 	double *vmminGrad, *vmminParms, *oldParms;	//arrays to pass to vmmin
-	//double *vmminParmsIn;	//del
+	double *vmminParmsIn;	//del
 	vmminParms = (double *) R_alloc(all.params.nTot,sizeof(double));
 	//vmminParmsIn = (double *) R_alloc(all.params.nTot,sizeof(double));	//Del
 	oldParms = (double *) R_alloc(all.params.nTot,sizeof(double));
@@ -98,9 +102,13 @@ double sam_ippm_optimise( sam_ippm_all_classes &all){
 
 	//update parameters
 	all.params.update( vmminParms, all.data);
-	all.params.printParms(all.data);
 	gradient_function_ippm(all.params.nTot, vmminParms, vmminGrad, &all);
 	all.derivs.update( vmminGrad, all.data);
+
+	//for(int i; i<all.params.nTot; i++) Rprintf("%f\n",vmminGrad[i]);
+	//all.derivs.update( vmminGrad, all.data);
+	
+	
 
 	return( vmminLogl[0]);
 }
@@ -117,17 +125,17 @@ double optimise_function_ippm(int n, double *par, void *ex){
     return((0.0-logl));
 }
 
-double sam_ippm_mix_loglike(sam_ippm_data &dat, sam_ippm_params &params, sam_ippm_fits &fits){
+double sam_ippm_mix_loglike(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits){
 
-	double tloglike, loglike;
-	fits.zero( 0);
+	double tloglike = 0.0, loglike = 0.0;
+	fits.zero(0);
+
+	//transform pis
+	for(int g=0; g<(dat.nG-1); g++) fits.par_pis.at(g) = params.Eta[g];
+	additive_logistic_ippm(fits.par_pis,1,dat.nG); // additive logistic transformation of pis.
 
 	//calculate fitted values (constant over i)
-	calc_mu_fits(fits.allMus, dat, params);// this should return the fitted valyes for all species, sites and groups.]
-	
-	//transform pis
-	for(int g=0; g<(dat.nG-1); g++) fits.pis_loglike.at(g) = params.Pi[g];
-	additive_logistic_ippm(fits.pis_loglike,1,dat.nG); // additive logistic transformation of pis.
+	calc_mu_fits(dat, params, fits);// this should return the fitted valyes for all species, sites and groups.]
 	
 	// calc loglike per species
 	for( int s=0; s<dat.nS; s++){
@@ -139,7 +147,7 @@ double sam_ippm_mix_loglike(sam_ippm_data &dat, sam_ippm_params &params, sam_ipp
 }
 
 // calculate mu fits for ippm this should calculate all the etas and mus for species and archetypes.
-void calc_mu_fits( vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &params){
+void calc_mu_fits(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits){
 
 	vector<double> lps(dat.nG*dat.nS, 0);	//the nG x nS intercepts
 	double lp=0.0;	//the lin pred for the gth group, sth species and ith site
@@ -155,7 +163,7 @@ void calc_mu_fits( vector<double> &fits, const sam_ippm_data &dat, const sam_ipp
 					for( int j=0;j<dat.nP; j++){
 						lp += params.Beta[MATREF2D(g,j,dat.nG)] * dat.X[MATREF2D(i,j,dat.nObs)];
 				   	}
-				fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
+				fits.allMus.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
 				}
 			}
 		}
@@ -164,9 +172,9 @@ void calc_mu_fits( vector<double> &fits, const sam_ippm_data &dat, const sam_ipp
 }
 
 // now we want to calculate the species specific likelihoods.
-double calc_ippm_loglike_per_species(sam_ippm_data &dat, sam_ippm_params &params, sam_ippm_fits &fits, int s){
+double calc_ippm_loglike_per_species(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits, int s){
 
-	double eps=0, glogl=0;
+	double eps=0.0, glogl=0.0;
 
 	//calcualte the G*S log conditional densities
     for( int g=0; g<dat.nG; g++){
@@ -183,8 +191,8 @@ double calc_ippm_loglike_per_species(sam_ippm_data &dat, sam_ippm_params &params
 
   // this will calculate the species specific loglikelihoods based on sum across Gs.
   for(int g=0; g<dat.nG; g++){
-    fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) = fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG));
-    glogl += fits.pis_loglike.at(g)*exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - eps);
+    //fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) = fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG));
+    glogl += fits.par_pis.at(g)*exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - eps);
   }
   glogl = log(glogl) + eps;
 
@@ -240,26 +248,24 @@ void gradient_function_ippm(int n, double *par, double *gr, void *ex){
 
 	for( int i=0; i<n; i++){
 	    gr[i] = 0.0 - gr[i];
-		//Rprintf("%f\n",gr[i]);
 	}
 }
 
 
 //// this function should work out the derivatives.
-void sam_ippm_mix_gradient_function( const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_derivs &derivs, sam_ippm_fits &fits){
+void sam_ippm_mix_gradient_function(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_derivs &derivs, sam_ippm_fits &fits){
 
-	double tmp1;
-	vector<double> alphaDerivs(dat.nS, 0);
+	vector<double> alphaDerivs(dat.nS, 0);//change to dat.NAN
 	vector<double> betaDerivs((dat.nG*dat.nP), 0);
-	vector<double> piDerivs(dat.nG-1, 0); // check there should only be g pis
+	vector<double> etaDerivs(dat.nG-1, 0); // check there should only be g pis
+	double logl;
 
 	//calculate fitted values
-	calc_mu_fits(fits.allMus, dat, params);// this should return the fitted valyes for all species, sites and groups.
-	derivs.zeroDerivs( dat);
-	
-	//transform pis to natural scale
-	for(int g=0; g<(dat.nG-1); g++) fits.pis_loglike.at(g) = params.Pi[g];
-	additive_logistic_ippm(fits.pis_loglike,1,dat.nG); // additive logistic transformation of pis.
+	//calc_mu_fits(fits.allMus, dat, params);// this should return the fitted values for all species, sites and groups.
+	derivs.zeroDerivs(dat);
+
+    //calc loglike
+	logl = sam_ippm_mix_loglike(dat, params, fits);
 	
 	//derivate w.r.t alpha
    	calc_dlog_dalpha(dat, fits);
@@ -270,13 +276,16 @@ void sam_ippm_mix_gradient_function( const sam_ippm_data &dat, const sam_ippm_pa
 	calc_beta_deriv(betaDerivs, dat, fits);
 	
 	//transform pis back to additative logistic scale to keep pi_dervis happy.
-	additive_logistic_ippm(fits.pis_loglike,0,dat.nG);	
+	//for(int g=0; g<(dat.nG-1); g++) fits.par_etas.at(g) = params.Eta[g];
+	additive_logistic_ippm(fits.par_pis,0,dat.nG);
+	for(int g=0; g<(dat.nG-1); g++) Rprintf("par_pi %f \n", fits.par_pis.at(g));// = params.Eta[g];	// looks ok to here.
 
-	//derivate w.r.t pi
-	calc_pi_deriv(piDerivs, dat, derivs, fits);
+	//derivate w.r.t pi/eta
+	//calc_dlog_dpi(dat, fits);
+	calc_eta_deriv(etaDerivs, dat, fits);
 
 	//update the derivates.
-	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, piDerivs);	
+	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs);	
 	}
 
 double log_poisson_deriv( const double &y, const double &mu, const double &wts){
@@ -323,6 +332,7 @@ void calc_dlog_dbeta(const sam_ippm_data &dat, sam_ippm_fits &fits){
 					}
 				}
 			}
+			fits.dlogdpi.at(g) += exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - fits.log_like_species_contrib.at(s));
 		}
 	}
 
@@ -331,13 +341,13 @@ void calc_dlog_dbeta(const sam_ippm_data &dat, sam_ippm_fits &fits){
 
 
 //// this should calculate the derivate w.r.t alpha.
-void calc_alpha_deriv( vector<double> &alphaDerivs, const sam_ippm_data &dat, sam_ippm_fits &fits){
+void calc_alpha_deriv( vector<double> &alphaDerivs, const sam_ippm_data &dat, const sam_ippm_fits &fits){
 
 	for(int g=0; g<(dat.nG); g++){
 		for(int s=0;s<(dat.nS);s++){
 			//calculate for alphas
 			////	for( int i=0; i<(all.data.nObs*all.parms.nTot); i++)
-    		alphaDerivs.at(s) +=  exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - fits.log_like_species_contrib.at(s) + log(fits.pis_loglike.at(g))) * fits.dlogdalpha.at(MATREF2D(g,s,dat.nG));
+    		alphaDerivs.at(s) +=  exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - fits.log_like_species_contrib.at(s) + log(fits.par_pis.at(g))) * fits.dlogdalpha.at(MATREF2D(g,s,dat.nG));
     		
 			}
 	}
@@ -346,31 +356,50 @@ void calc_alpha_deriv( vector<double> &alphaDerivs, const sam_ippm_data &dat, sa
 }
 
 // this should calculate the derivate w.r.t beta.
-void calc_beta_deriv( vector<double> &betaDerivs, const sam_ippm_data &dat, sam_ippm_fits &fits){
+void calc_beta_deriv( vector<double> &betaDerivs, const sam_ippm_data &dat, const sam_ippm_fits &fits){
 
     //vector<double> dlogdpi(dat.nG,0);
-
+    //Rprintf( " %f\n", etaDerivs.at(i)); 
 	for(int g=0; g<(dat.nG); g++){
+		//Rprintf( " %f\n", fits.dlogdpi.at(g)); 
 	    for(int j=0; j<(dat.nP); j++){
 			for(int s=0; s<(dat.nS); s++){
 			// calculate for betas.
-			betaDerivs.at(MATREF2D(g,j,dat.nG)) +=  exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - fits.log_like_species_contrib.at(s) + log(fits.pis_loglike.at(g))) * fits.dlogdbeta.at(MATREF3D(g,j,s,dat.nG,dat.nP));
-			if(j==0) fits.dlogdpi.at(g) += exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - fits.log_like_species_contrib.at(s) + log(fits.pis_loglike.at(g)));
+			Rprintf( "logl_sg %f\n", fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG))); 
+			Rprintf( "logl_s %f\n", fits.log_like_species_contrib.at(s));
+			betaDerivs.at(MATREF2D(g,j,dat.nG)) +=  exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - fits.log_like_species_contrib.at(s) + log(fits.par_pis.at(g))) * fits.dlogdbeta.at(MATREF3D(g,j,s,dat.nG,dat.nP));
+			//if(j==0) fits.dlogdpi.at(g) += exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - fits.log_like_species_contrib.at(s));
 			}
 		}
+		//Rprintf( " %f\n", fits.dlogdpi.at(g)); 
 	}
 	
 	//Rprintf( "\n");
 }
 
-// this should calculate the derivate w.r.t tau.
-void calc_pi_deriv( vector<double> &piDerivs, const sam_ippm_data &dat, sam_ippm_derivs &derivs, sam_ippm_fits &fits){
+//void calc_dlog_dpi(const sam_ippm_data &dat, sam_ippm_fits &fits){
 
+	//for(int g=0; g<(dat.nG); g++){
+			//Rprintf( " %f\n", fits.dlogdpi.at(g)); 
+			//for(int s=0; s<(dat.nS); s++){
+							//Rprintf( "logl_sg eta %f\n", fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG))); 
+							//Rprintf( "logl_s eta %f\n", fits.log_like_species_contrib.at(s));
+							//fits.dlogdpi.at(g) += exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - fits.log_like_species_contrib.at(s));
+			//}
+			//Rprintf( " %f\n", fits.dlogdpi.at(g)); 
+	//}
+//}
+
+// this should calculate the derivate w.r.t eta (transformed pi).
+void calc_eta_deriv( vector<double> &etaDerivs, const sam_ippm_data &dat, const sam_ippm_fits &fits){
+	
   double add_log_trans=0;
   vector<double> pi_mat_deriv(dat.nG*(dat.nG-1),0);
 
   for(int g=0;g<(dat.nG-1);g++){
-      add_log_trans+=exp(fits.pis_loglike.at(g)); //add up transformed pi's
+      add_log_trans+=exp(fits.par_pis.at(g)); //add up transformed pi's
+      
+      Rprintf( " %f\n", fits.par_pis.at(g));
   }
   add_log_trans+=1;
 
@@ -378,36 +407,33 @@ void calc_pi_deriv( vector<double> &piDerivs, const sam_ippm_data &dat, sam_ippm
 		for(int i=0;i<(dat.nG-1);i++){ // go through eta's
 		   if(g<(dat.nG-1)){
 			   	if(i==g){
-					pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1))) = exp(fits.pis_loglike.at(i))/add_log_trans - exp(2*fits.pis_loglike.at(i))/(add_log_trans*add_log_trans);// diag
+					pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1))) = exp(fits.par_pis.at(i))/add_log_trans - exp(2*fits.par_pis.at(i))/(add_log_trans*add_log_trans);// diag
 					pi_mat_deriv.at(MATREF2D(i,(dat.nG-1),(dat.nG-1))) += pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1)));
 				}else{
-					pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1))) = -exp(fits.pis_loglike.at(i))*exp(fits.pis_loglike.at(g)) / (add_log_trans*add_log_trans); //off-diag
+					pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1))) = -exp(fits.par_pis.at(i))*exp(fits.par_pis.at(g)) / (add_log_trans*add_log_trans); //off-diag
 					pi_mat_deriv.at(MATREF2D(i,(dat.nG-1),(dat.nG-1))) += pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1)));
 				}
-				//Rprintf( " %f\n",pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1))));
 				//Rprintf( " %f\n",pi_mat_deriv.at(MATREF2D(i,(dat.nG-1),(dat.nG-1)))); 
 			}
+			//Rprintf( " %f\n",pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1))));
 		}
 	}
 	for(int i=0;i<(dat.nG-1);i++) pi_mat_deriv.at(MATREF2D(i,(dat.nG-1),(dat.nG-1))) *= -1;
 
-	  //Rprintf( "\n");
 
 	for(int i=0; i<(dat.nG-1); i++){
-		for(int g=0; g<dat.nG; g++){
-			piDerivs.at(i) += fits.dlogdpi.at(g)* pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1)));
-			//Rprintf( "\n");
-			//Rprintf( " %f\n", fits.dlogdpi.at(g));
-            //Rprintf( "\n\n");
-			//Rprintf( " %f\n", piDerivs.at(i));
+			Rprintf( "before dfdeta %f\n", etaDerivs.at(i));
+		for(int g=0; g<(dat.nG); g++){
+ 
+			etaDerivs.at(i) += fits.dlogdpi.at(g) * pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1)));
+			
 		}
-		//Rprintf( " %f\n", piDerivs.at(i));
+		Rprintf( "after dfdeta %f\n", etaDerivs.at(i));
     }
 }
 
 
-bool converged_ippm( double *oldP, double *newP, const sam_ippm_opt_contr &contr, int nTot)
-{
+bool converged_ippm( double *oldP, double *newP, const sam_ippm_opt_contr &contr, int nTot){
 	double tmp, eps=1e-8;
 
 	for( int i=0; i<nTot; i++){
