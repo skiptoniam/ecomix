@@ -135,9 +135,10 @@ double sam_ippm_mix_loglike(const sam_ippm_data &dat, const sam_ippm_params &par
 	additive_logistic_ippm(fits.par_pis,1,dat.nG); // additive logistic transformation of pis.
 
 	//calculate fitted values (constant over i)
-	calc_mu_fits(dat, params, fits);// this should return the fitted valyes for all species, sites and groups.]
+	calc_mu_fits(fits.allMus, dat, params);// this should return the fitted valyes for all species, sites and groups.]
 	
 	// calc loglike per species
+	// change the loglike functions to resemble rcp. This hopefully will fix the indexing. :)
 	for( int s=0; s<dat.nS; s++){
 		tloglike = calc_ippm_loglike_per_species(dat, params, fits, s); // this should give the mix loglike. ippm weights are calculated in this bit.
 		fits.log_like_species_contrib.at(s) = tloglike;
@@ -147,7 +148,7 @@ double sam_ippm_mix_loglike(const sam_ippm_data &dat, const sam_ippm_params &par
 }
 
 // calculate mu fits for ippm this should calculate all the etas and mus for species and archetypes.
-void calc_mu_fits(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits){
+void calc_mu_fits(vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &params){
 
 	vector<double> lps(dat.nG*dat.nS, 0);	//the nG x nS intercepts
 	double lp=0.0;	//the lin pred for the gth group, sth species and ith site
@@ -163,7 +164,7 @@ void calc_mu_fits(const sam_ippm_data &dat, const sam_ippm_params &params, sam_i
 					for( int j=0;j<dat.nP; j++){
 						lp += params.Beta[MATREF2D(g,j,dat.nG)] * dat.X[MATREF2D(i,j,dat.nObs)];
 				   	}
-				fits.allMus.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
+				fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
 				}
 			}
 		}
@@ -260,14 +261,14 @@ void sam_ippm_mix_gradient_function(const sam_ippm_data &dat, const sam_ippm_par
 	vector<double> etaDerivs(dat.nG-1, 0); // check there should only be g pis
 	double logl;
 
-	//calculate fitted values
-	//calc_mu_fits(fits.allMus, dat, params);// this should return the fitted values for all species, sites and groups.
-	derivs.zeroDerivs(dat);
-
     //calc loglike
+    fits.zero(0);
+    derivs.zeroDerivs(dat);
+    
 	logl = sam_ippm_mix_loglike(dat, params, fits);
 	
 	//derivate w.r.t alpha
+	derivs.zeroDerivs(dat);
    	calc_dlog_dalpha(dat, fits);
 	calc_alpha_deriv(alphaDerivs, dat, fits);
 

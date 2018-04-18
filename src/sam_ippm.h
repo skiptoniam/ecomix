@@ -144,7 +144,7 @@ bool converged_ippm( double *oldP, double *newP, const sam_ippm_opt_contr &contr
 // functions for calculating ippm likelihood.
 double optimise_function_ippm(int n, double *par, void *ex);
 double sam_ippm_mix_loglike(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits);
-void calc_mu_fits(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits);
+void calc_mu_fits(vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &params);
 double calc_ippm_loglike_per_species(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits, int i);
 double log_ippm(const double &y, const double &mu, const double &wts);
 void additive_logistic_ippm(vector< double > &x,int inv, int G);
