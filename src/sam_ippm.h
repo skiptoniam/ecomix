@@ -145,7 +145,8 @@ bool converged_ippm( double *oldP, double *newP, const sam_ippm_opt_contr &contr
 double optimise_function_ippm(int n, double *par, void *ex);
 double sam_ippm_mix_loglike(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits);
 void calc_mu_fits(vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &params);
-double calc_ippm_loglike_per_species(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits, int i);
+void calc_ippm_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &params);
+double calc_ippm_loglike_S(vector<double> &fits, vector<double> const &pis, const sam_ippm_data &dat, const sam_ippm_params &params, int s);
 double log_ippm(const double &y, const double &mu, const double &wts);
 void additive_logistic_ippm(vector< double > &x,int inv, int G);
 
@@ -153,12 +154,12 @@ void additive_logistic_ippm(vector< double > &x,int inv, int G);
 void gradient_function_ippm(int n, double *par, double *gr, void *ex);
 void sam_ippm_mix_gradient_function(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_derivs &derivs, sam_ippm_fits &fits);
 double log_poisson_deriv( const double &y, const double &mu, const double &wts);
-void calc_dlog_dalpha(const sam_ippm_data &dat, sam_ippm_fits &fits);
-void calc_dlog_dbeta(const sam_ippm_data &dat, sam_ippm_fits &fits);
-//void calc_dlog_dpi(const sam_ippm_data &dat, sam_ippm_fits &fits);
-void calc_alpha_deriv( vector<double> &alphaDerivs, const sam_ippm_data &dat, const sam_ippm_fits &fits);
-void calc_beta_deriv( vector<double> &betaDerivs, const sam_ippm_data &dat, const sam_ippm_fits &fits);
-void calc_eta_deriv( vector<double> &etaDerivs, const sam_ippm_data &dat, const sam_ippm_fits &fits);
+void calc_dlog_dalpha(vector<double> &dlda, vector<double> const &mus, const sam_ippm_data &dat);
+void calc_dlog_dbeta(vector<double> &dldb, vector<double> const &mus, const sam_ippm_data &dat);
+void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llS, vector<double> const &llSG, const sam_ippm_data &dat);
+void calc_alpha_deriv( vector<double> &alphaDerivs, vector<double> const &dlogdalpha, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_ippm_data &dat);
+void calc_beta_deriv( vector<double> &betaDerivs, vector<double> const &dlogdbeta, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_ippm_data &dat);
+void calc_eta_deriv( vector<double> &etaDerivs, vector<double> const &dlogdpi, vector<double> const eta, const sam_ippm_data &dat);
 
 
 #endif

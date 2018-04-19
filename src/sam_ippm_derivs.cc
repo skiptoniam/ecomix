@@ -25,16 +25,18 @@ void sam_ippm_derivs::updateDerivs( const sam_ippm_data &dat, const vector<doubl
 {
 	for(int s=0; s<(dat.nS); s++){
 			dfdAlpha[s] = alphaDerivs.at(s);
-			Rprintf( " %f", dfdAlpha[s],"\n");}
+			//Rprintf( " %f", dfdAlpha[s],"\n");
+			}
 	for(int g=0; g<(dat.nG); g++){
 		for( int p=0; p<(dat.nP); p++){
 			dfdBeta[MATREF2D(g,p,(dat.nG))] = betaDerivs.at(MATREF2D(g,p,(dat.nG)));
-			Rprintf( " %f", dfdBeta[MATREF2D(g,p,(dat.nG))],"\n");
+			//Rprintf( " %f", dfdBeta[MATREF2D(g,p,(dat.nG))],"\n");
 			}
 		}
     for(int g=0; g<(dat.nG-1); g++){
 			dfdEta[g] = etaDerivs.at(g); 	
-			Rprintf( " %f", dfdEta[g],"\n");}				
+			//Rprintf( " %f", dfdEta[g],"\n");
+			}				
 	
 	////Updating the score contributions for empirical information, if requested.
 	if( getScoreFlag != 1)

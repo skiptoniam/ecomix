@@ -128,19 +128,23 @@ double optimise_function_ippm(int n, double *par, void *ex){
 double sam_ippm_mix_loglike(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits){
 
 	double tloglike = 0.0, loglike = 0.0;
+	vector<double> parpi(dat.nG-1,0); 
+	
 	fits.zero(0);
-
-	//transform pis
-	for(int g=0; g<(dat.nG-1); g++) fits.par_pis.at(g) = params.Eta[g];
-	additive_logistic_ippm(fits.par_pis,1,dat.nG); // additive logistic transformation of pis.
+  	//transform pis
+	for(int g=0; g<(dat.nG-1); g++) parpi.at(g) = params.Eta[g];
+	additive_logistic_ippm(parpi,1,dat.nG); // additive logistic transformation of pis.
 
 	//calculate fitted values (constant over i)
 	calc_mu_fits(fits.allMus, dat, params);// this should return the fitted valyes for all species, sites and groups.]
 	
+	//calculate the species/groups loglikes
+	calc_ippm_loglike_SG(fits.log_like_species_group_contrib, fits.allMus, dat, params);
+	
 	// calc loglike per species
 	// change the loglike functions to resemble rcp. This hopefully will fix the indexing. :)
 	for( int s=0; s<dat.nS; s++){
-		tloglike = calc_ippm_loglike_per_species(dat, params, fits, s); // this should give the mix loglike. ippm weights are calculated in this bit.
+		tloglike = calc_ippm_loglike_S(fits.log_like_species_group_contrib, parpi, dat, params, s); // this should give the mix loglike. ippm weights are calculated in this bit.
 		fits.log_like_species_contrib.at(s) = tloglike;
 		loglike += tloglike;
 	}
@@ -172,28 +176,34 @@ void calc_mu_fits(vector<double> &fits, const sam_ippm_data &dat, const sam_ippm
 
 }
 
+void calc_ippm_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &params){
+	
+    //calcualte the G*S log conditional densities
+	for(int s=0; s<dat.nS; s++){
+		for( int g=0; g<dat.nG; g++){
+			for(int i=0; i<dat.nObs; i++){
+				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
+				loglSG.at(MATREF2D(g,s,dat.nG)) += log_ippm(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.wts[MATREF2D(i,s,dat.nObs)]);
+					}	
+				}
+			}
+		}
+}
+
 // now we want to calculate the species specific likelihoods.
-double calc_ippm_loglike_per_species(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits, int s){
+double calc_ippm_loglike_S(vector<double> &fits, vector<double> const &pis, const sam_ippm_data &dat, const sam_ippm_params &params, int s){
 
 	double eps=0.0, glogl=0.0;
 
-	//calcualte the G*S log conditional densities
+	////calcualte the G*S log conditional densities
     for( int g=0; g<dat.nG; g++){
-		for(int i=0; i<dat.nObs; i++){
-			if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
-		    fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) += log_ippm(dat.y[MATREF2D(i,s,dat.nObs)], fits.allMus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.wts[MATREF2D(i,s,dat.nObs)]);
-		    }
-		}
-
-	if(g==0) eps = fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG));
-    if(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) > eps) eps = fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG));
-
+		if(g==0) eps = fits.at(MATREF2D(g,s,dat.nG));
+		if(fits.at(MATREF2D(g,s,dat.nG)) > eps) eps = fits.at(MATREF2D(g,s,dat.nG));
   }
 
   // this will calculate the species specific loglikelihoods based on sum across Gs.
   for(int g=0; g<dat.nG; g++){
-    //fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) = fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG));
-    glogl += fits.par_pis.at(g)*exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - eps);
+    glogl += pis.at(g)*exp(fits.at(MATREF2D(g,s,dat.nG)) - eps);
   }
   glogl = log(glogl) + eps;
 
@@ -212,7 +222,7 @@ double log_ippm(const double &y, const double &mu, const double &wts){
 }
 
 // this should do the additive transformation of pis (pi1/piN,pi2/piN,pi(N-1)/piN)
-void additive_logistic_ippm(vector< double > &x,int inv, int G){
+void additive_logistic_ippm(vector< double > &x, int inv, int G){
   int i;
   // inv == 1 gives transfornmation
   // inv == 0 gives inverse transformation
@@ -256,9 +266,10 @@ void gradient_function_ippm(int n, double *par, double *gr, void *ex){
 //// this function should work out the derivatives.
 void sam_ippm_mix_gradient_function(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_derivs &derivs, sam_ippm_fits &fits){
 
+	vector<double> parpi((dat.nG-1), 0);
 	vector<double> alphaDerivs(dat.nS, 0);//change to dat.NAN
 	vector<double> betaDerivs((dat.nG*dat.nP), 0);
-	vector<double> etaDerivs(dat.nG-1, 0); // check there should only be g pis
+	vector<double> etaDerivs((dat.nG-1), 0); // check there should only be g pis
 	double logl;
 
     //calc loglike
@@ -267,23 +278,23 @@ void sam_ippm_mix_gradient_function(const sam_ippm_data &dat, const sam_ippm_par
     
 	logl = sam_ippm_mix_loglike(dat, params, fits);
 	
+	for(int g=0; g<(dat.nG-1); g++) parpi.at(g) = params.Eta[g];
+	additive_logistic_ippm(parpi,1,dat.nG);
+	
 	//derivate w.r.t alpha
-	derivs.zeroDerivs(dat);
-   	calc_dlog_dalpha(dat, fits);
-	calc_alpha_deriv(alphaDerivs, dat, fits);
+   	calc_dlog_dalpha(fits.dlogdalpha, fits.allMus, dat);
+	calc_alpha_deriv(alphaDerivs, fits.dlogdalpha, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
 
 	//derivate w.r.t beta
-	calc_dlog_dbeta(dat, fits);
-	calc_beta_deriv(betaDerivs, dat, fits);
+	calc_dlog_dbeta(fits.dlogdbeta, fits.allMus, dat);
+	calc_beta_deriv(betaDerivs, fits.dlogdbeta, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
 	
 	//transform pis back to additative logistic scale to keep pi_dervis happy.
-	//for(int g=0; g<(dat.nG-1); g++) fits.par_etas.at(g) = params.Eta[g];
-	additive_logistic_ippm(fits.par_pis,0,dat.nG);
-	for(int g=0; g<(dat.nG-1); g++) Rprintf("par_pi %f \n", fits.par_pis.at(g));// = params.Eta[g];	// looks ok to here.
-
+	additive_logistic_ippm(parpi,0,dat.nG);
+	
 	//derivate w.r.t pi/eta
-	//calc_dlog_dpi(dat, fits);
-	calc_eta_deriv(etaDerivs, dat, fits);
+	calc_dlog_dpi(fits.dlogdpi, fits.log_like_species_group_contrib, fits.log_like_species_contrib, dat);
+	calc_eta_deriv(etaDerivs, fits.dlogdpi, parpi, dat);
 
 	//update the derivates.
 	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs);	
@@ -298,10 +309,10 @@ double log_poisson_deriv( const double &y, const double &mu, const double &wts){
 }
 
 
-void calc_dlog_dalpha(const sam_ippm_data &dat, sam_ippm_fits &fits){
+void calc_dlog_dalpha(vector<double> &dlda, vector<double> const &mus, const sam_ippm_data &dat){
 
-	//vector<double> dlogdalpha(dat.nG*dat.nS, dat.NAnum);
-	//vector<double> muGS(dat.nG*dat.nS, dat.NAnum);
+	// dlda = dlogalpha passed as fits.dflogdalpha(dat.nG*dat.nS, dat.NAnum) from function call
+	// mus = all the fitted values.
 	double tmp_lpd;
 
 	for(int g=0; g<dat.nG; g++){
@@ -309,98 +320,84 @@ void calc_dlog_dalpha(const sam_ippm_data &dat, sam_ippm_fits &fits){
 			for(int i=0; i<dat.nObs; i++){
 				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
 					// this is the tmp log poisson derivative (lpd)
-					tmp_lpd = log_poisson_deriv(dat.y[MATREF2D(i,s,dat.nObs)], fits.allMus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.wts[MATREF2D(i,s,dat.nObs)]);
-					fits.dlogdalpha.at(MATREF2D(g,s,dat.nG)) +=	(dat.wts[MATREF2D(i,s,dat.nObs)] * tmp_lpd * fits.allMus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * 1);
+					tmp_lpd = log_poisson_deriv(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.wts[MATREF2D(i,s,dat.nObs)]);
+					dlda.at(MATREF2D(g,s,dat.nG)) +=	(dat.wts[MATREF2D(i,s,dat.nObs)] * tmp_lpd * mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * 1);
 				}
 			}
 		}
 	}
 }
 
-void calc_dlog_dbeta(const sam_ippm_data &dat, sam_ippm_fits &fits){
+void calc_dlog_dbeta(vector<double> &dldb, vector<double> const &mus, const sam_ippm_data &dat){
 
-	//vector<double> dlogdbeta(dat.nG*dat.nS*dat.nP, dat.NAnum);
-	//vector<double> muGS(dat.nG*dat.nS, dat.NAnum);
+	// dlda = dlogbeta passed as fits.dlogdbeta(dat.nG*dat.nS*dat.nP, dat.NAnum) from function call
+	// mus = all the fitted values.
+	
 	double tmp_lpd;
 
 	for(int g=0; g<dat.nG; g++){
 		for(int s=0;s<dat.nS; s++){
 			for(int i=0; i<dat.nObs; i++){
 				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
-					tmp_lpd = log_poisson_deriv(dat.y[MATREF2D(i,s,dat.nObs)], fits.allMus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.wts[MATREF2D(i,s,dat.nObs)]);
+					tmp_lpd = log_poisson_deriv(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.wts[MATREF2D(i,s,dat.nObs)]);
 						for(int j=0; j<dat.nP; j++){
-							fits.dlogdbeta.at(MATREF3D(g,j,s,dat.nG,dat.nP)) +=	(dat.wts[MATREF2D(i,s,dat.nObs)] * tmp_lpd * fits.allMus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * dat.X[MATREF2D(i,j,dat.nObs)]);
+							dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) +=	(dat.wts[MATREF2D(i,s,dat.nObs)] * tmp_lpd * mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * dat.X[MATREF2D(i,j,dat.nObs)]);
 					}
 				}
 			}
-			fits.dlogdpi.at(g) += exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - fits.log_like_species_contrib.at(s));
 		}
 	}
 
 }
 
+void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llSG, vector<double> const &llS, const sam_ippm_data &dat){
 
+	for(int g=0; g<(dat.nG); g++){
+			//Rprintf( " %f\n", fits.dlogdpi.at(g)); 
+			for(int s=0; s<(dat.nS); s++){
+							//Rprintf( "logl_sg eta %f\n", fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG))); 
+							//Rprintf( "logl_s eta %f\n", fits.log_like_species_contrib.at(s));
+							dldpi.at(g) += exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s));
+			}
+			//Rprintf( " %f\n", fits.dlogdpi.at(g)); 
+	}
+}
 
 //// this should calculate the derivate w.r.t alpha.
-void calc_alpha_deriv( vector<double> &alphaDerivs, const sam_ippm_data &dat, const sam_ippm_fits &fits){
+void calc_alpha_deriv( vector<double> &alphaDerivs, vector<double> const &dlogdalpha, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_ippm_data &dat){
 
 	for(int g=0; g<(dat.nG); g++){
 		for(int s=0;s<(dat.nS);s++){
 			//calculate for alphas
-			////	for( int i=0; i<(all.data.nObs*all.parms.nTot); i++)
-    		alphaDerivs.at(s) +=  exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - fits.log_like_species_contrib.at(s) + log(fits.par_pis.at(g))) * fits.dlogdalpha.at(MATREF2D(g,s,dat.nG));
-    		
+    		alphaDerivs.at(s) +=  exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s) + log(pis.at(g))) * dlogdalpha.at(MATREF2D(g,s,dat.nG));
 			}
 	}
-	//Rprintf( "\n");
  
 }
 
 // this should calculate the derivate w.r.t beta.
-void calc_beta_deriv( vector<double> &betaDerivs, const sam_ippm_data &dat, const sam_ippm_fits &fits){
-
-    //vector<double> dlogdpi(dat.nG,0);
-    //Rprintf( " %f\n", etaDerivs.at(i)); 
+void calc_beta_deriv( vector<double> &betaDerivs, vector<double> const &dlogdbeta, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_ippm_data &dat){
+	
 	for(int g=0; g<(dat.nG); g++){
-		//Rprintf( " %f\n", fits.dlogdpi.at(g)); 
 	    for(int j=0; j<(dat.nP); j++){
 			for(int s=0; s<(dat.nS); s++){
 			// calculate for betas.
-			Rprintf( "logl_sg %f\n", fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG))); 
-			Rprintf( "logl_s %f\n", fits.log_like_species_contrib.at(s));
-			betaDerivs.at(MATREF2D(g,j,dat.nG)) +=  exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - fits.log_like_species_contrib.at(s) + log(fits.par_pis.at(g))) * fits.dlogdbeta.at(MATREF3D(g,j,s,dat.nG,dat.nP));
-			//if(j==0) fits.dlogdpi.at(g) += exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - fits.log_like_species_contrib.at(s));
+			betaDerivs.at(MATREF2D(g,j,dat.nG)) +=  exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s) + log(pis.at(g))) * dlogdbeta.at(MATREF3D(g,j,s,dat.nG,dat.nP));
 			}
 		}
-		//Rprintf( " %f\n", fits.dlogdpi.at(g)); 
 	}
-	
-	//Rprintf( "\n");
+
 }
 
-//void calc_dlog_dpi(const sam_ippm_data &dat, sam_ippm_fits &fits){
-
-	//for(int g=0; g<(dat.nG); g++){
-			//Rprintf( " %f\n", fits.dlogdpi.at(g)); 
-			//for(int s=0; s<(dat.nS); s++){
-							//Rprintf( "logl_sg eta %f\n", fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG))); 
-							//Rprintf( "logl_s eta %f\n", fits.log_like_species_contrib.at(s));
-							//fits.dlogdpi.at(g) += exp(fits.log_like_species_group_contrib.at(MATREF2D(g,s,dat.nG)) - fits.log_like_species_contrib.at(s));
-			//}
-			//Rprintf( " %f\n", fits.dlogdpi.at(g)); 
-	//}
-//}
-
 // this should calculate the derivate w.r.t eta (transformed pi).
-void calc_eta_deriv( vector<double> &etaDerivs, const sam_ippm_data &dat, const sam_ippm_fits &fits){
+void calc_eta_deriv( vector<double> &etaDerivs, vector<double> const &dlogdpi, vector<double> const eta, const sam_ippm_data &dat){
 	
   double add_log_trans=0;
   vector<double> pi_mat_deriv(dat.nG*(dat.nG-1),0);
 
   for(int g=0;g<(dat.nG-1);g++){
-      add_log_trans+=exp(fits.par_pis.at(g)); //add up transformed pi's
-      
-      Rprintf( " %f\n", fits.par_pis.at(g));
+      add_log_trans+=exp(eta.at(g)); //add up transformed pi's
+      //Rprintf( " %f\n", eta.at(g));
   }
   add_log_trans+=1;
 
@@ -408,10 +405,10 @@ void calc_eta_deriv( vector<double> &etaDerivs, const sam_ippm_data &dat, const 
 		for(int i=0;i<(dat.nG-1);i++){ // go through eta's
 		   if(g<(dat.nG-1)){
 			   	if(i==g){
-					pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1))) = exp(fits.par_pis.at(i))/add_log_trans - exp(2*fits.par_pis.at(i))/(add_log_trans*add_log_trans);// diag
+					pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1))) = exp(eta.at(i))/add_log_trans - exp(2*eta.at(i))/(add_log_trans*add_log_trans);// diag
 					pi_mat_deriv.at(MATREF2D(i,(dat.nG-1),(dat.nG-1))) += pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1)));
 				}else{
-					pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1))) = -exp(fits.par_pis.at(i))*exp(fits.par_pis.at(g)) / (add_log_trans*add_log_trans); //off-diag
+					pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1))) = -exp(eta.at(i))*exp(eta.at(g)) / (add_log_trans*add_log_trans); //off-diag
 					pi_mat_deriv.at(MATREF2D(i,(dat.nG-1),(dat.nG-1))) += pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1)));
 				}
 				//Rprintf( " %f\n",pi_mat_deriv.at(MATREF2D(i,(dat.nG-1),(dat.nG-1)))); 
@@ -423,13 +420,13 @@ void calc_eta_deriv( vector<double> &etaDerivs, const sam_ippm_data &dat, const 
 
 
 	for(int i=0; i<(dat.nG-1); i++){
-			Rprintf( "before dfdeta %f\n", etaDerivs.at(i));
+			//Rprintf( "before dfdeta %f\n", etaDerivs.at(i));
 		for(int g=0; g<(dat.nG); g++){
  
-			etaDerivs.at(i) += fits.dlogdpi.at(g) * pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1)));
+			etaDerivs.at(i) += dlogdpi.at(g) * pi_mat_deriv.at(MATREF2D(i,g,(dat.nG-1)));
 			
 		}
-		Rprintf( "after dfdeta %f\n", etaDerivs.at(i));
+		//Rprintf( "after dfdeta %f\n", etaDerivs.at(i));
     }
 }
 
