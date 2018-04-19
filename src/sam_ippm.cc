@@ -128,24 +128,24 @@ double optimise_function_ippm(int n, double *par, void *ex){
 double sam_ippm_mix_loglike(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits){
 
 	double tloglike = 0.0, loglike = 0.0;
-	vector<double> parpi(dat.nG-1,0);
-	vector<double> paralphas(dat.nS,0);
-	vector<double> parbetas((dat.nG*dat.nP),0); 
+	vector<double> par_pi(dat.nG-1,0);
+	vector<double> par_alphas(dat.nS,0);
+	vector<double> par_betas((dat.nG*dat.nP),0); 
 	
 	fits.zero(0);
   	//load in the parameters.
-	for(int g=0; g<(dat.nG-1); g++) parpi.at(g) = params.Eta[g];
-	for(int s=0; s<(dat.nS); s++) paralphas.at(s) = params.Alpha[s];
+	for(int g=0; g<(dat.nG-1); g++) par_pi.at(g) = params.Eta[g];
+	for(int s=0; s<(dat.nS); s++) par_alphas.at(s) = params.Alpha[s];
 	for( int g=0; g<(dat.nG); g++){
 		for( int p=0; p<dat.nP; p++){
-			parbetas.at(MATREF2D(g,p,(dat.nG))) = params.Beta[MATREF2D(g,p,(dat.nG))];
+			par_betas.at(MATREF2D(g,p,(dat.nG))) = params.Beta[MATREF2D(g,p,(dat.nG))];
 		}
 	}
 	
-	additive_logistic_ippm(parpi,1,dat.nG); // additive logistic transformation of pis.
+	additive_logistic_ippm(par_pi,1,dat.nG); // additive logistic transformation of pis.
 
 	//calculate fitted values (constant over i)
-	calc_mu_fits(fits.allMus, paralphas, parbetas, dat);// this should return the fitted valyes for all species, sites and groups.]
+	calc_mu_fits(fits.allMus, par_alphas, par_betas, dat);// this should return the fitted valyes for all species, sites and groups.]
 	
 	//calculate the species/groups loglikes
 	calc_ippm_loglike_SG(fits.log_like_species_group_contrib, fits.allMus, dat, params);
@@ -153,7 +153,7 @@ double sam_ippm_mix_loglike(const sam_ippm_data &dat, const sam_ippm_params &par
 	// calc loglike per species
 	// change the loglike functions to resemble rcp. This hopefully will fix the indexing. :)
 	for( int s=0; s<dat.nS; s++){
-		tloglike = calc_ippm_loglike_S(fits.log_like_species_group_contrib, parpi, dat, params, s); // this should give the mix loglike. ippm weights are calculated in this bit.
+		tloglike = calc_ippm_loglike_S(fits.log_like_species_group_contrib, par_pi, dat, params, s); // this should give the mix loglike. ippm weights are calculated in this bit.
 		fits.log_like_species_contrib.at(s) = tloglike;
 		loglike += tloglike;
 	}
@@ -173,7 +173,6 @@ void calc_mu_fits(vector<double> &fits, vector<double> const &alphas, vector<dou
 				// need logical flag which deals with NA data.
 				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
 				lp = alphas.at(s) + dat.offset[i];
-				//Rprintf( "%f \n", lp); 
 					for( int j=0;j<dat.nP; j++){
 						lp += betas.at(MATREF2D(g,j,dat.nG)) * dat.X[MATREF2D(i,j,dat.nObs)];
 				   	}
