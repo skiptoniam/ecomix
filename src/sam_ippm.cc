@@ -104,7 +104,7 @@ double sam_ippm_optimise( sam_ippm_all_classes &all){
 	all.params.update( vmminParms, all.data);
 	gradient_function_ippm(all.params.nTot, vmminParms, vmminGrad, &all);
 	all.derivs.update( vmminGrad, all.data);
-
+    all.params.printParms(all.data);
 	//for(int i; i<all.params.nTot; i++) Rprintf("%f\n",vmminGrad[i]);
 	//all.derivs.update( vmminGrad, all.data);
 	
@@ -128,15 +128,24 @@ double optimise_function_ippm(int n, double *par, void *ex){
 double sam_ippm_mix_loglike(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits){
 
 	double tloglike = 0.0, loglike = 0.0;
-	vector<double> parpi(dat.nG-1,0); 
+	vector<double> parpi(dat.nG-1,0);
+	vector<double> paralphas(dat.nS,0);
+	vector<double> parbetas((dat.nG*dat.nP),0); 
 	
 	fits.zero(0);
-  	//transform pis
+  	//load in the parameters.
 	for(int g=0; g<(dat.nG-1); g++) parpi.at(g) = params.Eta[g];
+	for(int s=0; s<(dat.nS); s++) paralphas.at(s) = params.Alpha[s];
+	for( int g=0; g<(dat.nG); g++){
+		for( int p=0; p<dat.nP; p++){
+			parbetas.at(MATREF2D(g,p,(dat.nG))) = params.Beta[MATREF2D(g,p,(dat.nG))];
+		}
+	}
+	
 	additive_logistic_ippm(parpi,1,dat.nG); // additive logistic transformation of pis.
 
 	//calculate fitted values (constant over i)
-	calc_mu_fits(fits.allMus, dat, params);// this should return the fitted valyes for all species, sites and groups.]
+	calc_mu_fits(fits.allMus, paralphas, parbetas, dat);// this should return the fitted valyes for all species, sites and groups.]
 	
 	//calculate the species/groups loglikes
 	calc_ippm_loglike_SG(fits.log_like_species_group_contrib, fits.allMus, dat, params);
@@ -152,21 +161,21 @@ double sam_ippm_mix_loglike(const sam_ippm_data &dat, const sam_ippm_params &par
 }
 
 // calculate mu fits for ippm this should calculate all the etas and mus for species and archetypes.
-void calc_mu_fits(vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &params){
+void calc_mu_fits(vector<double> &fits, vector<double> const &alphas, vector<double> const &betas, const sam_ippm_data &dat){
 
-	vector<double> lps(dat.nG*dat.nS, 0);	//the nG x nS intercepts
+	//vector<double> lps(dat.nG*dat.nS, 0);	//the nG x nS intercepts
 	double lp=0.0;	//the lin pred for the gth group, sth species and ith site
 
 	//calcualte the G*S*n fits
 	for( int g=0; g<dat.nG; g++){
 		for( int s=0; s<dat.nS; s++){
-			lps.at(MATREF2D(g,s,dat.nG)) = params.Alpha[s];
 			for( int i=0; i<dat.nObs; i++){
 				// need logical flag which deals with NA data.
 				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
-				lp = lps.at(MATREF2D(g,s,dat.nG)) + dat.offset[i];
+				lp = alphas.at(s) + dat.offset[i];
+				//Rprintf( "%f \n", lp); 
 					for( int j=0;j<dat.nP; j++){
-						lp += params.Beta[MATREF2D(g,j,dat.nG)] * dat.X[MATREF2D(i,j,dat.nObs)];
+						lp += betas.at(MATREF2D(g,j,dat.nG)) * dat.X[MATREF2D(i,j,dat.nObs)];
 				   	}
 				fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
 				}

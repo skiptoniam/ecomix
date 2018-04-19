@@ -53,8 +53,8 @@ class sam_ippm_params {
 		void printParms( const sam_ippm_data &dat);
 
 
-		double 	*Alpha, //the species' prevalences (Gx1)==(1xG)
-				*Beta,	//the habitats' free covariate params ((G-1)xp)
+		double 	*Alpha, //the species' prevalences 
+				*Beta,	//the habitats' free covariate params (G*xp)
 				*Eta;	//the pis - mmmmm pies.
 		int nalpha, nbeta, npi, nTot;
 };
@@ -73,9 +73,9 @@ class sam_ippm_derivs{
 		void getArray( double *grArr, const sam_ippm_data &dat);
 
         int getScoreFlag;	//Should the scores be calculated for empirical information
-		double 	*dfdAlpha, //the derivatives of logl w.r.t. alpha
-				*dfdBeta,	//the derivatives of logl w.r.t. beta
-				*dfdEta, 	//the derivatives of logl w.r.t. eta (transformed pi)
+		double 	*Alpha, //the derivatives of logl w.r.t. alpha
+				*Beta,	//the derivatives of logl w.r.t. beta
+				*Eta, 	//the derivatives of logl w.r.t. eta (transformed pi)
 				*Scores;//the score contribution for each site (for empirical information)
 	
 };
@@ -144,7 +144,7 @@ bool converged_ippm( double *oldP, double *newP, const sam_ippm_opt_contr &contr
 // functions for calculating ippm likelihood.
 double optimise_function_ippm(int n, double *par, void *ex);
 double sam_ippm_mix_loglike(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits);
-void calc_mu_fits(vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &params);
+void calc_mu_fits(vector<double> &fits, vector<double> const &alphas, vector<double> const &betas, const sam_ippm_data &dat);
 void calc_ippm_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &params);
 double calc_ippm_loglike_S(vector<double> &fits, vector<double> const &pis, const sam_ippm_data &dat, const sam_ippm_params &params, int s);
 double log_ippm(const double &y, const double &mu, const double &wts);
