@@ -154,7 +154,7 @@ void calc_mu_fits(vector<double> &fits, const sam_ippm_params &params, const sam
 	vector<double> lps(dat.nG*dat.nS, 0);	//the nG x nS intercepts
 	double lp=0.0;	//the lin pred for the gth group, sth species and ith site
 
-    for(int s=0; s<dat.nS; s++) Rprintf("Alphas %f\n",params.Alpha[s]);
+    //for(int s=0; s<dat.nS; s++) Rprintf("Alphas %f\n",params.Alpha[s]);
 	//calcualte the G*S*n fits
 	for( int g=0; g<dat.nG; g++){
 		for( int s=0; s<dat.nS; s++){
