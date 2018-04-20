@@ -49,7 +49,7 @@ class sam_ippm_params {
 		~sam_ippm_params();
 		void setVals( const sam_ippm_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Rpi);
 		void getArray(double *parArr, const sam_ippm_data &dat);
-		void update( double *parArr, const sam_ippm_data &dat);
+		void update(double *parArr, const sam_ippm_data &dat);
 		void printParms( const sam_ippm_data &dat);
 
 
@@ -98,8 +98,8 @@ class sam_ippm_fits {
 		void initialise( const int &nObs, const int &nG, const int &nS, const int &nP, const int &NAnum);
 		void zero(const int &NAnum);
 
-		vector<double> par_pis;
-		vector<double> par_etas;	
+		//vector<double> par_pis;
+		//vector<double> par_etas;	
 		vector<double> allMus; 	//3D array for the fitted mus (note that indexing must be done with MATREF3D)
 		vector<double> log_like_species_group_contrib; // 2D array of loglikes species and groups.
 		vector<double> log_like_species_contrib; //vector of species logls.
@@ -144,9 +144,10 @@ bool converged_ippm( double *oldP, double *newP, const sam_ippm_opt_contr &contr
 // functions for calculating ippm likelihood.
 double optimise_function_ippm(int n, double *par, void *ex);
 double sam_ippm_mix_loglike(const sam_ippm_data &dat, const sam_ippm_params &params, sam_ippm_fits &fits);
-void calc_mu_fits(vector<double> &fits, vector<double> const &alphas, vector<double> const &betas, const sam_ippm_data &dat);
-void calc_ippm_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &params);
-double calc_ippm_loglike_S(vector<double> &fits, vector<double> const &pis, const sam_ippm_data &dat, const sam_ippm_params &params, int s);
+//void calc_mu_fits(vector<double> &fits, vector<double> const &alphas, vector<double> const &betas, const sam_ippm_data &dat);
+void calc_mu_fits(vector<double> &fits, const sam_ippm_params &params, const sam_ippm_data &dat);
+void calc_ippm_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam_ippm_data &dat);
+double calc_ippm_loglike_S(vector<double> &fits, vector<double> const &pis, const sam_ippm_data &dat, int s);
 double log_ippm(const double &y, const double &mu, const double &wts);
 void additive_logistic_ippm(vector< double > &x,int inv, int G);
 

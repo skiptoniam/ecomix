@@ -19,7 +19,7 @@ void sam_ippm_params::setVals( const sam_ippm_data &dat, SEXP &Ralpha, SEXP &Rbe
 
 void sam_ippm_params::getArray(double *parArr, const sam_ippm_data &dat){
 	int kount=0;
-	for( int i=0; i<dat.nS; i++){
+	for( int i=0; i<((dat.nS)); i++){
 		parArr[kount] = Alpha[i];
 		kount++;
 	}
@@ -36,7 +36,7 @@ void sam_ippm_params::getArray(double *parArr, const sam_ippm_data &dat){
 
 void sam_ippm_params::update( double *parArr, const sam_ippm_data &dat){
 	int kount=0;
-	for( int i=0; i<dat.nS; i++){
+	for( int i=0; i<((dat.nS)); i++){
 		Alpha[i] = parArr[kount];
 		kount++;
 	}

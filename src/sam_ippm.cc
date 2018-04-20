@@ -30,20 +30,12 @@ extern "C" {
 	if( *INTEGER(Roptimise) == 1)
 		logl = sam_ippm_optimise(all);
 	//re-running to get pis and mus
-	if( *INTEGER(RloglOnly) == 1){
-	    //all.params.printParms(all.data);
-		logl = sam_ippm_mix_loglike( all.data, all.params, all.fits);
-		//all.params.printParms(all.data);
-		}
+	if( *INTEGER(RloglOnly) == 1)
+	   		logl = sam_ippm_mix_loglike( all.data, all.params, all.fits);
 	//and derivatives (inlcuding scores, for empirical info, if requested)
-	if( *INTEGER(RderivsOnly) == 1){
-	    //all.params.printParms(all.data);
+	if( *INTEGER(RderivsOnly) == 1)	    
 	    sam_ippm_mix_gradient_function( all.data, all.params, all.derivs, all.fits);
-		//all.params.printParms(all.data);
-		}
-	//for( int i=0; i<(all.params.nTot); i++)
-		//Rprintf( " %f", (REAL(Rscores))[i]);	
-
+	
 	//bundling up things to return - will need to change these...
 	//first the fitted pis
 	//double *tmpPi = REAL( Reta);
@@ -78,10 +70,10 @@ extern "C" {
 
 
 double sam_ippm_optimise( sam_ippm_all_classes &all){
-	double *vmminGrad, *vmminParms, *oldParms;	//arrays to pass to vmmin
-	double *vmminParmsIn;	//del
-	vmminParms = (double *) R_alloc(all.params.nTot,sizeof(double));
-	//vmminParmsIn = (double *) R_alloc(all.params.nTot,sizeof(double));	//Del
+	double *vmminGrad, *vmminParams, *oldParms;	//arrays to pass to vmmin
+	double *vmminParamsIn;	//del
+	vmminParams = (double *) R_alloc(all.params.nTot,sizeof(double));
+	vmminParamsIn = (double *) R_alloc(all.params.nTot,sizeof(double));	//Del
 	oldParms = (double *) R_alloc(all.params.nTot,sizeof(double));
 	vmminGrad = (double *) R_alloc(all.params.nTot,sizeof(double));
 	int *myMask;
@@ -92,25 +84,21 @@ double sam_ippm_optimise( sam_ippm_all_classes &all){
 	all.params.getArray( oldParms, all.data);
 	myMask = &vecMask[0];
 	//optimise
-	all.params.getArray( vmminParms, all.data);
-	//all.params.getArray( vmminParmsIn, all.data);	//del
-	vmmin( all.params.nTot, vmminParms, vmminLogl, optimise_function_ippm, gradient_function_ippm, all.contr.maxitQN, 
+	all.params.getArray( vmminParams, all.data);
+	all.params.getArray( vmminParamsIn, all.data);	//del
+	vmmin( all.params.nTot, vmminParams, vmminLogl, optimise_function_ippm, gradient_function_ippm, all.contr.maxitQN, 
 	 all.contr.traceQN, myMask,  all.contr.abstol, all.contr.reltol,  all.contr.nReport, &all, &all.contr.fnKount,
 	 &all.contr.grKount, &all.contr.ifail);
 
-//	nmmin( all.params.nTot, vmminParmsIn, vmminParms, vmminLogl, optimise_function_rcp, &all.contr.ifail, all.contr.abstol, all.contr.reltol, &all, 1.0, 0.5, 2.0, all.contr.traceQN, &all.contr.fnKount, all.contr.maxitQN);
+//	nmmin( all.params.nTot, vmminParamsIn, vmminParams, vmminLogl, optimise_function_rcp, &all.contr.ifail, all.contr.abstol, all.contr.reltol, &all, 1.0, 0.5, 2.0, all.contr.traceQN, &all.contr.fnKount, all.contr.maxitQN);
 
 	//update parameters
-	all.params.update( vmminParms, all.data);
-	gradient_function_ippm(all.params.nTot, vmminParms, vmminGrad, &all);
+	all.params.update( vmminParams, all.data);
+	gradient_function_ippm(all.params.nTot, vmminParams, vmminGrad, &all);
 	all.derivs.update( vmminGrad, all.data);
     all.params.printParms(all.data);
-	//for(int i; i<all.params.nTot; i++) Rprintf("%f\n",vmminGrad[i]);
-	//all.derivs.update( vmminGrad, all.data);
-	
-	
 
-	return( vmminLogl[0]);
+	return(vmminLogl[0]);
 }
 
 double optimise_function_ippm(int n, double *par, void *ex){
@@ -129,31 +117,31 @@ double sam_ippm_mix_loglike(const sam_ippm_data &dat, const sam_ippm_params &par
 
 	double tloglike = 0.0, loglike = 0.0;
 	vector<double> par_pi(dat.nG-1,0);
-	vector<double> par_alphas(dat.nS,0);
-	vector<double> par_betas((dat.nG*dat.nP),0); 
+	//vector<double> par_alphas(dat.nS,0);
+	//vector<double> par_betas((dat.nG*dat.nP),0); 
 	
 	fits.zero(0);
   	//load in the parameters.
+	//for(int s=0; s<(dat.nS); s++) par_alphas.at(s) = params.Alpha[s];
+	//for( int g=0; g<(dat.nG); g++){
+		//for( int p=0; p<dat.nP; p++){
+			//par_betas.at(MATREF2D(g,p,(dat.nG))) = params.Beta[MATREF2D(g,p,(dat.nG))];
+		//}
+	//}
 	for(int g=0; g<(dat.nG-1); g++) par_pi.at(g) = params.Eta[g];
-	for(int s=0; s<(dat.nS); s++) par_alphas.at(s) = params.Alpha[s];
-	for( int g=0; g<(dat.nG); g++){
-		for( int p=0; p<dat.nP; p++){
-			par_betas.at(MATREF2D(g,p,(dat.nG))) = params.Beta[MATREF2D(g,p,(dat.nG))];
-		}
-	}
-	
+		
 	additive_logistic_ippm(par_pi,1,dat.nG); // additive logistic transformation of pis.
 
 	//calculate fitted values (constant over i)
-	calc_mu_fits(fits.allMus, par_alphas, par_betas, dat);// this should return the fitted valyes for all species, sites and groups.]
-	
+	//calc_mu_fits(fits.allMus, par_alphas, par_betas, dat);// this should return the fitted valyes for all species, sites and groups.]
+	calc_mu_fits(fits.allMus, params, dat);
 	//calculate the species/groups loglikes
-	calc_ippm_loglike_SG(fits.log_like_species_group_contrib, fits.allMus, dat, params);
+	calc_ippm_loglike_SG(fits.log_like_species_group_contrib, fits.allMus, dat);
 	
 	// calc loglike per species
 	// change the loglike functions to resemble rcp. This hopefully will fix the indexing. :)
 	for( int s=0; s<dat.nS; s++){
-		tloglike = calc_ippm_loglike_S(fits.log_like_species_group_contrib, par_pi, dat, params, s); // this should give the mix loglike. ippm weights are calculated in this bit.
+		tloglike = calc_ippm_loglike_S(fits.log_like_species_group_contrib, par_pi, dat, s); // this should give the mix loglike. ippm weights are calculated in this bit.
 		fits.log_like_species_contrib.at(s) = tloglike;
 		loglike += tloglike;
 	}
@@ -161,20 +149,23 @@ double sam_ippm_mix_loglike(const sam_ippm_data &dat, const sam_ippm_params &par
 }
 
 // calculate mu fits for ippm this should calculate all the etas and mus for species and archetypes.
-void calc_mu_fits(vector<double> &fits, vector<double> const &alphas, vector<double> const &betas, const sam_ippm_data &dat){
+void calc_mu_fits(vector<double> &fits, const sam_ippm_params &params, const sam_ippm_data &dat){
 
-	//vector<double> lps(dat.nG*dat.nS, 0);	//the nG x nS intercepts
+	vector<double> lps(dat.nG*dat.nS, 0);	//the nG x nS intercepts
 	double lp=0.0;	//the lin pred for the gth group, sth species and ith site
 
+    for(int s=0; s<dat.nS; s++) Rprintf("Alphas %f\n",params.Alpha[s]);
 	//calcualte the G*S*n fits
 	for( int g=0; g<dat.nG; g++){
 		for( int s=0; s<dat.nS; s++){
+			lps.at(MATREF2D(g,s,dat.nG)) = params.Alpha[s]; 
 			for( int i=0; i<dat.nObs; i++){
 				// need logical flag which deals with NA data.
 				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
-				lp = alphas.at(s) + dat.offset[i];
+				lp = lps.at(MATREF2D(g,s,dat.nG)) + dat.offset[i];
 					for( int j=0;j<dat.nP; j++){
-						lp += betas.at(MATREF2D(g,j,dat.nG)) * dat.X[MATREF2D(i,j,dat.nObs)];
+						lp += params.Beta[MATREF2D(g,j,(dat.nG))] * dat.X[MATREF2D(i,j,dat.nObs)];
+						//lp += betas.at(MATREF2D(g,j,dat.nG)) * dat.X[MATREF2D(i,j,dat.nObs)];
 				   	}
 				fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
 				}
@@ -184,7 +175,31 @@ void calc_mu_fits(vector<double> &fits, vector<double> const &alphas, vector<dou
 
 }
 
-void calc_ippm_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam_ippm_data &dat, const sam_ippm_params &params){
+//// calculate mu fits for ippm this should calculate all the etas and mus for species and archetypes.
+//void calc_mu_fits(vector<double> &fits, vector<double> const &alphas, vector<double> const &betas, const sam_ippm_data &dat){
+
+	////vector<double> lps(dat.nG*dat.nS, 0);	//the nG x nS intercepts
+	//double lp=0.0;	//the lin pred for the gth group, sth species and ith site
+
+	////calcualte the G*S*n fits
+	//for( int g=0; g<dat.nG; g++){
+		//for( int s=0; s<dat.nS; s++){
+			//for( int i=0; i<dat.nObs; i++){
+				//// need logical flag which deals with NA data.
+				//if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
+				//lp = alphas.at(s) + dat.offset[i];
+					//for( int j=0;j<dat.nP; j++){
+						//lp += betas.at(MATREF2D(g,j,dat.nG)) * dat.X[MATREF2D(i,j,dat.nObs)];
+				   	//}
+				//fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
+				//}
+			//}
+		//}
+	//}
+
+//}
+
+void calc_ippm_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam_ippm_data &dat){
 	
     //calcualte the G*S log conditional densities
 	for(int s=0; s<dat.nS; s++){
@@ -199,7 +214,7 @@ void calc_ippm_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sa
 }
 
 // now we want to calculate the species specific likelihoods.
-double calc_ippm_loglike_S(vector<double> &fits, vector<double> const &pis, const sam_ippm_data &dat, const sam_ippm_params &params, int s){
+double calc_ippm_loglike_S(vector<double> &fits, vector<double> const &pis, const sam_ippm_data &dat, int s){
 
 	double eps=0.0, glogl=0.0;
 

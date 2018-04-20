@@ -10,7 +10,7 @@ void sam_ippm_data::setVals( SEXP &Ry, SEXP &RX, SEXP &Roffset, SEXP &Rwts, SEXP
 	nG = *(INTEGER( RG));
 	nP = *(INTEGER( Rp));
 	nObs = *(INTEGER( RnObs));
-	NAnum = 0;
+	NAnum = -99999;
 	y = REAL( Ry);
 	X = REAL( RX);
 	offset = REAL( Roffset);

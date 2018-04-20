@@ -8,11 +8,11 @@ void sam_ippm_fits::initialise( const int &nObs, const int &nG, const int &nS, c
 	// vector for of pis on natural scale
 	//pis_loglike.resize(nG-1, 0);
 	
-	// vector for of pis on natural scale
-	par_pis.resize(nG-1, NAnum);
+	//// vector for of pis on natural scale
+	//par_pis.resize(nG-1, NAnum);
 	
-	// vector for of pis on addiative logitic scale
-	par_etas.resize(nG-1, NAnum);
+	//// vector for of pis on addiative logitic scale
+	//par_etas.resize(nG-1, NAnum);
 	
 	// array for catching Mu	
 	allMus.resize(nObs*nS*nG, NAnum);
@@ -38,8 +38,8 @@ void sam_ippm_fits::zero(const int &NAnum){
 	
 
 	//pis_loglike.assign(pis_loglike.size(),NAnum); 
-	par_pis.assign(par_pis.size(),NAnum); 
-	par_etas.assign(par_etas.size(),NAnum); 
+	//par_pis.assign(par_pis.size(),NAnum); 
+	//par_etas.assign(par_etas.size(),NAnum); 
 	//grad_pis_non_trans.assign(grad_pis_non_trans.size(),NAnum); 
 	allMus.assign(allMus.size(), NAnum);
 	log_like_species_contrib.assign(log_like_species_contrib.size(), NAnum);
