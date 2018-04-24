@@ -31,7 +31,7 @@ species_mix_estimate_groups(formula = NULL, data, n_mixtures = 1:10,
 }
 \arguments{
 \item{formula}{an object of class "formula" (or an object that can be coerced to that class).
-The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the species archetype probabilities on covariates. An example formula follows something like this: cbind(spp1,spp2,spp3)~1+temperature+rainfall}
+The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' data. The type of reponse data will help specify the type of error distribution to be used. The dependent variables (the right hind side) of this formula specifies the dependence of the species archetype probabilities on covariates. For all model the basic formula structure follows something like this: cbind(spp1,spp2,spp3)~1+temperature+rainfall}
 
 \item{n_mixtures}{The number of mixing components (groups) to fit.}
 
@@ -79,7 +79,7 @@ The response variable (left hand side of the formula) needs to be either 'presen
 
 \item{theta}{coefficents for each species archetype. Matrix of G x number of parameters. Each row is a different species archetype.}
 
-\item{model_data}{a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containng the covariate data for each site. Names of columns must match that given in \code{formula}.}
+\item{model_data}{a matrix of dataframe which contains the 'species_data' matrix, a const and the covariates in the strucute of spp1,spp2,spp3,const,temperature, rainfall. dims of matirx should be nsites*(nspecies+const+covariates).}
 
 \item{weights}{is used in alternative way depending on the error distribution used. See \link[ecomix]{species_mix} for more details.}
 
@@ -108,7 +108,7 @@ The function uses BFGS to optimise the mixture likelihood. There is the option t
 `species_mix` acts as a wrapper for fitmix.cpp that allows for easier data input.
 The data frames are merged into the appropriate format for the use in fitmix.cpp.
 Minima is found using vmmin (BFGS) and the gradients are calculated using CPPAD (auto differentiation).
-Currently only 'bernoulli', 'negative_binomial' and 'tweedie' distributions use fitmix.cpp so the other statistical distributions could be slow.
+Currently 'bernoulli', 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative_binomial' and 'tweedie' distributions can be fitted using the species_mix function.
 }
 \examples{
 \dontrun{
