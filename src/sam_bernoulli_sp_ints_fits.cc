@@ -1,9 +1,9 @@
-#include"sam_ippm.h"
+#include"sam_bernoulli_sp_ints.h"
 
-sam_ippm_fits::sam_ippm_fits(){};
-sam_ippm_fits::~sam_ippm_fits(){};
+sam_bernoulli_sp_ints_fits::sam_bernoulli_sp_ints_fits(){};
+sam_bernoulli_sp_ints_fits::~sam_bernoulli_sp_ints_fits(){};
 
-void sam_ippm_fits::initialise( const int &nObs, const int &nG, const int &nS, const int &nP, const int &NAnum){
+void sam_bernoulli_sp_ints_fits::initialise( const int &nObs, const int &nG, const int &nS, const int &nP, const int &NAnum){
 	
 	// array for catching Mu	
 	allMus.resize(nObs*nS*nG, NAnum);
@@ -25,7 +25,7 @@ void sam_ippm_fits::initialise( const int &nObs, const int &nG, const int &nS, c
 	
 };
 
-void sam_ippm_fits::zero(const int &NAnum){
+void sam_bernoulli_sp_ints_fits::zero(const int &NAnum){
 	
 	allMus.assign(allMus.size(), NAnum);
 	log_like_species_contrib.assign(log_like_species_contrib.size(), NAnum);
@@ -35,4 +35,3 @@ void sam_ippm_fits::zero(const int &NAnum){
 	dlogdpi.assign(dlogdpi.size(), NAnum);
 			
 };
-
