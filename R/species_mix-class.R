@@ -539,7 +539,8 @@
 #' form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
 #' theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
 #' dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
-#' simulated_data <- simulate_species_mix_data(form,data,theta,dist="bernoulli")}
+#' simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
+#' }
 ## need to update this to take the new formula framework and simulate ippm data.
 "simulate_species_mix_data" <-  function (form, dat, theta, distribution = "bernoulli"){
 
@@ -557,6 +558,8 @@
     for (s in 1:S) {
       g <- ceiling(runif(1) * k)
       if (distribution == "bernoulli") {
+        theta[g, 1] <- runif(1, -5, 5)
+        sp.int[s] <- theta[g, 1]
         lgtp <- X %*% theta[g, ]
         p <- exp(lgtp)/(1 + exp(lgtp))
         out[, s] <- rbinom(dim(X)[1], 1, p)
@@ -595,6 +598,7 @@
         out[, s] <- tmp
       }
       if (distribution == "gaussian") {
+        sp.int <- NULL
         tmp <- rep(1e+05, dim(X)[1])
         while (max(tmp, na.rm = TRUE) > 50000 | sum(tmp) < 100) {
           theta[g, 1] <- runif(1, 100, 500)
@@ -610,13 +614,13 @@
     colnames(out) <- all.vars(form_org)[1:S]
     out <- as.matrix(out)
     dat <- as.matrix(dat)
-    if (distribution == "negbin")
-      return(list(species_data = out, covariate_data = dat, group = group, pi = pi, sp.int = sp.int))
-    if (distribution == "tweedie")
-      return(list(species_data = out, covariate_data = dat, group = group, pi = pi, sp.int = sp.int))
-    if (distribution == "poisson")
-      return(list(species_data = out, covariate_data = dat, group = group, pi = pi, sp.int = sp.int))
-    list(species_data = out, covariate_data = dat, group = group, pi = pi)
+    # if (distribution == "negative_binomial")
+    return(list(species_data = out, covariate_data = dat, group = group, pi = pi, sp.int = sp.int))
+    # if (distribution == "tweedie")
+      # return(list(species_data = out, covariate_data = dat, group = group, pi = pi, sp.int = sp.int))
+    # if (distribution == "poisson")
+      # return(list(species_data = out, covariate_data = dat, group = group, pi = pi, sp.int = sp.int))
+    # list(species_data = out, covariate_data = dat, group = group, pi = pi)
   }
 
 #'@rdname species_mix-class
