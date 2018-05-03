@@ -145,7 +145,8 @@ void calc_mu_fits(vector<double> &fits, const sam_bernoulli_sp_ints_params &para
 void calc_bernoulli_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam_bernoulli_sp_ints_data &dat);
 double calc_bernoulli_loglike_S(vector<double> &fits, vector<double> const &pis, const sam_bernoulli_sp_ints_data &dat, int s);
 double log_bernoulli(const double &y, const double &mu);
-double inv_logit(double x);
+double dmu_deta_bernoulli(const double &mu);
+double invLogit_bern(const double eta);
 void additive_logistic_bernoulli_sp_ints(vector< double > &x,int inv, int G);
 
 // functions for calculating the gradient.

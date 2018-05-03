@@ -146,13 +146,13 @@ void calc_mu_fits(vector<double> &fits, const sam_bernoulli_sp_ints_params &para
 	//calcualte the G*S*n fits
 	for( int g=0; g<dat.nG; g++){
 		for( int s=0; s<dat.nS; s++){
-			lps.at(MATREF2D(g,s,dat.nG)) = params.Alpha[s]; 
+			//lps.at(MATREF2D(g,s,dat.nG)) = params.Alpha[s]; 
 			for( int i=0; i<dat.nObs; i++){
-				lp = lps.at(MATREF2D(g,s,dat.nG)) + dat.offset[i];
+				lp = params.Alpha[s] + dat.offset[i];
 					for( int j=0;j<dat.nP; j++){
 						lp += params.Beta[MATREF2D(g,j,(dat.nG))] * dat.X[MATREF2D(i,j,dat.nObs)];
 				   	}
-				fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inv_logit(lp);
+				fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = invLogit_bern(lp);
 			}
 		}
 	}
@@ -162,10 +162,13 @@ void calc_mu_fits(vector<double> &fits, const sam_bernoulli_sp_ints_params &para
 
 void calc_bernoulli_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam_bernoulli_sp_ints_data &dat){
 	
+	double tmp_ll;
     //calcualte the G*S log conditional densities
 	for(int s=0; s<dat.nS; s++){
 		for( int g=0; g<dat.nG; g++){
 			for(int i=0; i<dat.nObs; i++){
+				//tmp_ll = 
+				//tmp_ll = dbinom(dat.y[MATREF2D(i,s,dat.nObs)], 1, fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), 1);
 				loglSG.at(MATREF2D(g,s,dat.nG)) += log_bernoulli(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 				}
 			}
@@ -199,15 +202,16 @@ double log_bernoulli( const double &y, const double &mu){
 	if( y==1){
 		tmp = log( mu);
 		return( tmp);
-	}
+	} 
 	tmp = log( 1-mu);
 	return( tmp);
+	
 }
 
 //inserve logistic link function
-double inv_logit( double x){
+double invLogit_bern(const double eta){
 	double tmp;
-	tmp = exp( x);
+	tmp = exp(eta);
 	tmp = tmp / (1+tmp);
 	return( tmp);
 }
@@ -237,7 +241,7 @@ void additive_logistic_bernoulli_sp_ints(vector< double > &x, int inv, int G){
 
 }
 
-// Gradient functions for IPPM.
+// Gradient functions for bernoulli.
 // These are all the functions for the gradient function and hopefully they should run and help estimate the derivates.
 // This is the wrapper for vmmin and it takes the sam_bernoulli_sp_ints_all_classes to
 void gradient_function_bernoulli_sp_ints(int n, double *par, double *gr, void *ex){
@@ -304,18 +308,29 @@ double log_bernoulli_deriv(const double &y, const double &mu){
 	return( log( negOne));	//to give an error
 }
 
+double dmu_deta_bernoulli(const double &mu){
+	
+	double tmp;
+	tmp = mu;
+	tmp *= (1-mu);
+	return(tmp);
+	
+}
+
+
 void calc_dlog_dalpha(vector<double> &dlda, vector<double> const &mus, const sam_bernoulli_sp_ints_data &dat){
 
 	// dlda = dlogalpha passed as fits.dflogdalpha(dat.nG*dat.nS, dat.NAnum) from function call
 	// mus = all the fitted values.
-	double tmp_lbd;
+	double tmp_lbd, tmp_dmde;
 
 	for(int g=0; g<dat.nG; g++){
 		for(int s=0;s<dat.nS; s++){
 			for(int i=0; i<dat.nObs; i++){
 				// this is the tmp log bernoulli derivative (lbd)
 				tmp_lbd = log_bernoulli_deriv(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
-				dlda.at(MATREF2D(g,s,dat.nG)) += (tmp_lbd * mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * 1);
+				tmp_dmde = dmu_deta_bernoulli(mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
+				dlda.at(MATREF2D(g,s,dat.nG)) += (tmp_lbd * tmp_dmde * 1);
 			}
 		}
 	}
@@ -323,15 +338,16 @@ void calc_dlog_dalpha(vector<double> &dlda, vector<double> const &mus, const sam
 
 void calc_dlog_dbeta(vector<double> &dldb, vector<double> const &mus, const sam_bernoulli_sp_ints_data &dat){
 
-	double tmp_lbd;
+	double tmp_lbd, tmp_dmde;
 
 	for(int g=0; g<dat.nG; g++){
 		for(int s=0;s<dat.nS; s++){
 			for(int i=0; i<dat.nObs; i++){
 					// calc the log bernoulli deriv
 					tmp_lbd = log_bernoulli_deriv(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
+					tmp_dmde = dmu_deta_bernoulli(mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 						for(int j=0; j<dat.nP; j++){
-							dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) +=	(tmp_lbd * mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * dat.X[MATREF2D(i,j,dat.nObs)]);
+							dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) +=	(tmp_lbd * tmp_dmde * dat.X[MATREF2D(i,j,dat.nObs)]);
 				}
 			}
 		}
