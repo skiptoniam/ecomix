@@ -146,9 +146,9 @@ void calc_mu_fits(vector<double> &fits, const sam_bernoulli_sp_ints_params &para
 	//calcualte the G*S*n fits
 	for( int g=0; g<dat.nG; g++){
 		for( int s=0; s<dat.nS; s++){
-			//lps.at(MATREF2D(g,s,dat.nG)) = params.Alpha[s]; 
+			lps.at(MATREF2D(g,s,dat.nG)) = params.Alpha[s]; 
 			for( int i=0; i<dat.nObs; i++){
-				lp = params.Alpha[s] + dat.offset[i];
+				lp = lps.at(MATREF2D(g,s,dat.nG)) + dat.offset[i];
 					for( int j=0;j<dat.nP; j++){
 						lp += params.Beta[MATREF2D(g,j,(dat.nG))] * dat.X[MATREF2D(i,j,dat.nObs)];
 				   	}
