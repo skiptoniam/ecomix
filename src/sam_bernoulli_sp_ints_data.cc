@@ -3,7 +3,7 @@
 sam_bernoulli_sp_ints_data::sam_bernoulli_sp_ints_data(){};
 sam_bernoulli_sp_ints_data::~sam_bernoulli_sp_ints_data(){};
 
-void sam_bernoulli_sp_ints_data::setVals( SEXP &Ry, SEXP &RX, SEXP &Roffset, 
+void sam_bernoulli_sp_ints_data::setVals( SEXP &Ry, SEXP &RX, SEXP &Roffset, SEXP &Rwts,
                              SEXP &RS, SEXP &RG, SEXP &Rp, SEXP &RnObs){
 
 	nS = *(INTEGER( RS));
@@ -14,6 +14,7 @@ void sam_bernoulli_sp_ints_data::setVals( SEXP &Ry, SEXP &RX, SEXP &Roffset,
 	y = REAL( Ry);
 	X = REAL( RX);
 	offset = REAL( Roffset);
+	wts = REAL( Rwts);
 
 }
 

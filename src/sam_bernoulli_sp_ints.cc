@@ -7,21 +7,21 @@
 // this is the external C call which will be called by R using .Call.
 
 extern "C" {
-	SEXP species_mix_bernoulli_sp_ints(SEXP Ry, SEXP RX, SEXP Roffset, 
+	SEXP species_mix_bernoulli_sp_ints(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rwts,
 									   SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs,
 									   SEXP Ralpha, SEXP Rbeta, SEXP Reta, 
 									   SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RgetScores, SEXP Rscores,
 									   SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
-									   SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv,
+									   SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
 									   SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly){
 
 	sam_bernoulli_sp_ints_all_classes all;
 
 	//initialise the data structures -- they are mostly just pointers to REAL()s...
-	all.data.setVals(Ry, RX, Roffset, RnS, RnG, Rp, RnObs);	//read in the data
+	all.data.setVals(Ry, RX, Roffset, Rwts, RnS, RnG, Rp, RnObs);	//read in the data
 	all.params.setVals(all.data, Ralpha, Rbeta, Reta);	//read in the parameters
 	all.derivs.setVals(all.data, RderivsAlpha, RderivsBeta, RderivsEta, RgetScores, Rscores);
-	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv);
+	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv, Rprintparams);
 	all.fits.initialise(all.data.nObs, all.data.nG, all.data.nS, all.data.nP, 0);
 
 	double logl = -999999;
@@ -58,11 +58,31 @@ extern "C" {
 	int *tmpconv = INTEGER( Rconv);
 	tmpconv[0] = all.contr.ifail;
 	//the logl
-	SEXP Rres;	//R object to return -- it is the logl!
-	Rres = PROTECT( allocVector(REALSXP,1));
-    REAL( Rres)[0] = logl;
+	//SEXP Rres;	//R object to return -- it is the logl!
+	//Rres = PROTECT( allocVector(REALSXP,1));
+    //REAL( Rres)[0] = logl;
+    //UNPROTECT(1);
+	//return( Rres);
+    /* Construct named result list from variables containing the results */
+    SEXP Rlogl = PROTECT(allocVector(REALSXP, 1));
+    REAL(Rlogl)[0] = logl;
+    SEXP Ralpha_est = PROTECT(allocVector(REALSXP, all.data.nS));
+    for( int s=0; s<all.data.nS; s++) REAL(Ralpha_est)[s] = all.params.Alpha[s];
+	SEXP Rbeta_est = PROTECT(allocVector(REALSXP, all.data.nG*all.data.nP));
+	for( int i=0; i<((all.data.nG*all.data.nP)); i++) REAL(Rbeta_est)[i] = all.params.Beta[i];
+	SEXP Reta_est =PROTECT(allocVector(REALSXP, all.data.nG-1));
+	for( int g=0; g<(all.data.nG-1);g++) REAL(Reta_est)[g] = all.params.Eta[g];
+	
+	const char *names[] = {"logl", "alpha", "beta", "eta", ""};                   /* note the null string */
+	SEXP Rres = PROTECT(mkNamed(VECSXP, names));  /* list of length 3 */
+	SET_VECTOR_ELT(Rres, 0, Rlogl);       /* numeric(1) */ 
+	SET_VECTOR_ELT(Rres, 1, Ralpha_est);   /* numeric(<some length>) */ 
+	SET_VECTOR_ELT(Rres, 2, Rbeta_est);    /* integer(1) */
+	SET_VECTOR_ELT(Rres, 3, Reta_est);
 	UNPROTECT(1);
-	return( Rres);
+	return (Rres);
+    
+
 
   }
 }
@@ -95,7 +115,7 @@ double sam_bernoulli_sp_ints_optimise( sam_bernoulli_sp_ints_all_classes &all){
 	all.params.update( vmminParams, all.data);
 	gradient_function_bernoulli_sp_ints(all.params.nTot, vmminParams, vmminGrad, &all);
 	all.derivs.update( vmminGrad, all.data);
-    all.params.printParms(all.data);
+    if(all.contr.printparams==1)all.params.printParms(all.data);
 
 	return(vmminLogl[0]);
 }
@@ -169,7 +189,7 @@ void calc_bernoulli_loglike_SG(vector<double> &loglSG, vector<double> &fits, con
 			for(int i=0; i<dat.nObs; i++){
 				//tmp_ll = 
 				//tmp_ll = dbinom(dat.y[MATREF2D(i,s,dat.nObs)], 1, fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), 1);
-				loglSG.at(MATREF2D(g,s,dat.nG)) += log_bernoulli(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
+				loglSG.at(MATREF2D(g,s,dat.nG)) += log_bernoulli(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)))*dat.wts[i];
 				}
 			}
 		}
@@ -328,7 +348,7 @@ void calc_dlog_dalpha(vector<double> &dlda, vector<double> const &mus, const sam
 		for(int s=0;s<dat.nS; s++){
 			for(int i=0; i<dat.nObs; i++){
 				// this is the tmp log bernoulli derivative (lbd)
-				tmp_lbd = log_bernoulli_deriv(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
+				tmp_lbd = log_bernoulli_deriv(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)))*dat.wts[i];
 				tmp_dmde = dmu_deta_bernoulli(mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 				dlda.at(MATREF2D(g,s,dat.nG)) += (tmp_lbd * tmp_dmde * 1);
 			}
@@ -344,7 +364,7 @@ void calc_dlog_dbeta(vector<double> &dldb, vector<double> const &mus, const sam_
 		for(int s=0;s<dat.nS; s++){
 			for(int i=0; i<dat.nObs; i++){
 					// calc the log bernoulli deriv
-					tmp_lbd = log_bernoulli_deriv(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
+					tmp_lbd = log_bernoulli_deriv(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)))*dat.wts[i];
 					tmp_dmde = dmu_deta_bernoulli(mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 						for(int j=0; j<dat.nP; j++){
 							dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) +=	(tmp_lbd * tmp_dmde * dat.X[MATREF2D(i,j,dat.nObs)]);

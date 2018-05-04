@@ -558,7 +558,7 @@
     for (s in 1:S) {
       g <- ceiling(runif(1) * k)
       if (distribution == "bernoulli") {
-        theta[g, 1] <- runif(1, -5, 5)
+        theta[g, 1] <- runif(1, -3, 3)
         sp.int[s] <- theta[g, 1]
         lgtp <- X %*% theta[g, ]
         p <- exp(lgtp)/(1 + exp(lgtp))

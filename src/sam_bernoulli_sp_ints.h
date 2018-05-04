@@ -23,7 +23,7 @@ class sam_bernoulli_sp_ints_data {
 	public:
 		sam_bernoulli_sp_ints_data();
 		~sam_bernoulli_sp_ints_data();
-		void setVals( SEXP &Ry, SEXP &RX, SEXP &Roffset, SEXP &RS, SEXP &RG, SEXP &Rp, SEXP &RnObs);
+		void setVals( SEXP &Ry, SEXP &RX, SEXP &Roffset, SEXP &Rwts, SEXP &RS, SEXP &RG, SEXP &Rp, SEXP &RnObs);
 		//bool isDispersion() const;
 		//bool doOptiDisp() const;
 		void printVals( int printX, int printy);
@@ -36,7 +36,8 @@ class sam_bernoulli_sp_ints_data {
 
 		double 	*X, //the design matrix in vector form (nObs x nP)
 				*y,	//the outcome matrix, in vector form (nObs x nS)
-				*offset; //the offset vector (length nObs)
+				*offset, //the offset vector (length nObs)
+				*wts; //a vector of weights (length nObs) - useful for BB.
 };
 
 // Doh' I forgot to add this!
@@ -82,9 +83,9 @@ class sam_bernoulli_sp_ints_opt_contr {
 	public:
 		sam_bernoulli_sp_ints_opt_contr();
 		~sam_bernoulli_sp_ints_opt_contr();
-		void setVals( const SEXP &Rmaxit, const SEXP &Rtrace, const SEXP &RnReport, const SEXP &Rabstol, const SEXP &Rreltol, SEXP &Rconv);
+		void setVals( const SEXP &Rmaxit, const SEXP &Rtrace, const SEXP &RnReport, const SEXP &Rabstol, const SEXP &Rreltol, SEXP &Rconv, const SEXP &Rprintparam);
 
-		int maxitQN, traceQN, nReport, fnKount, grKount, ifail, *conv;
+		int maxitQN, traceQN, nReport, fnKount, grKount, ifail, *conv, printparams;
 		double abstol, reltol, denomEps;
 };
 
@@ -125,12 +126,12 @@ class sam_bernoulli_sp_ints_all_classes
 /////////////	Function Definitions	////////////////
 ////////////////////////////////////////////////////////
 
-extern "C" SEXP species_mix_bernoulli_cpp(SEXP Ry, SEXP RX, SEXP Roffset,
+extern "C" SEXP species_mix_bernoulli_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rwts,
 									 SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs,
 									 SEXP Ralpha, SEXP Rbeta, SEXP Reta,
 									 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RgetScores, SEXP Rscores,
 									 SEXP Rpis, SEXP Rmus, SEXP logliS, SEXP logliSG,
-									 SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv,
+									 SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
 									 SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly);
 
 
