@@ -182,15 +182,13 @@ void calc_mu_fits(vector<double> &fits, const sam_bernoulli_sp_ints_params &para
 
 void calc_bernoulli_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam_bernoulli_sp_ints_data &dat){
 	
-	double tmp_ll;
     //calcualte the G*S log conditional densities
 	for(int s=0; s<dat.nS; s++){
 		for( int g=0; g<dat.nG; g++){
 			for(int i=0; i<dat.nObs; i++){
-				//tmp_ll = 
-				//tmp_ll = dbinom(dat.y[MATREF2D(i,s,dat.nObs)], 1, fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), 1);
-				loglSG.at(MATREF2D(g,s,dat.nG)) += log_bernoulli(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)))*dat.wts[i];
+				loglSG.at(MATREF2D(g,s,dat.nG)) += log_bernoulli(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));//*dat.wts[i];
 				}
+				loglSG.at(MATREF2D(g,s,dat.nG)) = loglSG.at(MATREF2D(g,s,dat.nG))*dat.wts[s]; //fix this up.
 			}
 		}
 }
@@ -348,10 +346,11 @@ void calc_dlog_dalpha(vector<double> &dlda, vector<double> const &mus, const sam
 		for(int s=0;s<dat.nS; s++){
 			for(int i=0; i<dat.nObs; i++){
 				// this is the tmp log bernoulli derivative (lbd)
-				tmp_lbd = log_bernoulli_deriv(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)))*dat.wts[i];
+				tmp_lbd = log_bernoulli_deriv(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));//*dat.wts[i];
 				tmp_dmde = dmu_deta_bernoulli(mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 				dlda.at(MATREF2D(g,s,dat.nG)) += (tmp_lbd * tmp_dmde * 1);
 			}
+			dlda.at(MATREF2D(g,s,dat.nG)) = dlda.at(MATREF2D(g,s,dat.nG))*dat.wts[s];
 		}
 	}
 }
@@ -364,12 +363,15 @@ void calc_dlog_dbeta(vector<double> &dldb, vector<double> const &mus, const sam_
 		for(int s=0;s<dat.nS; s++){
 			for(int i=0; i<dat.nObs; i++){
 					// calc the log bernoulli deriv
-					tmp_lbd = log_bernoulli_deriv(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)))*dat.wts[i];
+					tmp_lbd = log_bernoulli_deriv(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));//*dat.wts[i];
 					tmp_dmde = dmu_deta_bernoulli(mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 						for(int j=0; j<dat.nP; j++){
-							dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) +=	(tmp_lbd * tmp_dmde * dat.X[MATREF2D(i,j,dat.nObs)]);
+							dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) += (tmp_lbd * tmp_dmde * dat.X[MATREF2D(i,j,dat.nObs)]);
 				}
 			}
+		for(int j=0; j<dat.nP; j++){
+				dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) = dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP))*dat.wts[s];	
+			}		
 		}
 	}
 
