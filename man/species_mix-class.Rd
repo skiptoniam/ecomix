@@ -14,7 +14,7 @@ species_mix(formula = NULL, data, n_mixtures = 3,
   distribution = "bernoulli", offset = NULL, weights = NULL,
   control = species_mix.control(), inits = NULL, standardise = FALSE)
 
-species_mix.fit(y, X, G, weights, offset, distribution, control,
+species_mix.fit(y, X, G, weights, offset, distribution_numeric, control,
   y_is_na = NULL)
 
 species_mix.control(maxit = 1000, quiet = FALSE, trace = 1, cores = 1,

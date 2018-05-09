@@ -148,10 +148,10 @@
 
   # use wrapper to run Piers' models.
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
-  tmp <- fit_species_mix_wrapper(y=y, X=X, weights=wts, offset=offy, distribution_numeric=disty,
-                                 n_mixtures=n_mixtures, inits = inits, control=control,
-                                 y_is_na=y_is_na, estimate_variance=control$est_var)
-  c("archetype",disty)
+  tmp <- fit_species_mix_wrapper(formula = formula, y=y, X=X, weights=wts, offset=offy,
+                                 distribution_numeric=disty, n_mixtures=n_mixtures,
+                                 inits = inits, control=control, y_is_na=y_is_na)
+  c("archetype",disty.cases[disty])
   return(tmp)
 }
 
@@ -280,19 +280,27 @@
 #'@param offset this is a vector of site specific offsets, this might be something like area sampled at sites.
 #'@param control this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.
 #'@param y_is_na This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!
-"species_mix.fit" <- function(y, X, G, weights, offset, distribution, control, y_is_na=NULL){
+"species_mix.fit" <- function(y, X, G, weights, offset, distribution_numeric, control, y_is_na=NULL){
 
-  if(distribution == 2) tmp <- fitmix_bernoulli_sp(y, X, G, weights, offset, control)
-  if(distribution == 3) tmp <- fitmix_poisson(y, X, G, weights, offset, control, y_is_na)
-  if(distribution == 4) tmp <- fitmix_ippm(y, X, G, weights, offset, control, y_is_na)
-  else stop('current only "bernoulli_sp", "poisson" & "ippm" distribution is set up to use "species_mix.fit"')
+ disty.cases <- c("bernoulli","bernoulli_sp","poisson","ippm",
+                   "negative_binomial","tweedie","gaussian")
+ distribution <- disty.cases[distribution_numeric]
+
+ if(!any(distribution==c('bernoulli_sp','poisson','ippm')))stop('current only "bernoulli_sp", "poisson" & "ippm" distribution is set up to use "species_mix.fit"')
+ tmp <- switch(distribution,
+               bernoulli_sp = fitmix_bernoulli_sp(y, X, G, weights, offset, control),
+               poisson = fitmix_poisson(y, X, G, weights, offset, control, y_is_na),
+               ippm = fitmix_ippm(y, X, G, weights, offset, control, y_is_na))
+  # if(distribution == 2) tmp <- fitmix_bernoulli_sp(y, X, G, weights, offset, control)
+  # if(distribution == 3) tmp <- fitmix_poisson(y, X, G, weights, offset, control, y_is_na)
+  # if(distribution == 4) tmp <- fitmix_ippm(y, X, G, weights, offset, control, y_is_na)
   return(tmp)
 }
 
 "fit_species_mix_wrapper" <- function(formula, y, X, weights, offset, distribution_numeric,
-                                      n_mixtures, inits, control, y_is_na, estimate_variance){
+                                      n_mixtures, inits, control, y_is_na){
 
-  if(any(distribution_numeric!=c(2,6))){
+  if(any(distribution_numeric==c(1,5,6,7))){
     sp.form <- update(form,obs~1+.)
     sp.data <- y
     covar.data <- X
@@ -301,28 +309,26 @@
     em_prefit <- control$em_prefit
     em_steps <- control$em_steps
     em_refit <- control$em_refit
-    est_var <- control$estimate_variance
+    est_var <- control$est_var
     trace <- control$trace
     r1 <- control$r1
     cores <- control$cores
-
     if(distribution_numeric==1) fit <- species_mix_bernoulli(sp.form, sp.data, covar.data, G,
                                                              pars, em_prefit, em_steps, em_refit ,est_var, residuals, trace,r1)
-    if(distribution_numeric==2) fit <- species_mix.fit(y=y, X=X, weights=wts, offset=offy, distribution=2,
-                                                       G=n_mixtures, control=control, y_is_na=y_is_na, estimate_variance=control$est_var)
-    if(distribution_numeric==3) fit <- species_mix.fit(y=y, X=X, weights=wts, offset=offy, distribution=3,
-                                                       G=n_mixtures, control=control, y_is_na=y_is_na, estimate_variance=control$est_var)
-    if(distribution_numeric==4) fit <- species_mix.fit(y=y, X=X, weights=wts, offset=offy, distribution=4,
-                                                       G=n_mixtures, control=control, y_is_na=y_is_na, estimate_variance=control$est_var)
     if(distribution_numeric==5) fit <- species_mix_nbinom(sp.form, sp.data, covar.data, G,
                                                           pars, em_prefit, em_steps, em_refit ,est_var, residuals, trace)
     if(distribution_numeric==6) fit <- species_mix_tweedie(sp.form, sp.data, covar.data, G,
                                                            pars, em_prefit, em_steps, em_refit ,est_var, residuals, trace)
     if(distribution_numeric==7) fit <- species_mix_gaussian(sp.form, sp.data, covar.data, G,
                                                             pars, em_prefit, em_steps, em_refit ,est_var, residuals, trace)
+  } else {
 
-    fit$formula <- formula
+  fit <- species_mix.fit(y=y, X=X, weights=wts, offset=offy, distribution=distribution_numeric,
+                           G=n_mixtures, control=control, y_is_na=y_is_na)
   }
+
+  fit$formula <- formula
+
   return(fit)
 }
 
@@ -3231,7 +3237,7 @@
 }
 
 "get_weights_sam"  <- function(mf,S,distribution){
-  if(distribution=='poisson'|distribution=='ippm'){
+  if(distribution=='ippm'){
     sp_names <- colnames(model.response(mf))
     wts <- model.weights(mf)
     if(!is.null(wts)){
@@ -3240,7 +3246,7 @@
       wts <- matrix(1,nrow(mf),S)
     }
   } else {
-    wts <- rep(1, nrow(mf))
+    wts <- rep(1, S)
   }
   return(wts)
 }
@@ -3731,9 +3737,9 @@ update_sp_coefs <- function(old, new, kappa=1){
 fitmix_EM_bernoulli_sp <- function(y, X, G, offy, wts, control){
 
   S <- ncol(y)
-  cat("Fitting Group", G, "\n")
-  if (control$trace)
-    cat("Iteration | LogL \n")
+  # cat("Fitting Group", G, "\n")
+  # if (control$trace)
+  #   cat("Iteration | LogL \n")
   pis <- rep(0, G)
   ite <- 1
   logl_old <- -99999999
@@ -3787,9 +3793,9 @@ fitmix_EM_bernoulli_sp <- function(y, X, G, offy, wts, control){
     logl_old <- logl_new
     logl_new <- get_incomplete_logl_bernoulli_sp_function(pi, first_fit, fits, G, S)
 
-    if (control$trace){
-      cat(ite, "  |  ", logl_new, "\n")
-    }
+    # if (control$trace){
+    #   cat(ite, "  |  ", logl_new, "\n")
+    # }
     ite <- ite + 1
   }
 
@@ -3892,7 +3898,7 @@ fitmix_bernoulli_sp <- function(y, X, G, wts, offy, control){
   }
 
   # optimise using c++ based on either starting values.
-  tmp <- bernoulli_sp_optimise(y, X, offy, wts, G, S, start_vals, control)
+  tmp <- suppressWarnings(bernoulli_sp_optimise(y, X, offy, wts, G, S, start_vals, control))
 
   return(tmp)
 
