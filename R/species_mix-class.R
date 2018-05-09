@@ -1,31 +1,67 @@
 #' @title species_mix objects
 #' @rdname species_mix-class
 #' @name species_mix
-#' @description Fits a finite mixture model to identify species archetype models (SAMs).
-#' @details species_mix is used to fit mixtures of glms to multivariate species data.
-#' The function uses BFGS to optimise the mixture likelihood. There is the option to use EM get appropriate starting parameters.
-#' `species_mix` acts as a wrapper for fitmix.cpp that allows for easier data input.
-#' The data frames are merged into the appropriate format for the use in fitmix.cpp.
-#' Minima is found using vmmin (BFGS) and the gradients are calculated using CPPAD (auto differentiation).
-#' Currently 'bernoulli', 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative_binomial' and 'tweedie' distributions can be fitted using the species_mix function.
-#' @param formula an object of class "formula" (or an object that can be coerced to that class).
-#' The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' data. The type of reponse data will help specify the type of error distribution to be used. The dependent variables (the right hind side) of this formula specifies the dependence of the species archetype probabilities on covariates. For all model the basic formula structure follows something like this: cbind(spp1,spp2,spp3)~1+temperature+rainfall
-#' @param model_data a matrix of dataframe which contains the 'species_data' matrix, a const and the covariates in the strucute of spp1,spp2,spp3,const,temperature, rainfall. dims of matirx should be nsites*(nspecies+const+covariates).
+#' @description Fits a finite mixture model to identify species archetype
+#' models (SAMs).
+#' @details species_mix is used to fit mixtures of glms to multivariate
+#' species data. The function uses BFGS to optimise the mixture likelihood.
+#' There is the option to use EM algorithm to get appropriate starting parameters.
+#' `species_mix` acts as a wrapper for fitmix.cpp that allows for easier data
+#' input. The data frames are merged into the appropriate format for the use
+#' in fitmix.cpp. Minima is found using vmmin (BFGS). Currently 'bernoulli',
+#' 'bernoulli_spp' (bernoulli mixture model with independent species
+#' intercepts), 'poisson', 'ippm' (inhomogenous Poisson point process),
+#' 'negative_binomial' and 'tweedie' distributions can be fitted using the
+#' species_mix function.
+#' @param formula an object of class "formula" (or an object that can be
+#' coerced to that class). The response variable (left hand side of the
+#' formula) needs to be either 'presence', 'occurrence', 'abundance',
+#' 'biomass' or 'quantity' data. The type of reponse data will help specify
+#' the type of error distribution to be used. The dependent variables
+#' (the right hind side) of this formula specifies the dependence of the
+#' species archetype probabilities on covariates. For all model the basic
+#' formula structure follows something like this:
+#' cbind(spp1,spp2,spp3)~1+temperature+rainfall
+#' @param model_data a matrix of dataframe which contains the 'species_data'
+#' matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
+#' const, temperature, rainfall. dims of matirx should be
+#' nsites*(nspecies+const+covariates).
 #' @param n_mixtures The number of mixing components (groups) to fit.
-#' @param distribution The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "ippm" (inhomogeneous point process), "negative_binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data.
-#' @param offset a numeric vector of length nrow(data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the SAM.
-#' @param weights a numeric vector of length nrow(data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1. For ippm distribution - weights must be a nrow(data)*n_species matrix, which provides a species-specific background weights used to estimate the species-specific marginal likelihood.
-#' @param control a list of control parameters for optimisation and calculation. See details. From \code{species_mix.control} for details on optimistaion parameters.
-#' @param inits NULL a numeric vector that provides approximate starting values for species_mix coefficents. These are distribution specific, but at a minimum you will need pis (additive_logitic transformed), alphas (intercepts) and betas (mixing coefs).
+#' @param distribution The family of statistical distribution to use within
+#' the ecomix models. a  choice between "bernoulli", "bernoulli_sp", "poisson",
+#' "ippm" (inhomogeneous point process), "negative_binomial", "tweedie"
+#' and "gaussian" distributions are possible and applicable to specific types
+#' of data.
+#' @param offset a numeric vector of length nrow(data) (n sites) that is included into
+#' the model as an offset. It is included into the conditional part of the model
+#' where conditioning is performed on the SAM.
+#' @param weights a numeric vector of length ncol(Y) (n species) that is used as weights
+#'  in the log-likelihood calculations. If NULL (default) then all weights are
+#'  assumed to be identically 1. Because we are estimating the log-likelihood
+#'  over species (rather than sites), the weights should be a vector n species
+#'  long. The exception is under the use of the 'ippm' distribution where
+#'  weights must be a nrow(data)*n_species matrix, which provides a
+#'  species-specific background weights used to estimate the species-specific
+#'  marginal likelihoods.
+#' @param control a list of control parameters for optimisation and calculation.
+#' See details. From \code{species_mix.control} for details on optimistaion
+#' parameters.
+#' @param inits NULL a numeric vector that provides approximate starting values
+#' for species_mix coefficents. These are distribution specific, but at a
+#' minimum you will need pis (additive_logitic transformed), alphas
+#' (intercepts) and betas (mixing coefs).
 #' @export
 #' @examples
 #' \dontrun{
-#' form <- as.formula(paste0("cbind(",paste(paste0('spp',1:20),collapse = ','),")~1+x"))
+#' form <- as.formula(paste0("cbind(",paste(paste0('spp',1:20),
+#'                      collapse = ','),")~1+x"))
 #' theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9),4,2,byrow=TRUE)
 #' dat <- data.frame(y=rep(1,100),x=runif(100,0,2.5))
 #' simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
-#' model_data <- make_mixture_data(species_data = simulated_data$species_data, covariate_data = simulated_data$covariate_data)
-#' fm_species_mix <- species_mix(form, data=model_data, distribution='bernoulli', n_mixtures=5)
+#' model_data <- make_mixture_data(species_data = simulated_data$species_data,
+#'                                 covariate_data = simulated_data$covariate_data)
+#' fm_species_mix <- species_mix(form, data=model_data,
+#'                               distribution='bernoulli', n_mixtures=5)
 #' }
 
 
@@ -80,8 +116,8 @@
   X <- model.matrix(formula,mf)
 
   #get distribution
-  disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie","gaussian","ippm")
-  # disty.cases <- c("bernoulli","negative_binomial","tweedie","normal","poisson","ippm")#new disty.cases for sams.
+  disty.cases <- c("bernoulli","bernoulli_sp","poisson","ippm",
+                   "negative_binomial","tweedie","gaussian")
   disty <- get_distribution_sam(disty.cases, distribution)
 
   # get offsets and weights
@@ -90,9 +126,12 @@
 
   if(distribution=='ippm'){
     if(!all(colnames(y)%in%colnames(wts)))
-      stop('When modelling a inhomogenous poisson point process model, weights colnames must match species data colnames')
+      stop('When modelling a inhomogenous poisson point process model,
+           weights colnames must match species data colnames')
     if(any(dim(y)!=dim(wts)))
-      stop('When modelling a inhomogenous poisson point process model, weights needs to have the same dimensions at the species data - n_sites x n_species')
+      stop('When modelling a inhomogenous poisson point process model,
+           weights needs to have the same dimensions at the
+           species data - n_sites x n_species')
   }
 
   s.means <- NULL
@@ -109,7 +148,9 @@
 
   # use wrapper to run Piers' models.
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
-  tmp <- fit_species_mix_wrapper(y=y, X=X, weights=wts, offset=offy, distribution_numeric=disty, n_mixtures=n_mixtures, inits = inits, control=control, y_is_na=y_is_na, estimate_variance=control$est_var)
+  tmp <- fit_species_mix_wrapper(y=y, X=X, weights=wts, offset=offy, distribution_numeric=disty,
+                                 n_mixtures=n_mixtures, inits = inits, control=control,
+                                 y_is_na=y_is_na, estimate_variance=control$est_var)
   c("archetype",disty)
   return(tmp)
 }
@@ -440,7 +481,8 @@
 
 "get_distribution_sam" <- function( disty.cases, dist1) {
   error.msg <- paste( c( "Distribution not implemented. Options are: ", disty.cases, "-- Exitting Now"), collapse=" ")
-  disty <- switch( dist1, "bernoulli" = 1, "poisson" = 2, "ippm"=3, "negative_binomial" = 4, "tweedie" = 5, "gaussian" = 6,{stop( error.msg)} )
+  disty <- switch( dist1, "bernoulli" = 1, "bernoulli_sp" = 2, "poisson" = 3, "ippm" = 4,
+                   "negative_binomial" = 5, "tweedie" = 6, "gaussian" = 7,{stop( error.msg)} )
   return( disty)
 }
 
