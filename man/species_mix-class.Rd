@@ -17,9 +17,14 @@ species_mix(formula = NULL, data, n_mixtures = 3,
 species_mix.fit(y, X, G, weights, offset, distribution, control,
   y_is_na = NULL)
 
-species_mix.control(maxit = 500, quiet = FALSE, trace = 1,
-  reltol = reltol_fun, cores = 4, em_prefit = TRUE, em_steps = 3,
-  em_refit = 1, est_var = FALSE, ...)
+species_mix.control(maxit = 1000, quiet = FALSE, trace = 1, cores = 1,
+  est_var = FALSE, init_method = "kmeans", init_sd = 1,
+  em_prefit = TRUE, em_steps = 3, em_refit = 3, em_reltol = reltol_fun,
+  maxit_cpp = 1000, trace_cpp = 0, nreport_cpp = 1,
+  abstol_cpp = sqrt(.Machine$double.eps),
+  reltol_cpp = sqrt(.Machine$double.eps), conv_cpp = 1,
+  printparams_cpp = 0, optimise_cpp = 1, loglOnly_cpp = 0,
+  derivOnly_cpp = 0, getscores_cpp = 0, ...)
 
 species_mix.predict(object, new_obs, ...)
 
@@ -30,20 +35,45 @@ species_mix_estimate_groups(formula = NULL, data, n_mixtures = 1:10,
   control = species_mix.control(), inits = NULL, standardise = FALSE)
 }
 \arguments{
-\item{formula}{an object of class "formula" (or an object that can be coerced to that class).
-The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' data. The type of reponse data will help specify the type of error distribution to be used. The dependent variables (the right hind side) of this formula specifies the dependence of the species archetype probabilities on covariates. For all model the basic formula structure follows something like this: cbind(spp1,spp2,spp3)~1+temperature+rainfall}
+\item{formula}{an object of class "formula" (or an object that can be
+coerced to that class). The response variable (left hand side of the
+formula) needs to be either 'presence', 'occurrence', 'abundance',
+'biomass' or 'quantity' data. The type of reponse data will help specify
+the type of error distribution to be used. The dependent variables
+(the right hind side) of this formula specifies the dependence of the
+species archetype probabilities on covariates. For all model the basic
+formula structure follows something like this:
+cbind(spp1,spp2,spp3)~1+temperature+rainfall}
 
 \item{n_mixtures}{The number of mixing components (groups) to fit.}
 
-\item{distribution}{The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "ippm" (inhomogeneous point process), "negative_binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data.}
+\item{distribution}{The family of statistical distribution to use within
+the ecomix models. a  choice between "bernoulli", "bernoulli_sp", "poisson",
+"ippm" (inhomogeneous point process), "negative_binomial", "tweedie"
+and "gaussian" distributions are possible and applicable to specific types
+of data.}
 
-\item{offset}{a numeric vector of length nrow(data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the SAM.}
+\item{offset}{a numeric vector of length nrow(data) (n sites) that is included into
+the model as an offset. It is included into the conditional part of the model
+where conditioning is performed on the SAM.}
 
-\item{weights}{a numeric vector of length nrow(data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1. For ippm distribution - weights must be a nrow(data)*n_species matrix, which provides a species-specific background weights used to estimate the species-specific marginal likelihood.}
+\item{weights}{a numeric vector of length ncol(Y) (n species) that is used as weights
+in the log-likelihood calculations. If NULL (default) then all weights are
+assumed to be identically 1. Because we are estimating the log-likelihood
+over species (rather than sites), the weights should be a vector n species
+long. The exception is under the use of the 'ippm' distribution where
+weights must be a nrow(data)*n_species matrix, which provides a
+species-specific background weights used to estimate the species-specific
+marginal likelihoods.}
 
-\item{control}{a list of control parameters for optimisation and calculation. See details. From \code{species_mix.control} for details on optimistaion parameters.}
+\item{control}{a list of control parameters for optimisation and calculation.
+See details. From \code{species_mix.control} for details on optimistaion
+parameters.}
 
-\item{inits}{NULL a numeric vector that provides approximate starting values for species_mix coefficents. These are distribution specific, but at a minimum you will need pis (additive_logitic transformed), alphas (intercepts) and betas (mixing coefs).}
+\item{inits}{NULL a numeric vector that provides approximate starting values
+for species_mix coefficents. These are distribution specific, but at a
+minimum you will need pis (additive_logitic transformed), alphas
+(intercepts) and betas (mixing coefs).}
 
 \item{y}{is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.}
 
@@ -57,17 +87,15 @@ The response variable (left hand side of the formula) needs to be either 'presen
 
 \item{trace}{int 1=model will report parameter estimates and loglikelihood at each iteration. 0=quite.}
 
-\item{reltol}{function that determines the relative tolernace for model convergence. Default is quite strict.}
-
 \item{cores}{The number of cores to use in fitting of species mix models. These will be largely used to model the species-specific parameteres.}
+
+\item{est_var}{logical if TRUE model will numerically estimate the variance covariance matrix.}
 
 \item{em_prefit}{Logical if TRUE the model will run a slower EM algorithim fit to find starting values.}
 
 \item{em_steps}{int Default is 3, the number of EM iterations to get to starting values.}
 
 \item{em_refit}{int Default is 1, number of times to refit using EM.}
-
-\item{est_var}{logical if TRUE model will numerically estimate the variance covariance matrix.}
 
 \item{object}{is a matrix model returned from the species_mix model.}
 
@@ -79,7 +107,10 @@ The response variable (left hand side of the formula) needs to be either 'presen
 
 \item{theta}{coefficents for each species archetype. Matrix of G x number of parameters. Each row is a different species archetype.}
 
-\item{model_data}{a matrix of dataframe which contains the 'species_data' matrix, a const and the covariates in the strucute of spp1,spp2,spp3,const,temperature, rainfall. dims of matirx should be nsites*(nspecies+const+covariates).}
+\item{model_data}{a matrix of dataframe which contains the 'species_data'
+matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
+const, temperature, rainfall. dims of matirx should be
+nsites*(nspecies+const+covariates).}
 
 \item{weights}{is used in alternative way depending on the error distribution used. See \link[ecomix]{species_mix} for more details.}
 
@@ -91,33 +122,43 @@ The response variable (left hand side of the formula) needs to be either 'presen
 
 \item{quite}{Should any reporting be performed? Default is FALSE, for reporting.}
 
+\item{reltol}{function that determines the relative tolernace for model convergence. Default is quite strict.}
+
 \item{residuals}{logical if TRUE model will estimate residuals.}
 
 \item{distribution}{Which statistical distribution to simulate data for. 'bernoulli', 'gaussian', 'ippm', 'negative_binomial','poisson' and 'tweedie'.}
 }
 \description{
-Fits a finite mixture model to identify species archetype models (SAMs).
+Fits a finite mixture model to identify species archetype
+models (SAMs).
 
 Predicts SAM probabilities at a series of sites. Confidence intervals can be calculated if variance-covariance matrix is estimated during species_mix model fit.
 
 This function runs the 'species_mix' function but it iterates through groups (1 to 10) by default.
 }
 \details{
-species_mix is used to fit mixtures of glms to multivariate species data.
-The function uses BFGS to optimise the mixture likelihood. There is the option to use EM get appropriate starting parameters.
-`species_mix` acts as a wrapper for fitmix.cpp that allows for easier data input.
-The data frames are merged into the appropriate format for the use in fitmix.cpp.
-Minima is found using vmmin (BFGS) and the gradients are calculated using CPPAD (auto differentiation).
-Currently 'bernoulli', 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative_binomial' and 'tweedie' distributions can be fitted using the species_mix function.
+species_mix is used to fit mixtures of glms to multivariate
+species data. The function uses BFGS to optimise the mixture likelihood.
+There is the option to use EM algorithm to get appropriate starting parameters.
+`species_mix` acts as a wrapper for fitmix.cpp that allows for easier data
+input. The data frames are merged into the appropriate format for the use
+in fitmix.cpp. Minima is found using vmmin (BFGS). Currently 'bernoulli',
+'bernoulli_spp' (bernoulli mixture model with independent species
+intercepts), 'poisson', 'ippm' (inhomogenous Poisson point process),
+'negative_binomial' and 'tweedie' distributions can be fitted using the
+species_mix function.
 }
 \examples{
 \dontrun{
-form <- as.formula(paste0("cbind(",paste(paste0('spp',1:20),collapse = ','),")~1+x"))
+form <- as.formula(paste0("cbind(",paste(paste0('spp',1:20),
+                     collapse = ','),")~1+x"))
 theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9),4,2,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),x=runif(100,0,2.5))
 simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
-model_data <- make_mixture_data(species_data = simulated_data$species_data, covariate_data = simulated_data$covariate_data)
-fm_species_mix <- species_mix(form, data=model_data, distribution='bernoulli', n_mixtures=5)
+model_data <- make_mixture_data(species_data = simulated_data$species_data,
+                                covariate_data = simulated_data$covariate_data)
+fm_species_mix <- species_mix(form, data=model_data,
+                              distribution='bernoulli', n_mixtures=5)
 }
 \dontrun{
 fm1 <- species_mix(form,data)
