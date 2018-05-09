@@ -206,8 +206,8 @@
   X <- model.matrix(formula,mf)
 
   #get distribution
-  disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie","gaussian","ippm")
-  # disty.cases <- c("bernoulli","negative_binomial","tweedie","normal","poisson","ippm")#new disty.cases for sams.
+  disty.cases <- c("bernoulli","bernoulli_sp","poisson","ippm",
+                   "negative_binomial","tweedie","gaussian")
   disty <- get_distribution_sam(disty.cases, distribution)
 
   # get offsets and weights
@@ -282,13 +282,15 @@
 #'@param y_is_na This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!
 "species_mix.fit" <- function(y, X, G, weights, offset, distribution, control, y_is_na=NULL){
 
-  #if(distribution == 2) tmp <- fitmix_poisson(y, X, G, weights, offset, control, y_is_na)
-  if(distribution == 3) tmp <- fitmix_ippm(y, X, G, weights, offset, control, y_is_na)
-  else stop('current only "ippm" or "poisson" distribution is set up to use "species_mix.fit"')
+  if(distribution == 2) tmp <- fitmix_bernoulli_sp(y, X, G, weights, offset, control, y_is_na)
+  if(distribution == 3) tmp <- fitmix_poisson(y, X, G, weights, offset, control, y_is_na)
+  if(distribution == 4) tmp <- fitmix_ippm(y, X, G, weights, offset, control, y_is_na)
+  else stop('current only "bernoulli_sp", "poisson" & "ippm" distribution is set up to use "species_mix.fit"')
   return(tmp)
 }
 
-"fit_species_mix_wrapper" <- function(formula, y, X, weights, offset, distribution_numeric, n_mixtures, inits, control, y_is_na, estimate_variance){
+"fit_species_mix_wrapper" <- function(formula, y, X, weights, offset, distribution_numeric,
+                                      n_mixtures, inits, control, y_is_na, estimate_variance){
 
   if(any(distribution_numeric!=c(2,6))){
     sp.form <- update(form,obs~1+.)
@@ -304,14 +306,22 @@
     r1 <- control$r1
     cores <- control$cores
 
-    if(distribution_numeric==1) fit <- species_mix_bernoulli(sp.form,sp.data,covar.data,G, pars, em_prefit,em_steps, em_refit ,est_var,residuals,trace,r1)
-    if(distribution_numeric==3) fit <- species_mix_nbinom(sp.form,sp.data,covar.data,G, pars, em_prefit,em_steps, em_refit ,est_var,residuals,trace)
-    if(distribution_numeric==4) fit <- species_mix_tweedie(sp.form,sp.data,covar.data,G, pars, em_prefit,em_steps, em_refit ,est_var,residuals,trace)
-    if(distribution_numeric==5) fit <- species_mix_gaussian(sp.form,sp.data,covar.data,G, pars, em_prefit,em_steps, em_refit ,est_var,residuals,trace)
-  } else {
-    fit <- species_mix.fit(y=y, X=X, weights=wts, offset=offy, distribution=disty, G=n_mixtures, control=control, y_is_na=y_is_na, estimate_variance=control$est_var)
+    if(distribution_numeric==1) fit <- species_mix_bernoulli(sp.form, sp.data, covar.data, G,
+                                                             pars, em_prefit, em_steps, em_refit ,est_var, residuals, trace,r1)
+    if(distribution_numeric==2) fit <- species_mix.fit(y=y, X=X, weights=wts, offset=offy, distribution=2,
+                                                       G=n_mixtures, control=control, y_is_na=y_is_na, estimate_variance=control$est_var)
+    if(distribution_numeric==3) fit <- species_mix.fit(y=y, X=X, weights=wts, offset=offy, distribution=3,
+                                                       G=n_mixtures, control=control, y_is_na=y_is_na, estimate_variance=control$est_var)
+    if(distribution_numeric==4) fit <- species_mix.fit(y=y, X=X, weights=wts, offset=offy, distribution=4,
+                                                       G=n_mixtures, control=control, y_is_na=y_is_na, estimate_variance=control$est_var)
+    if(distribution_numeric==5) fit <- species_mix_nbinom(sp.form, sp.data, covar.data, G,
+                                                          pars, em_prefit, em_steps, em_refit ,est_var, residuals, trace)
+    if(distribution_numeric==6) fit <- species_mix_tweedie(sp.form, sp.data, covar.data, G,
+                                                           pars, em_prefit, em_steps, em_refit ,est_var, residuals, trace)
+    if(distribution_numeric==7) fit <- species_mix_gaussian(sp.form, sp.data, covar.data, G,
+                                                            pars, em_prefit, em_steps, em_refit ,est_var, residuals, trace)
+
     fit$formula <- formula
-    # class(fit) <- c("archetype",disty)
   }
   return(fit)
 }
