@@ -3770,7 +3770,7 @@ fitmix_EM_bernoulli_sp <- function(y, X, offset, weights, G, control){
 
     #update the likelihood
     logl_old <- logl_new
-    logl_new <- get_incomplete_logl_bernoulli_sp_function(pi, first_fit, fits, G, S)
+    logl_new <- get_incomplete_logl_bernoulli_sp_function(eta = additive_logistic(pis,inv = TRUE)[-G], first_fit, fits, G, S)
 
     # if (control$trace){
     #   cat(ite, "  |  ", logl_new, "\n")
