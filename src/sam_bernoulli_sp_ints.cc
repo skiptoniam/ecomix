@@ -66,14 +66,18 @@ extern "C" {
     /* Construct named result list from variables containing the results */
     SEXP Rlogl = PROTECT(allocVector(REALSXP, 1));
     REAL(Rlogl)[0] = logl;
+    UNPROTECT(1);
     SEXP Ralpha_est = PROTECT(allocVector(REALSXP, all.data.nS));
     for( int s=0; s<all.data.nS; s++) REAL(Ralpha_est)[s] = all.params.Alpha[s];
+    UNPROTECT(1);
 	SEXP Rbeta_est = PROTECT(allocVector(REALSXP, all.data.nG*all.data.nP));
 	for( int i=0; i<((all.data.nG*all.data.nP)); i++) REAL(Rbeta_est)[i] = all.params.Beta[i];
+	UNPROTECT(1);
 	SEXP Reta_est =PROTECT(allocVector(REALSXP, all.data.nG-1));
 	for( int g=0; g<(all.data.nG-1);g++) REAL(Reta_est)[g] = all.params.Eta[g];
+	UNPROTECT(1);
 	
-	const char *names[] = {"logl", "alpha", "beta", "eta", ""};                   /* note the null string */
+	const char *names[] = {"logl", "alpha", "beta", "eta",""};                   /* note the null string */
 	SEXP Rres = PROTECT(mkNamed(VECSXP, names));  /* list of length 3 */
 	SET_VECTOR_ELT(Rres, 0, Rlogl);       /* numeric(1) */ 
 	SET_VECTOR_ELT(Rres, 1, Ralpha_est);   /* numeric(<some length>) */ 

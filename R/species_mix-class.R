@@ -29,7 +29,7 @@
 #' @param n_mixtures The number of mixing components (groups) to fit.
 #' @param distribution The family of statistical distribution to use within
 #' the ecomix models. a  choice between "bernoulli", "bernoulli_sp", "poisson",
-#' "ippm" (inhomogeneous point process), "negative_binomial", "tweedie"
+#' "ippm" (inhomogeneous Poisson point process model), "negative_binomial", "tweedie"
 #' and "gaussian" distributions are possible and applicable to specific types
 #' of data.
 #' @param offset a numeric vector of length nrow(data) (n sites) that is included into
@@ -53,15 +53,16 @@
 #' @export
 #' @examples
 #' \dontrun{
-#' form <- as.formula(paste0("cbind(",paste(paste0('spp',1:20),
-#'                      collapse = ','),")~1+x"))
-#' theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9),4,2,byrow=TRUE)
-#' dat <- data.frame(y=rep(1,100),x=runif(100,0,2.5))
+#' library(ecomix)
+#' set.seed(42)
+#' form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+#' theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,7.9),3,3,byrow=TRUE)
+#' dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
+#' dat[,-1] <- scale(dat[,-1])
 #' simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
 #' model_data <- make_mixture_data(species_data = simulated_data$species_data,
-#'                                 covariate_data = simulated_data$covariate_data)
-#' fm_species_mix <- species_mix(form, data=model_data,
-#'                               distribution='bernoulli', n_mixtures=5)
+#'                                 covariate_data = simulated_data$covariate_data[,-1])
+#' fm1 <- species_mix(form, model_data, distribution = 'bernoulli_sp', n_mixtures=3)
 #' }
 
 
@@ -121,14 +122,14 @@
   disty <- get_distribution_sam(disty.cases, distribution)
 
   # get offsets and weights
-  offy <- get_offset_sam(mf)
-  wts <- get_weights_sam(mf,S,distribution)
+  offset <- get_offset_sam(mf)
+  weights <- get_weights_sam(mf,S,distribution)
 
   if(distribution=='ippm'){
-    if(!all(colnames(y)%in%colnames(wts)))
+    if(!all(colnames(y)%in%colnames(weights)))
       stop('When modelling a inhomogenous poisson point process model,
            weights colnames must match species data colnames')
-    if(any(dim(y)!=dim(wts)))
+    if(any(dim(y)!=dim(weights)))
       stop('When modelling a inhomogenous poisson point process model,
            weights needs to have the same dimensions at the
            species data - n_sites x n_species')
@@ -148,7 +149,7 @@
 
   # use wrapper to run Piers' models.
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
-  tmp <- fit_species_mix_wrapper(formula = formula, y=y, X=X, weights=wts, offset=offy,
+  tmp <- fit_species_mix_wrapper(formula = formula, y=y, X=X, weights=weights, offset=offset,
                                  distribution_numeric=disty, n_mixtures=n_mixtures,
                                  inits = inits, control=control, y_is_na=y_is_na)
   c("archetype",disty.cases[disty])
@@ -211,13 +212,13 @@
   disty <- get_distribution_sam(disty.cases, distribution)
 
   # get offsets and weights
-  offy <- get_offset_sam(mf)
-  wts <- get_weights_sam(mf,S,distribution)
+  offset <- get_offset_sam(mf)
+  weights <- get_weights_sam(mf,S,distribution)
 
   if(distribution=='ippm'){
-    if(!all(colnames(y)%in%colnames(wts)))
+    if(!all(colnames(y)%in%colnames(weights)))
       stop('When modelling a inhomogenous poisson point process model, weights colnames must match species data colnames')
-    if(any(dim(y)!=dim(wts)))
+    if(any(dim(y)!=dim(weights)))
       stop('When modelling a inhomogenous poisson point process model, weights needs to have the same dimensions at the species data - n_sites x n_species')
   }
 
@@ -238,7 +239,7 @@
         setTxtProgressBar(pb, x)
       tmpQuiet <- control$quiet
       control$quiet <- TRUE
-      dumbOut <- capture.output(tmp <- fit_species_mix_wrapper(y=y, X=X, weights=wts, offset=offy, distribution_numeric=disty, n_mixtures=n_mixtures, inits = inits, control=control, y_is_na=y_is_na, estimate_variance=control$est_var))
+      dumbOut <- capture.output(tmp <- fit_species_mix_wrapper(y=y, X=X, weights=weights, offset=offset, distribution_numeric=disty, n_mixtures=n_mixtures, inits = inits, control=control, y_is_na=y_is_na, estimate_variance=control$est_var))
       control$quiet <- tmpQuiet
       tmp$dist <- disty.cases[disty]
       #calculate the posterior probs
@@ -250,7 +251,7 @@
       #Information criteria
       tmp <- calcInfoCrit(tmp)
       #titbits object, if wanted/needed.
-      # tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts, form.RCP, form.spp, control, dist, p.w=p.w, power)
+      # tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offset, weights, form.RCP, form.spp, control, dist, p.w=p.w, power)
       # tmp$titbits$disty <- disty
       #the last bit of the regional_mix object puzzle
       # tmp$call <- call
@@ -286,14 +287,15 @@
                    "negative_binomial","tweedie","gaussian")
  distribution <- disty.cases[distribution_numeric]
 
- if(!any(distribution==c('bernoulli_sp','poisson','ippm')))stop('current only "bernoulli_sp", "poisson" & "ippm" distribution is set up to use "species_mix.fit"')
+ if(!any(distribution==c('bernoulli_sp','poisson','ippm')))
+        stop('current only "bernoulli_sp", "poisson" & "ippm"
+             distribution is set up to use "species_mix.fit"')
  tmp <- switch(distribution,
-               bernoulli_sp = fitmix_bernoulli_sp(y, X, G, weights, offset, control),
-               poisson = fitmix_poisson(y, X, G, weights, offset, control, y_is_na),
-               ippm = fitmix_ippm(y, X, G, weights, offset, control, y_is_na))
-  # if(distribution == 2) tmp <- fitmix_bernoulli_sp(y, X, G, weights, offset, control)
-  # if(distribution == 3) tmp <- fitmix_poisson(y, X, G, weights, offset, control, y_is_na)
-  # if(distribution == 4) tmp <- fitmix_ippm(y, X, G, weights, offset, control, y_is_na)
+               bernoulli_sp = fitmix_bernoulli_sp(y = y, X = X, offset = offset, weights = weights, G = G, control = control),
+               poisson = fitmix_poisson(y = y, X = X, weights = weights, offset = offset ,
+                                        G = G, control = control),
+               ippm = fitmix_ippm(y = y, X = X, weights = weights,  offset = offset,
+                                  G = G, control = control, y_is_na = y_is_na))
   return(tmp)
 }
 
@@ -322,8 +324,7 @@
     if(distribution_numeric==7) fit <- species_mix_gaussian(sp.form, sp.data, covar.data, G,
                                                             pars, em_prefit, em_steps, em_refit ,est_var, residuals, trace)
   } else {
-
-  fit <- species_mix.fit(y=y, X=X, weights=wts, offset=offy, distribution=distribution_numeric,
+  fit <- species_mix.fit(y=y, X=X, weights=weights, offset=offset, distribution=distribution_numeric,
                            G=n_mixtures, control=control, y_is_na=y_is_na)
   }
 
@@ -346,7 +347,7 @@
 #'@param residuals logical if TRUE model will estimate residuals.
 #'@export
 "species_mix.control" <- function(maxit = 1000,
-                                  quiet = FALSE,
+                                  quiet = TRUE,
                                   trace = 1,
                                   cores = 1,
                                   est_var = FALSE,
@@ -537,6 +538,32 @@
   return( X)
 }
 
+"get_titbits_sam" <- function( titbits, outcomes, X, W, offset, weights, form, control, distribution)
+  {
+    if( titbits==TRUE)
+      titbits <- list( Y = y, X = X, offset = offset, weights=weights,
+                       form = form, control = control,
+                       distribution = distribution,  power=power)
+    else{
+      titbits <- list()
+      if( "Y" %in% titbits)
+        titbits$Y <- y
+      if( "X" %in% titbits)
+        titbits$X <- X
+      if( "offset" %in% titbits)
+        titbits$offset <- offset
+      if( "weights" %in% titbits)
+        titbits$weights <- weights
+      if( "form" %in% titbits)
+        titbits$form <- form.RCP
+      if( "control" %in% titbits)
+        titbits$control <- control
+      if( "distribution" %in% titbits)
+        titbits$distribution <- distribution
+    }
+    return( titbits)
+}
+
 "check_reponse_sam" <-function(outs) {
   nam <- colnames( outs)
   if( length( nam) == length( unique( nam)))
@@ -594,7 +621,7 @@
 "apply_glm_poisson_tau" <- function (i, y, X, tau){
   y_tau <- as.matrix(unlist(as.data.frame(y)))
   X_tau <- do.call(rbind, replicate(ncol(y), X, simplify=FALSE))
-  wts_tau <- rep(tau[,i],each=nrow(y))
+  weights_tau <- rep(tau[,i],each=nrow(y))
   f_mix <- glm.fit(x = X_tau, y = y_tau, weights = wts_tau, family=poisson())
   sp_int <- rep(f_mix$coef[1],dim(tau)[1])
   first_fit_tau <- list(x=X_tau,y=y_tau)
@@ -1632,83 +1659,6 @@
         logL + log(S) * d + 2 * EN, coef = fm_out, sp_intercept = int_out,
         covar = var, aic_full = -2 * logL_full +  2 * d, bic_full = -2 * logL_full + log(S) * d, pars = parms,weights = weights))
 }
-
-"fitmix_ippm_cpp" <- function (form, datsp, sp, G=2,pars=NA,trace=TRUE,calc.hes=FALSE){
-    if(!is.numeric(sp)){
-      sp <- as.integer(factor(sp))
-    }
-    sp.name <- unique(sp)
-    S <- length(unique(sp))
-    n <- length(which(sp==sp.name[1]))
-
-    X <- model.matrix(form, data = datsp[sp==sp.name[1],])
-    ##  offset <- model.offset(form, data = datsp[sp==sp.name[1],])
-    offset <- model.frame(form, data = datsp[sp==sp.name[1],])
-    offset <- model.offset(offset)
-    if(is.null(offset)) offset <-  rep(0,n)
-    ##offset <-  rep(0,n)
-    ##X <- model.frame(form, data = datsp)
-    # X <- X[sp==sp.name[1],]
-
-    #y <- model.response(form, data = datsp)
-    y <- datsp$obs
-    if(is.na(pars[1])) {
-      ##pars <- rep(0.01,G-1+(ncol(X)*G))
-      sp.int <- rep(0.5,S)
-      sp.dispersion <- rep(1,S)
-      fm <- matrix(runif(ncol(X)*G,-1,1),G,ncol(X))
-      pars <- c(runif(G-1),unlist(fm),sp.int,sp.dispersion)
-
-    }
-
-    ##  hes <- rep(0,length(pars)^2)
-    gradient <- rep(0,length(pars))
-    tau <- matrix(0,S,G) ##must leave this in as defines S & G
-
-    loglike <- try(.Call("SpeciesMix",pars,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="ecomix"))
-
-    calc_deriv <- function(p){
-      gradient <- rep(0,length(pars))
-      ll <- .Call("Calculate_Gradient",p,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="ecomix")
-      return(gradient)
-    }
-    r.deriv <- function(p){ logLmix_nbinom(p,list(y=y,x=model.matrix(form, data = datsp)),G,S,sp,sp.name,out.tau=FALSE)}
-    #r.grad <- nd2(pars,r.deriv)
-    ##print(r.grad)
-    hes <- 0
-    covar <- 0
-    if(calc.hes){
-      hes <- nd2(pars,calc_deriv)
-      dim(hes) <- rep(length(pars),2)
-      dim(hes) <- rep(length(pars),2)
-      covar <- try(solve(hes))
-      #rownames(hes) <- colnames(hes) <- c(paste("G.",1:(G-1),sep=""),paste("G",1:G,rep(colnames(X),each=G),sep="."))
-    }
-    if(!is.numeric(loglike)) loglike <- 0
-    pi <- pars[1:(G-1)]
-    #coef <- pars[ (G):length(pars)]
-    coef <- pars[-1*(1:((G-1)))]  ## remove pi
-    sp.int <- coef[(length(coef)-(2*S-1)):(length(coef)-S)]
-    sp.dispersion <- coef[(length(coef)-(S-1)):length(coef)]
-    fm <- coef[-1*((length(coef)-(2*S-1)):length(coef))]
-    offset <- model.frame(form, data = datsp)
-    offset <- model.offset(offset)
-    if(is.null(offset)) offset <-  rep(0,nrow(datsp))
-
-    r.logl <- logLmix_nbinom(pars,list(y=y,x=model.matrix(form, data = datsp),offset=offset),G,S,sp,sp.name,out.tau=TRUE)
-    print(r.logl$logl)
-    pi <- additive_logistic(pi)
-    names(pi) <- paste("G.",1:G,sep="")
-    coef <- matrix(fm,G,ncol(X))
-    rownames(coef) <- paste("G.",1:G,sep="")
-    colnames(coef) <- colnames(X)
-
-    AIC <- 2*loglike + 2*length(pars)
-    BIC <- 2*loglike + log(S)*length(pars)
-    list(logl=loglike,pi=pi,coef=coef,sp.intercept=sp.int,tau=round(exp(r.logl$tau),4),aic=AIC,bic=BIC,hessian=hes,gradient=gradient,covar=covar)#,r.grad=r.grad)
-
-  }
-
 
 "fitmix_nbinom.cpp" <-
   function (form,datsp,sp,G=2,pars=NA,trace=TRUE,calc.hes=FALSE)
@@ -3229,26 +3179,26 @@
 }
 
 "get_offset_sam"  <- function(mf){
-  offy <- model.offset(mf)
-  if(any(offy!=0))
-    return(offy)
-  offy <- rep(0, nrow(mf))
-  return(offy)
+  offset <- model.offset(mf)
+  if(any(offset!=0))
+    return(offset)
+  offset <- rep(0, nrow(mf))
+  return(offset)
 }
 
 "get_weights_sam"  <- function(mf,S,distribution){
   if(distribution=='ippm'){
     sp_names <- colnames(model.response(mf))
-    wts <- model.weights(mf)
-    if(!is.null(wts)){
-      wts <- subset(wts, select = colnames(wts)%in%sp_names)
+    weights <- model.weights(mf)
+    if(!is.null(weights)){
+      weights <- subset(weights, select = colnames(weights)%in%sp_names)
     } else {
-      wts <- matrix(1,nrow(mf),S)
+      weights <- matrix(1,nrow(mf),S)
     }
   } else {
-    wts <- rep(1, S)
+    weights <- rep(1, S)
   }
-  return(wts)
+  return(weights)
 }
 
 "skrink_taus_ippm" <- function( taus, max_tau=0.7, G){
@@ -3289,10 +3239,10 @@
   X_sp_tau <- do.call(rbind, replicate(G, X[!y_is_na[,ss],], simplify=FALSE))
   wts_sp_tau <- rep(tau[ss,],each=length(y[!y_is_na[,ss],ss]))
   wts_sp_ippmXtau <- wts_sp_tau*ippm_weights_sp_tau
-  offy <- rep(offset[!y_is_na[,ss]],G)
-  offy2 <-  as.matrix(X[!y_is_na[,ss],-1]) %*% t(fits$mix_coefs)
-  offy <- as.numeric(offy2)+offy
-  f_mix <- glm.fit(x = X_sp_tau, y = z_sp_tau, weights = wts_sp_ippmXtau, offset = offy, family=poisson())
+  offset <- rep(offset[!y_is_na[,ss]],G)
+  offset2 <-  as.matrix(X[!y_is_na[,ss],-1]) %*% t(fits$mix_coefs)
+  offset <- as.numeric(offset2)+offset
+  f_mix <- glm.fit(x = X_sp_tau, y = z_sp_tau, weights = wts_sp_ippmXtau, offset = offset, family=poisson())
   return(sp_coef=f_mix$coef)
 }
 
@@ -3350,40 +3300,33 @@
   return(res)
 }
 
-"get_initial_values_poisson" <- function(ite, y, X, G, weights, offset, cores){#distribution ='poisson', function call not used yet.
-
+"get_initial_values_poisson" <- function(ite, y, X, G, weights, offset, cores){
   if(ite==1)t1 <- create_starting_values_poisson(y, X, G, weights, offset, cores)
   t1 <- create_starting_values_poisson_kmeans(y, X, G, weights, offset, cores)
   return(t1)
 }
 
-"fitmix_ippm" <- function(y, X, G, weights, offset, control, y_is_na, estimate_variance){
+"fitmix_EM_ippm" <- function(y, X, G, weights, offset, control, y_is_na){
+
   S <- ncol(y)
-  cat("Fitting Group", G, "\n")
-  if (control$trace)
-    cat("Iteration | LogL \n")
   pis <- rep(0, G)
   ite <- 1
   logl_old <- -99999999
   logl_new <- -88888888
 
   # Get responable starting values for EM estimation. #first e-step.
-  starting_values <- get_initial_values_ippm(y, X, weights, offset, y_is_na, G, S, control$cores, inits=control$init_method, control$init.sd)
+  starting_values <- get_initial_values_ippm(y, X, weights, offset, y_is_na, G, S, control$cores, inits=control$init_method, control$init_sd)
 
   pis <- starting_values$pis
   fits <- starting_values$fits
   taus <- starting_values$taus
   first_fit <- starting_values$first_fit
 
-  # cat('starting pis at:', pis)
-  old_time <- Sys.time()
   print(paste0('loglikelihood estimation starts at ', old_time))
-  while (control$reltol(logl_new,logl_old) & ite <= control$maxit) {
+  while (control$em_reltol(logl_new,logl_old) & ite <= control$em_maxit) {
 
     # Estimate pis from tau.
     pis <- colSums(taus)/S
-    if(!control$quiet)
-    cat(pis,"\n")
 
     if (any(pis == 0)) {
     starting_values <- get_initial_values_ippm(y, X, weights, offset, y_is_na, G, S, control$cores, control$init_method, control$init_sd)
@@ -3395,16 +3338,12 @@
     }
 
     # this updates the mixture coefs
-    if(control$method=="Nelder-Meld"){
-    tmp <- optim(par=fits$mix_coefs, fn=incom_logl_ippm, gr = NULL,first_fit=first_fit, pis=pis, fits=fits, G=G, S=S,  method = "Nelder-Mead",control = list(trace=control$nlminb_trace), hessian = FALSE)
-    }
-    if(control$method=="nlminb"){
-    tmp <- nlminb(start=fits$mix_coefs, objective=incom_logl_ippm, gradient=NULL, hessian=NULL, first_fit=first_fit, pis=pis, fits=fits, G=G, S=S,control=list(trace=control$nlminb_trace))
-	  }
-    fits$mix_coefs <- update_mix_coefs(fits$mix_coefs, tmp$par)
+   tmp <- nlminb(start=fits$mix_coefs, objective=incom_logl_ippm, gradient=NULL, hessian=NULL, first_fit=first_fit, pis=pis, fits=fits, G=G, S=S,control=control)
+   fits$mix_coefs <- update_mix_coefs(fits$mix_coefs, tmp$par)
 
     # update species intercepts
-    fm_ippm <- plapply(1:S, apply_glm_ippm_sp_tau, first_fit$y, first_fit$x, first_fit$y_is_na, first_fit$weights,first_fit$offset, taus, S, G, fits,  .parallel = control$cores)
+    fm_ippm <- plapply(1:S, apply_glm_ippm_sp_tau, first_fit$y, first_fit$x, first_fit$y_is_na,
+                       first_fit$weights, first_fit$offset, taus, S, G, fits, .parallel = control$cores)
     sp_int <- do.call(rbind,fm_ippm)[,1]
     fits$sp_intercepts <- update_sp_coefs(fits$sp_intercepts,sp_int)
 
@@ -3416,43 +3355,114 @@
     #update the likelihood
     logl_old <- logl_new
     logl_new <- get_incomplete_logl_ippm(pi, first_fit, fits, G, S)
-    new_time <- Sys.time() - old_time
-    if (control$trace){
-      cat(ite, "  |  ", logl_new, "\n")
-      print(new_time)}
     ite <- ite + 1
   }
 
   taus <- data.frame(taus)
   names(taus) <- paste("grp.", 1:G, sep = "")
-  EN <- -sum(unlist(taus) * log(unlist(taus)))
-  int_out <- fits$sp_intercepts
-  fm_out <- fits$mix_coefs
-  d <- length(unlist(fm_out)) + length(taus) - 1
-  int_out <- fits$sp_intercepts
-  fm_out <- fits$mix_coefs
+  alphas <- fits$sp_intercepts
+  betas <- fits$mix_coefs
   names(pis) <- paste("G", 1:G, sep = ".")
-  t_pis <- additive_logistic(pis, TRUE)
-  parms <- c(t_pis[1:(G - 1)], unlist(fm_out), int_out)
+  etas <- additive_logistic(pis, TRUE)[-G]
   logl_full <- logl_new
 
   # estimate log-likelihood
-  logl_new <- get_incomplete_logl_ippm( pi, first_fit, fits, G, S)
+  logl_new <- get_incomplete_logl_ippm(pi, first_fit, fits, G, S)
 
-  if(estimate_variance){
-    message('Numerically estimating the derivates for mixing coefs and sp intercepts, this could take a while. Soz.')
-    var <- 0
-    fun_est_var <- function(x){-logLmix_ippm(x,first_fit,G,S)}
-    var <- solve(nH2(pt=parms, fun=fun_est_var))
-    colnames(var) <- rownames(var) <- names(parms)
+  return(list(logl = logl_new, alpha = alphas, beta = betas,
+              eta = etas, pis = pis, weights = weights))
+}
+
+"ippm_optimise" <- function(y, X, offset, weights, y_is_na, G, S, start_vals, control) {
+
+  inits <- c(start_vals$alphas, start_vals$betas, start_vals$pis)
+  np <- as.integer(ncol(X[,-1]))
+  n <- as.integer(nrow(X))
+
+  # parameters to optimise
+  alpha <- as.numeric(start_vals$alphas);
+  beta <- as.numeric(start_vals$betas);
+  eta <- additive_logistic(start_vals$pis,TRUE)[seq_len(G-1)]
+
+  #scores
+  alpha.score <- as.numeric(rep(NA, length(alpha)))
+  beta.score <- as.numeric(rep(NA, length(beta)))
+  eta.score <- as.numeric(rep(NA, length(eta)))
+  getscores <- 1
+  scores <- as.numeric(rep(NA,length(c(alpha,beta,eta))))
+
+  #model quantities
+  pis_out <- as.numeric(rep(NA,G))  #container for the fitted RCP model
+  mus <- as.numeric(array( NA, dim=c( n, S, G)))  #container for the fitted spp model
+  loglikeS <- as.numeric(rep(NA, S))
+  loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
+
+  #c++ call to optimise the model (needs pretty good starting values)
+  tmp <- .Call("species_mix_ippm_cpp",
+               as.numeric(as.matrix(y)), as.numeric(as.matrix(X[-1])), as.numeric(offset), as.numeric(as.matrix(weights)), as.integer(!y_is_na),
+               # SEXP RX, SEXP Ry, SEXP Roffset,	SEXP Rweights, SEXP Ry_is_na, //data
+               as.integer(S), as.integer(G), as.integer(np), as.integer(n),
+               # SEXP RS, SEXP RG, SEXP RnObs, SEXP Rdisty, //ints
+               as.double(alpha), as.double(beta), as.double(eta),
+               # SEXP Ralpha, SEXP Rbeta, SEXP Rtau, SEXP Rdisps, //params // pis will be additative transformed G-1
+               alpha.score, beta.score, eta.score, as.integer(control$getscores_cpp), scores,
+               # SEXP RderivsAlpha, SEXP RderivsTau, SEXP RderivsBeta, SEXP RderivsDisps, //derviates
+               pis_out, mus, loglikeS, loglikeSG,
+               # SEXP Rpis, SEXP Rmus, SEXP RlogDens, SEXP Rlogli, // mixture model parametes.
+               as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
+               as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp),
+               # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv,
+               as.integer( control$optimise_cpp), as.integer(control$loglOnly_cpp), as.integer( control$derivOnly_cpp),
+               # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly,
+               PACKAGE = "ecomix")
+
+  ret <- tmp
+  ret$logl <- ret$logl * -1
+  ret$mus <- array(mus, dim=c(n, S, G))
+  ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score)
+  ret$S <- S; ret$G <- G; ret$np <- np; ret$n <- n;
+  ret$start.vals <- inits
+  ret$loglikeSG <- loglikeSG  #for residuals
+  ret$loglikeS <- loglikeS  #for residuals
+  return(ret)
+}
+
+fitmix_ippm <- function(y, X, offset, weights, control, G, y_is_na){
+
+  S <- ncol(y)
+  #if emfit is in the control do an EM fit to get good starting values for c++
+  if(isTRUE(control$em_prefit)){
+    cat('Using EM algorithm to find starting values; using',
+        control$em_refit,'refits\n')
+    emfits <- list()
+    for(ii in seq_len(control$em_refit)){
+      emfits[[ii]] <-  fitmix_EM_ippm(y, X, offset, weights, G, control)
+    }
+    bf <- which.max(sapply(emfits,function(x)c(x$logl)))
+    emfit <- emfits[[bf]]
+    start_vals <- list(alphas=emfit$alpha,
+                       betas=emfit$beta,
+                       pis=emfit$pis)
   } else {
-    var <- 0
+    cat('Not using EM algorith to find starting values; starting values are
+        generated using',control$init_method,'to generate starting values\n')
+    starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
+                                                       weights = weights, G = G, S = S,
+                                                       cores = control$cores,
+                                                       inits = control$init_method,
+                                                       init.sd = control$init_sd) # add init st to control
+    start_vals <- list(alphas=starting_values$fits$sp_intercepts,
+                       betas=starting_values$fits$mix_coefs,
+                       pis=starting_values$pis)
   }
 
-  return(list(logl = logl_new, aic = -2 * logl_new + 2 * d, taus = round(taus,4), pis = pis, bic = -2 * logl_new + log(S) * d, ICL = -2 *
-                logl_new + log(S) * d + 2 * EN, coef = fm_out, sp_intercept = int_out,
-              covar = var, aic_full = -2 * logl_full +  2 * d, bic_full = -2 * logl_full + log(S) * d, pars = parms, weights = weights))
+  # optimise using c++ based on either starting values.
+  tmp <- suppressWarnings(bernoulli_sp_optimise(y, X, offset, weights, G, S, start_vals, control))
+
+  return(tmp)
+
 }
+
 
 "update_mix_coefs" <- function(old, new, kappa=1){
   if(any(is.na( old)))
@@ -3572,29 +3582,30 @@
   return( logl)
 }
 
+## Bernoulli species specific functions.
 ## functions for the bernolli with species intercepts called 'bernoulli_sp' from now on in.
 
-initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, cores, inits='kmeans', init.sd=1){
-  fm_bern_sp_int <- surveillance::plapply(1:S, apply_glm_bernoulli_sp, y, X, offset, .parallel = cores)
+initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits='kmeans', init.sd=1){
+  fm_bern_sp_int <- surveillance::plapply(1:S, apply_glm_bernoulli_sp, y, X, offset, .parallel = control$cores, .verbose = !control$quiet)
   all_coefs <- do.call(rbind, fm_bern_sp_int)
   mix_coefs <- all_coefs[,-1] # drop intercepts
   # print(all_coefs)
-  if(inits=='kmeans'){
-    cat( "Initial groups by K-means clustering\n")
+  if(control$init_method=='kmeans'){
+    if(!control$quiet)cat("Initial groups by K-means clustering\n")
     tmp1 <- kmeans( mix_coefs, centers=G, nstart=100)
     tmp_grp <- tmp1$cluster
     grp_coefs <- apply( mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
   }
-  if(inits=='hclust'){
-    cat( "Initial groups by hierarchical clustering using Ward's method on Euclidean distances\n")
+  if(control$init_method=='hclust'){
+    if(!control$quiet)cat("Initial groups by hierarchical clustering using Ward's method on Euclidean distances\n")
     disto <- dist( mix_coefs, method="euclidean")
     tmp1 <- hclust(disto, method = "ward.D")
     tmp_grp <- cutree(tmp1, G)
     grp_coefs <- apply( mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
   }
-  if(inits=='random'){
-    cat( "Initial groups by random allocation and means from random numbers\n")
-    grp_coefs <- matrix( rnorm(G*ncol(mix_coefs), sd=init.sd, mean=0), nrow=G, ncol=ncol(mix_coefs))
+  if(control$init_method=='random'){
+    if(!control$quiet)cat("Initial groups by random allocation and means from random numbers\n")
+    grp_coefs <- matrix( rnorm(G*ncol(mix_coefs), sd=control$init_sd, mean=0), nrow=G, ncol=ncol(mix_coefs))
     tmp_grp <- sample(1:G, S, replace=TRUE)
   }
   colnames(grp_coefs)<-colnames(X[,-1])
@@ -3624,7 +3635,7 @@ get_logls_bernoulli_sp<-function(first_fit, fits, G, S){
       logl_sp_bernoulli_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, p$linkinv(eta),log = TRUE))
       #Need weights*z*lp + weights*lp.  Should be OK?  Check!  SDF
     }
-    logl_sp_bernoulli_sp[ss,gg] <- logl_sp_bernoulli_sp[ss,gg]*first_fit$wts[ss]
+    logl_sp_bernoulli_sp[ss,gg] <- logl_sp_bernoulli_sp[ss,gg]*first_fit$weights[ss]
   }
   return(logl_sp_bernoulli_sp)
 }
@@ -3646,10 +3657,10 @@ skrink_taus_bernoulli_sp <- function( taus, max_tau=0.7, G){
   return(tau_star)
 }
 
-get_initial_values_bernoulli_sp <- function(y, X,  offset, wts, G, S, cores, inits='kmeans', init.sd=1){
-  starting_values <- initiate_fit_bernoulli_sp(y, X, offset, G, S, cores, inits, init.sd)
+get_initial_values_bernoulli_sp <- function(y, X, offset, weights, G, S, control){#cores, inits='kmeans', init.sd=1){
+  starting_values <- initiate_fit_bernoulli_sp(y, X, offset, G, S, control)# cores, inits, init.sd)
   fits <- list(mix_coefs=starting_values$mix_coefs,sp_intercepts=starting_values$sp_intercepts)
-  first_fit <- list(x = X, y = y, offset=offset, wts=wts)
+  first_fit <- list(x = X, y = y, offset=offset, weights=weights)
   logls <- get_logls_bernoulli_sp(first_fit, fits, G, S)
   pis <- rep(1/G, G)
   taus <- get_taus_bernoulli_sp(pis, logls, G, S)
@@ -3694,7 +3705,7 @@ get_incomplete_logl_bernoulli_sp_function <-  function(eta, first_fit, fits, G, 
     for(gg in 1:G){
       #eta is the same as log_mu (linear predictor)
       eta <- first_fit$x[,1] * fits$sp_intercepts[ss] + as.matrix(first_fit$x[,-1]) %*% fits$mix_coefs[gg,] + first_fit$offset
-      logl_sp_ippm[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, p$linkinv(eta),log = TRUE)*first_fit$wts)
+      logl_sp_ippm[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, p$linkinv(eta),log = TRUE)*first_fit$weights)
     }
   }
   ak <- logl_sp_ippm + matrix(rep(log(pis), each=S), nrow=S, ncol=G)
@@ -3705,36 +3716,7 @@ get_incomplete_logl_bernoulli_sp_function <-  function(eta, first_fit, fits, G, 
   return( logl)
 }
 
-additive_logistic <- function (x,inv=FALSE){
-  if(inv){
-    x <- log(x/x[length(x)])
-    return(x)
-  }
-
-  x.t <- exp(x)
-  x.t <- x.t/(1+sum(x.t))
-  x.t[length(x.t)+1] <- 1-sum(x.t)
-  return(x.t)
-}
-
-update_mix_coefs <- function(old, new, kappa=1){
-  if(any(is.na( old)))
-    tmp <- new
-  else
-    tmp <- old + kappa*(new-old)
-  return( tmp)
-}
-
-update_sp_coefs <- function(old, new, kappa=1){
-  if(any(is.na( old)))
-    tmp <- new
-  else
-    tmp <- old + kappa*(new-old)
-  return( tmp)
-}
-
-
-fitmix_EM_bernoulli_sp <- function(y, X, G, offy, wts, control){
+fitmix_EM_bernoulli_sp <- function(y, X, offset, weights, G, control){
 
   S <- ncol(y)
   # cat("Fitting Group", G, "\n")
@@ -3746,11 +3728,9 @@ fitmix_EM_bernoulli_sp <- function(y, X, G, offy, wts, control){
   logl_new <- -88888888
 
   # get starting values
-  starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offy,
-                                                    wts = wts, G = G, S = S,
-                                                    cores = control$cores,
-                                                    inits = control$init_method,
-                                                    init.sd = control$init_sd)
+  starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
+                                                    weights = weights, G = G, S = S,
+                                                    control = control)
 
   # first e-step
   pis <- starting_values$pis
@@ -3764,11 +3744,10 @@ fitmix_EM_bernoulli_sp <- function(y, X, G, offy, wts, control){
     pis <- colSums(taus)/S
 
     if (any(pis == 0)) {
-      starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offy,
-                                                      wts = wts, G = G, S = S,
-                                                      cores = control$cores,
-                                                      inits = control$init_method,
-                                                      init.sd = control$init_sd)
+      starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
+                                                      weights = weights, G = G, S = S,
+                                                      control = control)
+
       pis <- starting_values$pis
       fits <- starting_values$fits
       taus <- starting_values$taus
@@ -3780,7 +3759,7 @@ fitmix_EM_bernoulli_sp <- function(y, X, G, offy, wts, control){
     tmp <- nlminb(start=fits$mix_coefs, objective=incom_logl_bernoulli_sp_beta, gradient=NULL, hessian=NULL,
                   first_fit=first_fit, eta=additive_logistic(pis,inv = TRUE)[-G], fits=fits, G=G, S=S)
     fits$mix_coefs <- update_mix_coefs(fits$mix_coefs, tmp$par)
-    fm_bernoulli_sp_int <- surveillance::plapply(1:S, apply_glm_bernoulli_sp, y, X, offy, .parallel = cores) #check wts in this.
+    fm_bernoulli_sp_int <- surveillance::plapply(1:S, apply_glm_bernoulli_sp, y, X, offset, .parallel = control$cores) #check weights in this.
     sp_int <- do.call(rbind,fm_bernoulli_sp_int)[,1]
     fits$sp_intercepts <- update_sp_coefs(fits$sp_intercepts,sp_int)
 
@@ -3814,7 +3793,7 @@ fitmix_EM_bernoulli_sp <- function(y, X, G, offy, wts, control){
 
 }
 
-bernoulli_sp_optimise <- function(y, X, offy, wts, G, S, start_vals, control) {
+bernoulli_sp_optimise <- function(y, X, offset, weights, G, S, start_vals, control) {
 
   inits <- c(start_vals$alphas, start_vals$betas, start_vals$pis)
   np <- as.integer(ncol(X[,-1]))
@@ -3840,7 +3819,7 @@ bernoulli_sp_optimise <- function(y, X, offy, wts, G, S, start_vals, control) {
 
   #c++ call to optimise the model (needs pretty good starting values)
   tmp <- .Call("species_mix_bernoulli_sp_ints",
-               as.numeric(as.matrix(y)), as.numeric(as.matrix(X[,-1])), as.numeric(offy), as.numeric(wts),
+               as.numeric(as.matrix(y)), as.numeric(as.matrix(X[,-1])), as.numeric(offset), as.numeric(weights),
                # SEXP RX, SEXP Ry, SEXP Roffset,	SEXP Rwts, //data
                as.integer(S), as.integer(G), as.integer(np), as.integer(n),
                # SEXP RS, SEXP RG, SEXP RnObs, SEXP Rdisty, //ints
@@ -3859,6 +3838,7 @@ bernoulli_sp_optimise <- function(y, X, offy, wts, G, S, start_vals, control) {
                PACKAGE = "ecomix")
 
   ret <- tmp
+  ret$logl <- ret$logl * -1
   ret$mus <- array(mus, dim=c(n, S, G))
   ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score)
   ret$S <- S; ret$G <- G; ret$np <- np; ret$n <- n;
@@ -3868,7 +3848,7 @@ bernoulli_sp_optimise <- function(y, X, offy, wts, G, S, start_vals, control) {
   return(ret)
 }
 
-fitmix_bernoulli_sp <- function(y, X, G, wts, offy, control){
+fitmix_bernoulli_sp <- function(y, X, offset, weights, G, control){
 
   S <- ncol(y)
   #if emfit is in the control do an EM fit to get good starting values for c++
@@ -3877,7 +3857,7 @@ fitmix_bernoulli_sp <- function(y, X, G, wts, offy, control){
         control$em_refit,'refits\n')
     emfits <- list()
     for(ii in seq_len(control$em_refit)){
-      emfits[[ii]] <-  fitmix_EM_bernoulli_sp(y, X, G, offy, wts, control)
+      emfits[[ii]] <-  fitmix_EM_bernoulli_sp(y, X, offset, weights, G, control)
     }
     bf <- which.max(sapply(emfits,function(x)c(x$logl)))
     emfit <- emfits[[bf]]
@@ -3887,18 +3867,16 @@ fitmix_bernoulli_sp <- function(y, X, G, wts, offy, control){
   } else {
     cat('Not using EM algorith to find starting values; starting values are
         generated using',control$init_method,'to generate starting values\n')
-    starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offy,
-                                                        wts = wts, G = G, S = S,
-                                                        cores = control$cores,
-                                                        inits = control$init_method,
-                                                        init.sd = control$init_sd) # add init st to control
+    starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
+                                                        weights = weights, G = G, S = S,
+                                                        control = control) # add init st to control
     start_vals <- list(alphas=starting_values$fits$sp_intercepts,
                        betas=starting_values$fits$mix_coefs,
                        pis=starting_values$pis)
   }
 
   # optimise using c++ based on either starting values.
-  tmp <- suppressWarnings(bernoulli_sp_optimise(y, X, offy, wts, G, S, start_vals, control))
+  tmp <- suppressWarnings(bernoulli_sp_optimise(y, X, offset, weights, G, S, start_vals, control))
 
   return(tmp)
 

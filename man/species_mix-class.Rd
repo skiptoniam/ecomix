@@ -17,7 +17,7 @@ species_mix(formula = NULL, data, n_mixtures = 3,
 species_mix.fit(y, X, G, weights, offset, distribution_numeric, control,
   y_is_na = NULL)
 
-species_mix.control(maxit = 1000, quiet = FALSE, trace = 1, cores = 1,
+species_mix.control(maxit = 1000, quiet = TRUE, trace = 1, cores = 1,
   est_var = FALSE, init_method = "kmeans", init_sd = 1,
   em_prefit = TRUE, em_steps = 3, em_refit = 3, em_reltol = reltol_fun,
   maxit_cpp = 1000, trace_cpp = 0, nreport_cpp = 1,
@@ -49,7 +49,7 @@ cbind(spp1,spp2,spp3)~1+temperature+rainfall}
 
 \item{distribution}{The family of statistical distribution to use within
 the ecomix models. a  choice between "bernoulli", "bernoulli_sp", "poisson",
-"ippm" (inhomogeneous point process), "negative_binomial", "tweedie"
+"ippm" (inhomogeneous Poisson point process model), "negative_binomial", "tweedie"
 and "gaussian" distributions are possible and applicable to specific types
 of data.}
 
@@ -150,15 +150,16 @@ species_mix function.
 }
 \examples{
 \dontrun{
-form <- as.formula(paste0("cbind(",paste(paste0('spp',1:20),
-                     collapse = ','),")~1+x"))
-theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9),4,2,byrow=TRUE)
-dat <- data.frame(y=rep(1,100),x=runif(100,0,2.5))
+library(ecomix)
+set.seed(42)
+form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,7.9),3,3,byrow=TRUE)
+dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
+dat[,-1] <- scale(dat[,-1])
 simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
 model_data <- make_mixture_data(species_data = simulated_data$species_data,
-                                covariate_data = simulated_data$covariate_data)
-fm_species_mix <- species_mix(form, data=model_data,
-                              distribution='bernoulli', n_mixtures=5)
+                                covariate_data = simulated_data$covariate_data[,-1])
+fm1 <- species_mix(form, model_data, distribution = 'bernoulli_sp', n_mixtures=3)
 }
 \dontrun{
 fm1 <- species_mix(form,data)

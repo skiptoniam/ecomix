@@ -59,11 +59,33 @@ extern "C" {
 	int *tmpconv = INTEGER( Rconv);
 	tmpconv[0] = all.contr.ifail;
 	//the logl
-	SEXP Rres;	//R object to return -- it is the logl!
-	Rres = PROTECT( allocVector(REALSXP,1));
-    REAL( Rres)[0] = logl;
+	//SEXP Rres;	//R object to return -- it is the logl!
+	//Rres = PROTECT( allocVector(REALSXP,1));
+    //REAL( Rres)[0] = logl;
+	//UNPROTECT(1);
+	//return( Rres);
+	
+	SEXP Rlogl = PROTECT(allocVector(REALSXP, 1));
+    REAL(Rlogl)[0] = logl;
+   	UNPROTECT(1);
+    SEXP Ralpha_est = PROTECT(allocVector(REALSXP, all.data.nS));
+    for( int s=0; s<all.data.nS; s++) REAL(Ralpha_est)[s] = all.params.Alpha[s];
 	UNPROTECT(1);
-	return( Rres);
+	SEXP Rbeta_est = PROTECT(allocVector(REALSXP, all.data.nG*all.data.nP));
+	for( int i=0; i<((all.data.nG*all.data.nP)); i++) REAL(Rbeta_est)[i] = all.params.Beta[i];
+	UNPROTECT(1);
+	SEXP Reta_est =PROTECT(allocVector(REALSXP, all.data.nG-1));
+	for( int g=0; g<(all.data.nG-1);g++) REAL(Reta_est)[g] = all.params.Eta[g];
+	UNPROTECT(1);
+	
+	const char *names[] = {"logl", "alpha", "beta", "eta", ""};                   /* note the null string */
+	SEXP Rres = PROTECT(mkNamed(VECSXP, names));  /* list of length 3 */
+	SET_VECTOR_ELT(Rres, 0, Rlogl);       /* numeric(1) */ 
+	SET_VECTOR_ELT(Rres, 1, Ralpha_est);   /* numeric(<some length>) */ 
+	SET_VECTOR_ELT(Rres, 2, Rbeta_est);    /* integer(1) */
+	SET_VECTOR_ELT(Rres, 3, Reta_est);
+	UNPROTECT(1);
+	return (Rres);
 
   }
 }
