@@ -15,8 +15,6 @@ ecomix is a package to implement statisitical models on multivariate species com
 
 `ecomix` is currently under development.
 
-![is currently under development](https://media.giphy.com/media/kudIERso2pFiE/giphy.gif)
-
 A version can be installed from GitHub using the `devtools` package: 
 
 ```{r install, eval = FALSE}
