@@ -11,6 +11,13 @@ testthat::test_that('species mix functions classes work', {
   simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
   model_data <- make_mixture_data(species_data = simulated_data$species_data,
                                   covariate_data = simulated_data$covariate_data[,-1])
-  testthat::expect_error(fm1 <- species_mix(NA, model_data, distribution = 'bernoulli_sp', n_mixtures=3))
+
+  #test formula error
+  testthat::expect_error(fm1 <- species_mix(NA, model_data, distribution = 'bernoulli', n_mixtures=3))
+  testthat::expect_error(fm2 <- species_mix(NA, model_data, distribution = 'bernoulli_sp', n_mixtures=3))
+  testthat::expect_error(fm3 <- species_mix(NA, model_data, distribution = 'poisson', n_mixtures=3))
+  testthat::expect_error(fm4 <- species_mix(NA, model_data, distribution = 'ippm', n_mixtures=3))
+  testthat::expect_error(fm5 <- species_mix(NA, model_data, distribution = 'negative_binomial', n_mixtures=3))
+
 
 })
