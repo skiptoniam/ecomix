@@ -13,5 +13,4 @@ testthat::test_that('species mix functions classes work', {
                                   covariate_data = simulated_data$covariate_data[,-1])
   testthat::expect_error(fm1 <- species_mix(NA, model_data, distribution = 'bernoulli_sp', n_mixtures=3))
 
-
 })
