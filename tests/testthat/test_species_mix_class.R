@@ -1,7 +1,6 @@
-
 context('species_mix-class')
 
-test_that('species mix functions classes work', {
+testthat::test_that('species mix functions classes work', {
 
   library(ecomix)
   set.seed(42)
@@ -12,8 +11,7 @@ test_that('species mix functions classes work', {
   simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
   model_data <- make_mixture_data(species_data = simulated_data$species_data,
                                   covariate_data = simulated_data$covariate_data[,-1])
-  fm1 <- species_mix(form, model_data, distribution = 'bernoulli_sp', n_mixtures=3)
-
+  testthat::expect_error(fm1 <- species_mix(NA, model_data, distribution = 'bernoulli_sp', n_mixtures=3))
 
 
 })
