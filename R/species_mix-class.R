@@ -242,14 +242,9 @@
       dumbOut <- capture.output(tmp <- fit_species_mix_wrapper(y=y, X=X, weights=weights, offset=offset, distribution_numeric=disty, n_mixtures=n_mixtures, inits = inits, control=control, y_is_na=y_is_na, estimate_variance=control$est_var))
       control$quiet <- tmpQuiet
       tmp$dist <- disty.cases[disty]
-      #calculate the posterior probs
-      # if( nRCP>1)
-      #   tmp$postProbs <- calcPostProbs( tmp$pis, tmp$logCondDens)
-      # else
-      #   tmp$postProbs <- rep( 1, nrow( X))
-      #Residuals --not calculating residuals here.  Need to call residuals.regional_mix
+
       #Information criteria
-      tmp <- calcInfoCrit(tmp)
+      tmp <- calc_info_crit_sam(tmp)
       #titbits object, if wanted/needed.
       # tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offset, weights, form.RCP, form.spp, control, dist, p.w=p.w, power)
       # tmp$titbits$disty <- disty
@@ -563,6 +558,14 @@
     }
     return( titbits)
 }
+
+"calc_info_crit_sam" <-  function(ret) {
+    k <- length(unlist(ret$coefs))
+    ret$BIC <- -2 * ret$logl + log(ret$n) * k
+    ret$AIC <- -2 * ret$logl + 2 * k
+    return( ret)
+  }
+
 
 "check_reponse_sam" <-function(outs) {
   nam <- colnames( outs)
@@ -3628,12 +3631,9 @@ get_logls_bernoulli_sp<-function(first_fit, fits, G, S){
   logl_sp_bernoulli_sp <- matrix(NA, nrow=S, ncol=G)
   p <- make.link(link = "logit")
   for(ss in 1:S){
-    # sp_idx<-!first_fit$y_is_na[,ss]
     for(gg in 1:G){
-      #eta is the same as log_lambda (linear predictor)
       eta <- first_fit$x[,1] * fits$sp_intercepts[ss] + as.matrix(first_fit$x[,-1]) %*% fits$mix_coefs[gg,] + first_fit$offset
       logl_sp_bernoulli_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, p$linkinv(eta),log = TRUE))
-      #Need weights*z*lp + weights*lp.  Should be OK?  Check!  SDF
     }
     logl_sp_bernoulli_sp[ss,gg] <- logl_sp_bernoulli_sp[ss,gg]*first_fit$weights[ss]
   }
@@ -3641,7 +3641,7 @@ get_logls_bernoulli_sp<-function(first_fit, fits, G, S){
 }
 
 get_taus_bernoulli_sp <- function(pi, logls, G, S){
-  fullLogPis <- matrix( rep( log(pi), each=S), nrow=S, ncol=G)
+  fullLogPis <- matrix(rep(log(pi), each=S), nrow=S, ncol=G)
   a_k <- fullLogPis + logls
   a_m <- apply( a_k, 1, max)
   tmp <- exp( a_k - rep( a_m, times=G))
@@ -3649,7 +3649,7 @@ get_taus_bernoulli_sp <- function(pi, logls, G, S){
   return( exp( a_k - log_denom))
 }
 
-skrink_taus_bernoulli_sp <- function( taus, max_tau=0.7, G){
+skrink_taus_bernoulli_sp <- function(taus, max_tau=0.7, G){
   if( G==1)
     return( taus)
   alpha <- (1-max_tau*G) / ( max_tau*(2-G)-1)
@@ -3866,10 +3866,10 @@ fitmix_bernoulli_sp <- function(y, X, offset, weights, G, control){
                        pis=emfit$pis)
   } else {
     cat('Not using EM algorith to find starting values; starting values are
-        generated using',control$init_method,'to generate starting values\n')
+        generated using',control$init_method,'\n')
     starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
                                                         weights = weights, G = G, S = S,
-                                                        control = control) # add init st to control
+                                                        control = control)
     start_vals <- list(alphas=starting_values$fits$sp_intercepts,
                        betas=starting_values$fits$mix_coefs,
                        pis=starting_values$pis)
