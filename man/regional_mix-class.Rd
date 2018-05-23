@@ -9,13 +9,18 @@
 \usage{
 \method{AIC}{regional_mix}(object, ..., k = 2)
 
-regional_mix(form.RCP = NULL, form.spp = NULL, data, nRCP = 3,
+regional_mix(rcp_formula = NULL, species_formula = NULL, data, nRCP = 3,
   dist = "bernoulli", offset = NULL, weights = NULL, control = list(),
   inits = "random2", titbits = TRUE, power = 1.6)
 
 \method{residuals}{regional_mix}(object, ..., type = "RQR", quiet = FALSE)
 }
 \arguments{
+\item{rcp_formula}{an object of class "formula" (or an object that can be coerced to that class).
+The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the region of common profile (rcp) probabilities on covariates.}
+
+\item{species_formula}{an object of class "formula" (or an object that can be coerced to that class). The left hand side of this formula should be left empty (it is removed if it is not empty). The right hand side of this formula specifies the dependence of the species"'" data on covariates (typically different covariates to \code{rcp_formula} to avoid confusing confounding). An example formula is observations ~ gear_type + time_of_day, where gear_type describes the different sampling gears and time_of_day describes the time of the sample. #maybe could call this detection/bias}
+
 \item{nRCP}{The number of mixing components (groups) to fit.}
 
 \item{offset}{a numeric vector of length nrow( data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the unobserved RCP type. Note that offsets cannot be included as part of the rcp_formula or species_formula arguments ??? only through this argument.}
@@ -23,11 +28,6 @@ regional_mix(form.RCP = NULL, form.spp = NULL, data, nRCP = 3,
 \item{weights}{a numeric vector of length nrow( data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1.}
 
 \item{control}{a list of control parameters for optimisation and calculation. See details. From \code{control} control.}
-
-\item{rcp_formula}{an object of class "formula" (or an object that can be coerced to that class).
-The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the region of common profile (rcp) probabilities on covariates.}
-
-\item{species_formula}{an object of class "formula" (or an object that can be coerced to that class). The left hand side of this formula should be left empty (it is removed if it is not empty). The right hand side of this formula specifies the dependence of the species"'" data on covariates (typically different covariates to \code{rcp_formula} to avoid confusing confounding). An example formula is observations ~ gear_type + time_of_day, where gear_type describes the different sampling gears and time_of_day describes the time of the sample. #maybe could call this detection/bias}
 
 \item{model_data}{a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containng the covariate data for each site. Names of columns must match that given in \code{rcp_formula} and \code{species_formula}.}
 

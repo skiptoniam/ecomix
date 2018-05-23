@@ -452,10 +452,10 @@ function( outcomes, W, X, offy, wts, disty, G, S, power, inits, quiet=FALSE)
 
 
 "get_titbits_rcp" <-
-function( titbits, outcomes, X, W, offset, wts, form.RCP, form.spp, control, dist, p.w, power)
+function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, control, dist, p.w, power)
 {
   if( titbits==TRUE)
-    titbits <- list( Y = outcomes, X = X, W = W, offset = offset, wts=wts, form.RCP = form.RCP, form.spp = form.spp, control = control, dist = dist, power=power)
+    titbits <- list( Y = outcomes, X = X, W = W, offset = offset, wts=wts, rcp_formula = rcp_formula, species_formula = species_formula, control = control, dist = dist, power=power)
   else{
     titbits <- list()
     if( "Y" %in% titbits)
@@ -468,10 +468,10 @@ function( titbits, outcomes, X, W, offset, wts, form.RCP, form.spp, control, dis
       titbits$offset <- offset
     if( "wts" %in% titbits)
       titbits$wts <- wts
-    if( "form.RCP" %in% titbits)
-      titbits$form.RCP <- form.RCP
-    if( "form.spp" %in% titbits)
-      titbits$form.spp <- form.spp
+    if( "rcp_formula" %in% titbits)
+      titbits$rcp_formula <- rcp_formula
+    if( "species_formula" %in% titbits)
+      titbits$species_formula <- species_formula
     if( "control" %in% titbits)
       titbits$control <- control
     if( "dist" %in% titbits)
@@ -481,16 +481,16 @@ function( titbits, outcomes, X, W, offset, wts, form.RCP, form.spp, control, dis
   }
   if( p.w==0 & "W" %in% names( titbits))
     titbits$W <- NULL
-  if( p.w!=0 & "form.spp" %in% names( titbits))
-    environment( titbits$form.spp) <- environment( titbits$form.RCP)
+  if( p.w!=0 & "species_formula" %in% names( titbits))
+    environment( titbits$species_formula) <- environment( titbits$rcp_formula)
   return( titbits)
 
 }
 
 
-"get_W_rcp" <- function( form.spp, mf.W){
-  form.W <- form.spp
-  if( !is.null( form.spp)){
+"get_W_rcp" <- function( species_formula, mf.W){
+  form.W <- species_formula
+  if( !is.null( species_formula)){
     if( length( form.W)>2)
       form.W[[2]] <- NULL #get rid of outcomes
     W <- model.matrix( form.W, mf.W)
@@ -511,8 +511,8 @@ function( titbits, outcomes, X, W, offset, wts, form.RCP, form.spp, control, dis
   return( wts)
 }
 
-"get_X_rcp" <-function( form.RCP, mf.X){
-  form.X <- form.RCP
+"get_X_rcp" <-function( rcp_formula, mf.X){
+  form.X <- rcp_formula
   form.X[[2]] <- NULL
   form.X <- as.formula(form.X)
   X <- model.matrix(form.X, mf.X)
@@ -904,8 +904,8 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
     allResids <- matrix(NA, nrow = x$n, ncol = nsim)
     X <- x$titbits$X
     p.x <- ncol( X)
-    if( class( x$titbits$form.spp)=="formula"){
-      form.W <- x$titbits$form.spp
+    if( class( x$titbits$species_formula)=="formula"){
+      form.W <- x$titbits$species_formula
       W <- x$titbits$W
       p.w <- ncol( W)
     }
@@ -1056,7 +1056,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
 }
 
 
-"plot.registab" <-function(x, y, minWidth=1, ncuts=111, ylimmo=NULL, ...){
+"plot.regional_mix_stab" <-function(x, y, minWidth=1, ncuts=111, ylimmo=NULL, ...){
     par(mfrow = c(1, 2))
     matplot(c(0, x$oosSizeRange), rbind(0, x$disty), type = "b",
         ylab = "Distance from Full Model Predictions", xlab = "Number of Obs Removed",
@@ -1091,8 +1091,8 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
 "predict.regional_mix" <- function (object, object2 = NULL, ..., newdata = NULL, nboot = 0, alpha = 0.95, mc.cores = 1){
     if (is.null(newdata)) {
         X <- object$titbits$X
-        if (class(object$titbits$form.spp) == "formula") {
-            form.W <- object$titbits$form.spp
+        if (class(object$titbits$species_formula) == "formula") {
+            form.W <- object$titbits$species_formula
             W <- object$titbits$W
             p.w <- ncol(W)
         }
@@ -1103,12 +1103,12 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
         }
     }
     else {
-        form.X <- as.formula(object$titbit$form.RCP)
+        form.X <- as.formula(object$titbit$rcp_formula)
         if (length(form.X) == 3)
             form.X[[2]] <- NULL
         X <- model.matrix(form.X, model.frame(form.X, data = as.data.frame(newdata)))
-        if (class(object$titbits$form.spp) == "formula") {
-            W <- model.matrix(object$titbits$form.spp, model.frame(object$titbits$form.spp,
+        if (class(object$titbits$species_formula) == "formula") {
+            W <- model.matrix(object$titbits$species_formula, model.frame(object$titbits$species_formula,
                 data = as.data.frame(newdata)))
             p.w <- ncol(W)
         }
@@ -1152,7 +1152,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
     tauIn <- tauIn[-1]
     betaIn <- c(NA, as.numeric(object$coef$beta))
     betaIn <- betaIn[-1]
-    if (class(object$titbits$form.spp) == "formula") {
+    if (class(object$titbits$species_formula) == "formula") {
         gammaIn <- c(NA, as.numeric(object$coef$gamma))
         gammaIn <- gammaIn[-1]
     }
@@ -1247,7 +1247,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
 
 
 "print.data.summ" <-
-function( data, dat, S, form.RCP, form.spp, disty.cases, disty, quiet=FALSE)
+function( data, dat, S, rcp_formula, species_formula, disty.cases, disty, quiet=FALSE)
 {
   if( quiet)
     return( NULL)
@@ -1255,10 +1255,10 @@ function( data, dat, S, form.RCP, form.spp, disty.cases, disty, quiet=FALSE)
   n <- length( dat$ids)
   message("There are ", n, " fully present observations and ", n.tot, " observations in total")
   message("There are ", S, " species")
-  form.RCP[[2]] <- NULL
-  message("The model for the (latent) RCP classes is: ", Reduce( "paste", deparse( form.RCP)))
-  if( !is.null( form.spp))
-    message("The model for each species is: ", Reduce( "paste", deparse( form.spp)))
+  rcp_formula[[2]] <- NULL
+  message("The model for the (latent) RCP classes is: ", Reduce( "paste", deparse( rcp_formula)))
+  if( !is.null( species_formula))
+    message("The model for each species is: ", Reduce( "paste", deparse( species_formula)))
   else
     message("There is NO model for each species (apart from intercept(s))")
   message("The error distribution is: ", disty.cases[disty])
@@ -1386,22 +1386,22 @@ function( fm, mf, nboot)
 #' spp_form <- observations ~ 1 + w1 + w2
 #' model_data <- list('species_data' = Y, 'covariate_data' = X)
 #' fm_regional_mix <- regional_mix(rcp_form,spp_form,data=model_data,distribution='bernoulli',n_mixtures=5)}
-"regional_mix" <- function (form.RCP = NULL, form.spp = NULL, data, nRCP = 3, dist="bernoulli", offset=NULL, weights=NULL, control = list(), inits="random2", titbits = TRUE, power=1.6)
+"regional_mix" <- function (rcp_formula = NULL, species_formula = NULL, data, nRCP = 3, dist="bernoulli", offset=NULL, weights=NULL, control = list(), inits="random2", titbits = TRUE, power=1.6)
 {
     #the control parameters
     control <- set.control( control)
     if( !control$quiet)
       message( "RCP modelling")
     call <- match.call()
-    if( !is.null(form.RCP))
-      form.RCP <- as.formula( form.RCP)
+    if( !is.null(rcp_formula))
+      rcp_formula <- as.formula( rcp_formula)
     else{
       if( !control$quiet)
         message( "There is no RCP model!  Please provide a model (intercept at least) -- exitting now")
       return( NULL)
     }
-    if( !is.null( form.spp))
-      form.spp <- as.formula( form.spp)
+    if( !is.null( species_formula))
+      species_formula <- as.formula( species_formula)
 
     mf <- match.call(expand.dots = FALSE)
     m <- match(c("data","offset","weights"), names(mf), 0L)
@@ -1413,7 +1413,7 @@ function( fm, mf, nboot)
 
     ##data <- as.data.frame(data)
     #get the data model frames and strip out any NAs
-    dat <- clean_data_rcp( mf, form.RCP, form.spp)
+    dat <- clean_data_rcp( mf, rcp_formula, species_formula)
     #get the outcomes
     outcomes <- model.response(dat$mf.X)
     S <- check.outcomes1(outcomes)
@@ -1425,10 +1425,10 @@ function( fm, mf, nboot)
     if( !control$quiet)
       message( "There are: ", nRCP, "RCPs to group the sites into")
     #get the design matrix for RCP part of model
-    X <- get_X_rcp(form.RCP, dat$mf.X)
+    X <- get_X_rcp(rcp_formula, dat$mf.X)
     p.x <- ncol( X)
     #get design matrix for spp part of the model -- if there is one
-    W <- get_W_rcp( form.spp, dat$mf.W)
+    W <- get_W_rcp( species_formula, dat$mf.W)
     if( all( W != -999999))
       p.w <- ncol( W)
     else
@@ -1443,7 +1443,7 @@ function( fm, mf, nboot)
     #get power params for Tweedie
     power <- get_power_rcp( disty, power, S)
     #summarising data to console
-    print.data.summ( data, dat, S, form.RCP, form.spp, disty.cases, disty, control$quiet)
+    print.data.summ( data, dat, S, rcp_formula, species_formula, disty.cases, disty, control$quiet)
 
     tmp <- regional_mix.fit( outcomes, W, X, offy, wts, disty, nRCP, power, inits, control, nrow( X), S, p.x, p.w)
 
@@ -1457,7 +1457,7 @@ function( fm, mf, nboot)
     #Information criteria
     tmp <- calcInfoCrit( tmp)
     #titbits object, if wanted/needed.
-    tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts, form.RCP, form.spp, control, dist, p.w=p.w, power)
+    tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts, rcp_formula, species_formula, control, dist, p.w=p.w, power)
     tmp$titbits$disty <- disty
     #the last bit of the regional_mix object puzzle
     tmp$call <- call
@@ -1498,22 +1498,22 @@ function( outcomes, W, X, offy, wts, disty, nRCP, power, inits, control, n, S, p
 
 
 "regional_mix.multifit" <-
-function (form.RCP = NULL, form.spp = NULL, data, nRCP = 3, dist="bernoulli", offset=NULL, weights=NULL, control = list(), inits = "random2", titbits = FALSE, power=1.6, nstart=10, mc.cores=1)
+function (rcp_formula = NULL, species_formula = NULL, data, nRCP = 3, dist="bernoulli", offset=NULL, weights=NULL, control = list(), inits = "random2", titbits = FALSE, power=1.6, nstart=10, mc.cores=1)
 {
     #the control parameters
     control <- set.control( control)
     if( !control$quiet)
       message( "RCP modelling")
     call <- match.call()
-    if( !is.null(form.RCP))
-      form.RCP <- as.formula( form.RCP)
+    if( !is.null(rcp_formula))
+      rcp_formula <- as.formula( rcp_formula)
     else{
       if( !control$quiet)
         message( "There is no RCP model!  Please provide a model (intercept at least) -- exitting now")
       return( NULL)
     }
-    if( !is.null( form.spp))
-      form.spp <- as.formula( form.spp)
+    if( !is.null( species_formula))
+      species_formula <- as.formula( species_formula)
 
     mf <- match.call(expand.dots = FALSE)
     m <- match(c("data","offset","weights"), names(mf), 0L)
@@ -1525,7 +1525,7 @@ function (form.RCP = NULL, form.spp = NULL, data, nRCP = 3, dist="bernoulli", of
 
     ##data <- as.data.frame(data)
     #get the data model frames and strip out any NAs
-    dat <- clean_data_rcp( mf, form.RCP, form.spp)
+    dat <- clean_data_rcp( mf, rcp_formula, species_formula)
     #get the outcomes
     outcomes <- model.response(dat$mf.X)
     S <- check.outcomes1(outcomes)
@@ -1537,10 +1537,10 @@ function (form.RCP = NULL, form.spp = NULL, data, nRCP = 3, dist="bernoulli", of
     if( !control$quiet)
       message( "There are: ", nRCP, "RCPs to group the sites into")
     #get the design matrix for RCP part of model
-    X <- get_X_rcp(form.RCP, dat$mf.X)
+    X <- get_X_rcp(rcp_formula, dat$mf.X)
     p.x <- ncol( X)
     #get design matrix for spp part of the model -- if there is one
-    W <- get_W_rcp( form.spp, dat$mf.W)
+    W <- get_W_rcp( species_formula, dat$mf.W)
     if( all( W != -999999))
       p.w <- ncol( W)
     else
@@ -1555,7 +1555,7 @@ function (form.RCP = NULL, form.spp = NULL, data, nRCP = 3, dist="bernoulli", of
     # #get power params for Tweedie
     # power <- get_power_rcp( disty, power)
     #summarising data to console
-    print.data.summ( data, dat, S, form.RCP, form.spp, disty.cases, disty, control$quiet)
+    print.data.summ( data, dat, S, rcp_formula, species_formula, disty.cases, disty, control$quiet)
 
     tmp.fun <- function(x){
       if( !control$quiet & nstart>1)
@@ -1574,7 +1574,7 @@ function (form.RCP = NULL, form.spp = NULL, data, nRCP = 3, dist="bernoulli", of
       #Information criteria
       tmp <- calcInfoCrit( tmp)
       #titbits object, if wanted/needed.
-      tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts, form.RCP, form.spp, control, dist, p.w=p.w, power)
+      tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts, rcp_formula, species_formula, control, dist, p.w=p.w, power)
       tmp$titbits$disty <- disty
       #the last bit of the regional_mix object puzzle
       tmp$call <- call
@@ -2059,8 +2059,8 @@ function (object, ..., object2=NULL, method = "FiniteDifference", nboot = 1000, 
     mc.cores <- 1
   X <- object$titbits$X
   p.x <- ncol( X)
-  if( class( object$titbits$form.spp)=="formula"){
-    form.W <- object$titbits$form.spp
+  if( class( object$titbits$species_formula)=="formula"){
+    form.W <- object$titbits$species_formula
     W <- object$titbits$W
     p.w <- ncol( W)
   }
@@ -2128,7 +2128,7 @@ function (object, ..., object2=NULL, method = "FiniteDifference", nboot = 1000, 
         as.integer( FALSE), as.integer( FALSE), as.integer( TRUE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "ecomix")
 
         tmp1 <- c(alpha.score, tau.score, beta.score)
-        if( p.w > 0)#class( object$titbits$form.spp) == "formula")
+        if( p.w > 0)#class( object$titbits$species_formula) == "formula")
           tmp1 <- c( tmp1, gamma.score)
         if( !is.null( object$coef$disp))
           tmp1 <- c( tmp1, disp.score)
@@ -2332,8 +2332,8 @@ globalVariables( package="ecomix",
     ,"preds"
     ,"my.sd"
     ,"mult"
-    ,"form.RCP"
-    ,"form.spp"
+    ,"rcp_formula"
+    ,"species_formula"
     ,"form.W"
     ,"tmp.fun"
     ,"intercepts"

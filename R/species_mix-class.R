@@ -9,11 +9,9 @@
 #' `species_mix` acts as a wrapper for fitmix.cpp that allows for easier data
 #' input. The data frames are merged into the appropriate format for the use
 #' in fitmix.cpp. Minima is found using vmmin (BFGS). Currently 'bernoulli',
-#' 'bernoulli_spp' (bernoulli mixture model with independent species
-#' intercepts), 'poisson', 'ippm' (inhomogenous Poisson point process),
-#' 'negative_binomial' and 'tweedie' distributions can be fitted using the
-#' species_mix function.
-#' @param formula an object of class "formula" (or an object that can be
+#' 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative_binomial'
+#'  and 'tweedie' distributions can be fitted using the species_mix function.
+#' @param archetype_fromula an object of class "formula" (or an object that can be
 #' coerced to that class). The response variable (left hand side of the
 #' formula) needs to be either 'presence', 'occurrence', 'abundance',
 #' 'biomass' or 'quantity' data. The type of reponse data will help specify
@@ -22,6 +20,14 @@
 #' species archetype probabilities on covariates. For all model the basic
 #' formula structure follows something like this:
 #' cbind(spp1,spp2,spp3)~1+temperature+rainfall
+#' @param species_formula an object of class "formula" (or an object that can be
+#' coerced to that class). The right hand side of this formula specifies the
+#' dependence of the species"'" data on covariates (typically different covariates
+#' to \code{archetype_formula} to avoid confusing confounding). Current the formula
+#' is set at ~ 1 by default for species-specific intercepts for the archetype models.
+#' If you include a species specific formula which has more than an intercept you
+#' will be fitting a partial species archetype model which has species
+#' specific covariates and archetype specific covariates.
 #' @param model_data a matrix of dataframe which contains the 'species_data'
 #' matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
 #' const, temperature, rainfall. dims of matirx should be
@@ -55,19 +61,23 @@
 #' \dontrun{
 #' library(ecomix)
 #' set.seed(42)
-#' form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+#' sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+#' sp_form <- ~ 1
 #' theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,7.9),3,3,byrow=TRUE)
 #' dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
 #' dat[,-1] <- scale(dat[,-1])
-#' simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
+#' simulated_data <- simulate_species_mix_data(archetype_formula=form, species_formula=sp_form,
+#'                                             dat,theta,dist="bernoulli")
 #' model_data <- make_mixture_data(species_data = simulated_data$species_data,
 #'                                 covariate_data = simulated_data$covariate_data[,-1])
-#' fm1 <- species_mix(form, model_data, distribution = 'bernoulli_sp', n_mixtures=3)
+#' fm1 <- species_mix(sam_form, sp_from, model_data, distribution = 'bernoulli_sp',
+#'  n_mixtures=3)
 #' }
 
-
-"species_mix" <- function(formula = NULL, data, n_mixtures = 3, distribution="bernoulli",
-  offset=NULL, weights=NULL, control=species_mix.control(), inits=NULL, standardise = FALSE){
+"species_mix" <- function(archetype_formula = NULL, species_formula = ~1, data,
+                          n_mixtures = 3, distribution="bernoulli", offset=NULL,
+                          weights=NULL, control=species_mix.control(), inits=NULL,
+                          standardise = FALSE){
 
   #the control parameters
   control <- set_control_sam(control)
@@ -82,6 +92,9 @@
     return(NULL)
   }
 
+  if(!is.null( species_formula))
+    species_formula <- as.formula(species_formula)
+
   # Create model matrix
   mf <- match.call(expand.dots = FALSE)
   m <- match(c("formula","data","offset","weights"), names(mf), 0L)
@@ -91,6 +104,9 @@
   else mf$na.action <- "na.exclude"
   mf[[1L]] <- quote(stats::model.frame)
   mf <- eval(mf, parent.frame())
+
+  # get the model matrix and find the fitting formula.
+  dist_dat <- check_distribution_clean_data_sam(archetype_formula, species_formula, mf, distribution)
 
   # need this for the na.omit step
   rownames(mf)<-seq_len(nrow(mf))
@@ -152,119 +168,118 @@
   tmp <- fit_species_mix_wrapper(formula = formula, y=y, X=X, weights=weights, offset=offset,
                                  distribution_numeric=disty, n_mixtures=n_mixtures,
                                  inits = inits, control=control, y_is_na=y_is_na)
-  c("archetype",disty.cases[disty])
+  class(tmp) <- c("archetype",disty.cases[disty])
   return(tmp)
 }
 
-"species_mix.multifit" <- function(formula = NULL, data, n_mixtures = 3, distribution="poisson",
-                                   offset=NULL, weights=NULL, control=species_mix.control(), inits=NULL,
-                                   standardise = FALSE, mc.cores=1){
-  #the control parameters
-  control <- set_control_sam(control)
-  if(!control$quiet)
-    message( "SAM modelling")
-  call <- match.call()
-  if(!is.null(formula))
-    formula <- as.formula(formula)
-  else{
-    if(!control$quiet)
-      message("There is no SAM model! Please provide a model (intercept at least) -- exitting now")
-    return(NULL)
-  }
-
-  # Create model matrix
-  mf <- match.call(expand.dots = FALSE)
-  m <- match(c("formula","data","offset","weights"), names(mf), 0L)
-  mf <- mf[c(1L, m)]
-  mf$drop.unused.levels <- TRUE
-  if(distribution=="ippm") mf$na.action <- "na.pass"
-  else mf$na.action <- "na.exclude"
-  mf[[1L]] <- quote(stats::model.frame)
-  mf <- eval(mf, parent.frame())
-
-  # need this for the na.omit step
-  rownames(mf)<-seq_len(nrow(mf))
-
-  # get responses
-  y <- model.response(mf)
-
-  # logical matirx needed for removing NAs from response and weights.
-  if(distribution=='ippm')y_is_na <- is.na(y)
-  else y_is_na <- NULL
-  # print(dim(y_is_na))
-  # check names of reponses
-  S <- check_reponse_sam(y)
-
-  if (!S){
-    if(!control$quiet)
-      message("Two species have the same name -- exitting now")
-    return(NULL)
-  }
-  if( !control$quiet)
-    message( "There are ", n_mixtures, " archtypes to group the species into")
-
-  # get model matrix
-  X <- model.matrix(formula,mf)
-
-  #get distribution
-  disty.cases <- c("bernoulli","bernoulli_sp","poisson","ippm",
-                   "negative_binomial","tweedie","gaussian")
-  disty <- get_distribution_sam(disty.cases, distribution)
-
-  # get offsets and weights
-  offset <- get_offset_sam(mf)
-  weights <- get_weights_sam(mf,S,distribution)
-
-  if(distribution=='ippm'){
-    if(!all(colnames(y)%in%colnames(weights)))
-      stop('When modelling a inhomogenous poisson point process model, weights colnames must match species data colnames')
-    if(any(dim(y)!=dim(weights)))
-      stop('When modelling a inhomogenous poisson point process model, weights needs to have the same dimensions at the species data - n_sites x n_species')
-  }
-
-  s.means = NULL
-  s.sds = NULL
-  if (standardise == TRUE) {
-    stand.X = standardise.X(X[, -1])
-    X = as.matrix(cbind(1, stand.X$X))
-    s.means = stand.X$dat.means
-    s.sds = stand.X$dat.sds
-  }
-
-  # summarising data to console
-  print_input_sam(y, X, S, formula, distribution, quiet=control$quiet)
-
-    tmp.fun <- function(x){
-      if( !control$quiet & nstart>1)
-        setTxtProgressBar(pb, x)
-      tmpQuiet <- control$quiet
-      control$quiet <- TRUE
-      dumbOut <- capture.output(tmp <- fit_species_mix_wrapper(y=y, X=X, weights=weights, offset=offset, distribution_numeric=disty, n_mixtures=n_mixtures, inits = inits, control=control, y_is_na=y_is_na, estimate_variance=control$est_var))
-      control$quiet <- tmpQuiet
-      tmp$dist <- disty.cases[disty]
-
-      #Information criteria
-      tmp <- calc_info_crit_sam(tmp)
-      #titbits object, if wanted/needed.
-      # tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offset, weights, form.RCP, form.spp, control, dist, p.w=p.w, power)
-      # tmp$titbits$disty <- disty
-      #the last bit of the regional_mix object puzzle
-      # tmp$call <- call
-      # class(tmp) <- "regional_mix"
-      return( tmp)
-    }
-
-    #    require( parallel)
-    if( !control$quiet & nstart>1)
-      pb <- txtProgressBar(min = 1, max = nstart, style = 3, char = "(-.-)Zzz... ")
-    #Fit the model many times
-    many.starts <- parallel::mclapply(1:nstart, tmp.fun, mc.cores=mc.cores)
-
-    if( !control$quiet)
-      message("")
-
-    return(many.starts)
-  }
+# "species_mix.multifit" <- function(formula = NULL, data, n_mixtures = 3, distribution="poisson",
+#                                    offset=NULL, weights=NULL, control=species_mix.control(),
+#                                    inits=NULL, standardise = FALSE, mc.cores=1){
+#   #the control parameters
+#   control <- set_control_sam(control)
+#   if(!control$quiet)
+#     message( "SAM modelling")
+#   call <- match.call()
+#   if(!is.null(formula))
+#     formula <- as.formula(formula)
+#   else{
+#     if(!control$quiet)
+#       message("There is no SAM model! Please provide a model (intercept at least) -- exitting now")
+#     return(NULL)
+#   }
+#
+#   # Create model matrix
+#   mf <- match.call(expand.dots = FALSE)
+#   m <- match(c("formula","data","offset","weights"), names(mf), 0L)
+#   mf <- mf[c(1L, m)]
+#   mf$drop.unused.levels <- TRUE
+#   if(distribution=="ippm") mf$na.action <- "na.pass"
+#   else mf$na.action <- "na.exclude"
+#   mf[[1L]] <- quote(stats::model.frame)
+#   mf <- eval(mf, parent.frame())
+#
+#   # need this for the na.omit step
+#   rownames(mf)<-seq_len(nrow(mf))
+#
+#   # get responses
+#   y <- model.response(mf)
+#
+#   # logical matirx needed for removing NAs from response and weights.
+#   if(distribution=='ippm')y_is_na <- is.na(y)
+#   else y_is_na <- NULL
+#   # print(dim(y_is_na))
+#   # check names of reponses
+#   S <- check_reponse_sam(y)
+#
+#   if (!S){
+#     if(!control$quiet)
+#       message("Two species have the same name -- exitting now")
+#     return(NULL)
+#   }
+#   if( !control$quiet)
+#     message( "There are ", n_mixtures, " archtypes to group the species into")
+#
+#   # get model matrix
+#   X <- model.matrix(formula,mf)
+#
+#   #get distribution
+#   disty.cases <- c("bernoulli","bernoulli_sp","poisson","ippm",
+#                    "negative_binomial","tweedie","gaussian")
+#   disty <- get_distribution_sam(disty.cases, distribution)
+#
+#   # get offsets and weights
+#   offset <- get_offset_sam(mf)
+#   weights <- get_weights_sam(mf,S,distribution)
+#
+#   if(distribution=='ippm'){
+#     if(!all(colnames(y)%in%colnames(weights)))
+#       stop('When modelling a inhomogenous poisson point process model, weights colnames must match species data colnames')
+#     if(any(dim(y)!=dim(weights)))
+#       stop('When modelling a inhomogenous poisson point process model, weights needs to have the same dimensions at the species data - n_sites x n_species')
+#   }
+#
+#   s.means = NULL
+#   s.sds = NULL
+#   if (standardise == TRUE) {
+#     stand.X = standardise.X(X[, -1])
+#     X = as.matrix(cbind(1, stand.X$X))
+#     s.means = stand.X$dat.means
+#     s.sds = stand.X$dat.sds
+#   }
+#
+#   # summarising data to console
+#   print_input_sam(y, X, S, formula, distribution, quiet=control$quiet)
+#
+#     tmp.fun <- function(x){
+#       if( !control$quiet & nstart>1)
+#         setTxtProgressBar(pb, x)
+#       tmpQuiet <- control$quiet
+#       control$quiet <- TRUE
+#       dumbOut <- capture.output(tmp <- fit_species_mix_wrapper(y=y, X=X, weights=weights, offset=offset, distribution_numeric=disty, n_mixtures=n_mixtures, inits = inits, control=control, y_is_na=y_is_na, estimate_variance=control$est_var))
+#       control$quiet <- tmpQuiet
+#       tmp$dist <- disty.cases[disty]
+#
+#       #Information criteria
+#       tmp <- calc_info_crit_sam(tmp)
+#       #titbits object, if wanted/needed.
+#       # tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offset, weights, form.RCP, form.spp, control, dist, p.w=p.w, power)
+#       # tmp$titbits$disty <- disty
+#       #the last bit of the regional_mix object puzzle
+#       # tmp$call <- call
+#       # class(tmp) <- "regional_mix"
+#       return( tmp)
+#
+#     #    require( parallel)
+#     if( !control$quiet & nstart>1)
+#       pb <- txtProgressBar(min = 1, max = nstart, style = 3, char = "(-.-)Zzz... ")
+#     #Fit the model many times
+#     many.starts <- parallel::mclapply(1:nstart, tmp.fun, mc.cores=mc.cores)
+#
+#     if( !control$quiet)
+#       message("")
+#
+#     return(many.starts)
+#   }
 
 #'@rdname species_mix-class
 #'@name species_mix.fit
@@ -566,6 +581,57 @@
     return( ret)
   }
 
+"check_species_formula" <- function(f){
+
+  if(is.null(f))
+    return(0)
+
+  if(all(attr(terms(f), 'intercept') == 1 & length(attr(terms(f), 'factors')) == 0))
+    return(1)
+
+  if(all(attr(terms(f), 'intercept') == 1 & length(attr(terms(f), 'factors')) > 0))
+    return(2)
+
+}
+
+"check_distribution_clean_data_sam" <- function(arch_form, sp_form, dat, disty){
+
+  # returns numeric 0, 1 or 2. if zero no species intercepts, if 1 speices intercepts, if 2 species model.
+  species_int_coefs <- check_species_formula(sp_form)
+
+  if(species_int_coefs!=2){
+    mod_dat <- clean_data_sam(dat, arch_form, NULL)
+  } else {
+    mod_dat <- clean_data_sam(dat, arch_form, sp_form)
+  }
+
+  if(disty=="bernoulli" & species_int_coefs==0)fit_disty <- "bernoulli"
+  if(disty=="bernoulli" & species_int_coefs==1)fit_disty <- "bernoulli_sp"
+  if(disty=="bernoulli" & species_int_coefs==2)fit_disty <- "bernoulli_partial"
+
+  if(disty=="poisson" & species_int_coefs==0)
+    stop('Poisson distribution requires independent species intercepts')
+  if(disty=="bernoulli" & species_int_coefs==1)fit_disty <- "poisson"
+  if(disty=="bernoulli" & species_int_coefs==2)fit_disty <- "poisson_partial"
+
+  if(disty=="ippm" & species_int_coefs==0)
+    stop('IPPM distribution requires independent species intercepts')
+  if(disty=="ippm" & species_int_coefs==1)fit_disty <- "ippm"
+  if(disty=="ippm" & species_int_coefs==2)fit_disty <- "ippm_partial"
+
+  if(disty=="negative_binomial" & species_int_coefs==0)
+    stop('Negative binomial distribution requires independent species intercepts')
+  if(disty=="negative_binomial" & species_int_coefs==1)fit_disty <- "negative_binomial"
+  if(disty=="negative_binomial" & species_int_coefs==2)fit_disty <- "negative_binomial_partial"
+
+  if(disty=="tweedie" & species_int_coefs==0)
+    stop('Tweedie distribution requires independent species intercepts')
+  if(disty=="tweedie" & species_int_coefs==1)fit_disty <- "tweedie"
+  if(disty=="tweedie" & species_int_coefs==2)fit_disty <- "tweedie_partial"
+
+  return(list(fit_disty,mod_dat))
+
+}
 
 "check_reponse_sam" <-function(outs) {
   nam <- colnames( outs)
@@ -574,6 +640,8 @@
   else
     return( FALSE)
 }
+
+
 
 "additive_logistic" <- function (x,inv=FALSE) {
     if(inv){
@@ -758,6 +826,23 @@
         fm[[i]] <- list(logl=out[[i]]$logl,coef=out[[i]]$coef,tau=out[[i]]$tau,pi=out[[i]]$pi,covar=out[[i]]$covar)
       }
     return(list(aic=aic,bic=bic,fm=fm))
+  }
+
+"clean_data_sam" <- function(data, form1, form2){
+    mf.X <- model.frame(form1, data = data, na.action = na.exclude)
+    if( !is.null( form2)){
+      mf.W <- model.frame(form2, data = data, na.action = na.exclude)
+      ids <- c( rownames( mf.W), rownames( mf.X))[duplicated( c( rownames( mf.W), rownames( mf.X)))]  #those rows of data that are good for both parts of the model.
+      mf.X <- mf.X[rownames( mf.X) %in% ids,, drop=FALSE]
+      mf.W <- mf.W[rownames( mf.W) %in% ids,, drop=FALSE]
+    }
+    else{
+      mf.W <- NULL
+      ids <- rownames( mf.X)
+    }
+    res <- list(ids=ids, mf.X=mf.X, mf.W=mf.W)
+
+    return( res)
   }
 
 
@@ -3719,9 +3804,6 @@ get_incomplete_logl_bernoulli_sp_function <-  function(eta, first_fit, fits, G, 
 fitmix_EM_bernoulli_sp <- function(y, X, offset, weights, G, control){
 
   S <- ncol(y)
-  # cat("Fitting Group", G, "\n")
-  # if (control$trace)
-  #   cat("Iteration | LogL \n")
   pis <- rep(0, G)
   ite <- 1
   logl_old <- -99999999
@@ -3755,7 +3837,6 @@ fitmix_EM_bernoulli_sp <- function(y, X, offset, weights, G, control){
       ite <- 1
     }
     # m-step
-    # this updates the mixture coefs
     tmp <- nlminb(start=fits$mix_coefs, objective=incom_logl_bernoulli_sp_beta, gradient=NULL, hessian=NULL,
                   first_fit=first_fit, eta=additive_logistic(pis,inv = TRUE)[-G], fits=fits, G=G, S=S)
     fits$mix_coefs <- update_mix_coefs(fits$mix_coefs, tmp$par)
@@ -3865,7 +3946,7 @@ fitmix_bernoulli_sp <- function(y, X, offset, weights, G, control){
                        betas=emfit$beta,
                        pis=emfit$pis)
   } else {
-    cat('Not using EM algorith to find starting values; starting values are
+    message('You are not using the EM algorith to find starting values; starting values are
         generated using',control$init_method,'\n')
     starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
                                                         weights = weights, G = G, S = S,
@@ -3876,9 +3957,10 @@ fitmix_bernoulli_sp <- function(y, X, offset, weights, G, control){
   }
 
   # optimise using c++ based on either starting values.
-  tmp <- suppressWarnings(bernoulli_sp_optimise(y, X, offset, weights, G, S, start_vals, control))
+  tmp <- bernoulli_sp_optimise(y, X, offset, weights, G, S, start_vals, control)
 
   return(tmp)
 
 }
+
 

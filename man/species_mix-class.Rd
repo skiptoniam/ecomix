@@ -10,9 +10,10 @@
 \alias{species_mix_estimate_groups}
 \title{species_mix objects}
 \usage{
-species_mix(formula = NULL, data, n_mixtures = 3,
-  distribution = "bernoulli", offset = NULL, weights = NULL,
-  control = species_mix.control(), inits = NULL, standardise = FALSE)
+species_mix(archetype_formula = NULL, species_formula = ~1, data,
+  n_mixtures = 3, distribution = "bernoulli", offset = NULL,
+  weights = NULL, control = species_mix.control(), inits = NULL,
+  standardise = FALSE)
 
 species_mix.fit(y, X, G, weights, offset, distribution_numeric, control,
   y_is_na = NULL)
@@ -35,15 +36,14 @@ species_mix_estimate_groups(formula = NULL, data, n_mixtures = 1:10,
   control = species_mix.control(), inits = NULL, standardise = FALSE)
 }
 \arguments{
-\item{formula}{an object of class "formula" (or an object that can be
-coerced to that class). The response variable (left hand side of the
-formula) needs to be either 'presence', 'occurrence', 'abundance',
-'biomass' or 'quantity' data. The type of reponse data will help specify
-the type of error distribution to be used. The dependent variables
-(the right hind side) of this formula specifies the dependence of the
-species archetype probabilities on covariates. For all model the basic
-formula structure follows something like this:
-cbind(spp1,spp2,spp3)~1+temperature+rainfall}
+\item{species_formula}{an object of class "formula" (or an object that can be
+coerced to that class). The right hand side of this formula specifies the
+dependence of the species"'" data on covariates (typically different covariates
+to \code{archetype_formula} to avoid confusing confounding). Current the formula
+is set at ~ 1 by default for species-specific intercepts for the archetype models.
+If you include a species specific formula which has more than an intercept you
+will be fitting a partial species archetype model which has species
+specific covariates and archetype specific covariates.}
 
 \item{n_mixtures}{The number of mixing components (groups) to fit.}
 
@@ -107,6 +107,16 @@ minimum you will need pis (additive_logitic transformed), alphas
 
 \item{theta}{coefficents for each species archetype. Matrix of G x number of parameters. Each row is a different species archetype.}
 
+\item{archetype_fromula}{an object of class "formula" (or an object that can be
+coerced to that class). The response variable (left hand side of the
+formula) needs to be either 'presence', 'occurrence', 'abundance',
+'biomass' or 'quantity' data. The type of reponse data will help specify
+the type of error distribution to be used. The dependent variables
+(the right hind side) of this formula specifies the dependence of the
+species archetype probabilities on covariates. For all model the basic
+formula structure follows something like this:
+cbind(spp1,spp2,spp3)~1+temperature+rainfall}
+
 \item{model_data}{a matrix of dataframe which contains the 'species_data'
 matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
 const, temperature, rainfall. dims of matirx should be
@@ -143,23 +153,24 @@ There is the option to use EM algorithm to get appropriate starting parameters.
 `species_mix` acts as a wrapper for fitmix.cpp that allows for easier data
 input. The data frames are merged into the appropriate format for the use
 in fitmix.cpp. Minima is found using vmmin (BFGS). Currently 'bernoulli',
-'bernoulli_spp' (bernoulli mixture model with independent species
-intercepts), 'poisson', 'ippm' (inhomogenous Poisson point process),
-'negative_binomial' and 'tweedie' distributions can be fitted using the
-species_mix function.
+'poisson', 'ippm' (inhomogenous Poisson point process), 'negative_binomial'
+ and 'tweedie' distributions can be fitted using the species_mix function.
 }
 \examples{
 \dontrun{
 library(ecomix)
 set.seed(42)
-form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+sp_form <- ~ 1
 theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,7.9),3,3,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
 dat[,-1] <- scale(dat[,-1])
-simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
+simulated_data <- simulate_species_mix_data(archetype_formula=form, species_formula=sp_form,
+                                            dat,theta,dist="bernoulli")
 model_data <- make_mixture_data(species_data = simulated_data$species_data,
                                 covariate_data = simulated_data$covariate_data[,-1])
-fm1 <- species_mix(form, model_data, distribution = 'bernoulli_sp', n_mixtures=3)
+fm1 <- species_mix(sam_form, sp_from, model_data, distribution = 'bernoulli_sp',
+ n_mixtures=3)
 }
 \dontrun{
 fm1 <- species_mix(form,data)

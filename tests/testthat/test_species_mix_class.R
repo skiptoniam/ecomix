@@ -19,5 +19,17 @@ testthat::test_that('species mix functions classes work', {
   testthat::expect_error(fm4 <- species_mix(NA, model_data, distribution = 'ippm', n_mixtures=3))
   testthat::expect_error(fm5 <- species_mix(NA, model_data, distribution = 'negative_binomial', n_mixtures=3))
 
+  ## test the internal functions
+  ## test to see if the species formula checks are working.
+
+  f1 <- y ~ x
+  f2 <- y ~ x + z
+  f3 <- y ~ 1
+  f4 <- NULL
+
+  testthat::expect_true(check_species_formula(f1)==2)
+  testthat::expect_true(check_species_formula(f2)==2)
+  testthat::expect_true(check_species_formula(f3)==1)
+  testthat::expect_true(check_species_formula(f4)==0)
 
 })
