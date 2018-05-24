@@ -48,7 +48,7 @@ specific covariates and archetype specific covariates.}
 \item{n_mixtures}{The number of mixing components (groups) to fit.}
 
 \item{distribution}{The family of statistical distribution to use within
-the ecomix models. a  choice between "bernoulli", "bernoulli_sp", "poisson",
+the ecomix models. a  choice between "bernoulli", "poisson",
 "ippm" (inhomogeneous Poisson point process model), "negative_binomial", "tweedie"
 and "gaussian" distributions are possible and applicable to specific types
 of data.}

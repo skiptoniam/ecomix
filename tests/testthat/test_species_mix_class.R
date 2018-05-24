@@ -13,11 +13,11 @@ testthat::test_that('species mix functions classes work', {
                                   covariate_data = simulated_data$covariate_data[,-1])
 
   #test formula error
-  testthat::expect_error(fm1 <- species_mix(NA, model_data, distribution = 'bernoulli', n_mixtures=3))
-  testthat::expect_error(fm2 <- species_mix(NA, model_data, distribution = 'bernoulli_sp', n_mixtures=3))
-  testthat::expect_error(fm3 <- species_mix(NA, model_data, distribution = 'poisson', n_mixtures=3))
-  testthat::expect_error(fm4 <- species_mix(NA, model_data, distribution = 'ippm', n_mixtures=3))
-  testthat::expect_error(fm5 <- species_mix(NA, model_data, distribution = 'negative_binomial', n_mixtures=3))
+  testthat::expect_error(fm1 <- species_mix(NA, ~1, model_data, distribution = 'bernoulli', n_mixtures=3))
+  testthat::expect_error(fm2 <- species_mix(NA, ~1, model_data, distribution = 'bernoulli_sp', n_mixtures=3))
+  testthat::expect_error(fm3 <- species_mix(NA, ~1, model_data, distribution = 'poisson', n_mixtures=3))
+  testthat::expect_error(fm4 <- species_mix(NA, ~1, model_data, distribution = 'ippm', n_mixtures=3))
+  testthat::expect_error(fm5 <- species_mix(NA, ~1, model_data, distribution = 'negative_binomial', n_mixtures=3))
 
   ## test the internal functions
   ## test to see if the species formula checks are working.
