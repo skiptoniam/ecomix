@@ -21,7 +21,7 @@ species_mix.fit(y, X, G, weights, offset, distribution_numeric, control,
 species_mix.control(maxit = 1000, quiet = TRUE, trace = 1, cores = 1,
   est_var = FALSE, init_method = "kmeans", init_sd = 1,
   em_prefit = TRUE, em_steps = 3, em_refit = 3, em_reltol = reltol_fun,
-  maxit_cpp = 1000, trace_cpp = 0, nreport_cpp = 1,
+  em_maxtau = 0.8, maxit_cpp = 1000, trace_cpp = 0, nreport_cpp = 1,
   abstol_cpp = sqrt(.Machine$double.eps),
   reltol_cpp = sqrt(.Machine$double.eps), conv_cpp = 1,
   printparams_cpp = 0, optimise_cpp = 1, loglOnly_cpp = 0,
@@ -29,7 +29,8 @@ species_mix.control(maxit = 1000, quiet = TRUE, trace = 1, cores = 1,
 
 species_mix.predict(object, new_obs, ...)
 
-simulate_species_mix_data(form, dat, theta, distribution = "bernoulli")
+simulate_species_mix_data(archetype_formula, species_formula, dat, theta,
+  distribution = "bernoulli")
 
 species_mix_estimate_groups(formula = NULL, data, n_mixtures = 1:10,
   distribution = "poisson", offset = NULL, weights = NULL,
@@ -101,8 +102,6 @@ minimum you will need pis (additive_logitic transformed), alphas
 
 \item{new_obs}{a matrix of new observations for prediction.}
 
-\item{form}{formula to simulate species_mix data, needs to have the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
-
 \item{dat}{a matrix of variables to simulate data from.}
 
 \item{theta}{coefficents for each species archetype. Matrix of G x number of parameters. Each row is a different species archetype.}
@@ -135,6 +134,8 @@ nsites*(nspecies+const+covariates).}
 \item{reltol}{function that determines the relative tolernace for model convergence. Default is quite strict.}
 
 \item{residuals}{logical if TRUE model will estimate residuals.}
+
+\item{form}{formula to simulate species_mix data, needs to have the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
 
 \item{distribution}{Which statistical distribution to simulate data for. 'bernoulli', 'gaussian', 'ippm', 'negative_binomial','poisson' and 'tweedie'.}
 }
@@ -169,7 +170,7 @@ simulated_data <- simulate_species_mix_data(archetype_formula=form, species_form
                                             dat,theta,dist="bernoulli")
 model_data <- make_mixture_data(species_data = simulated_data$species_data,
                                 covariate_data = simulated_data$covariate_data[,-1])
-fm1 <- species_mix(sam_form, sp_from, model_data, distribution = 'bernoulli_sp',
+fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli',
  n_mixtures=3)
 }
 \dontrun{
