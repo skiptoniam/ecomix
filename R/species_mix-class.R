@@ -366,7 +366,6 @@
                                   quiet = TRUE,
                                   trace = 1,
                                   cores = 1,
-                                  calculate_hessian = FALSE,
                                   residuals = FALSE,
                                   ## intialisation controls
                                   init_method = 'kmeans',
@@ -378,6 +377,7 @@
                                   em_abstol = sqrt(.Machine$double.eps),
                                   em_reltol = reltol_fun,
                                   em_maxtau = 0.8,
+                                  em_calculate_hessian = FALSE,
                                   r1=1,
                                   ## c++ controls
                                   maxit_cpp = 1000,
@@ -391,21 +391,22 @@
                                   loglOnly_cpp = 0,
                                   derivOnly_cpp = 0,
                                   getscores_cpp = 0,
+                                  calculate_hessian_cpp = TRUE,
   ...){
                #general controls
   rval <- list(maxit = maxit, quiet = quiet, trace = trace,
-               cores = cores, calculate_hessian = calculate_hessian, residuals = residuals,
+               cores = cores,  residuals = residuals,
                #initialisation controls
                init_method = init_method, init_sd = init_sd,
                #em controls
                em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps, em_abstol = em_abstol,
-               em_reltol = em_reltol, em_maxtau = em_maxtau, r1 = r1,
+               em_reltol = em_reltol, em_maxtau = em_maxtau, calculate_hessian = calculate_hessian, r1 = r1,
                #cpp controls
                maxit_cpp = maxit_cpp, trace_cpp = trace_cpp, nreport_cpp = nreport_cpp,
                abstol_cpp = abstol_cpp, reltol_cpp = reltol_cpp, conv_cpp = conv_cpp,
                printparams_cpp = printparams_cpp, optimise_cpp = optimise_cpp,
                loglOnly_cpp = loglOnly_cpp, derivOnly_cpp = derivOnly_cpp,
-               getscores_cpp = getscores_cpp)
+               getscores_cpp = getscores_cpp, calculate_hessian_cpp = calculate_hessian_cpp)
   rval <- c(rval, list(...))
   if (is.null(rval$em_reltol))
     rval$em_reltol <- sqrt(.Machine$double.eps)
@@ -3143,27 +3144,54 @@
   tmp <- ippm_optimise_cpp(y, X, offset, weights, y_is_na, G, S, start_vals, control)
 
   ## let's try and analytically estimate the loglike and vcov.
+  if(control$calculate_hessian){
 
+    calc_deriv <- function(x){
 
-  # loglike <- try(.Call("SpeciesMix",pars,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="ecomix"))
-  #
-  # calc_deriv <- function(p){
-  #   gradient <- rep(0,length(pars))
-  #   ll <- .Call("Calculate_Gradient",p,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="ecomix")
-  #   return(gradient)
-  # }
-  # r.deriv <- function(p){ logLmix_nbinom(p,list(y=y,x=model.matrix(form, data = datsp)),G,S,sp,sp.name,out.tau=FALSE)}
-  # #r.grad <- numDeriv::grad(calc_deriv,pars)
-  # ##print(r.grad)
-  # hes <- 0
-  # covar <- 0
-  # if(calc.hes){
-  #   hes <- numDeriv::grad(calc_deriv,pars)
-  #   dim(hes) <- rep(length(pars),2)
-  #   dim(hes) <- rep(length(pars),2)
-  #   covar <- try(solve(hes))
-  #   #rownames(hes) <- colnames(hes) <- c(paste("G.",1:(G-1),sep=""),paste("G",1:G,rep(colnames(X),each=G),sep="."))
-  # }
+      np <- as.integer(ncol(X[,-1]))
+      n <- as.integer(nrow(X))
+
+      # parameters to optimise
+      alpha <- as.numeric(x[1:S]);
+      beta <- as.numeric(x[c(S+1):(S+(np*G))]);
+      eta <- as.numeric(x[(S+1+(np*G)):length(x)])
+      #scores
+      alpha.score <- as.numeric(rep(NA, length(alpha)))
+      beta.score <- as.numeric(rep(NA, length(beta)))
+      eta.score <- as.numeric(rep(NA, length(eta)))
+      getscores <- 1
+      scores <- as.numeric(rep(NA,length(c(alpha,beta,eta))))
+
+      #model quantities
+      pis_out <- as.numeric(rep(NA,G))  #container for the fitted RCP model
+      mus <- as.numeric(array( NA, dim=c( n, S, G)))  #container for the fitted spp model
+      loglikeS <- as.numeric(rep(NA, S))
+      loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
+
+      #c++ call to optimise the model (needs pretty good starting values)
+      tmp <- .Call("species_mix_ippm_cpp",
+                   as.numeric(as.matrix(y)), as.numeric(as.matrix(X[-1])), as.numeric(offset),
+                   as.numeric(as.matrix(weights)), as.integer(!y_is_na),
+                   as.integer(S), as.integer(G), as.integer(np), as.integer(n),
+                   as.double(alpha), as.double(beta), as.double(eta),
+                   alpha.score, beta.score, eta.score, as.integer(control$getscores_cpp), scores,
+                   pis_out, mus, loglikeS, loglikeSG,
+                   as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
+                   as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp),
+                   as.integer(0), as.integer(0), as.integer(1),
+                   # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly,
+                   PACKAGE = "ecomix")
+      tmp  <- c(alpha.score,beta.score,eta.score)
+      # tmp  <- c(alpha,beta,eta)
+      return(tmp)
+    }
+
+    hes <- 0
+    covar <- 0
+    pars <- as.numeric(c(start_vals$alphas,start_vals$betas, additive_logistic(start_vals$pis,TRUE)[seq_len(G-1)]))
+    hes <- numDeriv::jacobian(calc_deriv,pars)
+    covar <- try(-solve(hes))
+  }
 
   return(tmp)
 
