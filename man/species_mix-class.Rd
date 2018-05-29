@@ -3,38 +3,47 @@
 \name{species_mix}
 \alias{species_mix}
 \alias{species_mix.fit}
+\alias{species_mix.fit}
+\alias{species_mix.multifit}
 \alias{control}
 \alias{species_mix.control}
-\alias{species_mix.predict}
 \alias{simulate_species_mix_data}
 \alias{species_mix_estimate_groups}
+\alias{species_mix.predict}
 \title{species_mix objects}
 \usage{
 species_mix(archetype_formula = NULL, species_formula = ~1, data,
-  n_mixtures = 3, distribution = "bernoulli", offset = NULL,
+  nmixtures = 3, distribution = "bernoulli", offset = NULL,
   weights = NULL, control = species_mix.control(), inits = NULL,
   standardise = FALSE)
 
-species_mix.fit(y, X, G, weights, offset, distribution_numeric, control,
-  y_is_na = NULL)
+species_mix.fit(y, X, W = NULL, G, weights, offset, distribution_numeric,
+  control, y_is_na = NULL, inits = NULL)
+
+species_mix.multifit(archetype_formula = NULL, species_formula = ~1, data,
+  distribution = "bernoulli", nstart = 10, nmixtures = 3, offset = NULL,
+  weights = NULL, control = species_mix.control(), inits = NULL,
+  standardise = FALSE)
 
 species_mix.control(maxit = 1000, quiet = TRUE, trace = 1, cores = 1,
-  est_var = FALSE, init_method = "kmeans", init_sd = 1,
-  em_prefit = TRUE, em_steps = 3, em_refit = 3, em_reltol = reltol_fun,
-  em_maxtau = 0.8, maxit_cpp = 1000, trace_cpp = 0, nreport_cpp = 1,
-  abstol_cpp = sqrt(.Machine$double.eps),
+  calculate_hessian = FALSE, residuals = FALSE, init_method = "kmeans",
+  init_sd = 1, em_prefit = TRUE, em_steps = 3, em_refit = 3,
+  em_abstol = sqrt(.Machine$double.eps), em_reltol = reltol_fun,
+  em_maxtau = 0.8, r1 = 1, maxit_cpp = 1000, trace_cpp = 0,
+  nreport_cpp = 1, abstol_cpp = sqrt(.Machine$double.eps),
   reltol_cpp = sqrt(.Machine$double.eps), conv_cpp = 1,
   printparams_cpp = 0, optimise_cpp = 1, loglOnly_cpp = 0,
   derivOnly_cpp = 0, getscores_cpp = 0, ...)
 
-species_mix.predict(object, new_obs, ...)
-
 simulate_species_mix_data(archetype_formula, species_formula, dat, theta,
   distribution = "bernoulli")
 
-species_mix_estimate_groups(formula = NULL, data, n_mixtures = 1:10,
-  distribution = "poisson", offset = NULL, weights = NULL,
-  control = species_mix.control(), inits = NULL, standardise = FALSE)
+species_mix_estimate_groups(archetype_formula = NULL, species_formula = ~1,
+  data, nmixtures = 1:10, distribution = "bernoulli", offset = NULL,
+  weights = NULL, control = species_mix.control(), inits = NULL,
+  standardise = FALSE)
+
+species_mix.predict(object, new_obs, ...)
 }
 \arguments{
 \item{species_formula}{an object of class "formula" (or an object that can be
@@ -46,7 +55,7 @@ If you include a species specific formula which has more than an intercept you
 will be fitting a partial species archetype model which has species
 specific covariates and archetype specific covariates.}
 
-\item{n_mixtures}{The number of mixing components (groups) to fit.}
+\item{nmixtures}{The number of mixing components (groups) to fit.}
 
 \item{distribution}{The family of statistical distribution to use within
 the ecomix models. a  choice between "bernoulli", "poisson",
@@ -78,9 +87,13 @@ minimum you will need pis (additive_logitic transformed), alphas
 
 \item{y}{is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.}
 
-\item{X}{is a design matrix of dimension n_sites * n_covariates.}
+\item{X}{is a design matrix for the archetype_formula dimension n_sites * n_covariates.}
+
+\item{W}{is a design matrix for species_formula and will be implemented if species_formula has covariates.}
 
 \item{G}{is the number of species archetypes that are being estimated.}
+
+\item{distribution_numeric}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'tweedie' are avaliable - internal conversion of distribution to a integer.}
 
 \item{y_is_na}{This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!}
 
@@ -90,7 +103,9 @@ minimum you will need pis (additive_logitic transformed), alphas
 
 \item{cores}{The number of cores to use in fitting of species mix models. These will be largely used to model the species-specific parameteres.}
 
-\item{est_var}{logical if TRUE model will numerically estimate the variance covariance matrix.}
+\item{calculate_hessian}{logical if TRUE model will numerically estimate the variance covariance matrix.}
+
+\item{residuals}{logical if TRUE model will estimate residuals.}
 
 \item{em_prefit}{Logical if TRUE the model will run a slower EM algorithim fit to find starting values.}
 
@@ -98,13 +113,13 @@ minimum you will need pis (additive_logitic transformed), alphas
 
 \item{em_refit}{int Default is 1, number of times to refit using EM.}
 
-\item{object}{is a matrix model returned from the species_mix model.}
-
-\item{new_obs}{a matrix of new observations for prediction.}
-
 \item{dat}{a matrix of variables to simulate data from.}
 
 \item{theta}{coefficents for each species archetype. Matrix of G x number of parameters. Each row is a different species archetype.}
+
+\item{object}{is a matrix model returned from the species_mix model.}
+
+\item{new_obs}{a matrix of new observations for prediction.}
 
 \item{archetype_fromula}{an object of class "formula" (or an object that can be
 coerced to that class). The response variable (left hand side of the
@@ -123,8 +138,6 @@ nsites*(nspecies+const+covariates).}
 
 \item{weights}{is used in alternative way depending on the error distribution used. See \link[ecomix]{species_mix} for more details.}
 
-\item{distribution}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'tweedie' are avaliable.}
-
 \item{offset}{this is a vector of site specific offsets, this might be something like area sampled at sites.}
 
 \item{control}{this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.}
@@ -132,8 +145,6 @@ nsites*(nspecies+const+covariates).}
 \item{quite}{Should any reporting be performed? Default is FALSE, for reporting.}
 
 \item{reltol}{function that determines the relative tolernace for model convergence. Default is quite strict.}
-
-\item{residuals}{logical if TRUE model will estimate residuals.}
 
 \item{form}{formula to simulate species_mix data, needs to have the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
 
@@ -143,9 +154,9 @@ nsites*(nspecies+const+covariates).}
 Fits a finite mixture model to identify species archetype
 models (SAMs).
 
-Predicts SAM probabilities at a series of sites. Confidence intervals can be calculated if variance-covariance matrix is estimated during species_mix model fit.
-
 This function runs the 'species_mix' function but it iterates through groups (1 to 10) by default.
+
+Predicts SAM probabilities at a series of sites. Confidence intervals can be calculated if variance-covariance matrix is estimated during species_mix model fit.
 }
 \details{
 species_mix is used to fit mixtures of glms to multivariate
@@ -171,15 +182,18 @@ simulated_data <- simulate_species_mix_data(archetype_formula=form, species_form
 model_data <- make_mixture_data(species_data = simulated_data$species_data,
                                 covariate_data = simulated_data$covariate_data[,-1])
 fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli',
- n_mixtures=3)
+ nmixtures=3)
 }
 \dontrun{
-fm1 <- species_mix(form,data)
-preds_fm1 <- predict(fm1,newdata)}
+fmods <- species_mix.multifit(sam_form, sp_form, model_data, distribution = 'bernoulli', nstarts = 10, nmixtures=3)
+}
 \dontrun{
 form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
 theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
 simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
 }
+\dontrun{
+fm1 <- species_mix(form,data)
+preds_fm1 <- predict(fm1,newdata)}
 }
