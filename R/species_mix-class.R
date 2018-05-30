@@ -80,7 +80,7 @@
 "species_mix" <- function(archetype_formula = NULL, species_formula = ~1, data,
                           n_mixtures = 3, distribution="bernoulli", offset=NULL,
                           weights=NULL, control=species_mix.control(), inits=NULL,
-                          standardise = FALSE){
+                          standardise = FALSE, titbits = TRUE){
 
   #the control parameters
   control <- set_control_sam(control)
@@ -150,6 +150,8 @@
 
   if(distribution=='ippm'){
     if(!all(colnames(y)%in%colnames(weights)))
+      cat(colnames(y),"\n")
+      cat(colnames(weights),"\n")
       stop('When modelling a inhomogenous poisson point process model,
            weights colnames must match species data colnames')
     if(any(dim(y)!=dim(weights)))
@@ -175,8 +177,17 @@
                          distribution_numeric=disty, control, y_is_na=y_is_na, inits=inits,
                          archetype_formula=archetype_formula,species_formula=species_formula)
 
-  tmp$archetype_formula <- archetype_formula
-  tmp$species_formula <- species_formula
+  tmp$dist <- disty.cases[disty]
+
+  #Information criteria
+  tmp <- calc_info_crit_sam(tmp)
+
+  #titbits object, if wanted/needed.
+  tmp$titbits <- get_titbits_sam(titbits, y, X, W, offset, weights, archetype_formula, species_formula, control, disty.cases[disty])
+
+
+  # tmp$archetype_formula <- archetype_formula
+  # tmp$species_formula <- species_formula
   class(tmp) <- c("archetype",distribution)
   return(tmp)
 }
@@ -706,12 +717,12 @@
 
 "species_data_check" <- function(x){
   stopifnot(is.matrix(x)|is.data.frame(x))
-  stopifnot(all(is.finite(x)))
+  # stopifnot(all(is.finite(x)))
 }
 
 "covariate_data_check" <- function(x){
   stopifnot(is.matrix(x)|is.data.frame(x))
-  stopifnot(all(is.finite(x)))
+  # stopifnot(all(is.finite(x)))
 }
 
 "get_offset_sam"  <- function(mf){
@@ -722,12 +733,14 @@
   return(offset)
 }
 
-"get_titbits_sam" <- function( titbits, outcomes, X, W, offset, weights,
+"get_titbits_sam" <- function( titbits, y, X, W, offset, weights,
                                archetype_formula, species_formula, control,
                                distribution)  {
     if( titbits==TRUE)
-      titbits <- list( Y = y, X = X, offset = offset, weights=weights,
-                       form = form, control = control,
+      titbits <- list( Y = y, X = X, W = W, offset = offset, weights=weights,
+                       archetype_formula =  archetype_formula,
+                       species_formula = species_formula,
+                       control = control,
                        distribution = distribution)
     else{
       titbits <- list()
@@ -741,8 +754,10 @@
         titbits$offset <- offset
       if( "weights" %in% titbits)
         titbits$weights <- weights
-      if( "form" %in% titbits)
-        titbits$archetype_form <- archetype_form
+      if( "archetype_formula" %in% titbits)
+        titbits$archetype_formula <- archetype_formula
+      if( "species_formula" %in% titbits)
+        titbits$species_formula <- species_formula
       if( "control" %in% titbits)
         titbits$control <- control
       if( "distribution" %in% titbits)
@@ -1526,11 +1541,7 @@
     rownames(coef) <- paste("G.",1:G,sep="")
     colnames(coef) <- colnames(X)
 
-    AIC <- 2*loglike + 2*length(pars)
-    BIC <- 2*loglike + log(S)*length(pars)
-    ##list(logl=loglike,r.logl=r.logl$logl,pi=pi,coef=coef,tau=round(exp(r.logl$tau),4),aic=AIC,bic=BIC,hessian=hes,gradient=gradient)
-    list(logl=loglike,pi=pi,coef=coef,tau=round(exp(r.logl$tau),4),aic=AIC,bic=BIC,hessian=hes,gradient=gradient)
-
+    list(logl=loglike,pi=pi,coef=coef,tau=round(exp(r.logl$tau),4), n = length(pars), hessian=hes,gradient=gradient)
   }
 
 
@@ -1753,7 +1764,7 @@
     hes <- 0
     covar <- 0
     if(control$calc.hes){
-      hes <- numDeriv::grad(calc_deriv,pars)
+      hes <- numDeriv::jacobian(calc_deriv,pars)
       dim(hes) <- rep(length(pars),2)
       dim(hes) <- rep(length(pars),2)
       covar <- try(solve(hes))
@@ -1980,7 +1991,7 @@
         ll <- .Call("Neg_Bin_Gradient",p,X,y,weights,offset,gradient,PACKAGE="ecomix")
         return(gradient)
       }
-      hes <- numDeriv::grad(calc_deriv,pars)
+      hes <- numDeriv::jacobian(calc_deriv,pars)
       dim(hes) <- rep(length(pars),2)
       vcov <- try(solve(hes))
       se <- try(sqrt(diag(vcov)))
@@ -2014,7 +2025,7 @@
         ll <- .Call("Neg_Bin_Gradient",p,X,y,weights,offset,gradient,PACKAGE="ecomix")
         return(gradient)
       }
-      hes <- numDeriv::grad(calc_deriv,pars)
+      hes <- numDeriv::jacobian(calc_deriv,pars)
       dim(hes) <- rep(length(pars),2)
       vcov <- try(solve(hes))
       se <- try(sqrt(diag(vcov)))
@@ -2445,8 +2456,7 @@
     return( rans)
   }
 
-"species_mix_bernoulli" <- function (sp.form, sp.data,covar.data,G=2, pars=NA,
-                                     control) {
+"species_mix_bernoulli" <- function (sp.form, sp.data,covar.data,G=2, pars=NA, control) {
     t.covar.data <- covar.data
     t.sp.data <- sp.data
     sp.form <- update.formula(sp.form,obs~1+.)
@@ -2585,7 +2595,7 @@
       parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef),fmM.out$sp.intercept,rep(1,S))##unlist(fmM.out$sp.intercept))
       first.fit <- list(y=data[,1],x=model.matrix(sp.form,data=data)[,-1])
       fun_est_var <- function(x){-logLmix_nbinom(x,first.fit,G,S,sp,sp.name)}
-      deriv <- numDeriv::grad(fun_est_var,parms)
+      deriv <- numDeriv::jacobian(fun_est_var,parms)
       var <- solve(numDeriv::hessian(fun_est_var, parms))
       colnames( var) <- rownames( var) <- names( parms)
       fmM.out$covar <- var
@@ -2823,7 +2833,7 @@
     if( vcov){
       if( control$trace!=0)
         print( "Calculating variance matrix of estimates")
-      vcovar <- numDeriv::grad(func=ldTweedie.lp.deriv,x=parms, y=y, X.p=x, offsetty=offset, phi=phi, p=p, wts=wts)
+      vcovar <- numDeriv::jacobian(func=ldTweedie.lp.deriv,x=parms, y=y, X.p=x, offsetty=offset, phi=phi, p=p, wts=wts)
       vcovar <- 0.5 * ( vcovar + t( vcovar))
       vcovar <- solve( vcovar)
       rownames( vcovar) <- colnames( vcovar) <- names( parms)
@@ -3619,6 +3629,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
                    pis_out, mus, loglikeS, loglikeSG,
                    as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
                    as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp),
+                   as.integer(control$printparams_cpp),
                    as.integer(0), as.integer(0), as.integer(1),
                    # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly,
                    PACKAGE = "ecomix")
@@ -3629,7 +3640,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
 
     hes <- 0
     covar <- 0
-    hes <- numDeriv::jacobian(calc_deriv,inits)
+    hes <- numDeriv::jacobian(calc_deriv,unlist(inits))
     covar <- try(-solve(hes))
     tmp$vcov <- covar
   }

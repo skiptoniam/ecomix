@@ -15,7 +15,7 @@
 species_mix(archetype_formula = NULL, species_formula = ~1, data,
   n_mixtures = 3, distribution = "bernoulli", offset = NULL,
   weights = NULL, control = species_mix.control(), inits = NULL,
-  standardise = FALSE)
+  standardise = FALSE, titbits = TRUE)
 
 species_mix.fit(y, X, W = NULL, G, weights, offset, distribution_numeric,
   control, y_is_na = NULL, inits = NULL, archetype_formula = NULL,
