@@ -357,7 +357,7 @@
    }
 
    #Fit the model many times
-   many_starts <- surveillance::plapply(seq_len(nstart), tmp_fun, .parallel = control$cores)
+   many_starts <- surveillance::plapply(seq_len(nstart), tmp_fun, .parallel = control$cores, .verbose = !control$quiet)
    return(many_starts)
 }
 
@@ -376,7 +376,7 @@
 #'@param residuals logical if TRUE model will estimate residuals.
 #'@export
 "species_mix.control" <- function(maxit = 1000,
-                                  quiet = TRUE,
+                                  quiet = FALSE,
                                   trace = 1,
                                   cores = 1,
                                   residuals = FALSE,
@@ -539,7 +539,7 @@
     ecomix::species_mix(archetype_formula, species_formula, data, n_mixtures)
 
   }
-  out <- surveillance::plapply(G, my.fun, form, dat, .parallel = control$cores)
+  out <- surveillance::plapply(G, my.fun, form, dat, .parallel = control$cores, .verbose = !control$quiet)
   aic <- rep(0,length(G))
   bic <- rep(0,length(G))
   fm <- list()
@@ -679,8 +679,9 @@
   } else {
     message("There are ", nrow(X), " site observations for ", S," species")
   }
-  formula[[2]] <- NULL
+  archetype_formula[[2]] <- NULL
   message("The model for the SAM is ", Reduce( "paste", deparse(archetype_formula)))
+  if(!is.null(species_formula))
   message("The model for the species is ", Reduce( "paste", deparse(species_formula)))
   message("You are implementing a ", distribution, " SAM.")
 }
@@ -980,7 +981,7 @@
     for(i in 1:G){
       pi[i] <- sum(tau[,i])/S
     }
-    fmM <- surveillance::plapply(1:G,apply_glm,form,datsp,tau,n,.parallel=control$cores)
+    fmM <- surveillance::plapply(1:G,apply_glm,form,datsp,tau,n,.parallel=control$cores, .verbose = !control$quiet)
     first.fit <- list(x=model.matrix(as.formula(form),data=datsp),y=datsp$obs,formula=form)
     return(list(pi=pi,fmM=fmM,tau=tau,first.fit=first.fit))
   }
@@ -993,7 +994,7 @@
     for(i in 1:G){
       pi[i] <- sum(tau[,i])/S
     }
-    fmM <- surveillance::plapply(1:G,apply_glm_gaussian,form,datsp,tau,n,.parallel=control$cores)
+    fmM <- surveillance::plapply(1:G,apply_glm_gaussian,form,datsp,tau,n,.parallel=control$cores, .verbose = !control$quiet)
     first.fit <- list(x=model.matrix(as.formula(form),data=datsp)[,-1],y=datsp$obs,formula=form)
    return(list(pi=pi,fmM=fmM,tau=tau,first.fit=first.fit))
   }
@@ -1007,7 +1008,7 @@
     for(i in 1:G){
       pi[i] <- sum(tau[,i])/S
     }
-    fmM <- surveillance::plapply(1:G,apply_glm_nbinom,form,datsp,tau,n,.parallel=control$cores)
+    fmM <- surveillance::plapply(1:G,apply_glm_nbinom,form,datsp,tau,n,.parallel=control$cores, .verbose = !control$quiet)
     offset <- model.frame(as.formula(form),data=datsp)
     offset <- model.offset(offset)
     if(is.null(offset)) offset <- rep(0,length(datsp$obs))
@@ -1061,7 +1062,7 @@
     pi <- runif(G, 0.2, 0.8)
     pi <- pi/sum(pi)
     est.tau <- surveillance::plapply(1:S, estimate_pi_nbinom, sp, sp.name, datsp,
-      fmM, pi, G, first.fit,.parallel=control$cores)
+      fmM, pi, G, first.fit,.parallel=control$cores, .verbose = !control$quiet)
     max.newTau <- 0.8
     alpha <- (1 - max.newTau * G)/(max.newTau * (2 - G) - 1)
     for (j in 1:S) {
@@ -1075,72 +1076,6 @@
     return(list(pi = pi, fmM = fmM, tau = tau, first.fit = first.fit))
   }
 
-# "create_starting_values_poisson"  <- function (y, X, G, weights, offset, control){
-#
-#           # generate random starting values for tau
-#           S <- ncol(y)
-#           tau <- matrix(runif(S*G),S,G)
-#           tau <- (tau/rowSums(tau))
-#           fmM <- list()
-#
-#           #sum tau's to get pi's
-#           for(i in 1:G){
-#                 pi[i] <- sum(tau[,i])/S
-#             }
-#
-#           #fit a model to each group with tau as weights.
-#           fmM <- surveillance::plapply(1:G,apply_glm_poisson_tau,y,X,tau,.parallel = control$cores)
-#           first_fit <- list(x=X,y=y,offset=offset,weights=weights)
-#           return(list(pi=pi,fmM=fmM,tau=tau,first_fit=first_fit))
-# }
-#
-# "create_starting_values_poisson_kmeans" <-function(y, X, G, weights, offset, cores, tol=0.1){
-#
-#           S <- ncol(y)
-#           fm_poisson <- surveillance::plapply(1:S,apply_glm_poisson, y, X, weights, offset, .parallel = cores)
-#           my_coefs <- do.call(rbind,fm_poisson)
-#           starting_fitem <- list(intercepts = rep(0, S), alpha = rep(0, S))
-#           starting_fitem$sp_intercepts <- my_coefs[,1]
-#           MM <- do.call(rbind, replicate(ncol(y), X, simplify=FALSE))
-#           my_coefs[, 1] <- 0
-#
-#           cat("Clustering...",G,"groups\n")
-#           fmmvnorm <- kmeans(x = my_coefs, centers = G, iter.max = 100, nstart = 50)
-#           starting_fitem$coef <- fmmvnorm$centers
-#
-#               fmM <- list()
-#               for (i in 1:G) {
-#                   B <- matrix(rep(fmmvnorm$centers[i, ], nrow(MM)),
-#                       nrow(MM), ncol(fmmvnorm$centers), byrow = TRUE)
-#                   B[, 1] <- rep(starting_fitem$sp_intercepts, each = nrow(y))
-#                   fitted <- exp(rowSums(MM * B))
-#                   fmM[[i]] <- list(coef = fmmvnorm$centers[i, 2:ncol(fmmvnorm$centers)],
-#                                    sp_intercept = starting_fitem$sp_intercepts,
-#                                    fitted = fitted)
-#               }
-#               tau <- matrix(0, S, G)
-#               pi <- rep(1/G, G)
-#               pi <- runif(G, 0.2, 0.8)
-#               pi <- pi/sum(pi)
-#
-#               first_fit <- list(x = X, y = y, offset=offset, weights=weights)
-#
-#               #parallel - seems to be slower. Might be due to overheads.
-#               est.tau <- surveillance::plapply(1:S, estimate_pi_poisson, fmM, pi, G, first_fit, .parallel = cores)
-#               max.newTau <- 0.8
-#               alpha <- (1 - max.newTau * G)/(max.newTau * (2 - G) - 1)
-#               for (j in 1:S) {
-#                   newTau <- (2 * alpha * est.tau[[j]]$tau - alpha + 1)/(2 *
-#                       alpha - alpha * G + G)
-#                   tau[j, ] <- newTau
-#               }
-#               for (i in 1:G) {
-#                   pi[i] <- sum(tau[, i])/S
-#               }
-#     return(list(pi=pi,fmM=fmM,tau=tau,first_fit=first_fit))
-# }
-
-
 "create_starting_values_tweedie" <- function (S,G,n,form,datsp,control){
     environment(form) <- environment()
     tau <- matrix(runif(S*G),S,G)
@@ -1152,7 +1087,7 @@
     offset <- model.frame(form,datsp)
     offset <- model.offset(offset)
     if(is.null(offset)) offset <- rep(0,length(datsp$obs))
-    fmM <- surveillance::plapply(1:G,apply_glm_tweedie,form,datsp,tau,n,.parallel=control$cores)
+    fmM <- surveillance::plapply(1:G,apply_glm_tweedie,form,datsp,tau,n,.parallel=control$cores, .verbose = !control$quiet)
     first.fit <- list(x=model.matrix(as.formula(form),data=datsp)[,-1],y=datsp$obs,formula=form)
     return(list(pi=pi,fmM=fmM,tau=tau,first.fit=first.fit))
   }
@@ -1201,7 +1136,7 @@
     pi <- runif(G, 0.2, 0.8)
     pi <- pi/sum(pi)
     est.tau <- surveillance::plapply(1:S, estimate_pi_tweedie, sp, sp.name,
-      datsp, fmM, pi, G, first.fit,.parallel=control$cores)
+      datsp, fmM, pi, G, first.fit,.parallel=control$cores, .verbose = !control$quiet)
     max.newTau <- 0.8
     alpha <- (1 - max.newTau * G)/(max.newTau * (2 - G) - 1)
     for (j in 1:S) {
@@ -1426,9 +1361,11 @@
     S <- length(unique(sp))
     n <- length(which(sp==sp.name[1]))
 
-    if(control$trace==1){
-      message("Fitting Group",G,"\n")
-      message("Iteration | LogL \n")
+    if(!control$quiet){
+      if(control$trace==1){
+        message("Fitting Group",G,"\n")
+        message("Iteration | LogL \n")
+      }
     }
 
     dat.tau <- 0
@@ -1455,13 +1392,13 @@
         ite <- 1
       }
 
-      fmM <- surveillance::plapply(1:G,weighted_glm,first.fit,tau,n,fmM,sp,.parallel=control$cores)
+      fmM <- surveillance::plapply(1:G,weighted_glm,first.fit,tau,n,fmM,sp,.parallel=control$cores, .verbose = !control$quiet)
 
 
       logL <- 0
       tmp.like <- matrix(0,S,G)
 
-      est.tau <- surveillance::plapply(1:S,estimate_pi,sp,sp.name,datsp,fmM,pi,G,first.fit,.parallel=control$cores)
+      est.tau <- surveillance::plapply(1:S,estimate_pi,sp,sp.name,datsp,fmM,pi,G,first.fit,.parallel=control$cores, .verbose = !control$quiet)
 
       for(j in 1:S){
         if(is.atomic(est.tau[[j]])){ print (est.tau[[j]])} else
@@ -1587,13 +1524,13 @@
         ite <- 1
       }
 
-      fmM <- surveillance::plapply(1:G,weighted_glm_gaussian,first.fit,tau,n,fmM,sp,.parallel=cores)
+      fmM <- surveillance::plapply(1:G,weighted_glm_gaussian,first.fit,tau,n,fmM,sp,.parallel=cores, .verbose = !control$quiet)
 
 
       logL <- 0
       tmp.like <- matrix(0,S,G)
 
-      est.tau <- surveillance::plapply(1:S,estimate_pi_gaussian,sp,sp.name,datsp,fmM,pi,G,first.fit,.parallel=cores)
+      est.tau <- surveillance::plapply(1:S,estimate_pi_gaussian,sp,sp.name,datsp,fmM,pi,G,first.fit, .parallel=control$cores, .verbose = !control$quiet)
 
       for(j in 1:S){
         if(is.atomic(est.tau[[j]])){ print (est.tau[[j]])} else
@@ -1672,7 +1609,7 @@
       first.fit <- t1$first.fit
       ite <- 1
     }
-    fmM <- surveillance::plapply(1:G, weighted_glm_nbinom, first.fit, tau, n, fmM, sp,.parallel=cores)
+    fmM <- surveillance::plapply(1:G, weighted_glm_nbinom, first.fit, tau, n, fmM, sp,.parallel=control$cores, .verbose = !control$quiet)
     for (j in 1:S) {
       tmp <- rep(0, G)
       for (g in 1:G) tmp[g] <- fmM[[g]]$sp.intercept[j]
@@ -1681,7 +1618,7 @@
     }
     logL <- 0
     tmp.like <- matrix(0, S, G)
-    est.tau <- surveillance::plapply(1:S, estimate_pi_nbinom, sp, sp.name, datsp, fmM, pi, G, first.fit, .parallel=cores)
+    est.tau <- surveillance::plapply(1:S, estimate_pi_nbinom, sp, sp.name, datsp, fmM, pi, G, first.fit, .parallel=control$cores, .verbose = !control$quiet)
     for (j in 1:S) {
       if (is.atomic(est.tau[[j]])) {
         print(est.tau[[j]])
@@ -1836,7 +1773,7 @@
         first.fit <- t1$first.fit
         ite <- 1
       }
-      fmM <- surveillance::plapply(1:G, weighted_glm_tweedie, first.fit, tau, n, fmM, sp, .parallel=cores)
+      fmM <- surveillance::plapply(1:G, weighted_glm_tweedie, first.fit, tau, n, fmM, sp, .parallel=control$cores, .verbose = !control$quiet)
       for (j in 1:S) {
         tmp <- rep(0, G)
         for (g in 1:G) tmp[g] <- fmM[[g]]$sp.intercept[j]
@@ -1846,7 +1783,7 @@
       logL <- 0
       tmp.like <- matrix(0, S, G)
       est.tau <- surveillance::plapply(1:S, estimate_pi_tweedie, sp, sp.name,
-        datsp, fmM, pi, G, first.fit, .parallel=cores)
+        datsp, fmM, pi, G, first.fit, .parallel=control$cores, .verbose = !control$quiet)
       for (j in 1:S) {
         if (is.atomic(est.tau[[j]])) {
           print(est.tau[[j]])
@@ -2981,7 +2918,7 @@
 }
 
 "initiate_fit_ippm" <- function(y, X, weights, offset, y_is_na, G, S, control){
-  fm_ippm <- surveillance::plapply(1:S,apply_glm_ippm, y, X, weights, offset, y_is_na, .parallel = control$cores)
+  fm_ippm <- surveillance::plapply(1:S,apply_glm_ippm, y, X, weights, offset, y_is_na, .parallel = control$cores, .verbose = !control$quiet)
   all_coefs <- do.call(rbind,fm_ippm)
   mix_coefs <- all_coefs[,-1] # drop intercepts
 
@@ -3070,7 +3007,7 @@
                                      first_fit$x, first_fit$y_is_na,
                                      first_fit$weights, first_fit$offset,
                                      taus, S, G, fits,
-                                     .parallel = control$cores)
+                                     .parallel = control$cores, .verbose = !control$quiet)
 
     sp_int <- do.call(rbind,fm_ippm)[,1]
     fits$sp_intercepts <- update_sp_coefs(fits$sp_intercepts,sp_int)
@@ -3473,7 +3410,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
     tmp <- nlminb(start=fits$mix_coefs, objective=incom_logl_bernoulli_sp_beta, gradient=NULL, hessian=NULL,
                   first_fit=first_fit, eta=additive_logistic(pis,inv = TRUE)[-G], fits=fits, G=G, S=S)
     fits$mix_coefs <- update_mix_coefs(fits$mix_coefs, tmp$par)
-    fm_bernoulli_sp_int <- surveillance::plapply(1:S, apply_glm_bernoulli_sp_tau, y, X, offset, taus, G, S, fits, .parallel = control$cores) #check weights in this.
+    fm_bernoulli_sp_int <- surveillance::plapply(1:S, apply_glm_bernoulli_sp_tau, y, X, offset, taus, G, S, fits, .parallel = control$cores, .verbose = !control$quiet) #check weights in this.
     sp_int <- do.call(rbind,fm_bernoulli_sp_int)[,1]
     fits$sp_intercepts <- update_sp_coefs(fits$sp_intercepts,sp_int)
 
@@ -3638,11 +3575,13 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
       return(score_tmp)
     }
 
-    hes <- 0
-    covar <- 0
-    hes <- numDeriv::jacobian(calc_deriv,unlist(inits))
-    covar <- try(-solve(hes))
-    tmp$vcov <- covar
+    hess <- numDeriv::jacobian(calc_deriv,unlist(inits))
+    vcov.mat <- try(-solve(hess))
+    if( inherits( vcov.mat, 'try-error')){
+      attr(vcov.mat, "hess") <- hess
+      warning( "Hessian appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe Hessian is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data.")
+    }
+    tmp$vcov <- vcov.mat
   }
 
 
