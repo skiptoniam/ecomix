@@ -9,7 +9,7 @@ testthat::test_that('species mix functions classes work', {
   theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,7.9),3,3,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- simulate_species_mix_data(archetype_formula=form, species_formula=sp_form,
+  simulated_data <- simulate_species_mix_data(archetype_formula=sam_form, species_formula=sp_form,
                                                dat,theta,dist="bernoulli")
   model_data <- make_mixture_data(species_data = simulated_data$species_data,
                                    covariate_data = simulated_data$covariate_data[,-1])

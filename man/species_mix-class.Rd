@@ -13,33 +13,35 @@
 \title{species_mix objects}
 \usage{
 species_mix(archetype_formula = NULL, species_formula = ~1, data,
-  nmixtures = 3, distribution = "bernoulli", offset = NULL,
+  n_mixtures = 3, distribution = "bernoulli", offset = NULL,
   weights = NULL, control = species_mix.control(), inits = NULL,
   standardise = FALSE)
 
 species_mix.fit(y, X, W = NULL, G, weights, offset, distribution_numeric,
-  control, y_is_na = NULL, inits = NULL)
+  control, y_is_na = NULL, inits = NULL, archetype_formula = NULL,
+  species_formula = NULL)
 
 species_mix.multifit(archetype_formula = NULL, species_formula = ~1, data,
-  distribution = "bernoulli", nstart = 10, nmixtures = 3, offset = NULL,
-  weights = NULL, control = species_mix.control(), inits = NULL,
-  standardise = FALSE)
+  distribution = "bernoulli", nstart = 10, n_mixtures = 3,
+  offset = NULL, weights = NULL, control = species_mix.control(),
+  inits = NULL, standardise = FALSE)
 
 species_mix.control(maxit = 1000, quiet = TRUE, trace = 1, cores = 1,
-  calculate_hessian = FALSE, residuals = FALSE, init_method = "kmeans",
-  init_sd = 1, em_prefit = TRUE, em_steps = 3, em_refit = 3,
+  residuals = FALSE, init_method = "kmeans", init_sd = 1,
+  em_prefit = TRUE, em_steps = 3, em_refit = 3,
   em_abstol = sqrt(.Machine$double.eps), em_reltol = reltol_fun,
-  em_maxtau = 0.8, r1 = 1, maxit_cpp = 1000, trace_cpp = 0,
-  nreport_cpp = 1, abstol_cpp = sqrt(.Machine$double.eps),
+  em_maxtau = 0.8, em_calculate_hessian = FALSE, em_full_model = FALSE,
+  r1 = 1, maxit_cpp = 1000, trace_cpp = 0, nreport_cpp = 1,
+  abstol_cpp = sqrt(.Machine$double.eps),
   reltol_cpp = sqrt(.Machine$double.eps), conv_cpp = 1,
   printparams_cpp = 0, optimise_cpp = 1, loglOnly_cpp = 0,
-  derivOnly_cpp = 0, getscores_cpp = 0, ...)
+  derivOnly_cpp = 0, getscores_cpp = 0, calculate_hessian_cpp = TRUE, ...)
 
 simulate_species_mix_data(archetype_formula, species_formula, dat, theta,
   distribution = "bernoulli")
 
 species_mix_estimate_groups(archetype_formula = NULL, species_formula = ~1,
-  data, nmixtures = 1:10, distribution = "bernoulli", offset = NULL,
+  data, n_mixtures = 1:10, distribution = "bernoulli", offset = NULL,
   weights = NULL, control = species_mix.control(), inits = NULL,
   standardise = FALSE)
 
@@ -55,7 +57,7 @@ If you include a species specific formula which has more than an intercept you
 will be fitting a partial species archetype model which has species
 specific covariates and archetype specific covariates.}
 
-\item{nmixtures}{The number of mixing components (groups) to fit.}
+\item{n_mixtures}{The number of mixing components (groups) to fit.}
 
 \item{distribution}{The family of statistical distribution to use within
 the ecomix models. a  choice between "bernoulli", "poisson",
@@ -103,8 +105,6 @@ minimum you will need pis (additive_logitic transformed), alphas
 
 \item{cores}{The number of cores to use in fitting of species mix models. These will be largely used to model the species-specific parameteres.}
 
-\item{calculate_hessian}{logical if TRUE model will numerically estimate the variance covariance matrix.}
-
 \item{residuals}{logical if TRUE model will estimate residuals.}
 
 \item{em_prefit}{Logical if TRUE the model will run a slower EM algorithim fit to find starting values.}
@@ -146,7 +146,11 @@ nsites*(nspecies+const+covariates).}
 
 \item{reltol}{function that determines the relative tolernace for model convergence. Default is quite strict.}
 
-\item{form}{formula to simulate species_mix data, needs to have the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
+\item{calculate_hessian}{logical if TRUE model will numerically estimate the variance covariance matrix.}
+
+\item{archtype_formula}{formula to simulate species_mix data, needs to have the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
+
+\item{species_formula}{formula to simulate species_mix species-specific responses, e.g: ~1}
 
 \item{distribution}{Which statistical distribution to simulate data for. 'bernoulli', 'gaussian', 'ippm', 'negative_binomial','poisson' and 'tweedie'.}
 }
@@ -182,16 +186,16 @@ simulated_data <- simulate_species_mix_data(archetype_formula=form, species_form
 model_data <- make_mixture_data(species_data = simulated_data$species_data,
                                 covariate_data = simulated_data$covariate_data[,-1])
 fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli',
- nmixtures=3)
+ n_mixtures=3)
 }
 \dontrun{
-fmods <- species_mix.multifit(sam_form, sp_form, model_data, distribution = 'bernoulli', nstarts = 10, nmixtures=3)
+fmods <- species_mix.multifit(sam_form, sp_form, model_data, distribution = 'bernoulli', nstarts = 10, n_mixtures=3)
 }
 \dontrun{
-form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+archetype_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
 theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
-simulated_data <- simulate_species_mix_data(form,dat,theta,dist="bernoulli")
+simulated_data <- simulate_species_mix_data(archetype_form,~1,dat,theta,dist="bernoulli")
 }
 \dontrun{
 fm1 <- species_mix(form,data)
