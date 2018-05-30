@@ -3611,7 +3611,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
       loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
 
       #c++ call to optimise the model (needs pretty good starting values)
-      tmp <- .Call("species_mix_bernoulli_sp_ints",
+      deriv_tmp <- .Call("species_mix_bernoulli_sp_ints",
                    as.numeric(as.matrix(y)), as.numeric(as.matrix(X[-1])), as.numeric(offset), as.numeric(as.matrix(weights)),
                    as.integer(S), as.integer(G), as.integer(np), as.integer(n),
                    as.double(alpha), as.double(beta), as.double(eta),
@@ -3622,15 +3622,16 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
                    as.integer(0), as.integer(0), as.integer(1),
                    # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly,
                    PACKAGE = "ecomix")
-      tmp  <- c(alpha.score,beta.score,eta.score)
+      score_tmp  <- c(alpha.score,beta.score,eta.score)
       # tmp  <- c(alpha,beta,eta)
-      return(tmp)
+      return(score_tmp)
     }
 
     hes <- 0
     covar <- 0
     hes <- numDeriv::jacobian(calc_deriv,inits)
     covar <- try(-solve(hes))
+    tmp$vcov <- covar
   }
 
 

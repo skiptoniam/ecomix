@@ -13,8 +13,7 @@ testthat::test_that('species mix functions classes work', {
                                                dat,theta,dist="bernoulli")
   model_data <- make_mixture_data(species_data = simulated_data$species_data,
                                    covariate_data = simulated_data$covariate_data[,-1])
-  fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli',
-          n_mixtures=3)
+  testthat::expect_error(fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli', n_mixtures=NULL))
 
 
 
