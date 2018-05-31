@@ -141,7 +141,6 @@
   #get distribution
   disty.cases <- c("bernoulli","bernoulli_sp","poisson","ippm",
                    "negative_binomial","tweedie","gaussian")
-  print(fit_distribution)
   disty <- get_distribution_sam(disty.cases, fit_distribution)
 
   # get offsets and weights
@@ -184,11 +183,7 @@
 
   #titbits object, if wanted/needed.
   tmp$titbits <- get_titbits_sam(titbits, y, X, W, offset, weights, archetype_formula, species_formula, control, disty.cases[disty])
-
-
-  # tmp$archetype_formula <- archetype_formula
-  # tmp$species_formula <- species_formula
-  class(tmp) <- c("archetype",fit_distribution)
+  class(tmp) <- c("species_mix",fit_distribution)
   return(tmp)
 }
 
@@ -352,7 +347,7 @@
 
       #the last bit of the regional_mix object puzzle
       # tmp$call <- call
-      class(tmp) <- c("archetype", distribution)
+      class(tmp) <- c("species_mix", distribution)
       return( tmp)
    }
 
@@ -2433,7 +2428,7 @@
     }
     if(control$residuals) fmM.out$residuals <- mix.residuals(fmM.out,sp.form,data,sp)
     fmM.out$formula <- sp.form
-    class(fmM.out) <- c("archetype","bernoulli")
+    class(fmM.out) <- c("species_mix","bernoulli")
     fmM.out
   }
 
@@ -2626,7 +2621,7 @@
      }
     if(control$residuals) fmM.out$residuals <- mix.residuals(fmM.out,sp.form,data,sp)
     fmM.out$formula <- sp.form
-    class(fmM.out) <- c("archetype","negbin")
+    class(fmM.out) <- c("species_mix","negbin")
     fmM.out
   }
 
@@ -2668,7 +2663,7 @@
     }
     if(control$residuals) fmM.out$residuals <- mix.residuals(fmM.out,sp.form,data,sp)
     fmM.out$formula <- sp.form
-    class(fmM.out) <- c("archetype","tweedie")
+    class(fmM.out) <- c("species_mix","tweedie")
     fmM.out
   }
 
@@ -3499,10 +3494,13 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
 
 "species_mix_bernoulli_sp" <- function(y, X, offset, weights, G, control){
 
+  temp.warn <- getOption( "warn")
+  options( warn=-1)
+
   S <- ncol(y)
   #if emfit is in the control do an EM fit to get good starting values for c++
   if(isTRUE(control$em_prefit)){
-    cat('Using EM algorithm to find starting values; using',
+    if(!control$quiet)message('Using EM algorithm to find starting values; using',
         control$em_refit,'refits\n')
     emfits <- list()
     for(ii in seq_len(control$em_refit)){
@@ -3514,7 +3512,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
                        betas=emfit$beta,
                        pis=emfit$pis)
   } else {
-    message('You are not using the EM algorith to find starting values; starting values are
+    if(!control$quiet)message('You are not using the EM algorith to find starting values; starting values are
         generated using',control$init_method,'\n')
     starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
                                                         weights = weights, G = G, S = S,

@@ -26,13 +26,19 @@ testthat::test_that('species mix functions classes work', {
 
   # test that it returns the right class of model
   fm3 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli', n_mixtures=3)
-  testthat::expect_s3_class(fm3, "archetype")
+  testthat::expect_s3_class(fm3, "species_mix")
   testthat::expect_s3_class(fm3, "bernoulli")
 
   # now let's test the species specific interncepts model.
   sp_form_int <- ~ 1
   fm4 <- species_mix(sam_form, sp_form_int, model_data, distribution = 'bernoulli', n_mixtures=3)
-  testthat::expect_s3_class(fm4, "archetype")
+  testthat::expect_s3_class(fm4, "species_mix")
   testthat::expect_s3_class(fm4, "bernoulli_sp")
+
+  #test some of the controls and make sure they work.
+  control_quiet <- species_mix.control(quiet = TRUE,calculate_hessian_cpp = FALSE)
+  fm5 <- species_mix(sam_form, sp_form_int, model_data, distribution = 'bernoulli', n_mixtures=3, control = control_quiet)
+  testthat::expect_s3_class(fm5, "species_mix")
+  testthat::expect_s3_class(fm5, "bernoulli_sp")
 
 })
