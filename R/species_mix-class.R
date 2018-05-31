@@ -3267,8 +3267,8 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
 
 # Need to fix weights for EM
 
-"apply_glm_bernoulli_sp" <- function(i, y, X, offset){
-  f_bernoulli_sp_int <- glm.fit(x=X, y=y[,i], offset=offset, family=binomial())
+"apply_glm_bernoulli_sp" <- function(ss, y, X, offset){
+  f_bernoulli_sp_int <- glm.fit(x=X, y=y[,ss], offset=offset, family=binomial())
   f_bernoulli_sp_int$coef
 }
 
@@ -3331,29 +3331,30 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
 
 "incom_logl_bernoulli_sp_alpha" <- function(x, first_fit, eta, fits, G, S){
   fits$sp_intercepts <- x
-  pis <- additive_logistic(eta)
-  tmp <- get_incomplete_logl_bernoulli_sp_function(pis, first_fit, fits, G, S)
+  # pis <- additive_logistic(eta)
+  tmp <- get_incomplete_logl_bernoulli_sp_function(eta, first_fit, fits, G, S)
   return(-tmp)
 }
 
 "incom_logl_bernoulli_sp_beta" <- function(x, first_fit, eta, fits, G, S){
 
   fits$mix_coefs <- matrix(x,nrow=nrow(fits$mix_coef),ncol=ncol(fits$mix_coef))
-  pis <- additive_logistic(eta)
-  tmp <- get_incomplete_logl_bernoulli_sp_function(pis, first_fit, fits, G, S)
+  # pis <- additive_logistic(eta)
+  tmp <- get_incomplete_logl_bernoulli_sp_function(eta, first_fit, fits, G, S)
   return(-tmp)
 }
 
 "incom_logl_bernoulli_sp_pi" <- function(x, first_fit, fits, G, S){
   eta <- x
-  pis <- additive_logistic(eta)
-  tmp <- get_incomplete_logl_bernoulli_sp_function(pis, first_fit, fits, G, S)
+  # pis <- additive_logistic(eta)
+  tmp <- get_incomplete_logl_bernoulli_sp_function(eta, first_fit, fits, G, S)
   return(-tmp)
 }
 
 "get_incomplete_logl_bernoulli_sp_function" <-  function(eta, first_fit, fits, G, S){
 
   p <- make.link('logit')
+  # print(eta,"\n")
   pis <- additive_logistic(eta)
   logl_sp_ippm <- matrix(NA,nrow=S, ncol=G)
   for(ss in 1:S){
@@ -3363,6 +3364,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
       logl_sp_ippm[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, p$linkinv(eta),log = TRUE)*first_fit$weights)
     }
   }
+  # print(log(pis))
   ak <- logl_sp_ippm + matrix(rep(log(pis), each=S), nrow=S, ncol=G)
   am <- apply( ak, 1, max)
   ak <- exp( ak-am)
@@ -3422,10 +3424,6 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
     #update the likelihood
     logl_old <- logl_new
     logl_new <- get_incomplete_logl_bernoulli_sp_function(eta = additive_logistic(pis,inv = TRUE)[-G], first_fit, fits, G, S)
-
-    # if (control$trace){
-    #   cat(ite, "  |  ", logl_new, "\n")
-    # }
     ite <- ite + 1
   }
 
@@ -3437,7 +3435,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
   eta <- additive_logistic(pis, TRUE)[-1]
 
   # estimate log-likelihood
-  logl_new <- get_incomplete_logl_bernoulli_sp_function( pi, first_fit, fits, G, S)
+  logl_new <- get_incomplete_logl_bernoulli_sp_function(eta, first_fit, fits, G, S)
 
   return(list(logl = logl_new, alpha = int_out, beta = fm_out,
               eta = eta, pis = pis, taus = round(taus,4)))
