@@ -188,7 +188,7 @@
 
   # tmp$archetype_formula <- archetype_formula
   # tmp$species_formula <- species_formula
-  class(tmp) <- c("archetype",distribution)
+  class(tmp) <- c("archetype",fit_distribution)
   return(tmp)
 }
 

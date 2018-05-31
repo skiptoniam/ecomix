@@ -15,12 +15,24 @@ testthat::test_that('species mix functions classes work', {
                                                dat,theta,dist="bernoulli")
   model_data <- make_mixture_data(species_data = simulated_data$species_data,
                                    covariate_data = simulated_data$covariate_data[,-1])
-  testthat::expect_error(fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli', n_mixtures=NULL))
-  # fm2 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli', n_mixtures=3)
-  # fm3 <- species_mix(sam_form, ~1, model_data, distribution = 'bernoulli', n_mixtures=3)
 
+  ## first lets test the classic bernoulli model.
+  ## test that silly inputs return the right error message.
+  # first test the formulas
+  sam_form_wrong <- y ~ 1 + x1 + x2 + z1 + z2
+  sp_form_wrong <- ~ 1 + x1
+  testthat::expect_error(fm1 <- species_mix(sam_form_wrong, sp_form, model_data, distribution = 'bernoulli', n_mixtures=3))
+  testthat::expect_error(fm2 <- species_mix(sam_form, sp_form_wrong, model_data, distribution = 'bernoulli', n_mixtures=3))
 
+  # test that it returns the right class of model
+  fm3 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli', n_mixtures=3)
+  testthat::expect_s3_class(fm3, "archetype")
+  testthat::expect_s3_class(fm3, "bernoulli")
 
-
+  # now let's test the species specific interncepts model.
+  sp_form_int <- ~ 1
+  fm4 <- species_mix(sam_form, sp_form_int, model_data, distribution = 'bernoulli', n_mixtures=3)
+  testthat::expect_s3_class(fm4, "archetype")
+  testthat::expect_s3_class(fm4, "bernoulli_sp")
 
 })
