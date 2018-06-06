@@ -69,7 +69,7 @@
 #' theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,7.9),3,3,byrow=TRUE)
 #' dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
 #' dat[,-1] <- scale(dat[,-1])
-#' simulated_data <- simulate_species_mix_data(archetype_formula=form, species_formula=sp_form,
+#' simulated_data <- simulate_species_mix_data(archetype_formula=sam_form, species_formula=sp_form,
 #'                                             dat,theta,dist="bernoulli")
 #' model_data <- make_mixture_data(species_data = simulated_data$species_data,
 #'                                 covariate_data = simulated_data$covariate_data[,-1])
@@ -77,7 +77,7 @@
 #'  n_mixtures=3)
 #' }
 
-"species_mix" <- function(archetype_formula = NULL, species_formula = ~1, data,
+"species_mix" <- function(archetype_formula = NULL, species_formula = as.formula(~1), data,
                           n_mixtures = 3, distribution="bernoulli", offset=NULL,
                           weights=NULL, control=species_mix.control(), inits=NULL,
                           standardise = FALSE, titbits = TRUE){
@@ -94,15 +94,17 @@
       message("There is no SAM model! Please provide a model (intercept at least) -- exitting now")
     return(NULL)
   }
-
+  if(!is.null(species_formula))
+    species_formula <- as.formula(species_formula)
 
   # Create model matrix
   mf <- match.call(expand.dots = FALSE)
-  m <- match(c("formula","data","offset","weights"), names(mf), 0L)
+  m <- match(c("data","offset","weights"), names(mf), 0L)
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
-  if(distribution=="ippm") mf$na.action <- "na.pass"
-  else mf$na.action <- "na.exclude"
+  # if(distribution=="ippm")
+  mf$na.action <- "na.pass"
+  # else mf$na.action <- "na.exclude"
   mf[[1L]] <- quote(stats::model.frame)
   mf <- eval(mf, parent.frame())
 
@@ -143,14 +145,18 @@
                    "negative_binomial","tweedie","gaussian")
   disty <- get_distribution_sam(disty.cases, fit_distribution)
 
-  # get offsets and weights
-  offset <- get_offset_sam(mf)
-  weights <- get_weights_sam(mf,S,distribution)
+  # get offsets
+  offset <- get_offset_sam(dat$mf.X)
+
+  # get the weights
+  species_names <- colnames(y)
+  weights <- get_weights_sam(mf,species_names,distribution)
+  # cat(colnames(weights),"\n")
 
   if(distribution=='ippm'){
     if(!all(colnames(y)%in%colnames(weights)))
-      cat(colnames(y),"\n")
-      cat(colnames(weights),"\n")
+      # cat(colnames(y),"\n")
+      # cat(colnames(weights),"\n")
       stop('When modelling a inhomogenous poisson point process model,
            weights colnames must match species data colnames')
     if(any(dim(y)!=dim(weights)))
@@ -382,6 +388,7 @@
                                   em_prefit = TRUE,
                                   em_steps = 3,
                                   em_refit = 3,
+                                  em_maxit = 3,
                                   em_abstol = sqrt(.Machine$double.eps),
                                   em_reltol = reltol_fun,
                                   em_maxtau = 0.8,
@@ -408,7 +415,8 @@
                #initialisation controls
                init_method = init_method, init_sd = init_sd,
                #em controls
-               em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps, em_abstol = em_abstol,
+               em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps, em_maxit = em_maxit,
+               em_abstol = em_abstol,
                em_reltol = em_reltol, em_maxtau = em_maxtau, em_calculate_hessian = em_calculate_hessian,
                em_full_model = em_full_model, r1 = r1,
                #cpp controls
@@ -762,17 +770,16 @@
     return( titbits)
 }
 
-"get_weights_sam"  <- function(mf,S,distribution){
+"get_weights_sam"  <- function(mf,sp_names,distribution){
   if(distribution=='ippm'){
-    sp_names <- colnames(model.response(mf))
     weights <- model.weights(mf)
     if(!is.null(weights)){
       weights <- subset(weights, select = colnames(weights)%in%sp_names)
     } else {
-      weights <- matrix(1,nrow(mf),S)
+      weights <- matrix(1,nrow(mf),length(sp_names))
     }
   } else {
-    weights <- rep(1, S)
+    weights <- rep(1, nrow(mf))
   }
   return(weights)
 }
@@ -802,12 +809,13 @@
   control
 }
 
-"clean_data_sam" <- function(form, data){
-  mf.X <- model.frame(formula = form, data = data, na.action = na.exclude)
-  ids <- rownames(mf.X)
-  res <- list(ids=ids, mf.X=mf.X)
-  return(res)
-}
+# "clean_data_sam" <- function(form, data){
+#
+#   mf.X <- model.frame(formula = form, data = data, na.action = na.exclude)
+#   ids <- rownames(mf.X)
+#   res <- list(ids=ids, mf.X=mf.X)
+#   return(res)
+# }
 
 "standardise.X" <- function (mat){
   X = scale(as.matrix(mat))
@@ -836,52 +844,52 @@
 
 }
 
-"check_distribution_clean_data_sam" <- function(arch_form, sp_form, dat, disty){
+"check_distribution_clean_data_sam" <- function(arch_form, sp_form, dat, distribution){
 
   # returns numeric 0, 1 or 2. if zero no species intercepts, if 1 speices intercepts, if 2 species model.
   species_int_coefs <- check_species_formula(sp_form)
 
   if(species_int_coefs!=2){
-    mod_dat <- clean_data_sam(dat, arch_form, NULL)
+    mod_dat <- clean_data_sam(dat, arch_form, NULL, distribution)
   } else {
-    mod_dat <- clean_data_sam(dat, arch_form, sp_form)
+    mod_dat <- clean_data_sam(dat, arch_form, sp_form, distribution)
   }
 
-  if(disty=="bernoulli" & species_int_coefs==0)fit_disty <- "bernoulli"
-  if(disty=="bernoulli" & species_int_coefs==1)fit_disty <- "bernoulli_sp"
-  if(disty=="bernoulli" & species_int_coefs==2){
+  if(distribution=="bernoulli" & species_int_coefs==0)fit_disty <- "bernoulli"
+  if(distribution=="bernoulli" & species_int_coefs==1)fit_disty <- "bernoulli_sp"
+  if(distribution=="bernoulli" & species_int_coefs==2){
     fit_disty <- "bernoulli_partial"
     stop('partial SAMs for a Bernoulli distribution has not been implemented yet - watch this space')
   }
 
-  if(disty=="poisson" & species_int_coefs==0)
+  if(distribution=="poisson" & species_int_coefs==0)
     stop('Poisson distribution requires independent species intercepts')
-  if(disty=="poisson" & species_int_coefs==1)fit_disty <- "poisson"
-  if(disty=="poisson" & species_int_coefs==2){
+  if(distribution=="poisson" & species_int_coefs==1)fit_disty <- "poisson"
+  if(distribution=="poisson" & species_int_coefs==2){
     fit_disty <- "poisson_partial"
     stop('partial SAMs for a Poisson distribution has not been implemented yet - watch this space')
   }
 
-  if(disty=="ippm" & species_int_coefs==0)
+  if(distribution=="ippm" & species_int_coefs==0)
     stop('IPPM distribution requires independent species intercepts')
-  if(disty=="ippm" & species_int_coefs==1)fit_disty <- "ippm"
-  if(disty=="ippm" & species_int_coefs==2){
+  if(distribution=="ippm" & species_int_coefs==1)fit_disty <- "ippm"
+  if(distribution=="ippm" & species_int_coefs==2){
     fit_disty <- "ippm_partial"
     stop('partial SAMs for a IPPM distribution has not been implemented yet - watch this space')
   }
 
-  if(disty=="negative_binomial" & species_int_coefs==0)
+  if(distribution=="negative_binomial" & species_int_coefs==0)
     stop('Negative binomial distribution requires independent species intercepts')
-  if(disty=="negative_binomial" & species_int_coefs==1)fit_disty <- "negative_binomial"
-  if(disty=="negative_binomial" & species_int_coefs==2){
+  if(distribution=="negative_binomial" & species_int_coefs==1)fit_disty <- "negative_binomial"
+  if(distribution=="negative_binomial" & species_int_coefs==2){
     fit_disty <- "negative_binomial_partial"
     stop('partial SAMs for a Negative Binomial distribution has not been implemented yet - watch this space')
 }
 
-  if(disty=="tweedie" & species_int_coefs==0)
+  if(distribution=="tweedie" & species_int_coefs==0)
     stop('Tweedie distribution requires independent species intercepts')
-  if(disty=="tweedie" & species_int_coefs==1)fit_disty <- "tweedie"
-  if(disty=="tweedie" & species_int_coefs==2){
+  if(distribution=="tweedie" & species_int_coefs==1)fit_disty <- "tweedie"
+  if(distribution=="tweedie" & species_int_coefs==2){
     fit_disty <- "tweedie_partial"
     stop('partial SAMs for a Tweedie distribution has not been implemented yet - watch this space')
   }
@@ -950,10 +958,12 @@
   }
 
 
-"clean_data_sam" <- function(data, form1, form2){
-    mf.X <- model.frame(form1, data = data, na.action = na.exclude)
+"clean_data_sam" <- function(data, form1, form2, distribution){
+    if(distribution=='ippm') na_rule <- "na.pass"
+    else na_rule <- "na.exclude"
+    mf.X <- model.frame(form1, data = data, na.action = na_rule)
     if( !is.null( form2)){
-      mf.W <- model.frame(form2, data = data, na.action = na.exclude)
+      mf.W <- model.frame(form2, data = data, na.action = na_rule)
       ids <- c( rownames( mf.W), rownames( mf.X))[duplicated( c( rownames( mf.W), rownames( mf.X)))]  #those rows of data that are good for both parts of the model.
       mf.X <- mf.X[rownames( mf.X) %in% ids,, drop=FALSE]
       mf.W <- mf.W[rownames( mf.W) %in% ids,, drop=FALSE]
@@ -2916,12 +2926,12 @@
   fm_ippm <- surveillance::plapply(1:S,apply_glm_ippm, y, X, weights, offset, y_is_na, .parallel = control$cores, .verbose = !control$quiet)
   all_coefs <- do.call(rbind,fm_ippm)
   mix_coefs <- all_coefs[,-1] # drop intercepts
-
+  # print(mix_coefs)
   if(control$init_method=='kmeans'){
     message( "Initial groups by K-means clustering\n")
-    tmp1 <- kmeans( mix_coefs, centers=G, nstart=100)
+    tmp1 <- kmeans(mix_coefs, centers=G, nstart=100)
     tmp_grp <- tmp1$cluster
-    grp_coefs <- apply( mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
+    grp_coefs <- apply(mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
   }
   if(control$init_method=='hclust'){
     message( "Initial groups by hierarchical clustering using Ward's method on Euclidean distances\n")
@@ -2945,7 +2955,7 @@
   return(results)
 }
 
-"get_initial_values_ippm" <- function(y, X, weights, offset, y_is_na, G, S, control){#cores, inits='kmeans', init.sd=1){
+"get_initial_values_ippm" <- function(y, X, weights, offset, y_is_na, G, S, control){
   starting_values <- initiate_fit_ippm(y, X, weights, offset, y_is_na, G, S, control)
   fits <- list(mix_coefs=starting_values$mix_coefs,sp_intercepts=starting_values$sp_intercepts)
   first_fit <- list(x = X, y = y, offset=offset, weights=weights, y_is_na=y_is_na)
@@ -2963,6 +2973,9 @@
 
 "fitmix_EM_ippm" <- function(y, X, G, weights, offset, control, y_is_na){
 
+  temp.warn <- getOption( "warn")
+  options( warn=-1)
+
   S <- ncol(y)
   pis <- rep(0, G)
   ite <- 1
@@ -2970,21 +2983,24 @@
   logl_new <- -88888888
 
   # Get responable starting values for EM estimation. #first e-step.
-  starting_values <- get_initial_values_ippm(y, X, weights, offset, y_is_na, G, S, control)
+  starting_values <- get_initial_values_ippm(y=y, X=X, weights=weights,
+                                             offset=offset, y_is_na=y_is_na,
+                                             G=G, S=S, control=control)
 
   pis <- starting_values$pis
   fits <- starting_values$fits
   taus <- starting_values$taus
   first_fit <- starting_values$first_fit
 
-  print(paste0('loglikelihood estimation starts at ', old_time))
   while (control$em_reltol(logl_new,logl_old) & ite <= control$em_maxit) {
 
     # Estimate pis from tau.
     pis <- colSums(taus)/S
 
     if (any(pis == 0)) {
-    starting_values <- get_initial_values_ippm(y, X, weights, offset, y_is_na, G, S, control)
+    starting_values <- get_initial_values_ippm(y=y, X=X, weights=weights,
+                                               offset=offset, y_is_na=y_is_na,
+                                               G=G, S=S, control=control)
     pis <- starting_values$pis
     fits <- starting_values$fits
     taus <- starting_values$taus
@@ -3096,7 +3112,9 @@
         control$em_refit,' refits\n')
     emfits <- list()
     for(ii in seq_len(control$em_refit)){
-      emfits[[ii]] <-  fitmix_EM_ippm(y, X, offset, weights, G, control)
+      emfits[[ii]] <-  fitmix_EM_ippm(y=y, X=X, G=G, offset = offset,
+                                      weights = weights, control = control,
+                                      y_is_na = y_is_na)
     }
     bf <- which.max(sapply(emfits,function(x)c(x$logl)))
     emfit <- emfits[[bf]]
@@ -3106,11 +3124,10 @@
   } else {
     message('Not using EM algorith to find starting values; starting values are
         generated using ', control$init_method,' to generate starting values\n')
-    starting_values <- get_initial_values_ippm(y = y, X = X, offset = offset,
-                                                       weights = weights, G = G, S = S,
-                                                       cores = control$cores,
-                                                       inits = control$init_method,
-                                                       init.sd = control$init_sd) # add init st to control
+    starting_values <- get_initial_values_ippm(y = y, X = X, weights = weights,
+                                               offset = offset, y_is_na = y_is_na,
+                                               G = G, S = S,
+                                               control = control)
     start_vals <- list(alphas=starting_values$fits$sp_intercepts,
                        betas=starting_values$fits$mix_coefs,
                        pis=starting_values$pis)
@@ -3165,21 +3182,21 @@
       return(scores_tmp)
     }
 
-    hes <- 0
-    covar <- 0
-    hes <- numDeriv::jacobian(calc_deriv,inits)
-    covar <- try(-solve(hes))
-    tmp$vcov <- covar
+    hess <- numDeriv::jacobian(calc_deriv,unlist(inits))
+    vcov.mat <- try(-solve(hess))
+    if( inherits( vcov.mat, 'try-error')){
+      attr(vcov.mat, "hess") <- hess
+      warning( "Hessian appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe Hessian is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data.")
+    }
+    tmp$vcov <- vcov.mat
   }
 
-  # tmp$vcov <- covar
   return(tmp)
-
 }
 
 "incom_logl_ippm" <- function(x, first_fit, pis, fits, G, S){
   fits$mix_coefs <- matrix(x,nrow=nrow(fits$mix_coef),ncol=ncol(fits$mix_coef))
-  tmp <- get_incomplete_logl_ippm_function(pis, first_fit, fits, G, S)
+  tmp <- get_incomplete_logl_ippm(pis, first_fit, fits, G, S)
   return(-tmp)
 }
 

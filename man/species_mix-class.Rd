@@ -12,8 +12,8 @@
 \alias{species_mix.predict}
 \title{species_mix objects}
 \usage{
-species_mix(archetype_formula = NULL, species_formula = ~1, data,
-  n_mixtures = 3, distribution = "bernoulli", offset = NULL,
+species_mix(archetype_formula = NULL, species_formula = as.formula(~1),
+  data, n_mixtures = 3, distribution = "bernoulli", offset = NULL,
   weights = NULL, control = species_mix.control(), inits = NULL,
   standardise = FALSE, titbits = TRUE)
 
@@ -28,7 +28,7 @@ species_mix.multifit(archetype_formula = NULL, species_formula = ~1, data,
 
 species_mix.control(maxit = 1000, quiet = FALSE, trace = 1, cores = 1,
   residuals = FALSE, init_method = "kmeans", init_sd = 1,
-  em_prefit = TRUE, em_steps = 3, em_refit = 3,
+  em_prefit = TRUE, em_steps = 3, em_refit = 3, em_maxit = 3,
   em_abstol = sqrt(.Machine$double.eps), em_reltol = reltol_fun,
   em_maxtau = 0.8, em_calculate_hessian = FALSE, em_full_model = FALSE,
   r1 = 1, maxit_cpp = 1000, trace_cpp = 0, nreport_cpp = 1,
@@ -181,7 +181,7 @@ sp_form <- ~ 1
 theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,7.9),3,3,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
 dat[,-1] <- scale(dat[,-1])
-simulated_data <- simulate_species_mix_data(archetype_formula=form, species_formula=sp_form,
+simulated_data <- simulate_species_mix_data(archetype_formula=sam_form, species_formula=sp_form,
                                             dat,theta,dist="bernoulli")
 model_data <- make_mixture_data(species_data = simulated_data$species_data,
                                 covariate_data = simulated_data$covariate_data[,-1])
