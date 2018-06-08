@@ -1,6 +1,5 @@
 ##### Core species mix functions ####
 
-
 #' @title species_mix objects
 #' @rdname species_mix-class
 #' @name species_mix
@@ -298,7 +297,7 @@
   X <- get_X_sam(archetype_formula, dat$mf.X)
 
   # get species model matrix
-  W <- get_W_sam(species_formula, dat$mf.W) # don't need yet. but will be important for partial sams.
+  W <- get_W_sam(species_formula, dat$mf.W)
 
   #get distribution
   disty.cases <- c("bernoulli","bernoulli_sp","poisson","ippm",
@@ -1413,7 +1412,9 @@
         }
       }
 
+      if(!control$quiet){
       if(control$trace==1) cat(ite,"     | ",logL,"\n")
+      }
       ite <- ite+1
     }
     fm.out <- data.frame(matrix(0,G,length(fmM[[1]]$coef)))
@@ -2910,43 +2911,145 @@
   f_ippm$coef
 }
 
-"apply_glm_ippm_sp_tau" <- function (ss, y, X, y_is_na, weights, offset, tau, G, S, fits){
-  Y_sp_tau <- as.matrix(rep(y[!y_is_na[,ss],ss],G))
-  ippm_weights_sp_tau <- as.matrix(rep(weights[!y_is_na[,ss],ss],G))
-  z_sp_tau <- as.matrix(Y_sp_tau/ippm_weights_sp_tau)
-  X_sp_tau <- do.call(rbind, replicate(G, X[!y_is_na[,ss],], simplify=FALSE))
-  wts_sp_tau <- rep(tau[ss,],each=length(y[!y_is_na[,ss],ss]))
-  wts_sp_ippmXtau <- wts_sp_tau*ippm_weights_sp_tau
-  offy <- rep(offset[!y_is_na[,ss]],G)
-  f_mix <- glm.fit(x = X_sp_tau, y = z_sp_tau, weights = wts_sp_ippmXtau, offset = offy, family=poisson())
-  return(sp_coef=f_mix$coef)
+# we want to put glmnet::glmnet() in with a reletively mild penality? (max and min) take 9/10ths of the min penality.
+"apply_glmnet_ippm" <- function(i, y, X, weights, offset, y_is_na,return_all_coefs=FALSE){
+
+  lambda.seq <- sort( unique( c( seq( from=1/0.01, to=1, length=10), seq( from=1/0.1, to=1, length=10),seq(from=0.9, to=10^-2, length=10))), decreasing=TRUE)
+  ids_i <- !y_is_na[,i]
+  ft_ippm <- glmnet::glmnet(x=as.matrix(X[ids_i,-1]),y=as.matrix(y[ids_i,i]/weights[ids_i,i]),weights=as.matrix(weights[ids_i,i]),
+                            offset=offset[ids_i],family='poisson',
+                            alpha=0,
+                            lambda = lambda.seq,
+                            standardize = FALSE,
+                            intercept = TRUE)
+  locat_s <- min(lambda.seq) # relatively small penalty 1/10 - the other ones were to restrictive.
+  my_coefs <- glmnet::coef.glmnet(ft_ippm, s=locat_s)
+  if(return_all_coefs)  my_coefs <- glmnet::coef.glmnet(ft_ippm)
+  if( any( is.na( my_coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
+    my_coefs <- glmnet::coef.glmnet(ft_ippm, s=lambda.seq)
+    lastID <- apply( my_coefs, 2, function(x) !any( is.na(x)))
+    lastID <- tail( (seq_along( lastID))[lastID], 1)
+    my_coefs <- my_coefs[,lastID]
+  }
+  return(as.matrix(my_coefs))
 }
 
+"apply_glm_ippm_group_tau" <- function (gg, y, X, y_is_na, tau){
+
+  ### setup the data stucture for this model.
+  Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
+  X_no_NA <- list()
+  for (jj in 1:ncol(y)){
+    X_no_NA[[jj]] <- X[!y_is_na[,jj],]
+  }
+  X_tau <- do.call(rbind, X_no_NA)
+  n_ys <- sapply(X_no_NA,nrow)
+  wts_tau <- rep(tau[,gg],n_ys)
+
+  ft_mix <- glm.fit(x = X_tau, y = Y_tau, weights = wts_tau, family=poisson())
+  mix_coefs <- ft_mix$coef[-1]
+  return(mix_coefs)
+}
+
+# #calculate the mixing coefs using glmnet.
+# "apply_glmnet_ippm_group_tau" <- function (gg, y, X, y_is_na, tau, return_all_coefs=FALSE){#currently no weights yet.
+#
+#   ### setup the data stucture for this model.
+#   Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
+#   X_no_NA <- list()
+#   for (jj in 1:ncol(y)){
+#     X_no_NA[[jj]] <- X[!y_is_na[,jj],]
+#   }
+#   X_tau <- do.call(rbind, X_no_NA)
+#   n_ys <- sapply(X_no_NA,nrow)
+#   wts_tau <- rep(tau[,gg],n_ys)
+#
+#   ## setup the data penality parameters for glmnet
+#   # lambda.seq <- 10^seq(1,-2,length=10)
+#   lambda.seq <- sort( unique( c( seq( from=1/0.01, to=1, length=10), seq( from=1/0.1, to=1, length=10),seq(from=0.9, to=10^-2, length=10))), decreasing=TRUE)
+#   ft_mix <- glmnet::glmnet(x=as.matrix(X_tau[,-1]),y=as.matrix(Y_tau),
+#                            weights=as.matrix(wts_tau),
+#                            family='poisson',
+#                            alpha=0,
+#                            lambda = lambda.seq,
+#                            standardize = FALSE,
+#                            intercept = FALSE)
+#   locat_s <- min(lambda.seq) # relatively small penalty 1/10 - the other ones were to restrictive.
+#   my_coefs <- glmnet::coef.glmnet(ft_mix, s=locat_s)
+#   if(return_all_coefs)  my_coefs <- glmnet::coef.glmnet(ft_mix)
+#   if( any( is.na( my.coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
+#     my_coefs <- glmnet::coef.glmnet(ft_ippm, s=lambda.seq)
+#     lastID <- apply( my.coefs, 2, function(x) !any( is.na(x)))
+#     lastID <- tail( (seq_along( lastID))[lastID], 1)
+#     my_coefs <- my.coefs[,lastID]
+#   }
+#   return(as.matrix(my_coefs))
+# }
+
+
+"apply_glmnet_ippm_group_tau_v2" <- function (gg, y, X, weights, offset, y_is_na, tau, lambda_pen = NULL, return_all_coefs=FALSE){#currently no weights yet.
+
+  ### setup the data stucture for this model.
+  Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
+  X_no_NA <- list()
+  for (jj in 1:ncol(y)){
+    X_no_NA[[jj]] <- X[!y_is_na[,jj],]
+  }
+  X_tau <- do.call(rbind, X_no_NA)
+  n_ys <- sapply(X_no_NA,nrow)
+  wts_tau <- rep(tau[,gg],c(n_ys))
+
+
+  ippm_weights <- as.matrix(as.matrix(unlist(as.data.frame(weights[!y_is_na]))))
+  Z_tau <- as.matrix(Y_tau/ippm_weights)
+  wts_tauXippm_weights <- wts_tau*ippm_weights
+  offy_mat <- replicate(ncol(y),offset)
+  offy <- unlist(as.data.frame(offy_mat[!y_is_na]))
+
+  ## setup the data penality parameters for glmnet
+  # lambda.seq <- 10^seq(1,-2,length=50)
+  lambda.seq <- sort( unique( c( seq( from=1/0.01, to=1, length=10), seq( from=1/0.1, to=1, length=10),seq(from=0.9, to=10^-2, length=10))), decreasing=TRUE)
+  ft_mix <- glmnet::glmnet(x=as.matrix(X_tau[,-1]),y=as.matrix(Z_tau),
+                           weights=as.matrix(wts_tauXippm_weights),offset = offy,
+                           family='poisson',
+                           alpha=0,
+                           lambda = lambda.seq,
+                           standardize = FALSE,
+                           intercept = FALSE)
+  if(is.null(lambda_pen))lambda_pen <- min(lambda.seq) # relatively small penalty 1/10 - the other ones were to restrictive
+  my_coefs <- glmnet::coef.glmnet(ft_mix, s=lambda_pen)
+  if(return_all_coefs)  my_coefs <- glmnet::coef.glmnet(ft_mix)
+  if(any(is.na( my_coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
+    my_coefs <- glmnet::coef.glmnet(ft_ippm, s=lambda.seq)
+    lastID <- apply( my_coefs, 2, function(x) !any( is.na(x)))
+    lastID <- tail( (seq_along( lastID))[lastID], 1)
+    my_coefs <- my_coefs[,lastID]
+  }
+  return(as.matrix(my_coefs))
+}
+
+
 "initiate_fit_ippm" <- function(y, X, weights, offset, y_is_na, G, S, control){
-  fm_ippm <- surveillance::plapply(1:S,apply_glm_ippm, y, X, weights, offset, y_is_na, .parallel = control$cores, .verbose = !control$quiet)
-  all_coefs <- do.call(rbind,fm_ippm)
+  fm_ippm <- surveillance::plapply(1:S,apply_glmnet_ippm, y, X, weights, offset, y_is_na,
+                                   .parallel = control$cores, .verbose = !control$quiet)
+  all_coefs <- t(do.call(cbind,fm_ippm)) #be careful with this transformation from glmnet.
   mix_coefs <- all_coefs[,-1] # drop intercepts
-  # print(mix_coefs)
   if(control$init_method=='kmeans'){
-    message( "Initial groups by K-means clustering\n")
+    if(!control$quiet)message( "Initial groups by K-means clustering\n")
     tmp1 <- kmeans(mix_coefs, centers=G, nstart=100)
     tmp_grp <- tmp1$cluster
     grp_coefs <- apply(mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
   }
   if(control$init_method=='hclust'){
-    message( "Initial groups by hierarchical clustering using Ward's method on Euclidean distances\n")
-    disto <- dist( mix_coefs, method="euclidean")
-    tmp1 <- hclust(disto, method = "ward.D")
-    tmp_grp <- cutree(tmp1, G)
-    grp_coefs <- apply( mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
+    stop( "EHNT!... IPPM cannot use a hierachial cluster - stick to K-means\n")
   }
   if(control$init_method=='random' | is.null(tmp_grp)){
-    message( "Initial groups by random allocation and means from random numbers\n")
+    if(!control$quiet)message( "Initial groups by random allocation and means from random numbers\n")
     grp_coefs <- matrix( rnorm(G*ncol(mix_coefs), sd=control$init_sd, mean=0), nrow=G, ncol=ncol(mix_coefs))
     tmp_grp <- sample(1:G, S, replace=TRUE)
   }
 
-  colnames(grp_coefs)<-colnames(X[,-1])
+  colnames(grp_coefs) <- colnames(X[,-1])
   results <- list()
   results$grps <- tmp_grp
   results$mix_coefs <- grp_coefs
@@ -2955,14 +3058,56 @@
   return(results)
 }
 
+#### old version.
+# "get_initial_values_ippm" <- function(y, X, weights, offset, y_is_na, G, S, control){
+#   starting_values <- initiate_fit_ippm(y, X, weights, offset, y_is_na, G, S, control)
+#   fits <- list(mix_coefs=starting_values$mix_coefs,sp_intercepts=starting_values$sp_intercepts)
+#   first_fit <- list(x = X, y = y, offset=offset, weights=weights, y_is_na=y_is_na)
+#   logls <- get_logls_ippm(first_fit, fits, G, S)
+#   pis <- rep(1/G, G)
+#   taus <- get_taus_ippm(pis, logls, G, S)
+#   taus <- skrink_taus_ippm(taus,max_tau=1/G + 0.1, G)
+#   res <- list()
+#   res$fits <- fits
+#   res$first_fit <- first_fit
+#   res$pis <- pis
+#   res$taus <- taus
+#   return(res)
+# }
+
+## new version with glmnet for regularisation.
 "get_initial_values_ippm" <- function(y, X, weights, offset, y_is_na, G, S, control){
-  starting_values <- initiate_fit_ippm(y, X, weights, offset, y_is_na, G, S, control)
-  fits <- list(mix_coefs=starting_values$mix_coefs,sp_intercepts=starting_values$sp_intercepts)
-  first_fit <- list(x = X, y = y, offset=offset, weights=weights, y_is_na=y_is_na)
-  logls <- get_logls_ippm(first_fit, fits, G, S)
+
+  # fit glmnet to get the intial values
+  starting_values <- ecomix:::initiate_fit_ippm(y, X, weights, offset, y_is_na, G, S, control)
+  fits <- list(betas=starting_values$mix_coefs, alphas=starting_values$sp_intercepts)
+  first_fit <- list(x = X, y = y, weights=weights, offset=offset, y_is_na=y_is_na)
+
+  # get the loglikelihood based on these values
+  logls <- ecomix:::get_logls_ippm(first_fit, fits, G, S)
+
+  # estimate the posteriors for taus (skrink a little)
   pis <- rep(1/G, G)
-  taus <- get_taus_ippm(pis, logls, G, S)
-  taus <- skrink_taus_ippm(taus,max_tau=1/G + 0.1, G)
+  taus <- ecomix:::get_taus_ippm(pis, logls, G, S)
+  taus <- ecomix:::skrink_taus_ippm(taus, max_tau=1/G + 0.2, G)
+
+  # use these posteriors to estimate mix-coefs again with weights
+  # could replace with glmnet if I can get it to work.
+  # apply_glmnet_ippm_group_tau()
+  fmix_coefs <- surveillance::plapply(1:G, apply_glmnet_ippm_group_tau_v2,
+                                      first_fit$y,
+                                      first_fit$x,
+                                      first_fit$weights,
+                                      first_fit$offset,
+                                      first_fit$y_is_na,
+                                      taus,
+                                      .parallel = control$cores,
+                                      .verbose = !control$quiet)
+
+  #update the mix coefs.
+  fmix_coefs <- t(do.call(cbind,fmix_coefs))
+  fits$betas <- as.matrix(fmix_coefs[,-1])
+
   res <- list()
   res$fits <- fits
   res$first_fit <- first_fit
@@ -2971,83 +3116,84 @@
   return(res)
 }
 
-"fitmix_EM_ippm" <- function(y, X, G, weights, offset, control, y_is_na){
 
-  temp.warn <- getOption( "warn")
-  options( warn=-1)
-
-  S <- ncol(y)
-  pis <- rep(0, G)
-  ite <- 1
-  logl_old <- -99999999
-  logl_new <- -88888888
-
-  # Get responable starting values for EM estimation. #first e-step.
-  starting_values <- get_initial_values_ippm(y=y, X=X, weights=weights,
-                                             offset=offset, y_is_na=y_is_na,
-                                             G=G, S=S, control=control)
-
-  pis <- starting_values$pis
-  fits <- starting_values$fits
-  taus <- starting_values$taus
-  first_fit <- starting_values$first_fit
-
-  while (control$em_reltol(logl_new,logl_old) & ite <= control$em_maxit) {
-
-    # Estimate pis from tau.
-    pis <- colSums(taus)/S
-
-    if (any(pis == 0)) {
-    starting_values <- get_initial_values_ippm(y=y, X=X, weights=weights,
-                                               offset=offset, y_is_na=y_is_na,
-                                               G=G, S=S, control=control)
-    pis <- starting_values$pis
-    fits <- starting_values$fits
-    taus <- starting_values$taus
-    first_fit <- starting_values$first_fit
-    ite <- 1
-    }
-
-    # this updates the mixture coefs
-   tmp <- nlminb(start=fits$mix_coefs, objective=incom_logl_ippm, gradient=NULL, hessian=NULL,
-                 first_fit=first_fit, pis=pis, fits=fits, G=G, S=S,control=control)
-   fits$mix_coefs <- update_mix_coefs(fits$mix_coefs, tmp$par)
-
-    # update species intercepts w/ respect to the mixture weights (tau)
-    fm_ippm <- surveillance::plapply(1:S, apply_glm_ippm_sp_tau, first_fit$y,
-                                     first_fit$x, first_fit$y_is_na,
-                                     first_fit$weights, first_fit$offset,
-                                     taus, S, G, fits,
-                                     .parallel = control$cores, .verbose = !control$quiet)
-
-    sp_int <- do.call(rbind,fm_ippm)[,1]
-    fits$sp_intercepts <- update_sp_coefs(fits$sp_intercepts,sp_int)
-
-    # E-step
-    # get the log-likes and taus
-    logls <- get_logls_ippm(first_fit, fits, G, S)
-    taus <- get_taus_ippm(pis, logls, G, S)
-
-    #update the likelihood
-    logl_old <- logl_new
-    logl_new <- get_incomplete_logl_ippm(pi, first_fit, fits, G, S)
-    ite <- ite + 1
-  }
-
-  taus <- data.frame(taus)
-  names(taus) <- paste("grp.", 1:G, sep = "")
-  alphas <- fits$sp_intercepts
-  betas <- fits$mix_coefs
-  names(pis) <- paste("G", 1:G, sep = ".")
-  etas <- additive_logistic(pis, TRUE)[-G]
-  logl_full <- logl_new
-
-  # estimate log-likelihood
-  logl_new <- get_incomplete_logl_ippm(pi, first_fit, fits, G, S)
-
-  return(list(logl = logl_new, alpha = alphas, beta = betas,
-              eta = etas, pis = pis, weights = weights))
-}
+# "fitmix_EM_ippm" <- function(y, X, G, weights, offset, control, y_is_na){
+#
+#   temp.warn <- getOption( "warn")
+#   options( warn=-1)
+#
+#   S <- ncol(y)
+#   pis <- rep(0, G)
+#   ite <- 1
+#   logl_old <- -99999999
+#   logl_new <- -88888888
+#
+#   # Get responable starting values for EM estimation. #first e-step.
+#   starting_values <- get_initial_values_ippm(y=y, X=X, weights=weights,
+#                                              offset=offset, y_is_na=y_is_na,
+#                                              G=G, S=S, control=control)
+#
+#   pis <- starting_values$pis
+#   fits <- starting_values$fits
+#   taus <- starting_values$taus
+#   first_fit <- starting_values$first_fit
+#
+#   while (control$em_reltol(logl_new,logl_old) & ite <= control$em_maxit) {
+#
+#     # Estimate pis from tau.
+#     pis <- colSums(taus)/S
+#
+#     if (any(pis == 0)) {
+#     starting_values <- get_initial_values_ippm(y=y, X=X, weights=weights,
+#                                                offset=offset, y_is_na=y_is_na,
+#                                                G=G, S=S, control=control)
+#     pis <- starting_values$pis
+#     fits <- starting_values$fits
+#     taus <- starting_values$taus
+#     first_fit <- starting_values$first_fit
+#     ite <- 1
+#     }
+#
+#     # this updates the mixture coefs
+#    tmp <- nlminb(start=fits$betas, objective=incom_logl_ippm, gradient=NULL, hessian=NULL,
+#                  first_fit=first_fit, pis=pis, fits=fits, G=G, S=S,control=control)
+#    fits$betas <- update_mix_coefs(fits$betas, tmp$par)
+#
+#     # update species intercepts w/ respect to the mixture weights (tau)
+#     fm_ippm <- surveillance::plapply(1:S, apply_glm_ippm_sp_tau, first_fit$y,
+#                                      first_fit$x, first_fit$y_is_na,
+#                                      first_fit$weights, first_fit$offset,
+#                                      taus, S, G, fits,
+#                                      .parallel = control$cores, .verbose = !control$quiet)
+#
+#     sp_int <- do.call(rbind,fm_ippm)[,1]
+#     fits$alphas <- update_sp_coefs(fits$alphas,sp_int)
+#
+#     # E-step
+#     # get the log-likes and taus
+#     logls <- get_logls_ippm(first_fit, fits, G, S)
+#     taus <- get_taus_ippm(pis, logls, G, S)
+#
+#     #update the likelihood
+#     logl_old <- logl_new
+#     logl_new <- get_incomplete_logl_ippm(pi, first_fit, fits, G, S)
+#     ite <- ite + 1
+#   }
+#
+#   taus <- data.frame(taus)
+#   names(taus) <- paste("grp.", 1:G, sep = "")
+#   alphas <- fits$alphas
+#   betas <- fits$betas
+#   names(pis) <- paste("G", 1:G, sep = ".")
+#   etas <- additive_logistic(pis, TRUE)[-G]
+#   logl_full <- logl_new
+#
+#   # estimate log-likelihood
+#   logl_new <- get_incomplete_logl_ippm(pi, first_fit, fits, G, S)
+#
+#   return(list(logl = logl_new, alpha = alphas, beta = betas,
+#               eta = etas, pis = pis, weights = weights))
+# }
 
 "ippm_optimise_cpp" <- function(y, X, offset, weights, y_is_na, G, S, start_vals, control) {
 
@@ -3106,6 +3252,10 @@
 "species_mix_ippm" <- function(y, X, offset, weights, control, G, y_is_na){
 
   S <- ncol(y)
+  # hard code this for now.
+
+  if(isTRUE(control$em_prefit)) control$em_prefit <- FALSE; message("IPPM does not use EM prefit because it is sooooooo slow\n switching to kmeans and glmnet initialisation method")
+
   #if emfit is in the control do an EM fit to get good starting values for c++
   if(isTRUE(control$em_prefit)){
     message('Using EM algorithm to find starting values; using ',
@@ -3122,14 +3272,13 @@
                        betas=emfit$beta,
                        pis=emfit$pis)
   } else {
-    message('Not using EM algorith to find starting values; starting values are
-        generated using ', control$init_method,' to generate starting values\n')
+    message('You are using ', control$init_method,' to generate starting values\n')
     starting_values <- get_initial_values_ippm(y = y, X = X, weights = weights,
                                                offset = offset, y_is_na = y_is_na,
                                                G = G, S = S,
                                                control = control)
-    start_vals <- list(alphas=starting_values$fits$sp_intercepts,
-                       betas=starting_values$fits$mix_coefs,
+    start_vals <- list(alphas=starting_values$fits$alphas,
+                       betas=starting_values$fits$betas,
                        pis=starting_values$pis)
   }
 
@@ -3195,7 +3344,7 @@
 }
 
 "incom_logl_ippm" <- function(x, first_fit, pis, fits, G, S){
-  fits$mix_coefs <- matrix(x,nrow=nrow(fits$mix_coef),ncol=ncol(fits$mix_coef))
+  fits$betas <- matrix(x,nrow=nrow(fits$betas),ncol=ncol(fits$betas))
   tmp <- get_incomplete_logl_ippm(pis, first_fit, fits, G, S)
   return(-tmp)
 }
@@ -3206,7 +3355,7 @@
     sp_idx<-!first_fit$y_is_na[,ss]
     for(gg in 1:G){
       #eta is the same as log_lambda (linear predictor)
-      eta <- first_fit$x[sp_idx,1] * fits$sp_intercepts[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$mix_coefs[gg,] + first_fit$offset[sp_idx]
+      eta <- first_fit$x[sp_idx,1] * fits$alphas[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$betas[gg,] + first_fit$offset[sp_idx]
       logl_sp_ippm[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
     }
   }
@@ -3229,7 +3378,7 @@
     sp_idx<-!first_fit$y_is_na[,ss]
     for(gg in 1:G){
       #eta is the same as log_lambda (linear predictor)
-      eta <- first_fit$x[sp_idx,1] * fits$sp_intercepts[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$mix_coefs[gg,] + first_fit$offset[sp_idx]
+      eta <- first_fit$x[sp_idx,1] * fits$alphas[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$betas[gg,] + first_fit$offset[sp_idx]
       logl_sp_ippm[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
     }
   }
@@ -3299,7 +3448,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
   p <- make.link(link = "logit")
   for(ss in 1:S){
     for(gg in 1:G){
-      eta <- first_fit$x[,1] * fits$sp_intercepts[ss] + as.matrix(first_fit$x[,-1]) %*% fits$mix_coefs[gg,] + first_fit$offset
+      eta <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
       logl_sp_bernoulli_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, p$linkinv(eta),log = TRUE))
     }
     logl_sp_bernoulli_sp[ss,gg] <- logl_sp_bernoulli_sp[ss,gg]*first_fit$weights[ss]
@@ -3342,7 +3491,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
 }
 
 "incom_logl_bernoulli_sp_alpha" <- function(x, first_fit, eta, fits, G, S){
-  fits$sp_intercepts <- x
+  fits$alphas <- x
   # pis <- additive_logistic(eta)
   tmp <- get_incomplete_logl_bernoulli_sp_function(eta, first_fit, fits, G, S)
   return(-tmp)
@@ -3350,7 +3499,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
 
 "incom_logl_bernoulli_sp_beta" <- function(x, first_fit, eta, fits, G, S){
 
-  fits$mix_coefs <- matrix(x,nrow=nrow(fits$mix_coef),ncol=ncol(fits$mix_coef))
+  fits$betas <- matrix(x,nrow=nrow(fits$mix_coef),ncol=ncol(fits$mix_coef))
   # pis <- additive_logistic(eta)
   tmp <- get_incomplete_logl_bernoulli_sp_function(eta, first_fit, fits, G, S)
   return(-tmp)
@@ -3372,7 +3521,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
   for(ss in 1:S){
     for(gg in 1:G){
       #eta is the same as log_mu (linear predictor)
-      eta <- first_fit$x[,1] * fits$sp_intercepts[ss] + as.matrix(first_fit$x[,-1]) %*% fits$mix_coefs[gg,] + first_fit$offset
+      eta <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
       logl_sp_ippm[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, p$linkinv(eta),log = TRUE)*first_fit$weights)
     }
   }
@@ -3421,12 +3570,12 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
       ite <- 1
     }
     # m-step
-    tmp <- nlminb(start=fits$mix_coefs, objective=incom_logl_bernoulli_sp_beta, gradient=NULL, hessian=NULL,
+    tmp <- nlminb(start=fits$betas, objective=incom_logl_bernoulli_sp_beta, gradient=NULL, hessian=NULL,
                   first_fit=first_fit, eta=additive_logistic(pis,inv = TRUE)[-G], fits=fits, G=G, S=S)
-    fits$mix_coefs <- update_mix_coefs(fits$mix_coefs, tmp$par)
+    fits$betas <- update_mix_coefs(fits$betas, tmp$par)
     fm_bernoulli_sp_int <- surveillance::plapply(1:S, apply_glm_bernoulli_sp_tau, y, X, offset, taus, G, S, fits, .parallel = control$cores, .verbose = !control$quiet) #check weights in this.
     sp_int <- do.call(rbind,fm_bernoulli_sp_int)[,1]
-    fits$sp_intercepts <- update_sp_coefs(fits$sp_intercepts,sp_int)
+    fits$alphas <- update_sp_coefs(fits$alphas,sp_int)
 
     # e-step
     # get the log-likes and taus
@@ -3441,8 +3590,8 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
 
   taus <- data.frame(taus)
   names(taus) <- paste("grp.", 1:G, sep = "")
-  int_out <- fits$sp_intercepts
-  fm_out <- fits$mix_coefs
+  int_out <- fits$alphas
+  fm_out <- fits$betas
   names(pis) <- paste("G", 1:G, sep = ".")
   eta <- additive_logistic(pis, TRUE)[-1]
 
@@ -3534,8 +3683,8 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
     starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
                                                         weights = weights, G = G, S = S,
                                                         control = control)
-    start_vals <- list(alphas=starting_values$fits$sp_intercepts,
-                       betas=starting_values$fits$mix_coefs,
+    start_vals <- list(alphas=starting_values$fits$alphas,
+                       betas=starting_values$fits$betas,
                        pis=starting_values$pis)
   }
 
