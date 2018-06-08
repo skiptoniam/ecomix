@@ -1,8 +1,9 @@
 context('species_mix bernoulli')
 
-testthat::test_that('species mix functions classes work', {
+testthat::test_that('species mix bernoulli', {
 
   library(ecomix)
+  library(raster)
   set.seed(42)
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2+z1+z2"))
   sp_form <- NULL
@@ -21,7 +22,7 @@ testthat::test_that('species mix functions classes work', {
   # first test the formulas
   sam_form_wrong <- y ~ 1 + x1 + x2 + z1 + z2
   sp_form_wrong <- ~ 1 + x1
-  testthat::expect_error(fm1 <- species_mix(sam_form_wrong, sp_form, model_data, distribution = 'bernoulli', n_mixtures=3))
+  testthat::expect_error(fm1 <- species_mix(sam_form_wrong, sp_form, 'a', distribution = 'bernoulli', n_mixtures=3))
   testthat::expect_error(fm2 <- species_mix(sam_form, sp_form_wrong, model_data, distribution = 'bernoulli', n_mixtures=3))
 
   # test that it returns the right class of model
@@ -31,7 +32,7 @@ testthat::test_that('species mix functions classes work', {
 
   # now let's test the species specific interncepts model.
   sp_form_int <- ~ 1
-  fm4 <- species_mix(sam_form, sp_form_int, model_data, distribution = 'bernoulli', n_mixtures=3, control = species_mix.control(quiet=TRUE))
+  fm4 <- species_mix(sam_form, sp_form_int, model_data, distribution = 'bernoulli', n_mixtures=3, control = species_mix.control(quiet=TRUE,calculate_hessian_cpp = FALSE))
   testthat::expect_s3_class(fm4, "species_mix")
   testthat::expect_s3_class(fm4, "bernoulli_sp")
 

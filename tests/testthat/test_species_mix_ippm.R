@@ -1,6 +1,6 @@
 context('species_mix ippm')
 
-testthat::test_that('species mix functions classes work', {
+testthat::test_that('species mix ippm', {
 
   library(ecomix)
   library(raster)
@@ -25,7 +25,7 @@ testthat::test_that('species mix functions classes work', {
 
   # now let's set up a variable to model.
   set.seed(6)
-  d <- as.matrix(dist(grid2D[,c("x","y")]))
+  d <- as.matrix(stats::dist(grid2D[,c("x","y")]))
   w <- exp(-1/nrow(grid2D[,c("x","y")]) * d)
   ww <- chol(w)
   grid2D$x1 <- t(ww) %*% rnorm(nrow(grid2D[,c("x","y")]),0, 0.1)

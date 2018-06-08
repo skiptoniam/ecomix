@@ -18,7 +18,8 @@ Imports:
     gtools,
     parallel,
     stats,
-    graphics
+    graphics,
+    raster
 Suggests:
     knitr,
     rmarkdown,

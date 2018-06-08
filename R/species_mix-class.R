@@ -3079,17 +3079,17 @@
 "get_initial_values_ippm" <- function(y, X, weights, offset, y_is_na, G, S, control){
 
   # fit glmnet to get the intial values
-  starting_values <- ecomix:::initiate_fit_ippm(y, X, weights, offset, y_is_na, G, S, control)
+  starting_values <- initiate_fit_ippm(y, X, weights, offset, y_is_na, G, S, control)
   fits <- list(betas=starting_values$mix_coefs, alphas=starting_values$sp_intercepts)
   first_fit <- list(x = X, y = y, weights=weights, offset=offset, y_is_na=y_is_na)
 
   # get the loglikelihood based on these values
-  logls <- ecomix:::get_logls_ippm(first_fit, fits, G, S)
+  logls <- get_logls_ippm(first_fit, fits, G, S)
 
   # estimate the posteriors for taus (skrink a little)
   pis <- rep(1/G, G)
-  taus <- ecomix:::get_taus_ippm(pis, logls, G, S)
-  taus <- ecomix:::skrink_taus_ippm(taus, max_tau=1/G + 0.2, G)
+  taus <- get_taus_ippm(pis, logls, G, S)
+  taus <- skrink_taus_ippm(taus, max_tau=1/G + 0.2, G)
 
   # use these posteriors to estimate mix-coefs again with weights
   # could replace with glmnet if I can get it to work.
@@ -3475,7 +3475,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
 
 "get_initial_values_bernoulli_sp" <- function(y, X, offset, weights, G, S, control){#cores, inits='kmeans', init.sd=1){
   starting_values <- initiate_fit_bernoulli_sp(y, X, offset, G, S, control)# cores, inits, init.sd)
-  fits <- list(mix_coefs=starting_values$mix_coefs,sp_intercepts=starting_values$sp_intercepts)
+  fits <- list(alphas=starting_values$sp_intercepts,betas=starting_values$mix_coefs)
   first_fit <- list(x = X, y = y, offset=offset, weights=weights)
   logls <- get_logls_bernoulli_sp(first_fit, fits, G, S)
   pis <- rep(1/G, G)
@@ -3499,7 +3499,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
 
 "incom_logl_bernoulli_sp_beta" <- function(x, first_fit, eta, fits, G, S){
 
-  fits$betas <- matrix(x,nrow=nrow(fits$mix_coef),ncol=ncol(fits$mix_coef))
+  fits$betas <- matrix(x,nrow=nrow(fits$betas),ncol=ncol(fits$betas))
   # pis <- additive_logistic(eta)
   tmp <- get_incomplete_logl_bernoulli_sp_function(eta, first_fit, fits, G, S)
   return(-tmp)
