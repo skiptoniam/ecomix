@@ -3089,11 +3089,11 @@
   # estimate the posteriors for taus (skrink a little)
   pis <- rep(1/G, G)
   taus <- get_taus_ippm(pis, logls, G, S)
-  taus <- skrink_taus_ippm(taus, max_tau=1/G + 0.2, G)
+  taus <- skrink_taus_ippm(taus, max_tau=1/G + 0.1, G)
 
   # use these posteriors to estimate mix-coefs again with weights
   # could replace with glmnet if I can get it to work.
-  # apply_glmnet_ippm_group_tau()
+  # apply_glm_ippm_group_tau()
   fmix_coefs <- surveillance::plapply(1:G, apply_glmnet_ippm_group_tau_v2,
                                       first_fit$y,
                                       first_fit$x,
@@ -3103,6 +3103,16 @@
                                       taus,
                                       .parallel = control$cores,
                                       .verbose = !control$quiet)
+
+  # fmix_coefs <- surveillance::plapply(1:G, apply_glm_ippm_group_tau,
+  #                                     first_fit$y,
+  #                                     first_fit$x,
+  #                                     # first_fit$weights,
+  #                                     # first_fit$offset,
+  #                                     first_fit$y_is_na,
+  #                                     taus,
+  #                                     .parallel = control$cores,
+  #                                     .verbose = !control$quiet)
 
   #update the mix coefs.
   fmix_coefs <- t(do.call(cbind,fmix_coefs))
