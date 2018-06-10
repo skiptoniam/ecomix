@@ -58,6 +58,13 @@
 #' for species_mix coefficents. These are distribution specific, but at a
 #' minimum you will need pis (additive_logitic transformed), alphas
 #' (intercepts) and betas (mixing coefs).
+#' @importFrom graphics abline hist legend lines matplot par plot points polygon rect
+#' @importFrom stats as.formula binomial cooks.distance cov cutree dbinom dist dnbinom dnorm dpois
+#' fitted gaussian glm hclust lm logLik model.matrix model.offset model.response
+#' model.weights pbinom pnbinom pnorm poisson
+#' ppois predict qnorm qqnorm quantile rbinom
+#' residuals rgamma rnbinom rnorm rpois runif
+#' sd uniroot update update.formula
 #' @export
 #' @examples
 #' \dontrun{
@@ -1047,7 +1054,7 @@
     }
     all.betas[, 1] <- 0
     cat("Clustering...\n")
-    fmmvnorm <- stats::kmeams(x = all.betas, centers = G, iter.max = 100,
+    fmmvnorm <- stats::kmeans(x = all.betas, centers = G, iter.max = 100,
       nstart = 50)
     starting.fitem$coef <- fmmvnorm$centers
     fmM <- list()
@@ -1121,7 +1128,7 @@
     }
     all.betas[, 1] <- 0
     cat("Clustering...\n")
-    fmmvnorm <- stats::kmeams(x = all.betas, centers = G, iter.max = 100,
+    fmmvnorm <- stats::kmeans(x = all.betas, centers = G, iter.max = 100,
       nstart = 50)
     starting.fitem$coef <- fmmvnorm$centers
     fmM <- list()
@@ -3036,7 +3043,7 @@
   mix_coefs <- all_coefs[,-1] # drop intercepts
   if(control$init_method=='kmeans'){
     if(!control$quiet)message( "Initial groups by K-means clustering\n")
-    tmp1 <- stats::kmeams(mix_coefs, centers=G, nstart=100)
+    tmp1 <- stats::kmeans(mix_coefs, centers=G, nstart=100)
     tmp_grp <- tmp1$cluster
     grp_coefs <- apply(mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
   }
@@ -3411,7 +3418,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
   # print(all_coefs)
   if(control$init_method=='kmeans'){
     if(!control$quiet)cat("Initial groups by K-means clustering\n")
-    tmp1 <- stats::kmeams( mix_coefs, centers=G, nstart=100)
+    tmp1 <- stats::kmeans( mix_coefs, centers=G, nstart=100)
     tmp_grp <- tmp1$cluster
     grp_coefs <- apply( mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
   }

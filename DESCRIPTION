@@ -20,7 +20,9 @@ Imports:
     stats,
     graphics,
     raster,
-    scales
+    scales,
+    numDeriv,
+    surveillance
 Suggests:
     knitr,
     rmarkdown,
