@@ -1,8 +1,9 @@
 context('species_mix-class')
+library(ecomix)
 
-testthat::test_that('species mix functions classes work', {
+testthat::test_that('species mix internal functions classes work', {
 
-  library(ecomix)
+
   set.seed(42)
   archetype_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~x1+x2"))
   theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,7.9),3,3,byrow=TRUE)
@@ -26,9 +27,9 @@ testthat::test_that('species mix functions classes work', {
   f3 <- y ~ 1
   f4 <- NULL
 
-  testthat::expect_true(check_species_formula(f1)==2)
-  testthat::expect_true(check_species_formula(f2)==2)
-  testthat::expect_true(check_species_formula(f3)==1)
-  testthat::expect_true(check_species_formula(f4)==0)
+  testthat::expect_true(ecomix:::check_species_formula(f1)==2)
+  testthat::expect_true(ecomix:::check_species_formula(f2)==2)
+  testthat::expect_true(ecomix:::check_species_formula(f3)==1)
+  testthat::expect_true(ecomix:::check_species_formula(f4)==0)
 
 })

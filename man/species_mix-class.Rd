@@ -12,10 +12,11 @@
 \alias{species_mix.predict}
 \title{species_mix objects}
 \usage{
-species_mix(archetype_formula = NULL, species_formula = as.formula(~1),
-  data, n_mixtures = 3, distribution = "bernoulli", offset = NULL,
-  weights = NULL, control = species_mix.control(), inits = NULL,
-  standardise = FALSE, titbits = TRUE)
+species_mix(archetype_formula = NULL,
+  species_formula = stats::as.formula(~1), data, n_mixtures = 3,
+  distribution = "bernoulli", offset = NULL, weights = NULL,
+  control = species_mix.control(), inits = NULL, standardise = FALSE,
+  titbits = TRUE)
 
 species_mix.fit(y, X, W = NULL, G, weights, offset, distribution_numeric,
   control, y_is_na = NULL, inits = NULL, archetype_formula = NULL,
@@ -176,10 +177,10 @@ in fitmix.cpp. Minima is found using vmmin (BFGS). Currently 'bernoulli',
 \dontrun{
 library(ecomix)
 set.seed(42)
-sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
 sp_form <- ~ 1
 theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,7.9),3,3,byrow=TRUE)
-dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
+dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
 dat[,-1] <- scale(dat[,-1])
 simulated_data <- simulate_species_mix_data(archetype_formula=sam_form, species_formula=sp_form,
                                             dat,theta,dist="bernoulli")
@@ -192,9 +193,9 @@ fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli',
 fmods <- species_mix.multifit(sam_form, sp_form, model_data, distribution = 'bernoulli', nstarts = 10, n_mixtures=3)
 }
 \dontrun{
-archetype_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+archetype_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
 theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
-dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
+dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
 simulated_data <- simulate_species_mix_data(archetype_form,~1,dat,theta,dist="bernoulli")
 }
 \dontrun{

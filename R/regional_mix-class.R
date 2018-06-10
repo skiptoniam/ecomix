@@ -73,9 +73,9 @@ function( outs)
 
 "clean_data_rcp" <-
 function( data, form1, form2){
-    mf.X <- model.frame(form1, data = data, na.action = na.exclude)
+    mf.X <- stats::model.frame(form1, data = data, na.action = stats::na.exclude)
     if( !is.null( form2)){
-      mf.W <- model.frame(form2, data = data, na.action = na.exclude)
+      mf.W <- stats::model.frame(form2, data = data, na.action = stats::na.exclude)
       ids <- c( rownames( mf.W), rownames( mf.X))[duplicated( c( rownames( mf.W), rownames( mf.X)))]  #those rows of data that are good for both parts of the model.
       mf.X <- mf.X[rownames( mf.X) %in% ids,, drop=FALSE]
       mf.W <- mf.W[rownames( mf.W) %in% ids,, drop=FALSE]
@@ -169,7 +169,7 @@ function( model, ..., oosSize=1, times=model$n, mc.cores=1, quiet=FALSE)
       gamma.score <- W <- gamma <- -999999
     if( model$titbits$disty %in% 3:5){
       disp.score <- as.numeric( rep( NA, model$S))
-      disp <- coef( model)$logDisp
+      disp <- stats::coef(model)$logDisp
     }
     else
       disp.score <- -999999
@@ -213,7 +213,7 @@ function( model, ..., oosSize=1, times=model$n, mc.cores=1, quiet=FALSE)
 
 "extractAIC.regional_mix" <- function (fit, scale = 1, k = 2, ...){
     n <- object$n
-    edf <- length(unlist(coef( fit)))
+    edf <- length(unlist(stats::coef( fit)))
     if (is.null(k))
         k <- 2
     aic <- -2 * logLik( fit) + k * edf
@@ -232,7 +232,7 @@ function( model, ..., oosSize=1, times=model$n, mc.cores=1, quiet=FALSE)
 #function to get the names of columns for the vcov matrix or the regiboot matrix
 
   #defining the column names...  Trickier than you might expect
-  coef.obj <- coef( object)
+  coef.obj <- stats::coef( object)
   colnammy <- paste( names( coef.obj$alpha), "alpha", sep="_")
   if( "tau" %in% names( coef.obj))
     colnammy <- c( colnammy, paste( paste( rep( colnames( coef.obj$tau), each=nrow( coef.obj$tau)), paste( "tau", seq_len(nrow( coef.obj$tau)), sep="_"), sep="_")))
@@ -386,7 +386,7 @@ function( outcomes, W, X, offy, wts, disty, G, S, power, inits, quiet=FALSE)
   beta <- matrix(0, ncol = ncol(X), nrow = G - 1)
   #this code is a nice idea but glmnet uses a softmax link function, not an additive logistic...
 #  tmp.fm <- glmnet( y=as.factor( tmpGrp), x=X[,-1], family="multinomial", alpha=0, lambda=1/seq( from=1,to=10,length=25), standardize=FALSE, intercept=TRUE)
-#  beta <- t( sapply(  coef( tmp.fm, s=locat.s), as.numeric))
+#  beta <- t( sapply(  stats::coef( tmp.fm, s=locat.s), as.numeric))
 #  beta <- beta[1:(G-1),]
 
   #################
@@ -1068,7 +1068,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
     oosWidth <- max( minWidth, min( oosDiffs)) / 2
     histy <- list()
     for( ii in seq_along( x$oosSizeRange)){
-      tmp <- na.exclude( as.numeric( x$predlogls[ii,,]))
+      tmp <- stats::na.exclude( as.numeric( x$predlogls[ii,,]))
       histy[[ii]] <- hist( tmp, breaks=ncuts, plot=FALSE)
     }
     max.dens <- max( sapply( sapply( histy, function(x) x$density), max))
@@ -1078,7 +1078,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
     for( ii in seq_along( x$oosSizeRange))
       for( jj in seq_along( histy[[ii]]$density))
         rect( xleft=x$oosSizeRange[ii]-oosWidth, xright=x$oosSizeRange[ii]+oosWidth, ybottom=histy[[ii]]$breaks[jj], ytop=histy[[ii]]$breaks[jj+1], col=rgb( colorRamp( c("#E6FFFF","blue"))(histy[[ii]]$density[jj]/max.dens), maxColorValue=255), border=NA)
-    tmp <- na.exclude( as.numeric( x$logl.sites))
+    tmp <- stats::na.exclude( as.numeric( x$logl.sites))
     histy <- hist( tmp, breaks=ncuts, plot=FALSE)
     for( jj in seq_along( histy$density))
       rect( xleft=0-oosWidth, xright=0+oosWidth, ybottom=histy$breaks[jj], ytop=histy$breaks[jj+1], col=rgb( colorRamp( c("#FFE6FF","red"))(histy$density[jj]/max( histy$density)), maxColorValue=255), border=NA)
@@ -1106,9 +1106,9 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
         form.X <- as.formula(object$titbit$rcp_formula)
         if (length(form.X) == 3)
             form.X[[2]] <- NULL
-        X <- model.matrix(form.X, model.frame(form.X, data = as.data.frame(newdata)))
+        X <- model.matrix(form.X, stats::model.frame(form.X, data = as.data.frame(newdata)))
         if (class(object$titbits$species_formula) == "formula") {
-            W <- model.matrix(object$titbits$species_formula, model.frame(object$titbits$species_formula,
+            W <- model.matrix(object$titbits$species_formula, stats::model.frame(object$titbits$species_formula,
                 data = as.data.frame(newdata)))
             p.w <- ncol(W)
         }
@@ -1271,7 +1271,7 @@ function (x, ...)
     ret <- list()
     ret$Call <- x$call
     ret$Distribution <- x$dist
-    ret$coef <- coef(x)
+    ret$coef <- stats::coef(x)
     print( ret)
 
     invisible(ret)
@@ -1291,7 +1291,7 @@ function (x, ...)
 #  else
 #    orig.data <- data.frame( cbind( object$titbits$Y, object$titbits$X, offset=object$titbits$offset), weights=rep(0,nrow(object$titbits$Y)))
   if( !quiet){
-    chars <- c("><(('> ","~(‾▿‾)~ ","_@_'' ","@(*O*)@ ")
+    chars <- c("><(('> ","_@_'' ","@(*O*)@ ")
     pb <- txtProgressBar(min = 1, max = nboot, style = 3, char = chars[sample(length(chars),1)]) }
   if( type == "SimpleBoot"){
     all.wts <- matrix( sample( 1:object$n, nboot*object$n, replace=TRUE), nrow=nboot, ncol=object$n)

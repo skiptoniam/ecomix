@@ -1,9 +1,14 @@
 context('species_mix ippm')
 
+library(ecomix)
+library(raster)
+library(scales)
+
+
 testthat::test_that('species mix ippm', {
 
-  library(ecomix)
-  library(raster)
+  # library(ecomix)
+  # library(raster)
   set.seed(42)
 
   x1 <- sort(runif(1000,-2.5,2.5))
@@ -65,7 +70,7 @@ testthat::test_that('species mix ippm', {
   presences_sort <- lapply(presences,sort)
 
   sp_dat_po_ul<-data.frame(sp=rep(sp_name,unlist(lapply(presences,length))),cell_num=unlist(presences_sort))
-  po_matrix <- bbgdm::table2pam(sp_dat_po_ul,site.id='cell_num',sp.id='sp')
+  po_matrix <- table_to_species_data(sp_dat_po_ul,site_id = 'cell_num',species_id = 'sp')
   po_matrix[po_matrix==0]<-NA
   po_covariates <- X[as.numeric(rownames(po_matrix)),]
   presence_data <- data.frame(po_matrix,po_covariates)
@@ -79,9 +84,6 @@ testthat::test_that('species mix ippm', {
   df <- data.frame(id=preds_df$idx,area=grid2D$cellArea,x1=grid2D$x1)
 
   sp_weights <- lapply(seq_along(sp_name),function(x)(weights=df$area/as.numeric(species_specific_cell_counts[[x]][match(df$id,as.numeric(names(species_specific_cell_counts[[x]])))])))
-
-  # sp_weights_rows <- do.call(rbind,sp_weights)
-
 
   sp_weights_mat <- data.frame(cell_id = 1:10000, do.call(cbind,sp_weights))
 
@@ -124,7 +126,7 @@ testthat::test_that('species mix ippm', {
   testthat::expect_is(one_sp_ippm,'matrix')
 
   # check that many species ippms work - expect back a list.
-  all_sp_ippm_glm <-surveillance::plapply(1:n_sp, ecomix:::apply_glm_ippm, y, X, weights , offset , y_is_na )
+  testthat::expect_warning(all_sp_ippm_glm <-surveillance::plapply(1:n_sp, ecomix:::apply_glm_ippm, y, X, weights , offset , y_is_na ))
   testthat::expect_is(all_sp_ippm,'list')
 
   ## make these into a matrix

@@ -63,10 +63,10 @@
 #' \dontrun{
 #' library(ecomix)
 #' set.seed(42)
-#' sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+#' sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
 #' sp_form <- ~ 1
 #' theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,7.9),3,3,byrow=TRUE)
-#' dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
+#' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
 #' dat[,-1] <- scale(dat[,-1])
 #' simulated_data <- simulate_species_mix_data(archetype_formula=sam_form, species_formula=sp_form,
 #'                                             dat,theta,dist="bernoulli")
@@ -76,7 +76,7 @@
 #'  n_mixtures=3)
 #' }
 
-"species_mix" <- function(archetype_formula = NULL, species_formula = as.formula(~1), data,
+"species_mix" <- function(archetype_formula = NULL, species_formula = stats::as.formula(~1), data,
                           n_mixtures = 3, distribution="bernoulli", offset=NULL,
                           weights=NULL, control=species_mix.control(), inits=NULL,
                           standardise = FALSE, titbits = TRUE){
@@ -87,14 +87,14 @@
     message( "SAM modelling")
   call <- match.call()
   if(!is.null(archetype_formula))
-    archetype_formula <- as.formula(archetype_formula)
+    archetype_formula <- stats::as.formula(archetype_formula)
   else{
     if(!control$quiet)
       message("There is no SAM model! Please provide a model (intercept at least) -- exitting now")
     return(NULL)
   }
   if(!is.null(species_formula))
-    species_formula <- as.formula(species_formula)
+    species_formula <- stats::as.formula(species_formula)
 
   # Create model matrix
   mf <- match.call(expand.dots = FALSE)
@@ -116,7 +116,7 @@
   dat <- dist_dat[[2]]
 
   # get responses
-  y <- model.response(dat$mf.X)
+  y <- stats::model.response(dat$mf.X)
 
   # logical matirx needed for removing NAs from response and weights.
   if(distribution=='ippm')y_is_na <- is.na(y)
@@ -249,7 +249,7 @@
     message( "SAM modelling")
   call <- match.call()
   if(!is.null(archetype_formula))
-    archetype_formula <- as.formula(archetype_formula)
+    archetype_formula <- stats::as.formula(archetype_formula)
   else{
     if(!control$quiet)
       message("There is no SAM model! Please provide a model (intercept at least) -- exitting now")
@@ -276,7 +276,7 @@
   dat <- dist_dat[[2]]
 
   # get responses
-  y <- model.response(dat$mf.X)
+  y <- stats::model.response(dat$mf.X)
 
   # logical matirx needed for removing NAs from response and weights.
   if(distribution=='ippm')y_is_na <- is.na(y)
@@ -440,9 +440,9 @@
 #' @export
 #' @examples
 #' \dontrun{
-#' archetype_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+#' archetype_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
 #' theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
-#' dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
+#' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
 #' simulated_data <- simulate_species_mix_data(archetype_form,~1,dat,theta,dist="bernoulli")
 #' }
 ## need to update this to take the new formula framework and simulate ippm data.
@@ -452,7 +452,7 @@
   S <- length(archetype_formula[[2]])-1
   #update the formula to old format.
   if(!is.null(archetype_formula))
-    archetype_formula <- as.formula(archetype_formula)
+    archetype_formula <- stats::as.formula(archetype_formula)
   form_org <- archetype_formula
   form <- update(archetype_formula,y~.)
 
@@ -460,16 +460,16 @@
   sp_form <- species_formula
   species_int_coefs <- check_species_formula(sp_form)
 
-  X <- model.matrix(form, dat)
+  X <- stats::model.matrix(form, dat)
   out <- matrix(0, dim(X)[1], S)
   k <- dim(theta)[1]
   if(dim(theta)[2]!=ncol(X))stop('theta must have the same dimensions as "data" (do not forget the intercept)')
   sp.int <- rep(0, S)
   group <- rep(0, S)
   for (s in 1:S) {
-    g <- ceiling(runif(1) * k)
+    g <- ceiling(stats::runif(1) * k)
     if (distribution == "bernoulli") {
-      theta[g, 1] <- runif(1, -3, 3)
+      theta[g, 1] <- stats::runif(1, -3, 3)
       sp.int[s] <- theta[g, 1]
       lgtp <- X %*% theta[g, ]
       p <- exp(lgtp)/(1 + exp(lgtp))
@@ -478,7 +478,7 @@
     if (distribution == "negative_binomial") {
       tmp <- rep(1e+05, dim(X)[1])
       while (max(tmp, na.rm = TRUE) > 5000 | sum(tmp) < 100) {
-        theta[g, 1] <- runif(1, -15, 5)
+        theta[g, 1] <- stats::runif(1, -15, 5)
         sp.int[s] <- theta[g, 1]
         lgtp <- X %*% theta[g, ]
         p <- exp(lgtp)
@@ -489,7 +489,7 @@
     if (distribution == "poisson") {
       tmp <- rep(1e+05, dim(X)[1])
       while (max(tmp, na.rm = TRUE) > 5000 | sum(tmp) < 100) {
-        theta[g, 1] <- runif(1, -5, 5)
+        theta[g, 1] <- stats::runif(1, -5, 5)
         sp.int[s] <- theta[g, 1]
         lgtp <- X %*% theta[g, ]
         tmp <- rpois(dim(X)[1], lambda = exp(lgtp))
@@ -499,8 +499,8 @@
     if (distribution == "tweedie") {
       tmp <- rep(6e+05, dim(X)[1])
       while (max(tmp, na.rm = TRUE) > 5e+05 | sum(tmp) < 100) {
-        theta[g, 1] <- runif(1, -15, 5)
-        theta[g, 1] <- runif(1, 1, 5)
+        theta[g, 1] <- stats::runif(1, -15, 5)
+        theta[g, 1] <- stats::runif(1, 1, 5)
         sp.int[s] <- theta[g, 1]
         lgtp <- X %*% theta[g, ]
         p <- exp(lgtp)
@@ -512,10 +512,10 @@
       sp.int <- NULL
       tmp <- rep(1e+05, dim(X)[1])
       while (max(tmp, na.rm = TRUE) > 50000 | sum(tmp) < 100) {
-        theta[g, 1] <- runif(1, 100, 500)
+        theta[g, 1] <- stats::runif(1, 100, 500)
         lgtp <- X %*% theta[g, ]
         p <- (lgtp)
-        tmp <- rnorm(dim(X)[1], mean = p, sd = 1)
+        tmp <- stats::rnorm(dim(X)[1], mean = p, sd = 1)
       }
       out[, s] <- tmp
     }
@@ -570,10 +570,10 @@
     covar <- mixture.model$covar[-(1:(G - 1)), -(1:(G -
         1))]
     coef <- mixture.model$coef
-    model.fm <- as.formula(mixture.model$formula)
+    model.fm <- stats::as.formula(mixture.model$formula)
     model.fm[[2]] <- NULL
-    X <- model.matrix(model.fm, new_obs)
-    link.fun <- make.link("logit")
+    X <- stats::model.matrix(model.fm, new_obs)
+    link.fun <- stats::make.link("logit")
     outvar <- matrix(NA, dim(X)[1], G)
     outpred <- matrix(NA, dim(X)[1], G)
     colnames(outvar) <- colnames(outpred) <- paste("G",
@@ -599,11 +599,11 @@
           length(mixture.model$sp.intercept) + 1):dim(mixture.model$covar)[1])]
     sp.int <- mixture.model$sp.intercept
     coef <- mixture.model$coef
-    model.fm <- as.formula(mixture.model$formula)
+    model.fm <- stats::as.formula(mixture.model$formula)
     model.fm[[2]] <- NULL
-    X <- cbind(model.matrix(model.fm, new_obs), 1)
-    offset <- model.frame(model.fm, data = new_obs)
-    offset <- model.offset(offset)
+    X <- cbind(stats::model.matrix(model.fm, new_obs), 1)
+    offset <- stats::model.frame(model.fm, data = new_obs)
+    offset <- stats::model.offset(offset)
     if (is.null(offset))
       offset <- rep(0, nrow(X))
     outvar <- matrix(NA, dim(X)[1], G)
@@ -639,11 +639,11 @@
     covar <- mixture.model$covar[-1 * c(1:(G - 1)), -1 * c(1:(G - 1))]
     sp.int <- mixture.model$sp_intercept
     coef <- mixture.model$coef
-    model.fm <- as.formula(mixture.model$formula)
+    model.fm <- stats::as.formula(mixture.model$formula)
     model.fm[[2]] <- NULL
-    X <- cbind(model.matrix(model.fm, new_obs))
-    offset <- model.frame(model.fm, data = new_obs)
-    offset <- model.offset(offset)
+    X <- cbind(stats::model.matrix(model.fm, new_obs))
+    offset <- stats::model.frame(model.fm, data = new_obs)
+    offset <- stats::model.offset(offset)
     if (is.null(offset))
       offset <- rep(0, nrow(X))
     outvar <- matrix(NA, dim(X)[1], G)
@@ -698,8 +698,8 @@
 "get_X_sam" <- function(archetype_formula, mf.X){
   form.X <- archetype_formula
   form.X[[2]] <- NULL
-  form.X <- as.formula(form.X)
-  X <- model.matrix(form.X, mf.X)
+  form.X <- stats::as.formula(form.X)
+  X <- stats::model.matrix(form.X, mf.X)
   return( X)
 }
 
@@ -708,7 +708,7 @@
   if( !is.null( species_formula)){
     if( length( form.W)>2)
       form.W[[2]] <- NULL #get rid of outcomes
-    W <- model.matrix( form.W, mf.W)
+    W <- stats::model.matrix( form.W, mf.W)
     tmp.fun <- function(x){ all( x==1)}
     intercepts <- apply( W, 2, tmp.fun)
     W <- W[,!intercepts,drop=FALSE]
@@ -729,7 +729,7 @@
 }
 
 "get_offset_sam"  <- function(mf){
-  offset <- model.offset(mf)
+  offset <- stats::model.offset(mf)
   if(any(offset!=0))
     return(offset)
   offset <- rep(0, nrow(mf))
@@ -810,7 +810,7 @@
 
 # "clean_data_sam" <- function(form, data){
 #
-#   mf.X <- model.frame(formula = form, data = data, na.action = na.exclude)
+#   mf.X <- stats::model.frame(formula = form, data = data, na.action = na.exclude)
 #   ids <- rownames(mf.X)
 #   res <- list(ids=ids, mf.X=mf.X)
 #   return(res)
@@ -835,10 +835,10 @@
   if(is.null(f))
     return(0)
 
-  if(all(attr(terms(f), 'intercept') == 1 & length(attr(terms(f), 'factors')) == 0))
+  if(all(attr(stats::terms(f), 'intercept') == 1 & length(attr(stats::terms(f), 'factors')) == 0))
     return(1)
 
-  if(all(attr(terms(f), 'intercept') == 1 & length(attr(terms(f), 'factors')) > 0))
+  if(all(attr(stats::terms(f), 'intercept') == 1 & length(attr(stats::terms(f), 'factors')) > 0))
     return(2)
 
 }
@@ -920,38 +920,38 @@
 
 "apply_glm" <-  function (i,form,datsp,tau,n){
     dat.tau <- rep(tau[,i],each=n)
-    x <- model.matrix(as.formula(form),data=datsp)
+    x <- stats::model.matrix(stats::as.formula(form),data=datsp)
     y <- datsp$obs
-    f.mix <- glm.fit(x,y,dat.tau,family=binomial())
+    f.mix <- stats::glm.fit(x,y,dat.tau,family=stats::binomial())
     return(list(coef=f.mix$coef))
   }
 
 "apply_glm_gaussian" <-  function (i,form,datsp,tau,n){
     dat.tau <- rep(tau[,i],each=n)
-    x <- model.matrix(as.formula(form),data=datsp)
+    x <- stats::model.matrix(stats::as.formula(form),data=datsp)
     y <- datsp$obs
     environment(form) <- environment()
-    f.mix <- glm(as.formula(form),data=datsp,weights=dat.tau,family="gaussian")
+    f.mix <- stats::glm(stats::as.formula(form),data=datsp,weights=dat.tau,family="gaussian")
     sp.int <- rep(f.mix$coef[1],dim(tau)[1])
     return(list(coef=f.mix$coef[-1],theta=sqrt(f.mix$deviance/f.mix$df.residual),sp.intercept=sp.int))
   }
 
 "apply_glm_nbinom" <- function (i,form,datsp,tau,n){
     dat.tau <- rep(tau[,i],each=n)
-    x <- model.matrix(as.formula(form),data=datsp)
+    x <- stats::model.matrix(stats::as.formula(form),data=datsp)
     y <- datsp$obs
     environment(form) <- environment()
-    f.mix <- glm_nbinom(as.formula(form),data=datsp,weights=dat.tau)
+    f.mix <- glm_nbinom(stats::as.formula(form),data=datsp,weights=dat.tau)
     sp.int <- rep(f.mix$coef[1],dim(tau)[1])
     return(list(coef=f.mix$coef[-1],theta=f.mix$theta,sp.intercept=sp.int))
   }
 
 "apply_glm_tweedie" <- function (i,form,datsp,tau,n){
     dat.tau <- rep(tau[,i],each=n)
-    x <- model.matrix(as.formula(form),data=datsp)
+    x <- stats::model.matrix(stats::as.formula(form),data=datsp)
     y <- datsp$obs
     environment(form) <- environment()
-    f.mix <- tglm(as.formula(form),data=datsp,wts=dat.tau,vcov=FALSE,residuals=FALSE,trace=0)
+    f.mix <- tglm(stats::as.formula(form),data=datsp,wts=dat.tau,vcov=FALSE,residuals=FALSE,trace=0)
     sp.int <- rep(f.mix$coef[1],dim(tau)[1])
     return(list(coef=f.mix$coef[c(-1,-(length(f.mix$coef)-1),-(length(f.mix$coef)))],phi=f.mix$coef["phi"],p=f.mix$coef["p"],sp.intercept=sp.int))
   }
@@ -960,9 +960,9 @@
 "clean_data_sam" <- function(data, form1, form2, distribution){
     if(distribution=='ippm') na_rule <- "na.pass"
     else na_rule <- "na.exclude"
-    mf.X <- model.frame(form1, data = data, na.action = na_rule)
+    mf.X <- stats::model.frame(form1, data = data, na.action = na_rule)
     if( !is.null( form2)){
-      mf.W <- model.frame(form2, data = data, na.action = na_rule)
+      mf.W <- stats::model.frame(form2, data = data, na.action = na_rule)
       ids <- c( rownames( mf.W), rownames( mf.X))[duplicated( c( rownames( mf.W), rownames( mf.X)))]  #those rows of data that are good for both parts of the model.
       mf.X <- mf.X[rownames( mf.X) %in% ids,, drop=FALSE]
       mf.W <- mf.W[rownames( mf.W) %in% ids,, drop=FALSE]
@@ -979,55 +979,55 @@
 
 "create_starting_values" <- function (S,G,n,form,datsp,control){
 	environment(form) <- environment()
-    tau <- matrix(runif(S*G),S,G)
+    tau <- matrix(stats::runif(S*G),S,G)
     tau <- (tau/rowSums(tau))
     fmM <- list()
     for(i in 1:G){
       pi[i] <- sum(tau[,i])/S
     }
     fmM <- surveillance::plapply(1:G,apply_glm,form,datsp,tau,n,.parallel=control$cores, .verbose = !control$quiet)
-    first.fit <- list(x=model.matrix(as.formula(form),data=datsp),y=datsp$obs,formula=form)
+    first.fit <- list(x=stats::model.matrix(stats::as.formula(form),data=datsp),y=datsp$obs,formula=form)
     return(list(pi=pi,fmM=fmM,tau=tau,first.fit=first.fit))
   }
 
 "create_starting_values_gaussian" <- function (S,G,n,form,datsp,control){
     environment(form) <- environment()
-    tau <- matrix(runif(S*G),S,G)
+    tau <- matrix(stats::runif(S*G),S,G)
     tau <- (tau/rowSums(tau))
     fmM <- list()
     for(i in 1:G){
       pi[i] <- sum(tau[,i])/S
     }
     fmM <- surveillance::plapply(1:G,apply_glm_gaussian,form,datsp,tau,n,.parallel=control$cores, .verbose = !control$quiet)
-    first.fit <- list(x=model.matrix(as.formula(form),data=datsp)[,-1],y=datsp$obs,formula=form)
+    first.fit <- list(x=stats::model.matrix(stats::as.formula(form),data=datsp)[,-1],y=datsp$obs,formula=form)
    return(list(pi=pi,fmM=fmM,tau=tau,first.fit=first.fit))
   }
 
 
 "create_starting_values_nbinom" <- function (S,G,n,form,datsp,control) {
     environment(form) <- environment()
-    tau <- matrix(runif(S*G),S,G)
+    tau <- matrix(stats::runif(S*G),S,G)
     tau <- (tau/rowSums(tau))
     fmM <- list()
     for(i in 1:G){
       pi[i] <- sum(tau[,i])/S
     }
     fmM <- surveillance::plapply(1:G,apply_glm_nbinom,form,datsp,tau,n,.parallel=control$cores, .verbose = !control$quiet)
-    offset <- model.frame(as.formula(form),data=datsp)
-    offset <- model.offset(offset)
+    offset <- stats::model.frame(stats::as.formula(form),data=datsp)
+    offset <- stats::model.offset(offset)
     if(is.null(offset)) offset <- rep(0,length(datsp$obs))
-    first.fit <- list(x=model.matrix(as.formula(form),data=datsp)[,-1],y=datsp$obs,offset=offset,formula=form)
+    first.fit <- list(x=stats::model.matrix(stats::as.formula(form),data=datsp)[,-1],y=datsp$obs,offset=offset,formula=form)
     return(list(pi=pi,fmM=fmM,tau=tau,first.fit=first.fit))
   }
 
 
 "create_starting_values_nbinom_kmeans" <- function (S, G, n, form, datsp, tol = 0.1, control){
-    MM <- model.matrix(form, datsp)
-    offset <- model.frame(form,datsp)
-    offset <- model.offset(offset)
+    MM <- stats::model.matrix(form, datsp)
+    offset <- stats::model.frame(form,datsp)
+    offset <- stats::model.offset(offset)
     if(is.null(offset)) offset <- rep(0,nrow(MM))
 
-    first.fit <- list(x = model.matrix(as.formula(form), data = datsp)[,
+    first.fit <- list(x = stats::model.matrix(stats::as.formula(form), data = datsp)[,
       -1], y = datsp$obs, offset=offset, formula = form)
     if(class(first.fit$x)=="numeric") {first.fit$x <- matrix(first.fit$x,length(first.fit$x),1) }#deal with model matrix returning a vector for covar == 1
 
@@ -1047,7 +1047,7 @@
     }
     all.betas[, 1] <- 0
     cat("Clustering...\n")
-    fmmvnorm <- kmeans(x = all.betas, centers = G, iter.max = 100,
+    fmmvnorm <- stats::kmeams(x = all.betas, centers = G, iter.max = 100,
       nstart = 50)
     starting.fitem$coef <- fmmvnorm$centers
     fmM <- list()
@@ -1063,7 +1063,7 @@
     }
     tau <- matrix(0, S, G)
     pi <- rep(1/G, G)
-    pi <- runif(G, 0.2, 0.8)
+    pi <- stats::runif(G, 0.2, 0.8)
     pi <- pi/sum(pi)
     est.tau <- surveillance::plapply(1:S, estimate_pi_nbinom, sp, sp.name, datsp,
       fmM, pi, G, first.fit,.parallel=control$cores, .verbose = !control$quiet)
@@ -1082,26 +1082,26 @@
 
 "create_starting_values_tweedie" <- function (S,G,n,form,datsp,control){
     environment(form) <- environment()
-    tau <- matrix(runif(S*G),S,G)
+    tau <- matrix(stats::runif(S*G),S,G)
     tau <- (tau/rowSums(tau))
     fmM <- list()
     for(i in 1:G){
       pi[i] <- sum(tau[,i])/S
     }
-    offset <- model.frame(form,datsp)
-    offset <- model.offset(offset)
+    offset <- stats::model.frame(form,datsp)
+    offset <- stats::model.offset(offset)
     if(is.null(offset)) offset <- rep(0,length(datsp$obs))
     fmM <- surveillance::plapply(1:G,apply_glm_tweedie,form,datsp,tau,n,.parallel=control$cores, .verbose = !control$quiet)
-    first.fit <- list(x=model.matrix(as.formula(form),data=datsp)[,-1],y=datsp$obs,formula=form)
+    first.fit <- list(x=stats::model.matrix(stats::as.formula(form),data=datsp)[,-1],y=datsp$obs,formula=form)
     return(list(pi=pi,fmM=fmM,tau=tau,first.fit=first.fit))
   }
 
 "create_starting_values_tweedie_kmeans" <- function(S, G, n, form, datsp, tol = 0.1, control){
-    MM <- model.matrix(form, datsp)
-    offset <- model.frame(form,datsp)
-    offset <- model.offset(offset)
+    MM <- stats::model.matrix(form, datsp)
+    offset <- stats::model.frame(form,datsp)
+    offset <- stats::model.offset(offset)
     if(is.null(offset)) offset <- rep(0,nrow(MM))
-    first.fit <- list(x = model.matrix(as.formula(form), data = datsp)[,
+    first.fit <- list(x = stats::model.matrix(stats::as.formula(form), data = datsp)[,
       -1], y = datsp$obs, offset=offset,formula = form)
     if(class(first.fit$x)=="numeric") {first.fit$x <- matrix(first.fit$x,length(first.fit$x),1) }#deal with model matrix returning a vector for covar == 1
     if (tol < 0 || tol >= 1)
@@ -1114,14 +1114,14 @@
     colnames(all.betas) <- colnames(MM)
     for (j in 1:S) {
       fit <- tglm(form, datsp[((j - 1) * n):(j * n - 1), ],
-        vcov = FALSE, residuals = FALSE, trace = 0, p = 1.6)
+        vcov = FALSE, trace = 0, p = 1.6, control)
       starting.fitem$sp.intercepts[j] <- fit$coef[1]
       all.betas[j, ] <- fit$coef[-length(fit$coef)]
       starting.fitem$phi[j] = fit$coef["phi"]
     }
     all.betas[, 1] <- 0
     cat("Clustering...\n")
-    fmmvnorm <- kmeans(x = all.betas, centers = G, iter.max = 100,
+    fmmvnorm <- stats::kmeams(x = all.betas, centers = G, iter.max = 100,
       nstart = 50)
     starting.fitem$coef <- fmmvnorm$centers
     fmM <- list()
@@ -1137,7 +1137,7 @@
     }
     tau <- matrix(0, S, G)
     pi <- rep(1/G, G)
-    pi <- runif(G, 0.2, 0.8)
+    pi <- stats::runif(G, 0.2, 0.8)
     pi <- pi/sum(pi)
     est.tau <- surveillance::plapply(1:S, estimate_pi_tweedie, sp, sp.name,
       datsp, fmM, pi, G, first.fit,.parallel=control$cores, .verbose = !control$quiet)
@@ -1263,7 +1263,7 @@
     tau <- rep(0,G)
     sel.sp <- which(sp==spname[j])
 
-    link.fun <- make.link("logit")
+    link.fun <- stats::make.link("logit")
     for(i in 1:G) {
       if(length(fmM[[i]]$coef)==1){
         lpre <- link.fun$linkinv(first.fit$x[sel.sp,]*fmM[[i]]$coef)
@@ -1289,7 +1289,7 @@
     sel.sp <- which(sp==spname[j])
 
     for(i in 1:G) {
-      lpre <- dnorm(first.fit$y[sel.sp],mean=fmM[[i]]$fitted[sel.sp],sd=1,log=TRUE)
+      lpre <- stats::dnorm(first.fit$y[sel.sp],mean=fmM[[i]]$fitted[sel.sp],sd=1,log=TRUE)
       tmp.like[i] <- sum(lpre)
     }
 
@@ -1309,7 +1309,7 @@
     sel.sp <- which(sp==spname[j])
 
     for(i in 1:G) {
-      lpre <- dnbinom(first.fit$y[sel.sp],mu=fmM[[i]]$fitted[sel.sp],size=fmM[[i]]$theta,log=TRUE)
+      lpre <- stats::dnbinom(first.fit$y[sel.sp],mu=fmM[[i]]$fitted[sel.sp],size=fmM[[i]]$theta,log=TRUE)
       tmp.like[i] <- sum(lpre)
     }
 
@@ -1449,11 +1449,11 @@
     sp.name <- unique(sp)
     S <- length(unique(sp))
     n <- length(which(sp==sp.name[1]))
-    X <- model.matrix(form, data = datsp[sp==sp.name[1],])
+    X <- stats::model.matrix(form, data = datsp[sp==sp.name[1],])
     y <- datsp$obs
     if(is.na(pars[1])) {
-      pars <- runif(G-1+(ncol(X)*G),-2,2)
-      pars[1:(G-1)] <- runif(G-1)
+      pars <- stats::runif(G-1+(ncol(X)*G),-2,2)
+      pars[1:(G-1)] <- stats::runif(G-1)
     }
     offset<-rep(0,n)
     gradient <- rep(0,length(pars))
@@ -1477,7 +1477,7 @@
     pi <- pars[1:(G-1)]
     coef <- pars[ (G):length(pars)]
 
-    r.logl <- logLmix(pars,list(y=y,x=model.matrix(form, data = datsp)),G,S,sp,sp.name,out.tau=TRUE)
+    r.logl <- logLmix(pars,list(y=y,x=stats::model.matrix(form, data = datsp)),G,S,sp,sp.name,out.tau=TRUE)
     pi <- additive_logistic(pi)
     names(pi) <- paste("G.",1:G,sep="")
     coef <- matrix(coef,G,ncol(X))
@@ -1679,16 +1679,16 @@
     S <- length(unique(sp))
     n <- length(which(sp==sp.name[1]))
 
-    X <- model.matrix(form, data = datsp[sp==sp.name[1],])
-    offset <- model.frame(form, data = datsp[sp==sp.name[1],])
-    offset <- model.offset(offset)
+    X <- stats::model.matrix(form, data = datsp[sp==sp.name[1],])
+    offset <- stats::model.frame(form, data = datsp[sp==sp.name[1],])
+    offset <- stats::model.offset(offset)
     if(is.null(offset)) offset <-  rep(0,n)
     y <- datsp$obs
     if(is.na(pars[1])) {
       sp.int <- rep(0.5,S)
       sp.dispersion <- rep(1,S)
-      fm <- matrix(runif(ncol(X)*G,-1,1),G,ncol(X))
-      pars <- c(runif(G-1),unlist(fm),sp.int,sp.dispersion)
+      fm <- matrix(stats::runif(ncol(X)*G,-1,1),G,ncol(X))
+      pars <- c(stats::runif(G-1),unlist(fm),sp.int,sp.dispersion)
     }
 
     gradient <- rep(0,length(pars))
@@ -1701,7 +1701,7 @@
       ll <- .Call("Calculate_Gradient",p,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="ecomix")
       return(gradient)
     }
-    r.deriv <- function(p){ logLmix_nbinom(p,list(y=y,x=model.matrix(form, data = datsp)),G,S,sp,sp.name,out.tau=FALSE)}
+    r.deriv <- function(p){ logLmix_nbinom(p,list(y=y,x=stats::model.matrix(form, data = datsp)),G,S,sp,sp.name,out.tau=FALSE)}
 
     ##print(r.grad)
     hes <- 0
@@ -1720,11 +1720,11 @@
     sp.int <- coef[(length(coef)-(2*S-1)):(length(coef)-S)]
     sp.dispersion <- coef[(length(coef)-(S-1)):length(coef)]
     fm <- coef[-1*((length(coef)-(2*S-1)):length(coef))]
-    offset <- model.frame(form, data = datsp)
-    offset <- model.offset(offset)
+    offset <- stats::model.frame(form, data = datsp)
+    offset <- stats::model.offset(offset)
     if(is.null(offset)) offset <-  rep(0,nrow(datsp))
 
-    r.logl <- logLmix_nbinom(pars,list(y=y,x=model.matrix(form, data = datsp),offset=offset),G,S,sp,sp.name,out.tau=TRUE)
+    r.logl <- logLmix_nbinom(pars,list(y=y,x=stats::model.matrix(form, data = datsp),offset=offset),G,S,sp,sp.name,out.tau=TRUE)
     print(r.logl$logl)
     pi <- additive_logistic(pi)
     names(pi) <- paste("G.",1:G,sep="")
@@ -1850,9 +1850,9 @@
     sp.name <- unique(sp)
     S <- length(unique(sp))
     n <- length(which(sp == sp.name[1]))
-    X <- model.matrix(form, data = datsp[sp == sp.name[1], ])
-    offset <- model.frame(form, data = datsp[sp==sp.name[1],])
-    offset <- model.offset(offset)
+    X <- stats::model.matrix(form, data = datsp[sp == sp.name[1], ])
+    offset <- stats::model.frame(form, data = datsp[sp==sp.name[1],])
+    offset <- stats::model.offset(offset)
     if(is.null(offset)) offset <-  rep(0,n)
 
     y <- datsp$obs
@@ -1877,7 +1877,7 @@
     }
     hes <- 0
     if (calc.hes) {
-      hes <- jacobian(calc_deriv, pars, method = "simple")
+      hes <- numDeriv::jacobian(calc_deriv, pars, method = "simple")
       dim(hes) <- rep(length(pars), 2)
       dim(hes) <- rep(length(pars), 2)
     }
@@ -1891,18 +1891,18 @@
     sp.phi <- sp.dispersion[1:S]
     sp.p <- rep(1.6, S)
     fm <- coef[-1 * ((length(coef) - (2 * S - 1)):length(coef))]
-    offset <- model.frame(form, data = datsp)
-    offset <- model.offset(offset)
+    offset <- stats::model.frame(form, data = datsp)
+    offset <- stats::model.offset(offset)
     if(is.null(offset)) offset <- rep(0,nrow(datsp))
 
     names(gradient) <- names(pars) <- c(rep("pi", G - 1), rep("coef",
       length(unlist(fm))), rep("int", length(sp.int)), rep("phi",
         S))
     r.deriv <- function(p) {
-      logLmix_tweedie(p, list(y = y, x = model.matrix(form,
+      logLmix_tweedie(p, list(y = y, x = stats::model.matrix(form,
         data = datsp)), G, S, sp, sp.name, out.tau = FALSE)
     }
-    r.logl <- logLmix_tweedie(pars, list(y = y, x = model.matrix(form,
+    r.logl <- logLmix_tweedie(pars, list(y = y, x = stats::model.matrix(form,
       data = datsp),offset=offset), G, S, sp, sp.name, out.tau = TRUE)
     print(r.logl$logl)
     pi <- additive_logistic(pi)
@@ -1949,10 +1949,10 @@
 "glm_nbinom" <-
   function (form,data,weights=NULL,mustart=NULL,control)
   {
-    X <- model.matrix(form,data)
-    t1 <- model.frame(form,data)
-    y <- model.response(t1)
-    offset <- model.offset(t1)
+    X <- stats::model.matrix(form,data)
+    t1 <- stats::model.frame(form,data)
+    y <- stats::model.response(t1)
+    offset <- stats::model.offset(t1)
     if(is.null(offset)) offset <- 0
     if(is.null(weights)) weights <- rep(1,length(y))
     gradient <- rep(0,ncol(X)+1)
@@ -2070,7 +2070,7 @@
     sp.data <- as.data.frame(sp.data)
     data <- data.frame(obs=unlist(sp.data),covar.data)
     names(data)[1] <- as.character(sp.form)[2]
-    first.fit <- list(y=data[,1],x=model.matrix(sp.form,data=data))
+    first.fit <- list(y=data[,1],x=stats::model.matrix(sp.form,data=data))
     logl <- -logLmix(pars,first.fit,G,S,sp,sp.name)
     logl
   }
@@ -2094,7 +2094,7 @@
       pi <- 1
     }
 
-    link.fun <- make.link("logit")
+    link.fun <- stats::make.link("logit")
 
 
     log.like <- 0
@@ -2151,7 +2151,7 @@
       for(i in 1:G){
         lpre <- cbind(1,first.fit$x[sel.sp,])%*%c(sp.int[j,i],fm[i,])
         ##tmp.like[i] <- sum(dpois(first.fit$y[sel.sp],exp(lpre),log=TRUE))
-        tmp.like[i] <- sum(dnorm(first.fit$y[sel.sp],mean=lpre,sd=theta[i],log=TRUE))
+        tmp.like[i] <- sum(stats::dnorm(first.fit$y[sel.sp],mean=lpre,sd=theta[i],log=TRUE))
         eps <- max(tmp.like)
         log.like <- log.like +  (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
         tau[j,] <- log(pi) + tmp.like - (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
@@ -2202,7 +2202,7 @@
       for(i in 1:G){
         lpre <- cbind(1,first.fit$x[sel.sp,])%*%c(sp.int[j],fm[i,])+first.fit$offset[sel.sp]##,i],fm[i,])
         ##tmp.like[i] <- sum(dpois(first.fit$y[sel.sp],exp(lpre),log=TRUE))
-        tmp.like[i] <- sum(dnbinom(first.fit$y[sel.sp],mu=exp(lpre),size=sp.dispersion[j],log=TRUE))
+        tmp.like[i] <- sum(stats::dnbinom(first.fit$y[sel.sp],mu=exp(lpre),size=sp.dispersion[j],log=TRUE))
       }
       # print(tmp.like)
       eps <- max(tmp.like)
@@ -2315,8 +2315,8 @@
 
 "mix.residuals" <- function (fmM,form,datsp,sp){
     cat("calculating residuals \n")
-    link.fun <- make.link("logit")
-    x <- model.matrix(form,data=datsp)
+    link.fun <- stats::make.link("logit")
+    x <- stats::model.matrix(form,data=datsp)
     spname <- unique(sp)
     S <- length(spname)
     G <- ncol(fmM$tau)
@@ -2466,7 +2466,7 @@
       var <- 0
       t.pi <- additive_logistic(fmM.out$pi,TRUE)
       parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef))
-      first.fit <- list(y=data[,1],x=model.matrix(sp.form,data=data))
+      first.fit <- list(y=data[,1],x=stats::model.matrix(sp.form,data=data))
       fun_est_var <- function(x){-logLmix(x,first.fit,G,S,sp,sp.name)}
       var <- solve(numDeriv::hessian(fun_est_var, parms))
       colnames( var) <- rownames( var) <- names( parms)
@@ -2501,7 +2501,7 @@
       var <- 0
       t.pi <- additive_logistic(fmM.out$pi,TRUE)
       parms <- c(t.pi[1:(G-1)],fmM.out$theta,unlist(fmM.out$coef),unlist(fmM.out$sp.intercept))
-      first.fit <- list(y=data[,1],x=model.matrix(sp.form,data=data)[,-1])
+      first.fit <- list(y=data[,1],x=stats::model.matrix(sp.form,data=data)[,-1])
       fun_est_var <- function(x){-logLmix_gaussian(x,first.fit,G,S,sp,sp.name)}
       var <- solve(numDeriv::hessian(fun_est_var, parms))
       colnames( var) <- rownames( var) <- names( parms)
@@ -2536,7 +2536,7 @@
       var <- 0
       t.pi <- additive_logistic(fmM.out$pi,TRUE)
       parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef),fmM.out$sp.intercept,rep(1,S))##unlist(fmM.out$sp.intercept))
-      first.fit <- list(y=data[,1],x=model.matrix(sp.form,data=data)[,-1])
+      first.fit <- list(y=data[,1],x=stats::model.matrix(sp.form,data=data)[,-1])
       fun_est_var <- function(x){-logLmix_nbinom(x,first.fit,G,S,sp,sp.name)}
       deriv <- numDeriv::jacobian(fun_est_var,parms)
       var <- solve(numDeriv::hessian(fun_est_var, parms))
@@ -2573,7 +2573,7 @@
       var <- 0
       t.pi <- additive_logistic(fmM.out$pi,TRUE)
       parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef),unlist(fmM.out$sp.intercept),fmM.out$theta)
-      first.fit <- list(y=data[,1],x=model.matrix(sp.form,data=data)[,-1])
+      first.fit <- list(y=data[,1],x=stats::model.matrix(sp.form,data=data)[,-1])
       fun_est_var <- function(x){-logLmix_tweedie(x,first.fit,G,S,sp,sp.name)}
       var <- solve(numDeriv::hessian(fun_est_var, parms))
       colnames( var) <- rownames( var) <- names( parms)
@@ -2685,11 +2685,11 @@
     e<-new.env()
     e$wts <- wts
     environment(mean.form) <- e
-    temp.p <- model.frame( mean.form, data=as.data.frame( data), weights=wts)
-    y <- model.response( temp.p)
+    temp.p <- stats::model.frame( mean.form, data=as.data.frame( data), weights=wts)
+    y <- stats::model.response( temp.p)
     names( y) <- NULL
-    X.p <- model.matrix( mean.form, data)
-    offset.p <- model.offset( temp.p)
+    X.p <- stats::model.matrix( mean.form, data)
+    offset.p <- stats::model.offset( temp.p)
     if ( is.null( offset.p))
       offset.p <- rep( 0, nrow( temp.p))
     wts1 <- as.vector( model.weights( temp.p))
@@ -2701,7 +2701,7 @@
         print( "Obtaining initial mean values from log-linear Poisson model -- this might be stupid")
       abit <- 1
       ystar <- round( y, digits=0)
-      fm1 <- glm( ystar~-1+X.p, family=poisson( link="log"), weights=wts1)
+      fm1 <- stats::glm( ystar~-1+X.p, family=poisson( link="log"), weights=wts1)
       inits <- fm1$coef
     }
 
@@ -2758,7 +2758,7 @@
     if( is.null( p))
     {my.lower <- c( my.lower, 1+eps); my.upper <- c( my.upper, 2-eps)}
 
-    fm <- nlminb( start=inits, objective=ldTweedie.lp, gradient=ldTweedie.lp.deriv, hessian=NULL, lower=my.lower, upper=my.upper, y=y, X.p=x, offsetty=offset, phi=phi, p=p, control=control, wts=wts)
+    fm <- stats::nlminb( start=inits, objective=ldTweedie.lp, gradient=ldTweedie.lp.deriv, hessian=NULL, lower=my.lower, upper=my.upper, y=y, X.p=x, offsetty=offset, phi=phi, p=p, control=control, wts=wts)
 
     parms <- fm$par
     tmp <- colnames( x)
@@ -2813,7 +2813,7 @@
       resids <- matrix( rep( pTweedie( y, mu, phi1, p1), 2), ncol=2)
       resids[y==0,1] <- 0.5 * dTweedie( y[y==0], mu[y==0], phi1, p1, LOG=FALSE)
       nzero <- sum( y==0)
-      resids[y==0,2] <- runif( nzero, min=rep( 0, nzero), max=2*resids[y==0,1])
+      resids[y==0,2] <- stats::runif( nzero, min=rep( 0, nzero), max=2*resids[y==0,1])
       resids <- qnorm( resids)
       colnames( resids) <- c("expect","random")
     }
@@ -2843,7 +2843,7 @@
 
 "weighted_glm" <-  function (g,first.fit,tau,n,fmM,sp) {
     dat.tau <- rep(tau[,g],each=n)
-    f.mix <- glm.fit(x=first.fit$x,y=first.fit$y,weights=dat.tau,family=binomial(),start=fmM[[g]]$coef)
+    f.mix <- stats::glm.fit(x=first.fit$x,y=first.fit$y,weights=dat.tau,family=stats::binomial(),start=fmM[[g]]$coef)
     return(list(coef=f.mix$coef))
   }
 
@@ -2858,7 +2858,7 @@
       sp.mat[sp==sp.name[i],i] <- 1
     }
     X <- cbind(sp.mat,X)
-    f.mix <- glm.fit(x=X,y=first.fit$y,weights=dat.tau,family=gaussian())
+    f.mix <- stats::glm.fit(x=X,y=first.fit$y,weights=dat.tau,family=gaussian())
     sp.intercept <- f.mix$coef[seq_along(sp.name)]
     sp.intercept[is.na(sp.intercept)] <- 0
     return(list(coef=f.mix$coef[-1:-length(sp.name)],theta=sqrt(f.mix$deviance/f.mix$df.residual),sp.intercept=sp.intercept,fitted=f.mix$fitted))#,lpre=f.mix$linear.predictors))
@@ -2907,7 +2907,7 @@
 
 "apply_glm_ippm" <- function(i, y, X, weights, offset, y_is_na){
   ids_i <- !y_is_na[,i]
-  f_ippm <- glm.fit(x=X[ids_i,],y=y[ids_i,i]/weights[ids_i,i],weights=weights[ids_i,i],offset=offset[ids_i],family=poisson())
+  f_ippm <- stats::glm.fit(x=X[ids_i,],y=y[ids_i,i]/weights[ids_i,i],weights=weights[ids_i,i],offset=offset[ids_i],family=stats::poisson())
   f_ippm$coef
 }
 
@@ -2946,7 +2946,7 @@
   n_ys <- sapply(X_no_NA,nrow)
   wts_tau <- rep(tau[,gg],n_ys)
 
-  ft_mix <- glm.fit(x = X_tau, y = Y_tau, weights = wts_tau, family=poisson())
+  ft_mix <- stats::glm.fit(x = X_tau, y = Y_tau, weights = wts_tau, family=stats::poisson())
   mix_coefs <- ft_mix$coef[-1]
   return(mix_coefs)
 }
@@ -3020,7 +3020,7 @@
   my_coefs <- glmnet::coef.glmnet(ft_mix, s=lambda_pen)
   if(return_all_coefs)  my_coefs <- glmnet::coef.glmnet(ft_mix)
   if(any(is.na( my_coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
-    my_coefs <- glmnet::coef.glmnet(ft_ippm, s=lambda.seq)
+    my_coefs <- glmnet::coef.glmnet(ft_mix, s=lambda.seq)
     lastID <- apply( my_coefs, 2, function(x) !any( is.na(x)))
     lastID <- tail( (seq_along( lastID))[lastID], 1)
     my_coefs <- my_coefs[,lastID]
@@ -3036,7 +3036,7 @@
   mix_coefs <- all_coefs[,-1] # drop intercepts
   if(control$init_method=='kmeans'){
     if(!control$quiet)message( "Initial groups by K-means clustering\n")
-    tmp1 <- kmeans(mix_coefs, centers=G, nstart=100)
+    tmp1 <- stats::kmeams(mix_coefs, centers=G, nstart=100)
     tmp_grp <- tmp1$cluster
     grp_coefs <- apply(mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
   }
@@ -3045,7 +3045,7 @@
   }
   if(control$init_method=='random' | is.null(tmp_grp)){
     if(!control$quiet)message( "Initial groups by random allocation and means from random numbers\n")
-    grp_coefs <- matrix( rnorm(G*ncol(mix_coefs), sd=control$init_sd, mean=0), nrow=G, ncol=ncol(mix_coefs))
+    grp_coefs <- matrix( stats::rnorm(G*ncol(mix_coefs), sd=control$init_sd, mean=0), nrow=G, ncol=ncol(mix_coefs))
     tmp_grp <- sample(1:G, S, replace=TRUE)
   }
 
@@ -3165,7 +3165,7 @@
 #     }
 #
 #     # this updates the mixture coefs
-#    tmp <- nlminb(start=fits$betas, objective=incom_logl_ippm, gradient=NULL, hessian=NULL,
+#    tmp <- stats::nlminb(start=fits$betas, objective=incom_logl_ippm, gradient=NULL, hessian=NULL,
 #                  first_fit=first_fit, pis=pis, fits=fits, G=G, S=S,control=control)
 #    fits$betas <- update_mix_coefs(fits$betas, tmp$par)
 #
@@ -3411,7 +3411,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
   # print(all_coefs)
   if(control$init_method=='kmeans'){
     if(!control$quiet)cat("Initial groups by K-means clustering\n")
-    tmp1 <- kmeans( mix_coefs, centers=G, nstart=100)
+    tmp1 <- stats::kmeams( mix_coefs, centers=G, nstart=100)
     tmp_grp <- tmp1$cluster
     grp_coefs <- apply( mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
   }
@@ -3424,7 +3424,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
   }
   if(control$init_method=='random'){
     if(!control$quiet)cat("Initial groups by random allocation and means from random numbers\n")
-    grp_coefs <- matrix( rnorm(G*ncol(mix_coefs), sd=control$init_sd, mean=0), nrow=G, ncol=ncol(mix_coefs))
+    grp_coefs <- matrix( stats::rnorm(G*ncol(mix_coefs), sd=control$init_sd, mean=0), nrow=G, ncol=ncol(mix_coefs))
     tmp_grp <- sample(1:G, S, replace=TRUE)
   }
   colnames(grp_coefs)<-colnames(X[,-1])
@@ -3439,7 +3439,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
 # Need to fix weights for EM
 
 "apply_glm_bernoulli_sp" <- function(ss, y, X, offset){
-  f_bernoulli_sp_int <- glm.fit(x=X, y=y[,ss], offset=offset, family=binomial())
+  f_bernoulli_sp_int <- stats::glm.fit(x=X, y=y[,ss], offset=offset, family=stats::binomial())
   f_bernoulli_sp_int$coef
 }
 
@@ -3448,14 +3448,14 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
   X_sp_tau <- do.call(rbind, replicate(G, X, simplify=FALSE))
   wts_sp_tau <- rep(tau[ss,],each=length(y[,ss]))
   offy <- rep(offset,G)
-  f_mix <- glm.fit(x = X_sp_tau, y = Y_sp_tau, weights = wts_sp_tau, offset = offy, family=binomial())
+  f_mix <- stats::glm.fit(x = X_sp_tau, y = Y_sp_tau, weights = wts_sp_tau, offset = offy, family=stats::binomial())
   return(sp_coef=f_mix$coef)
 }
 
 
 "get_logls_bernoulli_sp" <- function(first_fit, fits, G, S){
   logl_sp_bernoulli_sp <- matrix(NA, nrow=S, ncol=G)
-  p <- make.link(link = "logit")
+  p <- stats::make.link(link = "logit")
   for(ss in 1:S){
     for(gg in 1:G){
       eta <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
@@ -3524,7 +3524,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
 
 "get_incomplete_logl_bernoulli_sp_function" <-  function(eta, first_fit, fits, G, S){
 
-  p <- make.link('logit')
+  p <- stats::make.link('logit')
   # print(eta,"\n")
   pis <- additive_logistic(eta)
   logl_sp_ippm <- matrix(NA,nrow=S, ncol=G)
@@ -3580,7 +3580,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
       ite <- 1
     }
     # m-step
-    tmp <- nlminb(start=fits$betas, objective=incom_logl_bernoulli_sp_beta, gradient=NULL, hessian=NULL,
+    tmp <- stats::nlminb(start=fits$betas, objective=incom_logl_bernoulli_sp_beta, gradient=NULL, hessian=NULL,
                   first_fit=first_fit, eta=additive_logistic(pis,inv = TRUE)[-G], fits=fits, G=G, S=S)
     fits$betas <- update_mix_coefs(fits$betas, tmp$par)
     fm_bernoulli_sp_int <- surveillance::plapply(1:S, apply_glm_bernoulli_sp_tau, y, X, offset, taus, G, S, fits, .parallel = control$cores, .verbose = !control$quiet) #check weights in this.
@@ -3760,5 +3760,3 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
   return(tmp)
 
 }
-
-

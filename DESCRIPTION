@@ -19,7 +19,8 @@ Imports:
     parallel,
     stats,
     graphics,
-    raster
+    raster,
+    scales
 Suggests:
     knitr,
     rmarkdown,
