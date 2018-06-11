@@ -200,13 +200,13 @@ testthat::test_that('species mix ippm', {
   mix_coefs <- t(do.call(cbind,all_grp_ippm1))[,-1]
 
 
-  # sam_form <- as.formula(paste0('cbind(',paste(LETTERS702[1:(n_sp)],collapse = ','),")~1+x1+x2"))
-  # sp_form <- ~ 1
-  #
-  # fm_ippm1 <- ecomix::species_mix(archetype_formula = sam_form, species_formula = sp_form, data = dat, weights = as.matrix(weights),
-  #                                 distribution = 'ippm', n_mixtures = 4, titbits =  TRUE,
-  #                                 control = species_mix.control(em_prefit = FALSE, calculate_hessian_cpp=FALSE))
-  #
-  # testthat::expect_s3_class(fm_ippm1,'species_mix')
-  # testthat::expect_s3_class(fm_ippm1,'ippm')
+  sam_form <- as.formula(paste0('cbind(',paste(LETTERS702[1:(n_sp)],collapse = ','),")~1+x1+x2"))
+  sp_form <- ~ 1
+
+  fm_ippm1 <- ecomix::species_mix(archetype_formula = sam_form, species_formula = sp_form, data = dat, weights = weights,
+                                  distribution = 'ippm', n_mixtures = 4, titbits =  TRUE,
+                                  control = species_mix.control(em_prefit = FALSE, calculate_hessian_cpp=FALSE))
+
+  testthat::expect_s3_class(fm_ippm1,'species_mix')
+  testthat::expect_s3_class(fm_ippm1,'ippm')
 })
