@@ -187,6 +187,12 @@ testthat::test_that('species mix ippm', {
 
   testthat::expect_is(fm_g1,'matrix')
 
+  fm_g2 <- ecomix:::apply_glm_ippm_group_tau(gg = 1, y = y, X = X, y_is_na = y_is_na, tau = taus)
+  all_grp_ippm1 <- surveillance::plapply(seq_len(G), ecomix:::apply_glm_ippm_group_tau, y, X, y_is_na, taus)
+  do.call(rbind,all_grp_ippm1)
+
+  testthat::expect_is(fm_g1,'matrix')
+
   #now we test if it works with lapply
   all_grp_ippm1 <- surveillance::plapply(seq_len(G), ecomix:::apply_glmnet_ippm_group_tau_v2, y, X, weights, offset, y_is_na, taus)
   testthat::expect_is(all_grp_ippm1,'list')
@@ -200,13 +206,19 @@ testthat::test_that('species mix ippm', {
   mix_coefs <- t(do.call(cbind,all_grp_ippm1))[,-1]
 
 
+  # does a ippm work?
+  wts <- rbind(presence_sites[,-1],background_sites[,-1])
+  colnames(wts) <- c(sp_name)#,"const","x1","x2")
+  offy <- rep(0,nrow(wts))
   sam_form <- as.formula(paste0('cbind(',paste(LETTERS702[1:(n_sp)],collapse = ','),")~1+x1+x2"))
   sp_form <- ~ 1
-
-  fm_ippm1 <- ecomix::species_mix(archetype_formula = sam_form, species_formula = sp_form, data = dat, weights = weights,
-                                  distribution = 'ippm', n_mixtures = 4, titbits =  TRUE,
-                                  control = species_mix.control(em_prefit = FALSE, calculate_hessian_cpp=FALSE))
+  fm_ippm1 <- ecomix::species_mix(archetype_formula = sam_form, species_formula = sp_form,
+                                  data = dat,  weights = as.matrix(wts), offset = offy,
+                                  distribution = 'ippm', n_mixtures = 4,
+                                  control = species_mix.control(cores=3,em_prefit = FALSE,calculate_hessian_cpp = FALSE))
 
   testthat::expect_s3_class(fm_ippm1,'species_mix')
   testthat::expect_s3_class(fm_ippm1,'ippm')
+
+
 })
