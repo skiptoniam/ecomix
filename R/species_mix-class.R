@@ -190,6 +190,11 @@
 
   tmp$dist <- disty.cases[disty]
 
+  tmp$pis <- additive_logistic(tmp$eta)
+
+  if(n_mixtures>1)
+    tmp$post_probs <- calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
+
   #Information criteria
   tmp <- calc_info_crit_sam(tmp)
 
@@ -835,6 +840,17 @@
     ret$BIC <- -2 * ret$logl + log(ret$n) * k
     ret$AIC <- -2 * ret$logl + 2 * k
     return( ret)
+}
+
+"calc_post_probs_sam" <- function( pis, logCondDens)  {
+    logPostProbs <- log( pis) + logCondDens #would be better to be working with log(pis) previously but c'est la vie
+    mset <- apply( logPostProbs, 1, max)
+    logSums <- mset + log( rowSums( exp( logPostProbs-mset)))
+    logPostProbs <- logPostProbs - logSums
+    postProbs <- exp( logPostProbs)
+
+    return( postProbs)
+
   }
 
 "check_species_formula" <- function(f){
