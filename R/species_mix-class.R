@@ -1344,22 +1344,6 @@
     return(list(tau=tau,sum.like=sum.like))
   }
 
-# "estimate_pi_poisson" <- function (j,fmM,pi,G,first_fit){
-#     tmp_like <- rep(0,G)
-#     tau <- rep(0,G)
-#     for(i in 1:G) {
-#         lpre <- first_fit$x%*%c(fmM[[i]]$sp_intercept[j],fmM[[i]]$coef)+first_fit$offset
-#         tmp_like[i] <- sum(dpois(first_fit$y[,j],exp(lpre),log=TRUE)*first_fit$weights[,j]) #not sure about this step...
-#     }
-# 	eps <- max(tmp_like)
-# 	sum_like <- (log(sum(pi*exp((tmp_like)-(eps))))+(eps))
-# 	  for(i in 1:G) {
-# 		tau[i] <- exp((log(pi[i]) + tmp_like[i]) - sum_like)
-# 	  }
-#   return(list(tau=tau,sum_like=sum_like))
-# }
-
-
 "estimate_pi_tweedie" <- function (j, sp, spname, datsp, fmM, pi, G, first.fit){
     tmp.like <- rep(0, G)
     tau <- rep(0, G)
