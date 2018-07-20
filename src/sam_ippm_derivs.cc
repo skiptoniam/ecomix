@@ -3,12 +3,11 @@
 sam_ippm_derivs::sam_ippm_derivs(){};
 sam_ippm_derivs::~sam_ippm_derivs(){};
 
-void sam_ippm_derivs::setVals( const sam_ippm_data &dat, SEXP &RderivsAlpha, SEXP &RderivsBeta, SEXP &RderivsEta, SEXP &RderivsDisp, SEXP &RgetScores, SEXP &Rscores){
+void sam_ippm_derivs::setVals( const sam_ippm_data &dat, SEXP &RderivsAlpha, SEXP &RderivsBeta, SEXP &RderivsEta, SEXP &RgetScores, SEXP &Rscores){
 	Alpha = REAL(RderivsAlpha);
 	Beta = REAL(RderivsBeta);
 	Eta = REAL(RderivsEta);
-	Disp = REAL(RderivsDisp);
-	getScoreFlag = *INTEGER(RgetScores);
+    getScoreFlag = *INTEGER(RgetScores);
 	Scores = REAL(Rscores);
 }
 
@@ -20,12 +19,9 @@ void sam_ippm_derivs::zeroDerivs( const sam_ippm_data &dat){
 		Beta[i] = 0.0;
 	for( int i=0; i<(dat.nG-1); i++)
 		Eta[i] = 0.0;
-	if(dat.isDispersion() & dat.doOptiDisp())
-		for( int i=0; i<(dat.nS); i++)
-			Disp[i] = 0.0;		
 }
 
-void sam_ippm_derivs::updateDerivs( const sam_ippm_data &dat, const vector<double> &alphaDerivs, const vector<double> &betaDerivs, const vector<double> &etaDerivs, const vector<double> &dispDerivs)
+void sam_ippm_derivs::updateDerivs( const sam_ippm_data &dat, const vector<double> &alphaDerivs, const vector<double> &betaDerivs, const vector<double> &etaDerivs)
 {
 	for(int s=0; s<(dat.nS); s++){
 			Alpha[s] = alphaDerivs.at(s);
@@ -41,9 +37,6 @@ void sam_ippm_derivs::updateDerivs( const sam_ippm_data &dat, const vector<doubl
 			Eta[g] = etaDerivs.at(g); 	
 			//Rprintf( " %f", dfdEta[g],"\n");
 			}
-	if( dat.isDispersion() & dat.doOptiDisp())
-		for( int s=0; s<dat.nS; s++)
-			Disp[s] += dispDerivs.at(s);						
 	
 	////Updating the score contributions for empirical information, if requested.
 	if( getScoreFlag != 1)
@@ -56,9 +49,6 @@ void sam_ippm_derivs::updateDerivs( const sam_ippm_data &dat, const vector<doubl
 				Scores[k++] = betaDerivs.at(MATREF2D(g,p,(dat.nG)));
 		for( int g=0; g<(dat.nG-1); g++)
 				Scores[k++] = etaDerivs.at(g);
-		if( dat.isDispersion())
-			for( int s=0; s<dat.nS; s++)
-				Scores[k++] = dispDerivs.at(s);		
 
 }
 
@@ -76,11 +66,6 @@ void sam_ippm_derivs::update( double *grArr, const sam_ippm_data &dat){
 		Eta[i] = grArr[kount];
 		kount++;
 	}
-	if( dat.isDispersion())
-		for( int s=0; s<dat.nS; s++){
-			Disp[s] = grArr[kount];
-			kount++;
-		}
 
 }
 
@@ -98,10 +83,5 @@ void sam_ippm_derivs::getArray( double *grArr, const sam_ippm_data &dat){
 		grArr[kount] = Eta[i];
 		kount++;
 	}
-	if( dat.isDispersion())
-		for( int s=0; s<dat.nS; s++){
-			grArr[kount] = Disp[s];
-			kount++;
-		}
 
 }
