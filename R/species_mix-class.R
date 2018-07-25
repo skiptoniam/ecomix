@@ -375,6 +375,63 @@
 }
 
 
+"sam_optimise" <- function(y, X, offset, spp_wts, site_spp_wts, y_is_na, nS, nG, nObs, disty, start_vals, control) {
+
+  inits <- c(start_vals$alphas, start_vals$betas, start_vals$pis, start_vals$disp)
+  np <- as.integer(ncol(X[,-1]))
+  n <- as.integer(nrow(X))
+
+  # parameters to optimise
+  alpha <- as.numeric(start_vals$alphas);
+  beta <- as.numeric(start_vals$betas);
+  eta <- as.numeric(additive_logistic(start_vals$pis,TRUE)[seq_len(nG-1)])
+  disp <- as.numeric(start_vals$disp)
+
+  #scores
+  alpha.score <- as.numeric(rep(NA, length(alpha)))
+  beta.score <- as.numeric(rep(NA, length(beta)))
+  eta.score <- as.numeric(rep(NA, length(eta)))
+  disp.score <- as.numeric(rep(NA, length(disp)))
+  getscores <- 1
+  scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,disp))))
+
+  #model quantities
+  pis_out <- as.numeric(rep(NA, nG))  #container for the fitted RCP model
+  mus <- as.numeric(array( NA, dim=c( nObs, nS, nG)))  #container for the fitted spp model
+  loglikeS <- as.numeric(rep(NA, S))
+  loglikeSG  <- as.numeric(matrix(NA, nrow = nS, ncol = nG))
+
+  #c++ call to optimise the model (needs pretty good starting values)
+  tmp <- .Call("species_mix_cpp",
+               as.numeric(as.matrix(y)), as.numeric(as.matrix(X[,-1])), as.numeric(offset), as.numeric(spp_wts),
+               as.numeric(as.matrix(site_spp_wts)), as.integer(as.matrix(!y_is_na)),
+               # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, // data
+               as.integer(nS), as.integer(nG), as.integer(np), as.integer(nObs), as.integer(disty),
+               # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
+               as.double(alpha), as.double(beta), as.double(eta), as.double(disp),
+               # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
+               alpha.score, beta.score, eta.score, disp.score, as.integer(control$getscores), scores,
+               # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
+               pis_out, mus, loglikeS, loglikeSG,
+               # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
+               as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
+               as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp), as.integer(control$printparams_cpp),
+               # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
+               as.integer( control$optimise_cpp), as.integer(control$loglOnly_cpp), as.integer( control$derivOnly_cpp), as.integer(control$optiDisp),
+               # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
+               PACKAGE = "ecomix.dev")
+
+  ret <- tmp
+  ret$logl <- ret$logl * -1
+  ret$mus <- array(mus, dim=c(n, S, G))
+  ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score, disp.scores=disp.score)
+  ret$S <- S; ret$G <- G; ret$np <- np; ret$n <- n;
+  ret$start.vals <- inits
+  ret$loglikeSG <- loglikeSG  #for residuals
+  ret$loglikeS <- loglikeS  #for residuals
+  return(ret)
+}
+
 #'@rdname species_mix-class
 #'@name control
 #'@param quite Should any reporting be performed? Default is FALSE, for reporting.
@@ -736,6 +793,34 @@
     W <- -999999
   return( W)
 }
+
+"get_start_vals_sam" <- function(y, X, offset, weights, disty, G, S, control){
+
+    if(!control$quiet)
+      message( "Obtaining starting values...")
+
+    if(disty==1){
+      tmp <- get_initial_values_bernoulli(y, X, offset, weights, G, S, control)
+    }
+    if(disty==2){
+      tmp <- get_initial_values_poisson()
+    }
+    if(disty==3){
+      tmp <- get_intital_values_ippm()
+    }
+    if(disty==4){
+      tmp <- get_intital_values_negative_binomial()
+    }
+    if(disty==5){
+      tmp <- get_initial_values_tweedie()
+    }
+    if(disty==6){
+      tmp <- get_initial_values_gaussian()
+    }
+
+    return(tmp)
+}
+
 
 "species_data_check" <- function(x){
   stopifnot(is.matrix(x)|is.data.frame(x))
@@ -3460,8 +3545,22 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
 # Need to fix weights for EM
 
 "apply_glm_bernoulli_sp" <- function(ss, y, X, offset){
-  f_bernoulli_sp_int <- stats::glm.fit(x=X, y=y[,ss], offset=offset, family=stats::binomial())
-  f_bernoulli_sp_int$coef
+  # f_bernoulli_sp_int <- stats::glm.fit(x=X, y=y[,ss], offset=offset, family=stats::binomial())
+  lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10),seq( from=0.1, to=1, length=10))), decreasing=TRUE)#1/seq( from=0.001, to=1, length=100)
+
+  tmp.fm <- glmnet::glmnet(y=y[,ss], x=X[,-1], offset=offset, family='binomial',alpha=0, #ridge penalty
+                 lambda=lambda.seq, #the range of penalties, note that only one will be used
+                 standardize=FALSE,  #don't standardize the covariates (they are already standardised)
+                 intercept=TRUE)
+  locat.s <- 1
+  my.coefs <- glmnet::coef.glmnet( tmp.fm, s=locat.s)
+  if( any( is.na( my.coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
+    my.coefs <- glmnet::coef.glmnet( tmp.fm, s=lambda.seq)
+    lastID <- apply( my.coefs, 2, function(x) !any( is.na( x)))
+    lastID <- tail( (seq_along( lastID))[lastID], 1)
+    my.coefs <- my.coefs[,lastID]
+  }
+  c(my.coefs[,1])
 }
 
 "apply_glm_bernoulli_sp_tau" <- function (ss, y, X, offset, tau, G, S, fits){
@@ -3504,7 +3603,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
   return(tau_star)
 }
 
-"get_initial_values_bernoulli_sp" <- function(y, X, offset, weights, G, S, control){#cores, inits='kmeans', init.sd=1){
+"get_initial_values_bernoulli" <- function(y, X, offset, weights, G, S, control){#cores, inits='kmeans', init.sd=1){
   starting_values <- initiate_fit_bernoulli_sp(y, X, offset, G, S, control)# cores, inits, init.sd)
   fits <- list(alphas=starting_values$sp_intercepts,betas=starting_values$mix_coefs)
   first_fit <- list(x = X, y = y, offset=offset, weights=weights)
@@ -3634,60 +3733,60 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
 
 }
 
-"bernoulli_sp_optimise" <- function(y, X, offset, weights, G, S, start_vals, control) {
-
-  inits <- c(start_vals$alphas, start_vals$betas, start_vals$pis)
-  np <- as.integer(ncol(X[,-1]))
-  n <- as.integer(nrow(X))
-
-  # parameters to optimise
-  alpha <- as.numeric(start_vals$alphas);
-  beta <- as.numeric(start_vals$betas);
-  eta <- additive_logistic(start_vals$pis,TRUE)[seq_len(G-1)]
-
-  #scores
-  alpha.score <- as.numeric(rep(NA, length(alpha)))
-  beta.score <- as.numeric(rep(NA, length(beta)))
-  eta.score <- as.numeric(rep(NA, length(eta)))
-  getscores <- 1
-  scores <- as.numeric(rep(NA,length(c(alpha,beta,eta))))
-
-  #model quantities
-  pis_out <- as.numeric(rep(NA,G))  #container for the fitted RCP model
-  mus <- as.numeric(array( NA, dim=c( n, S, G)))  #container for the fitted spp model
-  loglikeS <- as.numeric(rep(NA, S))
-  loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
-
-  #c++ call to optimise the model (needs pretty good starting values)
-  tmp <- .Call("species_mix_bernoulli_sp_ints",
-               as.numeric(as.matrix(y)), as.numeric(as.matrix(X[,-1])), as.numeric(offset), as.numeric(weights),
-               # SEXP RX, SEXP Ry, SEXP Roffset,	SEXP Rwts, //data
-               as.integer(S), as.integer(G), as.integer(np), as.integer(n),
-               # SEXP RS, SEXP RG, SEXP RnObs, SEXP Rdisty, //ints
-               as.double(alpha), as.double(beta), as.double(eta),
-               # SEXP Ralpha, SEXP Rbeta, SEXP Rtau, SEXP Rdisps, //params // pis will be additative transformed G-1
-               alpha.score, beta.score, eta.score, as.integer(control$getscores_cpp), scores,
-               # SEXP RderivsAlpha, SEXP RderivsTau, SEXP RderivsBeta, SEXP RderivsDisps, //derviates
-               pis_out, mus, loglikeS, loglikeSG,
-               # SEXP Rpis, SEXP Rmus, SEXP RlogDens, SEXP Rlogli, // mixture model parametes.
-               as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
-               as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp),
-               as.integer(control$printparams_cpp),
-               # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv,
-               as.integer( control$optimise_cpp), as.integer(control$loglOnly_cpp), as.integer( control$derivOnly_cpp),
-               # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly,
-               PACKAGE = "ecomix")
-
-  ret <- tmp
-  ret$logl <- ret$logl * -1
-  ret$mus <- array(mus, dim=c(n, S, G))
-  ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score)
-  ret$S <- S; ret$G <- G; ret$np <- np; ret$n <- n;
-  ret$start.vals <- inits
-  ret$loglikeSG <- loglikeSG  #for residuals
-  ret$loglikeS <- loglikeS  #for residuals
-  return(ret)
-}
+# "bernoulli_sp_optimise" <- function(y, X, offset, weights, G, S, start_vals, control) {
+#
+#   inits <- c(start_vals$alphas, start_vals$betas, start_vals$pis)
+#   np <- as.integer(ncol(X[,-1]))
+#   n <- as.integer(nrow(X))
+#
+#   # parameters to optimise
+#   alpha <- as.numeric(start_vals$alphas);
+#   beta <- as.numeric(start_vals$betas);
+#   eta <- additive_logistic(start_vals$pis,TRUE)[seq_len(G-1)]
+#
+#   #scores
+#   alpha.score <- as.numeric(rep(NA, length(alpha)))
+#   beta.score <- as.numeric(rep(NA, length(beta)))
+#   eta.score <- as.numeric(rep(NA, length(eta)))
+#   getscores <- 1
+#   scores <- as.numeric(rep(NA,length(c(alpha,beta,eta))))
+#
+#   #model quantities
+#   pis_out <- as.numeric(rep(NA,G))  #container for the fitted RCP model
+#   mus <- as.numeric(array( NA, dim=c( n, S, G)))  #container for the fitted spp model
+#   loglikeS <- as.numeric(rep(NA, S))
+#   loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
+#
+#   #c++ call to optimise the model (needs pretty good starting values)
+#   tmp <- .Call("species_mix_bernoulli_sp_ints",
+#                as.numeric(as.matrix(y)), as.numeric(as.matrix(X[,-1])), as.numeric(offset), as.numeric(weights),
+#                # SEXP RX, SEXP Ry, SEXP Roffset,	SEXP Rwts, //data
+#                as.integer(S), as.integer(G), as.integer(np), as.integer(n),
+#                # SEXP RS, SEXP RG, SEXP RnObs, SEXP Rdisty, //ints
+#                as.double(alpha), as.double(beta), as.double(eta),
+#                # SEXP Ralpha, SEXP Rbeta, SEXP Rtau, SEXP Rdisps, //params // pis will be additative transformed G-1
+#                alpha.score, beta.score, eta.score, as.integer(control$getscores_cpp), scores,
+#                # SEXP RderivsAlpha, SEXP RderivsTau, SEXP RderivsBeta, SEXP RderivsDisps, //derviates
+#                pis_out, mus, loglikeS, loglikeSG,
+#                # SEXP Rpis, SEXP Rmus, SEXP RlogDens, SEXP Rlogli, // mixture model parametes.
+#                as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
+#                as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp),
+#                as.integer(control$printparams_cpp),
+#                # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv,
+#                as.integer( control$optimise_cpp), as.integer(control$loglOnly_cpp), as.integer( control$derivOnly_cpp),
+#                # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly,
+#                PACKAGE = "ecomix")
+#
+#   ret <- tmp
+#   ret$logl <- ret$logl * -1
+#   ret$mus <- array(mus, dim=c(n, S, G))
+#   ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score)
+#   ret$S <- S; ret$G <- G; ret$np <- np; ret$n <- n;
+#   ret$start.vals <- inits
+#   ret$loglikeSG <- loglikeSG  #for residuals
+#   ret$loglikeS <- loglikeS  #for residuals
+#   return(ret)
+# }
 
 "species_mix_bernoulli_sp" <- function(y, X, offset, weights, G, control){
 
