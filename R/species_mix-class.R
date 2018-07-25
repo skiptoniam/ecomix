@@ -2996,7 +2996,7 @@
 
 ###### The IPPM functions #######
 
-"skrink_taus_ippm" <- function( taus, max_tau=0.7, G){
+"skrink_taus" <- function( taus, max_tau=0.7, G){
   if( G==1)
     return( taus)
   alpha <- (1-max_tau*G) / ( max_tau*(2-G)-1)
@@ -3167,7 +3167,7 @@
 #   logls <- get_logls_ippm(first_fit, fits, G, S)
 #   pis <- rep(1/G, G)
 #   taus <- get_taus_ippm(pis, logls, G, S)
-#   taus <- skrink_taus_ippm(taus,max_tau=1/G + 0.1, G)
+#   taus <- skrink_taus(taus,max_tau=1/G + 0.1, G)
 #   res <- list()
 #   res$fits <- fits
 #   res$first_fit <- first_fit
@@ -3190,7 +3190,7 @@
   # estimate the posteriors for taus (skrink a little)
   pis <- rep(1/G, G)
   taus <- get_taus_ippm(pis, logls, G, S)
-  # taus <- skrink_taus_ippm(taus, max_tau=1/G + 0.1, G)
+  # taus <- skrink_taus(taus, max_tau=1/G + 0.1, G)
 
   # use these posteriors to estimate mix-coefs again with weights
   # could replace with glmnet if I can get it to work.
@@ -3311,59 +3311,59 @@
 #               eta = etas, pis = pis, weights = weights))
 # }
 
-"ippm_optimise_cpp" <- function(y, X, offset, weights, y_is_na, G, S, start_vals, control) {
-
-  inits <- c(start_vals$alphas, start_vals$betas, start_vals$pis)
-  np <- as.integer(ncol(X[,-1]))
-  n <- as.integer(nrow(X))
-
-  # parameters to optimise
-  alpha <- as.numeric(start_vals$alphas);
-  beta <- as.numeric(start_vals$betas);
-  eta <- additive_logistic(start_vals$pis,TRUE)[seq_len(G-1)]
-
-  #scores
-  alpha.score <- as.numeric(rep(NA, length(alpha)))
-  beta.score <- as.numeric(rep(NA, length(beta)))
-  eta.score <- as.numeric(rep(NA, length(eta)))
-  getscores <- 1
-  scores <- as.numeric(rep(NA,length(c(alpha,beta,eta))))
-
-  #model quantities
-  pis_out <- as.numeric(rep(NA,G))  #container for the fitted RCP model
-  mus <- as.numeric(array( NA, dim=c( n, S, G)))  #container for the fitted spp model
-  loglikeS <- as.numeric(rep(NA, S))
-  loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
-
-  #c++ call to optimise the model (needs pretty good starting values)
-  tmp <- .Call("species_mix_ippm_cpp",
-               as.numeric(as.matrix(y)), as.numeric(as.matrix(X[-1])), as.numeric(offset), as.numeric(as.matrix(weights)), as.integer(!y_is_na),
-               # SEXP RX, SEXP Ry, SEXP Roffset,	SEXP Rweights, SEXP Ry_is_na, //data
-               as.integer(S), as.integer(G), as.integer(np), as.integer(n),
-               # SEXP RS, SEXP RG, SEXP RnObs, SEXP Rdisty, //ints
-               as.double(alpha), as.double(beta), as.double(eta),
-               # SEXP Ralpha, SEXP Rbeta, SEXP Rtau, SEXP Rdisps, //params // pis will be additative transformed G-1
-               alpha.score, beta.score, eta.score, as.integer(control$getscores_cpp), scores,
-               # SEXP RderivsAlpha, SEXP RderivsTau, SEXP RderivsBeta, SEXP RderivsDisps, //derviates
-               pis_out, mus, loglikeS, loglikeSG,
-               # SEXP Rpis, SEXP Rmus, SEXP RlogDens, SEXP Rlogli, // mixture model parametes.
-               as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
-               as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp),
-               # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv,
-               as.integer( control$optimise_cpp), as.integer(control$loglOnly_cpp), as.integer( control$derivOnly_cpp),
-               # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly,
-               PACKAGE = "ecomix")
-
-  ret <- tmp
-  ret$logl <- ret$logl * -1
-  ret$mus <- array(mus, dim=c(n, S, G))
-  ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score)
-  ret$S <- S; ret$G <- G; ret$np <- np; ret$n <- n;
-  ret$start.vals <- inits
-  ret$loglikeSG <- loglikeSG  #for residuals
-  ret$loglikeS <- loglikeS  #for residuals
-  return(ret)
-}
+# "ippm_optimise_cpp" <- function(y, X, offset, weights, y_is_na, G, S, start_vals, control) {
+#
+#   inits <- c(start_vals$alphas, start_vals$betas, start_vals$pis)
+#   np <- as.integer(ncol(X[,-1]))
+#   n <- as.integer(nrow(X))
+#
+#   # parameters to optimise
+#   alpha <- as.numeric(start_vals$alphas);
+#   beta <- as.numeric(start_vals$betas);
+#   eta <- additive_logistic(start_vals$pis,TRUE)[seq_len(G-1)]
+#
+#   #scores
+#   alpha.score <- as.numeric(rep(NA, length(alpha)))
+#   beta.score <- as.numeric(rep(NA, length(beta)))
+#   eta.score <- as.numeric(rep(NA, length(eta)))
+#   getscores <- 1
+#   scores <- as.numeric(rep(NA,length(c(alpha,beta,eta))))
+#
+#   #model quantities
+#   pis_out <- as.numeric(rep(NA,G))  #container for the fitted RCP model
+#   mus <- as.numeric(array( NA, dim=c( n, S, G)))  #container for the fitted spp model
+#   loglikeS <- as.numeric(rep(NA, S))
+#   loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
+#
+#   #c++ call to optimise the model (needs pretty good starting values)
+#   tmp <- .Call("species_mix_ippm_cpp",
+#                as.numeric(as.matrix(y)), as.numeric(as.matrix(X[-1])), as.numeric(offset), as.numeric(as.matrix(weights)), as.integer(!y_is_na),
+#                # SEXP RX, SEXP Ry, SEXP Roffset,	SEXP Rweights, SEXP Ry_is_na, //data
+#                as.integer(S), as.integer(G), as.integer(np), as.integer(n),
+#                # SEXP RS, SEXP RG, SEXP RnObs, SEXP Rdisty, //ints
+#                as.double(alpha), as.double(beta), as.double(eta),
+#                # SEXP Ralpha, SEXP Rbeta, SEXP Rtau, SEXP Rdisps, //params // pis will be additative transformed G-1
+#                alpha.score, beta.score, eta.score, as.integer(control$getscores_cpp), scores,
+#                # SEXP RderivsAlpha, SEXP RderivsTau, SEXP RderivsBeta, SEXP RderivsDisps, //derviates
+#                pis_out, mus, loglikeS, loglikeSG,
+#                # SEXP Rpis, SEXP Rmus, SEXP RlogDens, SEXP Rlogli, // mixture model parametes.
+#                as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
+#                as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp),
+#                # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv,
+#                as.integer( control$optimise_cpp), as.integer(control$loglOnly_cpp), as.integer( control$derivOnly_cpp),
+#                # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly,
+#                PACKAGE = "ecomix")
+#
+#   ret <- tmp
+#   ret$logl <- ret$logl * -1
+#   ret$mus <- array(mus, dim=c(n, S, G))
+#   ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score)
+#   ret$S <- S; ret$G <- G; ret$np <- np; ret$n <- n;
+#   ret$start.vals <- inits
+#   ret$loglikeSG <- loglikeSG  #for residuals
+#   ret$loglikeS <- loglikeS  #for residuals
+#   return(ret)
+# }
 
 "species_mix_ippm" <- function(y, X, offset, weights, control, G, y_is_na){
 
@@ -3402,59 +3402,59 @@
   tmp <- ippm_optimise_cpp(y, X, offset, weights, y_is_na, G, S, start_vals, control)
 
   ## let's try and analytically estimate the loglike and vcov.
-  if(control$calculate_hessian_cpp){
-
-    inits <- list(alphas=tmp$alpha,
-                  betas=tmp$beta,
-                  eta=tmp$eta)
-
-    calc_deriv <- function(x){
-
-      np <- as.integer(ncol(X[,-1]))
-      n <- as.integer(nrow(X))
-
-      # parameters to optimise
-      alpha <- as.numeric(x[1:S]);
-      beta <- as.numeric(x[c(S+1):(S+(np*G))]);
-      eta <- as.numeric(x[(S+1+(np*G)):length(x)])
-      #scores
-      alpha.score <- as.numeric(rep(NA, length(alpha)))
-      beta.score <- as.numeric(rep(NA, length(beta)))
-      eta.score <- as.numeric(rep(NA, length(eta)))
-      getscores <- 1
-      scores <- as.numeric(rep(NA,length(c(alpha,beta,eta))))
-
-      #model quantities
-      pis_out <- as.numeric(rep(NA,G))  #container for the fitted RCP model
-      mus <- as.numeric(array( NA, dim=c( n, S, G)))  #container for the fitted spp model
-      loglikeS <- as.numeric(rep(NA, S))
-      loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
-
-      #c++ call to optimise the model (needs pretty good starting values)
-      deriv_tmp <- .Call("species_mix_ippm_cpp",
-                   as.numeric(as.matrix(y)), as.numeric(as.matrix(X[-1])), as.numeric(offset),
-                   as.numeric(as.matrix(weights)), as.integer(!y_is_na),
-                   as.integer(S), as.integer(G), as.integer(np), as.integer(n),
-                   as.double(alpha), as.double(beta), as.double(eta),
-                   alpha.score, beta.score, eta.score, as.integer(control$getscores_cpp), scores,
-                   pis_out, mus, loglikeS, loglikeSG,
-                   as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
-                   as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp),
-                   as.integer(0), as.integer(0), as.integer(1),
-                   # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly,
-                   PACKAGE = "ecomix")
-      scores_tmp  <- c(alpha.score,beta.score,eta.score)
-      return(scores_tmp)
-    }
-
-    hess <- numDeriv::jacobian(calc_deriv,unlist(inits))
-    vcov.mat <- try(-solve(hess))
-    if( inherits( vcov.mat, 'try-error')){
-      attr(vcov.mat, "hess") <- hess
-      warning( "Hessian appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe Hessian is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data.")
-    }
-    tmp$vcov <- vcov.mat
-  }
+  # if(control$calculate_hessian_cpp){
+  #
+  #   inits <- list(alphas=tmp$alpha,
+  #                 betas=tmp$beta,
+  #                 eta=tmp$eta)
+  #
+  #   calc_deriv <- function(x){
+  #
+  #     np <- as.integer(ncol(X[,-1]))
+  #     n <- as.integer(nrow(X))
+  #
+  #     # parameters to optimise
+  #     alpha <- as.numeric(x[1:S]);
+  #     beta <- as.numeric(x[c(S+1):(S+(np*G))]);
+  #     eta <- as.numeric(x[(S+1+(np*G)):length(x)])
+  #     #scores
+  #     alpha.score <- as.numeric(rep(NA, length(alpha)))
+  #     beta.score <- as.numeric(rep(NA, length(beta)))
+  #     eta.score <- as.numeric(rep(NA, length(eta)))
+  #     getscores <- 1
+  #     scores <- as.numeric(rep(NA,length(c(alpha,beta,eta))))
+  #
+  #     #model quantities
+  #     pis_out <- as.numeric(rep(NA,G))  #container for the fitted RCP model
+  #     mus <- as.numeric(array( NA, dim=c( n, S, G)))  #container for the fitted spp model
+  #     loglikeS <- as.numeric(rep(NA, S))
+  #     loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
+  #
+  #     #c++ call to optimise the model (needs pretty good starting values)
+  #     deriv_tmp <- .Call("species_mix_ippm_cpp",
+  #                  as.numeric(as.matrix(y)), as.numeric(as.matrix(X[-1])), as.numeric(offset),
+  #                  as.numeric(as.matrix(weights)), as.integer(!y_is_na),
+  #                  as.integer(S), as.integer(G), as.integer(np), as.integer(n),
+  #                  as.double(alpha), as.double(beta), as.double(eta),
+  #                  alpha.score, beta.score, eta.score, as.integer(control$getscores_cpp), scores,
+  #                  pis_out, mus, loglikeS, loglikeSG,
+  #                  as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
+  #                  as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp),
+  #                  as.integer(0), as.integer(0), as.integer(1),
+  #                  # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly,
+  #                  PACKAGE = "ecomix")
+  #     scores_tmp  <- c(alpha.score,beta.score,eta.score)
+  #     return(scores_tmp)
+  #   }
+  #
+  #   hess <- numDeriv::jacobian(calc_deriv,unlist(inits))
+  #   vcov.mat <- try(-solve(hess))
+  #   if( inherits( vcov.mat, 'try-error')){
+  #     attr(vcov.mat, "hess") <- hess
+  #     warning( "Hessian appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe Hessian is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data.")
+  #   }
+  #   tmp$vcov <- vcov.mat
+  # }
 
   return(tmp)
 }
@@ -3511,7 +3511,7 @@
 ## functions for the bernolli with species intercepts called 'bernoulli_sp' from now on in.
 
 initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits='kmeans', init.sd=1){
-  fm_bern_sp_int <- surveillance::plapply(1:S, apply_glm_bernoulli_sp, y, X, offset, .parallel = control$cores, .verbose = !control$quiet)
+  fm_bern_sp_int <- surveillance::plapply(1:S, apply_glmnet_bernoulli_sp, y, X, offset, .parallel = control$cores, .verbose = !control$quiet)
   all_coefs <- do.call(rbind, fm_bern_sp_int)
   mix_coefs <- all_coefs[,-1] # drop intercepts
   # print(all_coefs)
@@ -3542,10 +3542,11 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
   return(results)
 }
 
-# Need to fix weights for EM
-
-"apply_glm_bernoulli_sp" <- function(ss, y, X, offset){
+## Need to fix weights for EM
+## added in glmnet penalised regression for glm bernoulli.
+"apply_glmnet_bernoulli_sp" <- function(ss, y, X, offset){
   # f_bernoulli_sp_int <- stats::glm.fit(x=X, y=y[,ss], offset=offset, family=stats::binomial())
+  options(warn=-1)
   lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10),seq( from=0.1, to=1, length=10))), decreasing=TRUE)#1/seq( from=0.001, to=1, length=100)
 
   tmp.fm <- glmnet::glmnet(y=y[,ss], x=X[,-1], offset=offset, family='binomial',alpha=0, #ridge penalty
@@ -3595,13 +3596,13 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
   return( exp( a_k - log_denom))
 }
 
-"skrink_taus_bernoulli_sp" <- function(taus, max_tau=0.7, G){
-  if( G==1)
-    return( taus)
-  alpha <- (1-max_tau*G) / ( max_tau*(2-G)-1)
-  tau_star <- ( 2*alpha*taus - alpha + 1 ) / ( 2*alpha - alpha*G + G)
-  return(tau_star)
-}
+# "skrink_taus" <- function(taus, max_tau=0.7, G){
+#   if( G==1)
+#     return( taus)
+#   alpha <- (1-max_tau*G) / ( max_tau*(2-G)-1)
+#   tau_star <- ( 2*alpha*taus - alpha + 1 ) / ( 2*alpha - alpha*G + G)
+#   return(tau_star)
+# }
 
 "get_initial_values_bernoulli" <- function(y, X, offset, weights, G, S, control){#cores, inits='kmeans', init.sd=1){
   starting_values <- initiate_fit_bernoulli_sp(y, X, offset, G, S, control)# cores, inits, init.sd)
@@ -3610,7 +3611,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
   logls <- get_logls_bernoulli_sp(first_fit, fits, G, S)
   pis <- rep(1/G, G)
   taus <- get_taus_bernoulli_sp(pis, logls, G, S)
-  taus <- skrink_taus_bernoulli_sp(taus,max_tau=1/G + 0.1, G)
+  taus <- skrink_taus(taus,max_tau=1/G + 0.1, G)
 
   res <- list()
   res$fits <- fits
