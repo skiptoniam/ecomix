@@ -147,8 +147,9 @@
   W <- get_W_sam(species_formula, dat$mf.W) # don't need yet. but will be important for partial sams.
 
   #get distribution
-  disty.cases <- c("bernoulli","bernoulli_sp","poisson","ippm",
-                   "negative_binomial","tweedie","gaussian")
+  # disty.cases <- c("bernoulli","bernoulli_sp","poisson","ippm",
+  #                  "negative_binomial","tweedie","gaussian")
+  disty.cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
   disty <- get_distribution_sam(disty.cases, fit_distribution)
 
   # get offsets
@@ -227,8 +228,8 @@
   sp.form <- update(archetype_formula,obs~1+.)
 
   tmp <- switch(distribution,
-                bernoulli = species_mix_bernoulli(sp.form, y, X, G, inits,
-                                                  control),
+                # bernoulli = species_mix_bernoulli(sp.form, y, X, G, inits,
+                                                  # control),
                 bernoulli_sp = species_mix_bernoulli_sp(y = y, X = X, offset = offset,
                                                    weights = weights,
                                                    G = G, control = control),
@@ -702,8 +703,14 @@
 
 "get_distribution_sam" <- function( disty.cases, dist1) {
   error.msg <- paste( c( "Distribution not implemented. Options are: ", disty.cases, "-- Exitting Now"), collapse=" ")
-  disty <- switch( dist1, "bernoulli" = 1, "bernoulli_sp" = 2, "poisson" = 3, "ippm" = 4,
-                   "negative_binomial" = 5, "tweedie" = 6, "gaussian" = 7,{stop( error.msg)} )
+  disty <- switch( dist1,
+                   "bernoulli" = 1, #"bernoulli_sp" = 2, removing bernoulli sp for now as all bernoulli will be species specific ints
+                   "poisson" = 2,
+                   "ippm" = 3,
+                   "negative_binomial" = 4,
+                   "tweedie" = 5,
+                   "gaussian" = 6,
+                   {stop( error.msg)} )
   return( disty)
 }
 

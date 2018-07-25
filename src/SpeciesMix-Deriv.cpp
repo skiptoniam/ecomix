@@ -897,13 +897,15 @@ double like_mixnbinom_function(vector< double > &estpi, vector < double > &coef,
 
       deriv_f_dispersionS.at(MAT_RF(g,s,G)) += (digamma(sp_dispersion.at(s)+y[start+i]) - digamma(sp_dispersion.at(s)) + log(sp_dispersion.at(s)) + 1 - log( p.at(0) + sp_dispersion.at(s)) - (sp_dispersion.at(s)+y[start+i])/(p.at(0) + sp_dispersion.at(s))); // df/dtheta for theta0
       
-      d1=y[start+i]/p.at(0)-(sp_dispersion.at(s)+y[start+i])/(p.at(0)+sp_dispersion.at(s));
-      for(j=0;j<Xc;j++) {deriv_f_B.at(MAT_3D(g,j,s,G,Xc)) +=  (d1*p.at(0)*X[MAT_RF(i,j,Xr)]);} 
-      deriv_f_alphaS.at(MAT_RF(g,s,G))+= (d1*p.at(0)*1);
+      d1=y[start+i]/p.at(0)-(sp_dispersion.at(s)+y[start+i])/(p.at(0)+sp_dispersion.at(s));// dlogdmu
+      for(j=0;j<Xc;j++) {deriv_f_B.at(MAT_3D(g,j,s,G,Xc)) +=  (d1*p.at(0)*X[MAT_RF(i,j,Xr)]);} //dfdbeta
+      deriv_f_alphaS.at(MAT_RF(g,s,G))+= (d1*p.at(0)*1);//dldalpha
 
       //if(y[start+i]==0) p.at(0) = 1-p.at(0);
 
-      sump.at(g) += (lgammafn(sp_dispersion.at(s)+y[start+i]) - lgammafn(sp_dispersion.at(s)) + y[start+i]*log(p.at(0)) + sp_dispersion.at(s)*log(sp_dispersion.at(s)) - (sp_dispersion.at(s) + y[start+i])*log(p.at(0)+sp_dispersion.at(s)) - log_y_factorial.at(start+i));
+      sump.at(g) += (lgammafn(sp_dispersion.at(s)+y[start+i]) - lgammafn(sp_dispersion.at(s)) + y[start+i]*log(p.at(0))
+       + sp_dispersion.at(s)*log(sp_dispersion.at(s)) - (sp_dispersion.at(s) + y[start+i])*log(p.at(0)+sp_dispersion.at(s))
+        - log_y_factorial.at(start+i));
 
     }
      

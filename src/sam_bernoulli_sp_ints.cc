@@ -31,7 +31,7 @@ extern "C" {
 		logl = sam_bernoulli_sp_ints_optimise(all);
 	//re-running to get pis and mus
 	if( *INTEGER(RloglOnly) == 1)
-	   		logl = sam_bernoulli_sp_ints_mix_loglike( all.data, all.params, all.fits);
+	   	logl = sam_bernoulli_sp_ints_mix_loglike( all.data, all.params, all.fits);
 	//and derivatives (inlcuding scores, for empirical info, if requested)
 	if( *INTEGER(RderivsOnly) == 1)	    
 	    sam_bernoulli_sp_ints_mix_gradient_function( all.data, all.params, all.derivs, all.fits);
@@ -371,10 +371,12 @@ void calc_dlog_dbeta(vector<double> &dldb, vector<double> const &mus, const sam_
 					tmp_dmde = dmu_deta_bernoulli(mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 						for(int j=0; j<dat.nP; j++){
 							dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) += (tmp_lbd * tmp_dmde * dat.X[MATREF2D(i,j,dat.nObs)]);
+							//std::cout << dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) << '\n';
 				}
-			}
+		}
 		for(int j=0; j<dat.nP; j++){
 				dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) = dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP))*dat.wts[s];	
+				//std::cout << dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) << '\n';
 			}		
 		}
 	}
