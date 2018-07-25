@@ -3544,24 +3544,44 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
 
 ## Need to fix weights for EM
 ## added in glmnet penalised regression for glm bernoulli.
+
 "apply_glmnet_bernoulli_sp" <- function(ss, y, X, offset){
   # f_bernoulli_sp_int <- stats::glm.fit(x=X, y=y[,ss], offset=offset, family=stats::binomial())
   options(warn=-1)
-  lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10),seq( from=0.1, to=1, length=10))), decreasing=TRUE)#1/seq( from=0.001, to=1, length=100)
+  lambda.seq <- sort( unique( c(seq( from=1/0.1, to=1, length=10),seq( from=0.1, to=1, length=10))), decreasing=TRUE)#1/seq( from=0.001, to=1, length=100)
 
+  tmp.fm <- glmnet::glmnet(y=y[,ss], x=X[,-1], offset=offset, family='binomial',alpha=0, #ridge penalty
+                           lambda=lambda.seq, #the range of penalties, note that only one will be used
+                           standardize=FALSE,  #don't standardize the covariates (they are already standardised)
+                           intercept=TRUE)
+  # # locat.s <- 1
+  # my.coefs <- glmnet::coef.glmnet( tmp.fm, s=locat.s)
+  my.coefs <- apply(glmnet::coef.glmnet(tmp.fm),1,lambda_penalisation_fun)
+  #   if( any( is.na( my.coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
+  #     my.coefs <- glmnet::coef.glmnet( tmp.fm, s=lambda.seq)
+  #     lastID <- apply( my.coefs, 2, function(x) !any( is.na( x)))
+  #     lastID <- tail( (seq_along( lastID))[lastID], 1)
+  #     my.coefs <- my.coefs[,lastID]
+  #   }
+  return(my.coefs)
+}
+
+
+"apply_glmnet_bernoulli_sp" <- function(ss, y, X, offset){
+  # f_bernoulli_sp_int <- stats::glm.fit(x=X, y=y[,ss], offset=offset, family=stats::binomial())
+  options(warn=-1)
+  lambda.seq <- sort( unique( c(seq( from=1/0.1, to=1, length=10),seq( from=0.1, to=1, length=10))), decreasing=TRUE)
   tmp.fm <- glmnet::glmnet(y=y[,ss], x=X[,-1], offset=offset, family='binomial',alpha=0, #ridge penalty
                  lambda=lambda.seq, #the range of penalties, note that only one will be used
                  standardize=FALSE,  #don't standardize the covariates (they are already standardised)
                  intercept=TRUE)
-  locat.s <- 1
-  my.coefs <- glmnet::coef.glmnet( tmp.fm, s=locat.s)
-  if( any( is.na( my.coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
-    my.coefs <- glmnet::coef.glmnet( tmp.fm, s=lambda.seq)
-    lastID <- apply( my.coefs, 2, function(x) !any( is.na( x)))
-    lastID <- tail( (seq_along( lastID))[lastID], 1)
-    my.coefs <- my.coefs[,lastID]
-  }
-  c(my.coefs[,1])
+  my.coefs <- apply(glmnet::coef.glmnet(tmp.fm),1,lambda_penalisation_fun)
+  return(my.coefs)
+}
+
+"lambda_penalisation_fun" <- function(x,kappa=0.1){
+                                res <- min(x,na.rm = T)+kappa*(max(x,na.rm = T)-min(x,na.rm = T))
+                                res
 }
 
 "apply_glm_bernoulli_sp_tau" <- function (ss, y, X, offset, tau, G, S, fits){
@@ -3569,8 +3589,15 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
   X_sp_tau <- do.call(rbind, replicate(G, X, simplify=FALSE))
   wts_sp_tau <- rep(tau[ss,],each=length(y[,ss]))
   offy <- rep(offset,G)
-  f_mix <- stats::glm.fit(x = X_sp_tau, y = Y_sp_tau, weights = wts_sp_tau, offset = offy, family=stats::binomial())
-  return(sp_coef=f_mix$coef)
+  lambda.seq <- sort( unique( c(seq( from=1/0.1, to=1, length=10),seq( from=0.1, to=1, length=10))), decreasing=TRUE)
+  f_mix <- glmnet::glmnet(x = X_sp_tau[,-1], y = Y_sp_tau, weights = wts_sp_tau,
+                          offset=offy, family='binomial',
+                          alpha=0, #ridge penalty
+                          lambda=lambda.seq, #the range of penalties, note that only one will be used
+                          standardize=FALSE,  #don't standardize the covariates (they are already standardised)
+                          intercept=TRUE)
+  my.coefs <- apply(glmnet::coef.glmnet(f_mix),1,lambda_penalisation_fun)
+  return(sp_coef=my.coefs)
 }
 
 
