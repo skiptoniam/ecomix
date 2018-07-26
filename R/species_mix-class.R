@@ -3552,13 +3552,21 @@
                        pis=starting_values$pis)
   }
 
+  ## all the things we need to c++ optimisation.
   start_vals$eta <- additive_logistic(start_vals$pis,inv = TRUE)[-G]
   start_vals$disp <- rep(NA,S)
+  start_vals$spp_wts <- weights
+  start_vals$site_spp_wts <- matrix(1,nrow(y),ncol(y))
+  start_vals$y_is_na <- matrix(FALSE,nrow(y),ncol(y))
+  start_vals$nS <- S
+  start_vals$nG <- G
+  start_vals$nObs <- nrow(y)
 
-
+  return(start_vals)
 }
 
-initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits='kmeans', init.sd=1){
+
+"initiate_fit_bernoulli_sp" <- function(y, X, offset, G, S, control){#cores, inits='kmeans', init.sd=1){
   fm_bern_sp_int <- surveillance::plapply(1:S, apply_glmnet_bernoulli_sp, y, X, offset, .parallel = control$cores, .verbose = !control$quiet)
   all_coefs <- do.call(rbind, fm_bern_sp_int)
   mix_coefs <- all_coefs[,-1] # drop intercepts
