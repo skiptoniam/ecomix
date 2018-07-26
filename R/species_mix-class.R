@@ -126,8 +126,7 @@
   y <- stats::model.response(dat$mf.X)
 
   # logical matirx needed for removing NAs from response and weights.
-  if(distribution=='ippm')y_is_na <- is.na(y)
-  else y_is_na <- NULL
+  y_is_na <- is.na(y)
 
   # check names of reponses
   S <- check_reponse_sam(y)
@@ -144,7 +143,7 @@
   X <- get_X_sam(archetype_formula, dat$mf.X)
 
   # get species model matrix
-  W <- get_W_sam(species_formula, dat$mf.W) # don't need yet. but will be important for partial sams.
+  # W <- get_W_sam(species_formula, dat$mf.W) # don't need yet. but will be important for partial sams.
 
   #get distribution
   # disty.cases <- c("bernoulli","bernoulli_sp","poisson","ippm",
@@ -981,49 +980,49 @@
 
   # returns numeric 0, 1 or 2. if zero no species intercepts, if 1 speices intercepts, if 2 species model.
   species_int_coefs <- check_species_formula(sp_form)
-
+  print(species_int_coefs)
   if(species_int_coefs!=2){
     mod_dat <- clean_data_sam(dat, arch_form, NULL, distribution)
   } else {
     mod_dat <- clean_data_sam(dat, arch_form, sp_form, distribution)
   }
 
-  if(distribution=="bernoulli" & species_int_coefs==0)fit_disty <- "bernoulli"
+  if(all(distribution=="bernoulli", species_int_coefs==0))fit_disty <- "bernoulli"
   stop('Bernoulli distribution now requires species specific intercepts - look at "SpeciesMix" package for joint intercept estimation approach')
-  if(distribution=="bernoulli" & species_int_coefs==1)fit_disty <- "bernoulli"
-  if(distribution=="bernoulli" & species_int_coefs==2){
+  if(all(distribution=="bernoulli", species_int_coefs==1))fit_disty <- "bernoulli"
+  if(all(distribution=="bernoulli", species_int_coefs==2)){
     fit_disty <- "bernoulli_partial"
     stop('partial SAMs for a Bernoulli distribution has not been implemented yet - watch this space')
   }
 
-  if(distribution=="poisson" & species_int_coefs==0)
+  if(all(distribution=="poisson", species_int_coefs==0))
     stop('Poisson distribution requires independent species intercepts')
-  if(distribution=="poisson" & species_int_coefs==1)fit_disty <- "poisson"
-  if(distribution=="poisson" & species_int_coefs==2){
+  if(all(distribution=="poisson", species_int_coefs==1))fit_disty <- "poisson"
+  if(all(distribution=="poisson", species_int_coefs==2)){
     fit_disty <- "poisson_partial"
     stop('partial SAMs for a Poisson distribution has not been implemented yet - watch this space')
   }
 
-  if(distribution=="ippm" & species_int_coefs==0)
+  if(all(distribution=="ippm", species_int_coefs==0))
     stop('IPPM distribution requires independent species intercepts')
-  if(distribution=="ippm" & species_int_coefs==1)fit_disty <- "ippm"
-  if(distribution=="ippm" & species_int_coefs==2){
+  if(all(distribution=="ippm", species_int_coefs==1)) fit_disty <- "ippm"
+  if(all(distribution=="ippm", species_int_coefs==2)){
     fit_disty <- "ippm_partial"
     stop('partial SAMs for a IPPM distribution has not been implemented yet - watch this space')
   }
 
-  if(distribution=="negative_binomial" & species_int_coefs==0)
+  if(all(distribution=="negative_binomial", species_int_coefs==0))
     stop('Negative binomial distribution requires independent species intercepts')
-  if(distribution=="negative_binomial" & species_int_coefs==1)fit_disty <- "negative_binomial"
-  if(distribution=="negative_binomial" & species_int_coefs==2){
+  if(all(distribution=="negative_binomial", species_int_coefs==1)) fit_disty <- "negative_binomial"
+  if(all(distribution=="negative_binomial", species_int_coefs==2)){
     fit_disty <- "negative_binomial_partial"
     stop('partial SAMs for a Negative Binomial distribution has not been implemented yet - watch this space')
 }
 
-  if(distribution=="tweedie" & species_int_coefs==0)
+  if(all(distribution=="tweedie", species_int_coefs==0))
     stop('Tweedie distribution requires independent species intercepts')
-  if(distribution=="tweedie" & species_int_coefs==1)fit_disty <- "tweedie"
-  if(distribution=="tweedie" & species_int_coefs==2){
+  if(all(distribution=="tweedie", species_int_coefs==1)) fit_disty <- "tweedie"
+  if(all(distribution=="tweedie", species_int_coefs==2)){
     fit_disty <- "tweedie_partial"
     stop('partial SAMs for a Tweedie distribution has not been implemented yet - watch this space')
   }
@@ -1076,7 +1075,7 @@
     x <- stats::model.matrix(stats::as.formula(form),data=datsp)
     y <- datsp$obs
     environment(form) <- environment()
-    f.mix <- tglm(stats::as.formula(form),data=datsp,wts=dat.tau,vcov=FALSE,residuals=FALSE,trace=0)
+    f.mix <- fishMod::tglm(stats::as.formula(form),data=datsp,wts=dat.tau,vcov=FALSE,residuals=FALSE,trace=0)
     sp.int <- rep(f.mix$coef[1],dim(tau)[1])
     return(list(coef=f.mix$coef[c(-1,-(length(f.mix$coef)-1),-(length(f.mix$coef)))],phi=f.mix$coef["phi"],p=f.mix$coef["p"],sp.intercept=sp.int))
   }
@@ -1238,7 +1237,7 @@
     all.betas <- matrix(0, nrow = S, ncol = ncol(MM))
     colnames(all.betas) <- colnames(MM)
     for (j in 1:S) {
-      fit <- tglm(form, datsp[((j - 1) * n):(j * n - 1), ],
+      fit <- fishMod::tglm(form, datsp[((j - 1) * n):(j * n - 1), ],
         vcov = FALSE, trace = 0, p = 1.6, control)
       starting.fitem$sp.intercepts[j] <- fit$coef[1]
       all.betas[j, ] <- fit$coef[-length(fit$coef)]
@@ -2787,221 +2786,6 @@
     fmM.out
   }
 
-"tglm" <- function ( mean.form, data, wts=NULL, phi=NULL, p=NULL, inits=NULL, vcov=TRUE, control){#residuals=TRUE, control$trace=1, iter.max=150){
-    if( is.null( wts))
-      wts <- rep( 1, nrow( data))
-
-    e<-new.env()
-    e$wts <- wts
-    environment(mean.form) <- e
-    temp.p <- stats::model.frame( mean.form, data=as.data.frame( data), weights=wts)
-    y <- stats::model.response( temp.p)
-    names( y) <- NULL
-    X.p <- stats::model.matrix( mean.form, data)
-    offset.p <- stats::model.offset( temp.p)
-    if ( is.null( offset.p))
-      offset.p <- rep( 0, nrow( temp.p))
-    wts1 <- as.vector( model.weights( temp.p))
-
-    fm1 <- NULL
-    if( is.null( inits)){
-      inits <- rep( 0, ncol( X.p))
-      if( control$trace!=0)
-        print( "Obtaining initial mean values from log-linear Poisson model -- this might be stupid")
-      abit <- 1
-      ystar <- round( y, digits=0)
-      fm1 <- stats::glm( ystar~-1+X.p, family=poisson( link="log"), weights=wts1)
-      inits <- fm1$coef
-    }
-
-    if( is.null( phi) & length( inits)==ncol( X.p)){
-      if( is.null( fm1))
-        inits <- c( inits, 1)
-      else{
-        if( control$trace!=0)
-          print( "Obtaining initial dispersion from the smaller of the Pearson or Deviance estimator (or 25)")
-        if( is.null( p) & length( inits)==ncol( X.p))
-          ptemp <- 1.9
-        else
-          ptemp <- p
-        disDev <- fm1$deviance/( length( y) - length( fm1$coef))
-        disPear <- sum( ( wts1 * ( y-fm1$fitted)^2) / ( fm1$fitted^ptemp)) / ( length( y) - length( fm1$coef))
-        dis <- min( disDev, disPear, 25)
-        inits <- c( inits, dis)
-      }
-    }
-
-    if( is.null( p) & length( inits)==ncol( X.p) + is.null( phi))
-      inits <- c( inits, 1.6)
-
-    if( length( inits) != ncol( X.p) + is.null( phi) + is.null( p)) {
-      print( "Initial values supplied are of the wrong length -- please check")
-      tmp <- c( length( inits), ncol( X.p) + is.null( phi) + is.null( p))
-      names( tmp) <- c( "inits", "nParams")
-      return( tmp)
-    }
-
-    fmTGLM <- tglm.fit( x=X.p, y=y, wts=wts1, offset=offset.p, inits=inits, phi=phi, p=p, vcov=vcov, control=control)
-    return( fmTGLM)
-  }
-
-
-"tglm.fit" <- function ( x, y, wts=NULL, offset=rep( 0, length( y)), inits, phi=NULL, p=NULL, vcov=TRUE, control){
-    if( control$trace!=0){
-      print( "Estimating parameters")
-      if( is.null( phi) & is.null( p))
-        cat("iter:", "-logl", colnames(x), "phi", "p", "\n", sep = "\t")
-      if( is.null( phi) & !is.null( p))
-        cat("iter:", "-logl", colnames(x), "phi", "\n", sep = "\t")
-      if( !is.null( phi) & is.null( p))
-        cat("iter:", "-logl", colnames(x), "p", "\n", sep = "\t")
-      if( !is.null( phi) & !is.null( p))
-        cat("iter:", "-logl", colnames(x), "\n", sep = "\t")
-    }
-
-    eps <- 1e-5
-    my.lower <- rep( -Inf, ncol( x))
-    my.upper <- rep( Inf, ncol( x))
-    if( is.null( phi))
-    {my.lower <- c( my.lower, eps); my.upper <- c( my.upper, Inf)}
-    if( is.null( p))
-    {my.lower <- c( my.lower, 1+eps); my.upper <- c( my.upper, 2-eps)}
-
-    fm <- stats::nlminb( start=inits, objective=ldTweedie.lp, gradient=ldTweedie.lp.deriv, hessian=NULL, lower=my.lower, upper=my.upper, y=y, X.p=x, offsetty=offset, phi=phi, p=p, control=control, wts=wts)
-
-    parms <- fm$par
-    tmp <- colnames( x)
-    if( !is.null( phi) & !is.null( p))
-      tmp <- tmp
-    if( !is.null( phi) & is.null( p))
-      tmp <- c( tmp, "p")
-    if( is.null( phi) & !is.null( p))
-      tmp <- c( tmp, "phi")
-    if( is.null( phi) & is.null( p))
-      tmp <- c( tmp, "phi", "p")
-
-    names( parms) <- tmp
-
-    if( vcov){
-      if( control$trace!=0)
-        print( "Calculating variance matrix of estimates")
-      vcovar <- numDeriv::jacobian(func=ldTweedie.lp.deriv,x=parms, y=y, X.p=x, offsetty=offset, phi=phi, p=p, wts=wts)
-      vcovar <- 0.5 * ( vcovar + t( vcovar))
-      vcovar <- solve( vcovar)
-      rownames( vcovar) <- colnames( vcovar) <- names( parms)
-    }
-    else{
-      if( control$trace!=0)
-        print( "Not calculating variance matrix of estimates")
-      vcovar <- NULL
-    }
-
-    scores <- -ldTweedie.lp.deriv( parms=parms, y=y, X.p=x, offsetty=offset, phi=phi, p=p, wts=wts)
-
-    if( control$trace !=0)
-      print( "Calculating means")
-    mu <- exp( x %*% parms[seq_len(ncol(x))] + offset)
-
-    if( control$residuals){
-      if( control$trace!=0)
-        print( "Calculating quantile residuals")
-      if( is.null( phi)){
-        phi1 <- parms[ncol( x)+1]
-        if( is.null( p))
-          p1 <- parms[ncol(x)+2]
-        else
-          p1 <- p
-      }
-      else{
-        phi1 <- phi
-        if( is.null( p))
-          p1 <- parms[ncol( x)+1]
-        else
-          p1 <- p
-      }
-      resids <- matrix( rep( pTweedie( y, mu, phi1, p1), 2), ncol=2)
-      resids[y==0,1] <- 0.5 * dTweedie( y[y==0], mu[y==0], phi1, p1, LOG=FALSE)
-      nzero <- sum( y==0)
-      resids[y==0,2] <- stats::runif( nzero, min=rep( 0, nzero), max=2*resids[y==0,1])
-      resids <- qnorm( resids)
-      colnames( resids) <- c("expect","random")
-    }
-    else{
-      if( control$trace!=0)
-        print( "Not calculating quantile residuals")
-      resids <- NULL
-    }
-
-    if( control$trace!=0)
-      print( "Done")
-
-    ICadj <- 0
-    if( !is.null( phi))
-      ICadj <- ICadj+1
-    if( !is.null( p))
-      ICadj <- ICadj+1
-
-    AIC <- -2*(-fm$objective) + 2*(length( parms)-ICadj)
-    BIC <- -2*(-fm$objective) + log( nrow( x))*(length( parms)-ICadj)
-
-    res <- list( coef=parms, logl=-fm$objective, scores=scores, vcov=vcovar, conv=fm$convergence, message=fm$message, niter=fm$iterations, evals=fm$evaluations, call=match.call(), fitted=mu, residuals=resids, AIC=AIC, BIC=BIC)
-    class( res) <- "tglm"
-    return( res)
-  }
-
-
-# "weighted_glm" <-  function (g,first.fit,tau,n,fmM,sp) {
-#     dat.tau <- rep(tau[,g],each=n)
-#     f.mix <- stats::glm.fit(x=first.fit$x,y=first.fit$y,weights=dat.tau,family=stats::binomial(),start=fmM[[g]]$coef)
-#     return(list(coef=f.mix$coef))
-#   }
-
-
-"weighted_glm_gaussian" <-  function (g,first.fit,tau,n,fmM,sp){
-    dat.tau <- rep(tau[,g],each=n)
-    sp.name <- unique(sp)
-    X <- first.fit$x
-    sp.mat <- matrix(0,dim(X)[1],length(sp.name))
-
-    for(i in seq_along(sp.name)){
-      sp.mat[sp==sp.name[i],i] <- 1
-    }
-    X <- cbind(sp.mat,X)
-    f.mix <- stats::glm.fit(x=X,y=first.fit$y,weights=dat.tau,family=gaussian())
-    sp.intercept <- f.mix$coef[seq_along(sp.name)]
-    sp.intercept[is.na(sp.intercept)] <- 0
-    return(list(coef=f.mix$coef[-1:-length(sp.name)],theta=sqrt(f.mix$deviance/f.mix$df.residual),sp.intercept=sp.intercept,fitted=f.mix$fitted))#,lpre=f.mix$linear.predictors))
-
-  }
-
-"weighted_glm_nbinom" <-  function (g,first.fit,tau,n,fmM,sp){
-    dat.tau <- rep(tau[,g],each=n)
-    sp.name <- unique(sp)
-    X <- first.fit$x
-    sp.mat <- matrix(0,dim(X)[1],length(sp.name))
-
-    for(i in seq_along(sp.name)){
-      sp.mat[sp==sp.name[i],i] <- 1
-    }
-    X <- cbind(sp.mat,X)
-    f.mix <- glm_fit_nbinom(x=X,y=first.fit$y,offset=first.fit$offset,weights=dat.tau)
-    sp.intercept <- f.mix$coef[seq_along(sp.name)]
-    sp.intercept[is.na(sp.intercept)] <- 0
-    return(list(coef=f.mix$coef[-1:-length(sp.name)],theta=f.mix$theta,sp.intercept=sp.intercept,fitted=f.mix$fitted))#,lpre=f.mix$linear.predictors))
-
-  }
-
-"weighted_glm_tweedie" <-  function (g, first.fit, tau, n, fmM, sp, control){
-    dat.tau <- rep(tau[, g], each = n)
-    sp.int.offset <- rep(fmM[[g]]$sp.intercept, each = n)+first.fit$offset
-    sp.name <- unique(sp)
-    X <- first.fit$x
-    f.mix <- tglm.fit(x = X, y = first.fit$y, wts = dat.tau,
-      offset = sp.int.offset, control=control, inits = fmM[[g]]$coef, phi = fmM[[g]]$phi,
-      p = 1.6)
-    return(list(coef = f.mix$coef, phi = fmM[[g]]$phi, p = 1.6,
-      sp.intercept = fmM[[g]]$sp.intercept, fitted = f.mix$fitted))
-  }
 
 ##### Bernoulli functions #####
 
@@ -3524,8 +3308,38 @@
 
 ##### Negative Binomial Functions #####
 
+"weighted_glm_nbinom" <-  function (g,first.fit,tau,n,fmM,sp){
+  dat.tau <- rep(tau[,g],each=n)
+  sp.name <- unique(sp)
+  X <- first.fit$x
+  sp.mat <- matrix(0,dim(X)[1],length(sp.name))
+
+  for(i in seq_along(sp.name)){
+    sp.mat[sp==sp.name[i],i] <- 1
+  }
+  X <- cbind(sp.mat,X)
+  f.mix <- glm_fit_nbinom(x=X,y=first.fit$y,offset=first.fit$offset,weights=dat.tau)
+  sp.intercept <- f.mix$coef[seq_along(sp.name)]
+  sp.intercept[is.na(sp.intercept)] <- 0
+  return(list(coef=f.mix$coef[-1:-length(sp.name)],theta=f.mix$theta,sp.intercept=sp.intercept,fitted=f.mix$fitted))#,lpre=f.mix$linear.predictors))
+
+}
 
 ##### Tweedie Functions #####
+
+
+
+"weighted_glm_tweedie" <-  function (g, first.fit, tau, n, fmM, sp, control){
+  dat.tau <- rep(tau[, g], each = n)
+  sp.int.offset <- rep(fmM[[g]]$sp.intercept, each = n)+first.fit$offset
+  sp.name <- unique(sp)
+  X <- first.fit$x
+  f.mix <- fishMod::tglm.fit(x = X, y = first.fit$y, wts = dat.tau,
+                    offset = sp.int.offset, control=control, inits = fmM[[g]]$coef, phi = fmM[[g]]$phi,
+                    p = 1.6)
+  return(list(coef = f.mix$coef, phi = fmM[[g]]$phi, p = 1.6,
+              sp.intercept = fmM[[g]]$sp.intercept, fitted = f.mix$fitted))
+}
 
 ##### Normal functions #####
 
@@ -3537,4 +3351,21 @@
   f.mix <- stats::glm(stats::as.formula(form),data=datsp,weights=dat.tau,family="gaussian")
   sp.int <- rep(f.mix$coef[1],dim(tau)[1])
   return(list(coef=f.mix$coef[-1],theta=sqrt(f.mix$deviance/f.mix$df.residual),sp.intercept=sp.int))
+}
+
+"weighted_glm_gaussian" <-  function (g,first.fit,tau,n,fmM,sp){
+  dat.tau <- rep(tau[,g],each=n)
+  sp.name <- unique(sp)
+  X <- first.fit$x
+  sp.mat <- matrix(0,dim(X)[1],length(sp.name))
+
+  for(i in seq_along(sp.name)){
+    sp.mat[sp==sp.name[i],i] <- 1
+  }
+  X <- cbind(sp.mat,X)
+  f.mix <- stats::glm.fit(x=X,y=first.fit$y,weights=dat.tau,family=gaussian())
+  sp.intercept <- f.mix$coef[seq_along(sp.name)]
+  sp.intercept[is.na(sp.intercept)] <- 0
+  return(list(coef=f.mix$coef[-1:-length(sp.name)],theta=sqrt(f.mix$deviance/f.mix$df.residual),sp.intercept=sp.intercept,fitted=f.mix$fitted))#,lpre=f.mix$linear.predictors))
+
 }
