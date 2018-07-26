@@ -28,15 +28,13 @@ testthat::test_that('species mix bernoulli', {
   testthat::expect_error(fm2 <- species_mix(sam_form, sp_form_wrong, model_data, distribution = 'bernoulli', n_mixtures=3))
 
   # test that it returns the right class of model
-  testthat::expect_warning(fm3 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli', n_mixtures=3, control = species_mix.control(quiet=TRUE)))
-  testthat::expect_s3_class(fm3, "species_mix")
-  testthat::expect_s3_class(fm3, "bernoulli")
+  testthat::expect_error(fm3 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli', n_mixtures=3, control = species_mix.control(quiet=TRUE)))
 
   # now let's test the species specific interncepts model.
   sp_form_int <- ~ 1
   testthat::expect_warning(fm4 <- species_mix(sam_form, sp_form_int, model_data, distribution = 'bernoulli', n_mixtures=3, control = species_mix.control(quiet=TRUE,calculate_hessian_cpp = FALSE)))
   testthat::expect_s3_class(fm4, "species_mix")
-  testthat::expect_s3_class(fm4, "bernoulli_sp")
+  testthat::expect_s3_class(fm4, "bernoulli")
 
   #test some of the controls and make sure they work.
  control_quiet <- species_mix.control(quiet = TRUE,calculate_hessian_cpp = FALSE)

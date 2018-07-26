@@ -227,23 +227,45 @@
     stop('current only please check the distribution you are fitting')
   sp.form <- update(archetype_formula,obs~1+.)
 
-  tmp <- switch(distribution,
-                # bernoulli = species_mix_bernoulli(sp.form, y, X, G, inits,
-                                                  # control),
-                bernoulli = species_mix_bernoulli_sp(y = y, X = X, offset = offset,
-                                                   weights = weights,
-                                                   G = G, control = control),
-                poisson = species_mix_ippm(y = y, X = X, weights = matrix(1,nrow(y),ncol(y)),
-                                     offset = offset,  G = G, control = control,
-                                     y_is_na = matrix(1,nrow(y),ncol(y))),
-                ippm = species_mix_ippm(y = y, X = X, weights = weights,  offset = offset,
-                                  G = G, control = control, y_is_na = y_is_na),
-                negative_binomail = species_mix_nbinom(sp.form, y, X, G, inits,
-                                                      control),
-                tweedie = species_mix_tweedie(sp.form, y, X, G, inits,
-                                             control),
-                gaussian = species_mix_gaussian(sp.form, y, X, G, inits,
-                                               controls))
+  # need to insert two new calls:
+  # get_starting_values_sam() which will generate starting values based on EM or clustering of coefs.
+  # sam_optimise() which will fit the model in cpp
+
+  starting_values <- switch(distribution,
+                            bernoulli = species_mix_bernoulli_sp(y = y, X = X, offset = offset,
+                                                                        weights = weights,
+                                                                        G = G, control = control),
+                            poisson = species_mix_ippm(y = y, X = X, weights = matrix(1,nrow(y),ncol(y)),
+                                                              offset = offset,  G = G, control = control,
+                                                              y_is_na = matrix(1,nrow(y),ncol(y))),
+                            ippm = species_mix_ippm(y = y, X = X, weights = weights,  offset = offset,
+                                                           G = G, control = control, y_is_na = y_is_na),
+                            negative_binomail = species_mix_nbinom(sp.form, y, X, G, inits,
+                                                                          control),
+                            tweedie = species_mix_tweedie(sp.form, y, X, G, inits,
+                                                                 control),
+                            gaussian = species_mix_gaussian(sp.form, y, X, G, inits,
+                                                                   controls))
+
+  tmp <- sam_optimise(y, X, offset, spp_wts, site_spp_wts, y_is_na, nS, nG, nObs, disty, start_vals, control)
+
+  # tmp <- switch(distribution,
+  #               # bernoulli = species_mix_bernoulli(sp.form, y, X, G, inits,
+  #                                                 # control),
+  #               bernoulli = species_mix_bernoulli_sp(y = y, X = X, offset = offset,
+  #                                                  weights = weights,
+  #                                                  G = G, control = control),
+  #               poisson = species_mix_ippm(y = y, X = X, weights = matrix(1,nrow(y),ncol(y)),
+  #                                    offset = offset,  G = G, control = control,
+  #                                    y_is_na = matrix(1,nrow(y),ncol(y))),
+  #               ippm = species_mix_ippm(y = y, X = X, weights = weights,  offset = offset,
+  #                                 G = G, control = control, y_is_na = y_is_na),
+  #               negative_binomail = species_mix_nbinom(sp.form, y, X, G, inits,
+  #                                                     control),
+  #               tweedie = species_mix_tweedie(sp.form, y, X, G, inits,
+  #                                            control),
+  #               gaussian = species_mix_gaussian(sp.form, y, X, G, inits,
+  #                                              controls))
   return(tmp)
 }
 
@@ -800,7 +822,7 @@
       message( "Obtaining starting values...")
 
     if(disty==1){
-      tmp <- get_initial_values_bernoulli(y, X, offset, weights, G, S, control)
+      tmp <- get_initial_values_bernoulli_sp(y, X, offset, weights, G, S, control)
     }
     if(disty==2){
       tmp <- get_initial_values_poisson()
@@ -971,7 +993,7 @@
 
   if(distribution=="bernoulli" & species_int_coefs==0)fit_disty <- "bernoulli"
   stop('Bernoulli distribution now requires species specific intercepts - look at "SpeciesMix" package for joint intercept estimation approach')
-  if(distribution=="bernoulli" & species_int_coefs==1)fit_disty <- "bernoulli_sp"
+  if(distribution=="bernoulli" & species_int_coefs==1)fit_disty <- "bernoulli"
   if(distribution=="bernoulli" & species_int_coefs==2){
     fit_disty <- "bernoulli_partial"
     stop('partial SAMs for a Bernoulli distribution has not been implemented yet - watch this space')
@@ -3632,7 +3654,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
 #   return(tau_star)
 # }
 
-"get_initial_values_bernoulli" <- function(y, X, offset, weights, G, S, control){#cores, inits='kmeans', init.sd=1){
+"get_initial_values_bernoulli_sp" <- function(y, X, offset, weights, G, S, control){#cores, inits='kmeans', init.sd=1){
   starting_values <- initiate_fit_bernoulli_sp(y, X, offset, G, S, control)# cores, inits, init.sd)
   fits <- list(alphas=starting_values$sp_intercepts,betas=starting_values$mix_coefs,disp=rep(NA,S))
   first_fit <- list(x = X, y = y, offset=offset, weights=weights)
@@ -3702,7 +3724,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
   logl_new <- -88888888
 
   # get starting values
-  starting_values <- get_initial_values_bernoulli(y = y, X = X, offset = offset,
+  starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
                                                     weights = weights, G = G, S = S,
                                                     control = control)
 
@@ -3718,7 +3740,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
     pis <- colSums(taus)/S
 
     if (any(pis == 0)) {
-      starting_values <- get_initial_values_bernoulli(y = y, X = X, offset = offset,
+      starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
                                                       weights = weights, G = G, S = S,
                                                       control = control)
 
@@ -3839,7 +3861,7 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
   } else {
     if(!control$quiet)message('You are not using the EM algorith to find starting values; starting values are
         generated using',control$init_method,'\n')
-    starting_values <- get_initial_values_bernoulli(y = y, X = X, offset = offset,
+    starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
                                                         weights = weights, G = G, S = S,
                                                         control = control)
     start_vals <- list(alphas=starting_values$fits$alphas,
