@@ -231,21 +231,11 @@
   # get_starting_values_sam() which will generate starting values based on EM or clustering of coefs.
   # sam_optimise() which will fit the model in cpp
 
-  starting_values <- switch(distribution,
-                            bernoulli = species_mix_bernoulli_sp(y = y, X = X, offset = offset,
-                                                                        weights = weights,
-                                                                        G = G, control = control),
-                            poisson = species_mix_ippm(y = y, X = X, weights = matrix(1,nrow(y),ncol(y)),
-                                                              offset = offset,  G = G, control = control,
-                                                              y_is_na = matrix(1,nrow(y),ncol(y))),
-                            ippm = species_mix_ippm(y = y, X = X, weights = weights,  offset = offset,
-                                                           G = G, control = control, y_is_na = y_is_na),
-                            negative_binomail = species_mix_nbinom(sp.form, y, X, G, inits,
-                                                                          control),
-                            tweedie = species_mix_tweedie(sp.form, y, X, G, inits,
-                                                                 control),
-                            gaussian = species_mix_gaussian(sp.form, y, X, G, inits,
-                                                                   controls))
+  starting_values <- get_start_vals_sam(y, X, offset, weights, disty, G, S, control)
+
+  spp_wts <- starting_values$spp_wts
+  site_spp_wts <- starting_values$site_spp_wts
+  if(is.null(y_is_na))y_is_na <- matrix(FALSE,nrow(y),ncol(y)) #generate y_is_na for for c++ code.
 
   tmp <- sam_optimise(y, X, offset, spp_wts, site_spp_wts, y_is_na, nS, nG, nObs, disty, start_vals, control)
 
@@ -397,16 +387,16 @@
 }
 
 
-"sam_optimise" <- function(y, X, offset, spp_wts, site_spp_wts, y_is_na, nS, nG, nObs, disty, start_vals, control) {
+"sam_optimise" <- function(y, X, offset, spp_wts, site_spp_wts, y_is_na, nS, nG, nObs, disty, start_vals, control){
 
-  inits <- c(start_vals$alphas, start_vals$betas, start_vals$pis, start_vals$disp)
+  inits <- c(start_vals$alphas, start_vals$betas, start_vals$eta, start_vals$disp)
   np <- as.integer(ncol(X[,-1]))
   n <- as.integer(nrow(X))
 
   # parameters to optimise
-  alpha <- as.numeric(start_vals$alphas);
-  beta <- as.numeric(start_vals$betas);
-  eta <- as.numeric(additive_logistic(start_vals$pis,TRUE)[seq_len(nG-1)])
+  alpha <- as.numeric(start_vals$alphas)
+  beta <- as.numeric(start_vals$betas)
+  eta <- as.numeric(start_vals$eta)
   disp <- as.numeric(start_vals$disp)
 
   #scores
@@ -3533,6 +3523,41 @@
 ##### The Bernoulli species-specific functions #####
 ## functions for the bernolli with species intercepts called 'bernoulli_sp' from now on in.
 
+"get_starting_values_bernoulli_sp" <- function(y, X, offset, weights, G, control){
+  temp.warn <- getOption( "warn")
+  options( warn=-1)
+
+  S <- ncol(y)
+  #if emfit is in the control do an EM fit to get good starting values for c++
+  if(isTRUE(control$em_prefit)){
+    if(!control$quiet)message('Using EM algorithm to find starting values; using',
+                              control$em_refit,'refits\n')
+    emfits <- list()
+    for(ii in seq_len(control$em_refit)){
+      emfits[[ii]] <-  fitmix_EM_bernoulli_sp(y, X, offset, weights, G, control)
+    }
+    bf <- which.max(vapply(emfits,function(x)c(x$logl),c(logl=0)))
+    emfit <- emfits[[bf]]
+    start_vals <- list(alphas=emfit$alpha,
+                       betas=emfit$beta,
+                       pis=emfit$pis)
+  } else {
+    if(!control$quiet)message('You are not using the EM algorith to find starting values; starting values are
+          generated using',control$init_method,'\n')
+    starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
+                                                       weights = weights, G = G, S = S,
+                                                       control = control)
+    start_vals <- list(alphas=starting_values$fits$alphas,
+                       betas=starting_values$fits$betas,
+                       pis=starting_values$pis)
+  }
+
+  start_vals$eta <- additive_logistic(start_vals$pis,inv = TRUE)[-G]
+  start_vals$disp <- rep(NA,S)
+
+
+}
+
 initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits='kmeans', init.sd=1){
   fm_bern_sp_int <- surveillance::plapply(1:S, apply_glmnet_bernoulli_sp, y, X, offset, .parallel = control$cores, .verbose = !control$quiet)
   all_coefs <- do.call(rbind, fm_bern_sp_int)
@@ -3839,95 +3864,95 @@ initiate_fit_bernoulli_sp <- function(y, X, offset, G, S, control){#cores, inits
 #   return(ret)
 # }
 
-"species_mix_bernoulli_sp" <- function(y, X, offset, weights, G, control){
-
-  temp.warn <- getOption( "warn")
-  options( warn=-1)
-
-  S <- ncol(y)
-  #if emfit is in the control do an EM fit to get good starting values for c++
-  if(isTRUE(control$em_prefit)){
-    if(!control$quiet)message('Using EM algorithm to find starting values; using',
-        control$em_refit,'refits\n')
-    emfits <- list()
-    for(ii in seq_len(control$em_refit)){
-      emfits[[ii]] <-  fitmix_EM_bernoulli_sp(y, X, offset, weights, G, control)
-    }
-    bf <- which.max(sapply(emfits,function(x)c(x$logl)))
-    emfit <- emfits[[bf]]
-    start_vals <- list(alphas=emfit$alpha,
-                       betas=emfit$beta,
-                       pis=emfit$pis)
-  } else {
-    if(!control$quiet)message('You are not using the EM algorith to find starting values; starting values are
-        generated using',control$init_method,'\n')
-    starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
-                                                        weights = weights, G = G, S = S,
-                                                        control = control)
-    start_vals <- list(alphas=starting_values$fits$alphas,
-                       betas=starting_values$fits$betas,
-                       pis=starting_values$pis)
-  }
-
-  # optimise using c++ based on either starting values.
-  tmp <- bernoulli_sp_optimise(y, X, offset, weights, G, S, start_vals, control)
-
-  if(control$calculate_hessian_cpp){
-
-   inits <- list(alphas=tmp$alpha,
-                 betas=tmp$beta,
-                 eta=tmp$eta)
-
-    calc_deriv <- function(x){
-
-      np <- as.integer(ncol(X[,-1]))
-      n <- as.integer(nrow(X))
-
-      # parameters to optimise
-      alpha <- as.numeric(x[1:S]);
-      beta <- as.numeric(x[c(S+1):(S+(np*G))]);
-      eta <- as.numeric(x[(S+1+(np*G)):length(x)])
-      #scores
-      alpha.score <- as.numeric(rep(NA, length(alpha)))
-      beta.score <- as.numeric(rep(NA, length(beta)))
-      eta.score <- as.numeric(rep(NA, length(eta)))
-      getscores <- 1
-      scores <- as.numeric(rep(NA,length(c(alpha,beta,eta))))
-
-      #model quantities
-      pis_out <- as.numeric(rep(NA,G))  #container for the fitted RCP model
-      mus <- as.numeric(array( NA, dim=c( n, S, G)))  #container for the fitted spp model
-      loglikeS <- as.numeric(rep(NA, S))
-      loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
-
-      #c++ call to optimise the model (needs pretty good starting values)
-      deriv_tmp <- .Call("species_mix_bernoulli_sp_ints",
-                   as.numeric(as.matrix(y)), as.numeric(as.matrix(X[-1])), as.numeric(offset), as.numeric(as.matrix(weights)),
-                   as.integer(S), as.integer(G), as.integer(np), as.integer(n),
-                   as.double(alpha), as.double(beta), as.double(eta),
-                   alpha.score, beta.score, eta.score, as.integer(control$getscores_cpp), scores,
-                   pis_out, mus, loglikeS, loglikeSG,
-                   as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
-                   as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp),
-                   as.integer(control$printparams_cpp),
-                   as.integer(0), as.integer(0), as.integer(1),
-                   # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly,
-                   PACKAGE = "ecomix")
-      score_tmp  <- c(alpha.score,beta.score,eta.score)
-      # tmp  <- c(alpha,beta,eta)
-      return(score_tmp)
-    }
-
-    hess <- numDeriv::jacobian(calc_deriv,unlist(inits))
-    vcov.mat <- try(-solve(hess))
-    if( inherits( vcov.mat, 'try-error')){
-      attr(vcov.mat, "hess") <- hess
-      warning( "Hessian appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe Hessian is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data.")
-    }
-    tmp$vcov <- vcov.mat
-  }
-
-
-  return(tmp)
-
-}
+# "species_mix_bernoulli_sp" <- function(y, X, offset, weights, G, control){
+#
+#   temp.warn <- getOption( "warn")
+#   options( warn=-1)
+#
+#   S <- ncol(y)
+#   #if emfit is in the control do an EM fit to get good starting values for c++
+#   if(isTRUE(control$em_prefit)){
+#     if(!control$quiet)message('Using EM algorithm to find starting values; using',
+#         control$em_refit,'refits\n')
+#     emfits <- list()
+#     for(ii in seq_len(control$em_refit)){
+#       emfits[[ii]] <-  fitmix_EM_bernoulli_sp(y, X, offset, weights, G, control)
+#     }
+#     bf <- which.max(sapply(emfits,function(x)c(x$logl)))
+#     emfit <- emfits[[bf]]
+#     start_vals <- list(alphas=emfit$alpha,
+#                        betas=emfit$beta,
+#                        pis=emfit$pis)
+#   } else {
+#     if(!control$quiet)message('You are not using the EM algorith to find starting values; starting values are
+#         generated using',control$init_method,'\n')
+#     starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
+#                                                         weights = weights, G = G, S = S,
+#                                                         control = control)
+#     start_vals <- list(alphas=starting_values$fits$alphas,
+#                        betas=starting_values$fits$betas,
+#                        pis=starting_values$pis)
+#   }
+#
+#   # optimise using c++ based on either starting values.
+#   tmp <- bernoulli_sp_optimise(y, X, offset, weights, G, S, start_vals, control)
+#
+#   if(control$calculate_hessian_cpp){
+#
+#    inits <- list(alphas=tmp$alpha,
+#                  betas=tmp$beta,
+#                  eta=tmp$eta)
+#
+#     calc_deriv <- function(x){
+#
+#       np <- as.integer(ncol(X[,-1]))
+#       n <- as.integer(nrow(X))
+#
+#       # parameters to optimise
+#       alpha <- as.numeric(x[1:S]);
+#       beta <- as.numeric(x[c(S+1):(S+(np*G))]);
+#       eta <- as.numeric(x[(S+1+(np*G)):length(x)])
+#       #scores
+#       alpha.score <- as.numeric(rep(NA, length(alpha)))
+#       beta.score <- as.numeric(rep(NA, length(beta)))
+#       eta.score <- as.numeric(rep(NA, length(eta)))
+#       getscores <- 1
+#       scores <- as.numeric(rep(NA,length(c(alpha,beta,eta))))
+#
+#       #model quantities
+#       pis_out <- as.numeric(rep(NA,G))  #container for the fitted RCP model
+#       mus <- as.numeric(array( NA, dim=c( n, S, G)))  #container for the fitted spp model
+#       loglikeS <- as.numeric(rep(NA, S))
+#       loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
+#
+#       #c++ call to optimise the model (needs pretty good starting values)
+#       deriv_tmp <- .Call("species_mix_bernoulli_sp_ints",
+#                    as.numeric(as.matrix(y)), as.numeric(as.matrix(X[-1])), as.numeric(offset), as.numeric(as.matrix(weights)),
+#                    as.integer(S), as.integer(G), as.integer(np), as.integer(n),
+#                    as.double(alpha), as.double(beta), as.double(eta),
+#                    alpha.score, beta.score, eta.score, as.integer(control$getscores_cpp), scores,
+#                    pis_out, mus, loglikeS, loglikeSG,
+#                    as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
+#                    as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp),
+#                    as.integer(control$printparams_cpp),
+#                    as.integer(0), as.integer(0), as.integer(1),
+#                    # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly,
+#                    PACKAGE = "ecomix")
+#       score_tmp  <- c(alpha.score,beta.score,eta.score)
+#       # tmp  <- c(alpha,beta,eta)
+#       return(score_tmp)
+#     }
+#
+#     hess <- numDeriv::jacobian(calc_deriv,unlist(inits))
+#     vcov.mat <- try(-solve(hess))
+#     if( inherits( vcov.mat, 'try-error')){
+#       attr(vcov.mat, "hess") <- hess
+#       warning( "Hessian appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe Hessian is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data.")
+#     }
+#     tmp$vcov <- vcov.mat
+#   }
+#
+#
+#   return(tmp)
+#
+# }
