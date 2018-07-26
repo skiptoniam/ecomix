@@ -95,7 +95,7 @@ testthat::test_that('species mix ippm', {
 
   wts <- rbind(presence_sites[,-1],background_sites[,-1])
   colnames(wts) <- c(sp_name)#,"const","x1","x2")
-  offy <- rep(0,nrow(dat))
+  offset <- rep(0,nrow(dat))
 
   ## test the internal functions.
   ## test the apply functions for ippm
