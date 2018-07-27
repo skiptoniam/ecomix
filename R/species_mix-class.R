@@ -1248,62 +1248,6 @@
 #   }
 
 
-"estimate_pi_gaussian" <-  function (j,sp,spname,datsp,fmM,pi,G,first.fit){
-
-    tmp.like <- rep(0,G)
-    tau <- rep(0,G)
-    sel.sp <- which(sp==spname[j])
-
-    for(i in 1:G) {
-      lpre <- stats::dnorm(first.fit$y[sel.sp],mean=fmM[[i]]$fitted[sel.sp],sd=1,log=TRUE)
-      tmp.like[i] <- sum(lpre)
-    }
-
-    eps <- max(tmp.like)
-    sum.like <- (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
-    for(i in 1:G) {
-      tau[i] <- exp((log(pi[i]) + tmp.like[i]) - sum.like )
-    }
-    return(list(tau=tau,sum.like=sum.like))
-  }
-
-
-"estimate_pi_nbinom" <- function (j,sp,spname,datsp,fmM,pi,G,first.fit){
-
-    tmp.like <- rep(0,G)
-    tau <- rep(0,G)
-    sel.sp <- which(sp==spname[j])
-
-    for(i in 1:G) {
-      lpre <- stats::dnbinom(first.fit$y[sel.sp],mu=fmM[[i]]$fitted[sel.sp],size=fmM[[i]]$theta,log=TRUE)
-      tmp.like[i] <- sum(lpre)
-    }
-
-    eps <- max(tmp.like)
-    sum.like <- (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
-    for(i in 1:G) {
-      tau[i] <- exp((log(pi[i]) + tmp.like[i]) - sum.like )
-    }
-    return(list(tau=tau,sum.like=sum.like))
-  }
-
-"estimate_pi_tweedie" <- function (j, sp, spname, datsp, fmM, pi, G, first.fit){
-    tmp.like <- rep(0, G)
-    tau <- rep(0, G)
-    sel.sp <- which(sp == spname[j])
-    for (i in 1:G) {
-      lpre <- dTweedie(first.fit$y[sel.sp], mu = fmM[[i]]$fitted[sel.sp],
-        phi = fmM[[i]]$phi, p = fmM[[i]]$p, LOG = TRUE)
-      tmp.like[i] <- sum(lpre)
-    }
-    eps <- max(tmp.like)
-    sum.like <- (log(sum(pi * exp((tmp.like) - (eps)))) + (eps))
-    for (i in 1:G) {
-      tau[i] <- exp((log(pi[i]) + tmp.like[i]) - sum.like)
-    }
-    return(list(tau = tau, sum.like = sum.like))
-  }
-
 
 # "fitmix" <-  function (form,datsp,sp,G=2,control) {
 #     ## dat2 has colums obs,sp
@@ -1438,569 +1382,69 @@
 #   }
 
 
-"fitmix_gaussian" <- function (form,datsp,sp,G=2,maxit=500,control){
-    ## fitting abundance data with a negative binomial distribution
-    ## dat2 has colums obs,sp
-    ##
-    temp.warn <- getOption( "warn")
-    options( warn=-1)
-
-    sp.name <- unique(sp)
-    S <- length(unique(sp))
-    n <- length(which(sp==sp.name[1]))
-
-    cat("Fitting Group",G,"\n")
-    if(control$trace==1) cat("Iteration | LogL \n")
-
-    ##dat.tau <- data.frame(matrix(0,dim(datsp)[1],G))
-    dat.tau <- 0
-    ##dat <- data.frame(datsp,dat.tau)
-    pi <- rep(0,G)
-    ite <- 1
-    logL <- -99999999
-    old.logL <- -88888888
-
-    ## set up initial GLM
-    t1 <- create_starting_values_gaussian(S,G,n,form,datsp)
-    pi <- t1$pi;fmM <- t1$fmM;tau <- t1$tau;dat.tau <- t1$dat.tau;first.fit <- t1$first.fit
 
 
-    while(abs(logL-old.logL) > 0.0001 & ite<=maxit){
-      old.logL <- logL
-
-      for(i in 1:G){
-        ##dat.tau[,i] <- rep(tau[,i],each=n)
-        pi[i] <- sum(tau[,i])/S
-      }
-
-      if(any(pi==0)) { ## occasionally with complicated models the random starting values result in a pi[i]==0; so restart with new random starts
-        cat("pi has gone to zero - restarting fitting \n")
-        t1 <- create_starting_values_gaussian(S,G,n,form,datsp)
-        pi <- t1$pi;fmM <- t1$fmM;tau <- t1$tau;dat.tau <- t1$dat.tau;first.fit <- t1$first.fit
-        ite <- 1
-      }
-
-      fmM <- surveillance::plapply(1:G,weighted_glm_gaussian,first.fit,tau,n,fmM,sp,.parallel=cores, .verbose = !control$quiet)
-
-
-      logL <- 0
-      tmp.like <- matrix(0,S,G)
-
-      est.tau <- surveillance::plapply(1:S,estimate_pi_gaussian,sp,sp.name,datsp,fmM,pi,G,first.fit, .parallel=control$cores, .verbose = !control$quiet)
-
-      for(j in 1:S){
-        if(is.atomic(est.tau[[j]])){ print (est.tau[[j]])} else
-        {
-          tau[j,] <- est.tau[[j]]$tau
-          logL <- logL+est.tau[[j]]$sum.like
-        }
-      }
-
-      if(control$trace==1) cat(ite,"     | ",logL,"\n")
-      ite <- ite+1
-    }
-    fm.out <- data.frame(matrix(0,G,length(fmM[[1]]$coef)))
-    int.out <- data.frame(matrix(0,S,G))
-    names(int.out) <- paste("grp.",1:G,sep="")
-    names(fm.out) <- names(fmM[[1]]$coef)
-    tau <- data.frame(tau)
-    names(tau) <- paste("grp.",1:G,sep="")
-    EN <- -sum(unlist(tau)*log(unlist(tau)))
-    d <- length(unlist(fm.out)) + length(tau)-1
-    fm.theta <- rep(0,G)
-    for(i in 1:G) {
-      fm.out[i,] <- fmM[[i]]$coef
-      int.out[,i] <- fmM[[i]]$sp.intercept
-      ##dat.tau[,i] <- rep(tau[,i],each=n)
-      fm.theta[i] <- fmM[[i]]$theta
-    }
-
-    names(pi) <- paste("G",1:G,sep=".")
-    t.pi <- additive_logistic(pi,TRUE)
-    parms <- c(t.pi[1:(G-1)],fm.theta,unlist(fm.out),unlist(int.out))
-    logL.full <- logL
-    logL <- logLmix_gaussian(parms,first.fit,G,S,sp,sp.name)
-
-    options(warn=temp.warn)
-    if(control$em_full_model)  return(list(logl=logL,aic = -2*logL + 2*d,tau=round(tau,4),pi=pi,bic=-2*logL + log(S)*d,ICL= -2*logL + log(S)*d +2*EN,coef=fm.out,sp.intercept=int.out,theta=fm.theta,fmM=fmM,model.tau=dat.tau,covar=0,aic.full= -2*logL.full + 2*d,bic.full= -2*logL.full + log(S)*d))
-
-    return(list(logl=logL,aic = -2*logL + 2*d,tau=round(tau,4),pi=pi,bic=-2*logL + log(S)*d,ICL= -2*logL + log(S)*d +2*EN,coef=fm.out,sp.intercept=int.out,theta=fm.theta,covar=0,aic.full= -2*logL.full + 2*d,bic.full= -2*logL.full + log(S)*d))
-
-  }
-
-"fitmix_nbinom" <- function (form, datsp, sp, G = 2, control){
-  temp.warn <- getOption("warn")
-  options(warn = -1)
-  sp.name <- unique(sp)
-  S <- length(unique(sp))
-  n <- length(which(sp == sp.name[1]))
-  cat("Fitting Group", G, "\n")
-  if (trace==1)
-    cat("Iteration | LogL \n")
-  dat.tau <- 0
-  pi <- rep(0, G)
-  ite <- 1
-  logL <- -99999999
-  old.logL <- -88888888
-  if (ite != 1)
-    t1 <- create_starting_values_nbinom(S, G, n, form, datsp)
-  t1 <- create_starting_values_nbinom_kmeans(S, G, n, form, datsp)
-  pi <- t1$pi
-  fmM <- t1$fmM
-  tau <- t1$tau
-  dat.tau <- t1$dat.tau
-  first.fit <- t1$first.fit
-  while (abs(logL - old.logL) > 1e-04 & ite <= control$maxit) {
-    old.logL <- logL
-    for (i in 1:G) {
-      pi[i] <- sum(tau[, i])/S
-    }
-    if (any(pi == 0)) {
-      cat("pi has gone to zero - restarting fitting \n")
-      t1 <- create_starting_values_nbinom(S, G, n, form, datsp)
-      pi <- t1$pi
-      fmM <- t1$fmM
-      tau <- t1$tau
-      dat.tau <- t1$dat.tau
-      first.fit <- t1$first.fit
-      ite <- 1
-    }
-    fmM <- surveillance::plapply(1:G, weighted_glm_nbinom, first.fit, tau, n, fmM, sp,.parallel=control$cores, .verbose = !control$quiet)
-    for (j in 1:S) {
-      tmp <- rep(0, G)
-      for (g in 1:G) tmp[g] <- fmM[[g]]$sp.intercept[j]
-      tmp <- sum(tmp * tau[j, ])
-      for (g in 1:G) fmM[[g]]$sp.intercept[j] <- tmp
-    }
-    logL <- 0
-    tmp.like <- matrix(0, S, G)
-    est.tau <- surveillance::plapply(1:S, estimate_pi_nbinom, sp, sp.name, datsp, fmM, pi, G, first.fit, .parallel=control$cores, .verbose = !control$quiet)
-    for (j in 1:S) {
-      if (is.atomic(est.tau[[j]])) {
-        print(est.tau[[j]])
-      }
-      else {
-        tau[j, ] <- est.tau[[j]]$tau
-        logL <- logL + est.tau[[j]]$sum.like
-      }
-    }
-    if (trace)
-      cat(ite, "     | ", logL, "\n")
-    ite <- ite + 1
-  }
-  fm.out <- data.frame(matrix(0, G, length(fmM[[1]]$coef)))
-  int.out <- rep(0, S)
-  names(fm.out) <- names(fmM[[1]]$coef)
-  tau <- data.frame(tau)
-  names(tau) <- paste("grp.", 1:G, sep = "")
-  EN <- -sum(unlist(tau) * log(unlist(tau)))
-  d <- length(unlist(fm.out)) + length(tau) - 1
-  fm.theta <- rep(0, G)
-  int.out <- fmM[[1]]$sp.intercept
-  for (i in 1:G) {
-    fm.out[i, ] <- fmM[[i]]$coef
-  }
-  names(pi) <- paste("G", 1:G, sep = ".")
-  t.pi <- additive_logistic(pi, TRUE)
-  parms <- c(t.pi[1:(G - 1)], unlist(fm.out), int.out, rep(1,
-    S))
-  logL.full <- logL
-  logL <- logLmix_nbinom(parms, first.fit, G, S, sp, sp.name)
-  options(warn = temp.warn)
-  if (control$em_full_model)
-    return(list(logl = logL, aic = -2 * logL + 2 * d, tau = round(tau,
-      4), pi = pi, bic = -2 * logL + log(S) * d, ICL = -2 *
-        logL + log(S) * d + 2 * EN, coef = fm.out, sp.intercept = int.out,
-      theta = fm.theta, fmM = fmM, model.tau = dat.tau,
-      covar = 0, aic.full = -2 * logL.full + 2 * d, bic.full = -2 *
-        logL.full + log(S) * d, pars = parms))
-  return(list(logl = logL, aic = -2 * logL + 2 * d, tau = round(tau,
-    4), pi = pi, bic = -2 * logL + log(S) * d, ICL = -2 *
-      logL + log(S) * d + 2 * EN, coef = fm.out, sp.intercept = int.out,
-    theta = fm.theta, covar = 0, aic.full = -2 * logL.full +
-      2 * d, bic.full = -2 * logL.full + log(S) * d, pars = parms))
-}
-
-"fitmix_nbinom.cpp" <- function (form, datsp, sp, G=2, pars=NA, control){
-    if(!is.numeric(sp)){
-      sp <- as.integer(factor(sp))
-    }
-    sp.name <- unique(sp)
-    S <- length(unique(sp))
-    n <- length(which(sp==sp.name[1]))
-
-    X <- stats::model.matrix(form, data = datsp[sp==sp.name[1],])
-    offset <- stats::model.frame(form, data = datsp[sp==sp.name[1],])
-    offset <- stats::model.offset(offset)
-    if(is.null(offset)) offset <-  rep(0,n)
-    y <- datsp$obs
-    if(is.na(pars[1])) {
-      sp.int <- rep(0.5,S)
-      sp.dispersion <- rep(1,S)
-      fm <- matrix(stats::runif(ncol(X)*G,-1,1),G,ncol(X))
-      pars <- c(stats::runif(G-1),unlist(fm),sp.int,sp.dispersion)
-    }
-
-    gradient <- rep(0,length(pars))
-    tau <- matrix(0,S,G) ##must leave this in as defines S & G
-
-    loglike <- try(.Call("SpeciesMix",pars,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="ecomix"))
-
-    calc_deriv <- function(p){
-      gradient <- rep(0,length(pars))
-      ll <- .Call("Calculate_Gradient",p,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="ecomix")
-      return(gradient)
-    }
-    r.deriv <- function(p){ logLmix_nbinom(p,list(y=y,x=stats::model.matrix(form, data = datsp)),G,S,sp,sp.name,out.tau=FALSE)}
-
-    ##print(r.grad)
-    hes <- 0
-    covar <- 0
-    if(control$calc.hes){
-      hes <- numDeriv::jacobian(calc_deriv,pars)
-      dim(hes) <- rep(length(pars),2)
-      dim(hes) <- rep(length(pars),2)
-      covar <- try(solve(hes))
-      #rownames(hes) <- colnames(hes) <- c(paste("G.",1:(G-1),sep=""),paste("G",1:G,rep(colnames(X),each=G),sep="."))
-    }
-    if(!is.numeric(loglike)) loglike <- 0
-    pi <- pars[1:(G-1)]
-    #coef <- pars[ (G):length(pars)]
-    coef <- pars[-1*(1:((G-1)))]  ## remove pi
-    sp.int <- coef[(length(coef)-(2*S-1)):(length(coef)-S)]
-    sp.dispersion <- coef[(length(coef)-(S-1)):length(coef)]
-    fm <- coef[-1*((length(coef)-(2*S-1)):length(coef))]
-    offset <- stats::model.frame(form, data = datsp)
-    offset <- stats::model.offset(offset)
-    if(is.null(offset)) offset <-  rep(0,nrow(datsp))
-
-    r.logl <- logLmix_nbinom(pars,list(y=y,x=stats::model.matrix(form, data = datsp),offset=offset),G,S,sp,sp.name,out.tau=TRUE)
-    print(r.logl$logl)
-    pi <- additive_logistic(pi)
-    names(pi) <- paste("G.",1:G,sep="")
-    coef <- matrix(fm,G,ncol(X))
-    rownames(coef) <- paste("G.",1:G,sep="")
-    colnames(coef) <- colnames(X)
-
-    AIC <- 2*loglike + 2*length(pars)
-    BIC <- 2*loglike + log(S)*length(pars)
-    ##list(logl=loglike,r.logl=r.logl$logl,pi=pi,coef=coef,tau=round(exp(r.logl$tau),4),aic=AIC,bic=BIC,hessian=hes,gradient=gradient)
-    list(logl=loglike,pi=pi,coef=coef,sp.intercept=sp.int,sp.dispersion=sp.dispersion,tau=round(exp(r.logl$tau),4),aic=AIC,bic=BIC,hessian=hes,gradient=gradient,covar=covar)#,r.grad=r.grad)
-
-  }
+#
+# "glm_fit_nbinom" <- function (x,y,offset=NULL,weights=NULL,mustart=NULL,control){
+#     X <- x
+#     if(is.null(offset)) offset <- 0
+#     if(is.null(weights)) weights <- rep(1,length(y))
+#     gradient <- rep(0,ncol(X)+1)
+#     if(is.null(mustart)){ pars <- gradient+1} else{pars <- mustart}
+#     fitted.values <- rep(0,length(y))
+#     logl <- .Call("Neg_Bin",pars,X,y,weights,offset,gradient,fitted.values,PACKAGE="ecomix")
+#     vcov <- 0
+#     se <- rep(0,length(pars))
+#     if(control$calculate_hessian_cpp) {
+#       calc_deriv <- function(p){
+#         gradient <- rep(0,length(pars))
+#         ll <- .Call("Neg_Bin_Gradient",p,X,y,weights,offset,gradient,PACKAGE="ecomix")
+#         return(gradient)
+#       }
+#       hes <- numDeriv::jacobian(calc_deriv,pars)
+#       dim(hes) <- rep(length(pars),2)
+#       vcov <- try(solve(hes))
+#       se <- try(sqrt(diag(vcov)))
+#       colnames(vcov) <- rownames(vcov) <- c("theta",colnames(X))
+#     }
+#     names(pars) <- names(se) <- names(gradient) <- c("theta",colnames(X))
+#
+#     return(list(logl=logl,coef=pars[-1],theta=pars[1],se=se[-1],se.theta=se[1],fitted=fitted.values,gradient=gradient,vcov=vcov))
+#   }
 
 
-"fitmix_tweedie" <-  function (form, datsp, sp, G = 2, control){
-    temp.warn <- getOption("warn")
-    options(warn = -1)
-    sp.name <- unique(sp)
-    S <- length(unique(sp))
-    n <- length(which(sp == sp.name[1]))
-    cat("Fitting Group", G, "\n")
-    if (trace)
-      cat("Iteration | LogL \n")
-    dat.tau <- 0
-    pi <- rep(0, G)
-    ite <- 1
-    logL <- -99999999
-    old.logL <- -88888888
-    if (ite != 1)
-      t1 <- create_starting_values_tweedie(S, G, n, form, datsp)
-    t1 <- create_starting_values_tweedie_kmeans(S, G, n, form,
-      datsp)
-    pi <- t1$pi
-    fmM <- t1$fmM
-    tau <- t1$tau
-    dat.tau <- t1$dat.tau
-    first.fit <- t1$first.fit
-    while (abs(logL - old.logL) > 1e-04 & ite <= maxit) {
-      old.logL <- logL
-      for (i in 1:G) {
-        pi[i] <- sum(tau[, i])/S
-      }
-      if (any(pi == 0)) {
-        cat("pi has gone to zero - restarting fitting \n")
-        t1 <- create_starting_values_tweedie(S, G, n, form,
-          datsp)
-        pi <- t1$pi
-        fmM <- t1$fmM
-        tau <- t1$tau
-        dat.tau <- t1$dat.tau
-        first.fit <- t1$first.fit
-        ite <- 1
-      }
-      fmM <- surveillance::plapply(1:G, weighted_glm_tweedie, first.fit, tau, n, fmM, sp, .parallel=control$cores, .verbose = !control$quiet)
-      for (j in 1:S) {
-        tmp <- rep(0, G)
-        for (g in 1:G) tmp[g] <- fmM[[g]]$sp.intercept[j]
-        tmp <- sum(tmp * tau[j, ])
-        for (g in 1:G) fmM[[g]]$sp.intercept[j] <- tmp
-      }
-      logL <- 0
-      tmp.like <- matrix(0, S, G)
-      est.tau <- surveillance::plapply(1:S, estimate_pi_tweedie, sp, sp.name,
-        datsp, fmM, pi, G, first.fit, .parallel=control$cores, .verbose = !control$quiet)
-      for (j in 1:S) {
-        if (is.atomic(est.tau[[j]])) {
-          print(est.tau[[j]])
-        }
-        else {
-          tau[j, ] <- est.tau[[j]]$tau
-          logL <- logL + est.tau[[j]]$sum.like
-        }
-      }
-      if (trace)
-        cat(ite, "     | ", logL, "\n")
-      ite <- ite + 1
-    }
-    fm.out <- data.frame(matrix(0, G, length(fmM[[1]]$coef)))
-    int.out <- fmM[[1]]$sp.intercept
-    names(fm.out) <- names(fmM[[1]]$coef)
-    tau <- data.frame(tau)
-    names(tau) <- paste("grp.", 1:G, sep = "")
-    EN <- -sum(unlist(tau) * log(unlist(tau)))
-    d <- length(unlist(fm.out)) + length(tau) - 1
-    fm.phi <- fm.p <- rep(0, G)
-    for (i in 1:G) {
-      fm.out[i, ] <- fmM[[i]]$coef
-      fm.phi[i] <- fmM[[i]]$phi
-      fm.p[i] <- fmM[[i]]$p
-    }
-    names(pi) <- paste("G", 1:G, sep = ".")
-    t.pi <- additive_logistic(pi, TRUE)
-    parms <- c(t.pi[1:(G - 1)], unlist(fm.out), int.out, rep(2,
-      S))
-    names(parms) <- c(rep("pi", G - 1), rep("coef", length(unlist(fm.out))),
-      rep("int", length(int.out)), rep("phi", S))
-    logL.full <- logL
-    logL <- logLmix_tweedie(parms, first.fit, G, S, sp, sp.name)
-    print(logL)
-    options(warn = temp.warn)
-    if (control$em_full_model)
-      return(list(logl = logL, aic = -2 * logL + 2 * d, tau = round(tau,
-        4), pi = pi, bic = -2 * logL + log(S) * d, ICL = -2 *
-          logL + log(S) * d + 2 * EN, coef = fm.out, sp.intercept = int.out,
-        phi = fm.phi, p = fm.p, fmM = fmM, model.tau = dat.tau,
-        covar = 0, aic.full = -2 * logL.full + 2 * d, bic.full = -2 *
-          logL.full + log(S) * d, pars = parms))
-    return(list(logl = logL, aic = -2 * logL + 2 * d, tau = round(tau,
-      4), pi = pi, bic = -2 * logL + log(S) * d, ICL = -2 *
-        logL + log(S) * d + 2 * EN, coef = fm.out, sp.intercept = int.out,
-      phi = fm.phi, p = fm.p, covar = 0, aic.full = -2 * logL.full +
-        2 * d, bic.full = -2 * logL.full + log(S) * d, pars = parms))
-  }
-
-
-"fitmix_tweedie.cpp" <-
-  function (form, datsp, sp, G = 2, pars = NA, trace = TRUE, calc.hes = FALSE)
-  {
-    if (!is.numeric(sp)) {
-      sp <- as.integer(factor(sp))
-    }
-    sp.name <- unique(sp)
-    S <- length(unique(sp))
-    n <- length(which(sp == sp.name[1]))
-    X <- stats::model.matrix(form, data = datsp[sp == sp.name[1], ])
-    offset <- stats::model.frame(form, data = datsp[sp==sp.name[1],])
-    offset <- stats::model.offset(offset)
-    if(is.null(offset)) offset <-  rep(0,n)
-
-    y <- datsp$obs
-    if (is.na(pars[1])) {
-      sp.int <- rep(0.5, S)
-      sp.phi <- rep(1, S)
-      sp.p <- rep(1.6, S)
-      fm <- matrix(rep(0.5, ncol(X) * G), G, ncol(X))
-      pars <- c(rep(0.5, G - 1), unlist(fm), sp.int, sp.phi)
-    }
-    pars.og <- pars
-    pars.og[1] <- pars.og[1] * 0.99
-    gradient <- rep(0, length(pars))
-    tau <- matrix(0, S, G)
-    loglike <- try(.Call("SpeciesMix", pars, y, X, sp, tau, gradient,
-      offset, as.integer(3),PACKAGE="ecomix"))
-    calc_deriv <- function(p) {
-      gradient <- rep(0, length(pars))
-      ll <- .Call("Calculate_Gradient", p, y, X, sp, tau, gradient,
-        offset, as.integer(3),PACKAGE="ecomix")
-      return(gradient)
-    }
-    hes <- 0
-    if (calc.hes) {
-      hes <- numDeriv::jacobian(calc_deriv, pars, method = "simple")
-      dim(hes) <- rep(length(pars), 2)
-      dim(hes) <- rep(length(pars), 2)
-    }
-    if (!is.numeric(loglike))
-      loglike <- 0
-    pi <- pars[1:(G - 1)]
-    coef <- pars[-1 * (1:((G - 1)))]
-    sp.int <- coef[(length(coef) - (2 * S - 1)):(length(coef) -
-        S)]
-    sp.dispersion <- coef[(length(coef) - (S - 1)):length(coef)]
-    sp.phi <- sp.dispersion[1:S]
-    sp.p <- rep(1.6, S)
-    fm <- coef[-1 * ((length(coef) - (2 * S - 1)):length(coef))]
-    offset <- stats::model.frame(form, data = datsp)
-    offset <- stats::model.offset(offset)
-    if(is.null(offset)) offset <- rep(0,nrow(datsp))
-
-    names(gradient) <- names(pars) <- c(rep("pi", G - 1), rep("coef",
-      length(unlist(fm))), rep("int", length(sp.int)), rep("phi",
-        S))
-    r.deriv <- function(p) {
-      logLmix_tweedie(p, list(y = y, x = stats::model.matrix(form,
-        data = datsp)), G, S, sp, sp.name, out.tau = FALSE)
-    }
-    r.logl <- logLmix_tweedie(pars, list(y = y, x = stats::model.matrix(form,
-      data = datsp),offset=offset), G, S, sp, sp.name, out.tau = TRUE)
-    print(r.logl$logl)
-    pi <- additive_logistic(pi)
-    names(pi) <- paste("G.", 1:G, sep = "")
-    coef <- matrix(fm, G, ncol(X))
-    rownames(coef) <- paste("G.", 1:G, sep = "")
-    colnames(coef) <- colnames(X)
-    AIC <- 2 * loglike + 2 * length(pars)
-    BIC <- 2 * loglike + log(S) * length(pars)
-    list(logl = loglike, pi = pi, coef = coef, sp.intercept = sp.int,
-      phi = sp.phi, p = sp.p, tau = round(exp(r.logl$tau),
-        4), aic = AIC, bic = BIC, hessian = hes, gradient = gradient)
-  }
-
-
-"glm_fit_nbinom" <- function (x,y,offset=NULL,weights=NULL,mustart=NULL,control){
-    X <- x
-    if(is.null(offset)) offset <- 0
-    if(is.null(weights)) weights <- rep(1,length(y))
-    gradient <- rep(0,ncol(X)+1)
-    if(is.null(mustart)){ pars <- gradient+1} else{pars <- mustart}
-    fitted.values <- rep(0,length(y))
-    logl <- .Call("Neg_Bin",pars,X,y,weights,offset,gradient,fitted.values,PACKAGE="ecomix")
-    vcov <- 0
-    se <- rep(0,length(pars))
-    if(control$calculate_hessian_cpp) {
-      calc_deriv <- function(p){
-        gradient <- rep(0,length(pars))
-        ll <- .Call("Neg_Bin_Gradient",p,X,y,weights,offset,gradient,PACKAGE="ecomix")
-        return(gradient)
-      }
-      hes <- numDeriv::jacobian(calc_deriv,pars)
-      dim(hes) <- rep(length(pars),2)
-      vcov <- try(solve(hes))
-      se <- try(sqrt(diag(vcov)))
-      colnames(vcov) <- rownames(vcov) <- c("theta",colnames(X))
-    }
-    names(pars) <- names(se) <- names(gradient) <- c("theta",colnames(X))
-
-    return(list(logl=logl,coef=pars[-1],theta=pars[1],se=se[-1],se.theta=se[1],fitted=fitted.values,gradient=gradient,vcov=vcov))
-  }
-
-
-"nbglm" <-
-  function (form,data,weights=NULL,mustart=NULL,control)
-  {
-    X <- stats::model.matrix(form,data)
-    t1 <- stats::model.frame(form,data)
-    y <- stats::model.response(t1)
-    offset <- stats::model.offset(t1)
-    if(is.null(offset)) offset <- 0
-    if(is.null(weights)) weights <- rep(1,length(y))
-    gradient <- rep(0,ncol(X)+1)
-    if(is.null(mustart)){ pars <- gradient+1}else{pars <- mustart}
-    fitted.values <- rep(0,length(y))
-
-    logl <- .Call("Neg_Bin",pars,X,y,weights,offset,gradient,fitted.values,PACKAGE="ecomix")
-    vcov <- 0
-    se <- rep(0,length(pars))
-    if(control$calculate_hessian_cpp) {
-      calc_deriv <- function(p){
-        gradient <- rep(0,length(pars))
-        ll <- .Call("Neg_Bin_Gradient",p,X,y,weights,offset,gradient,PACKAGE="ecomix")
-        return(gradient)
-      }
-      hes <- numDeriv::jacobian(calc_deriv,pars)
-      dim(hes) <- rep(length(pars),2)
-      vcov <- try(solve(hes))
-      se <- try(sqrt(diag(vcov)))
-      colnames(vcov) <- rownames(vcov) <- c("theta",colnames(X))
-    }
-    names(pars) <- names(se) <- names(gradient) <- c("theta",colnames(X))
-
-    return(list(logl=logl,coef=pars[-1],theta=pars[1],se=se[-1],se.theta=se[1],fitted=fitted.values,gradient=gradient,vcov=vcov))
-  }
-
-
-"ldTweedie.lp" <- function ( parms, y, X.p, offsetty, phi, p, wts=rep( 1, length( y))){
-    mu <- exp( X.p %*% parms[seq_len(ncol(X.p))] + offsetty)
-
-    if( is.null( phi) & is.null( p)){
-      phi <- parms[ncol( X.p) + 1]
-      p <- parms[ncol( X.p) + 2]
-    }
-    if( is.null( phi) & !is.null( p))
-      phi <- parms[ncol( X.p)+1]
-    if( !is.null( phi) & is.null( p))
-      p <- parms[ncol( X.p)+1]
-
-    lambda <- ( mu^( 2-p)) / ( phi*(2-p))
-    alpha <- ( 2-p) / ( p-1)
-    tau <- phi*(p-1)*mu^(p-1)
-    mu.Z <- alpha * tau
-
-    return( -sum( wts * dPoisGam( y, lambda=lambda, mu.Z=mu.Z, alpha=alpha, LOG=TRUE)))
-  }
-
-
-"ldTweedie.lp.deriv" <-
-  function ( parms, y, X.p, offsetty, phi, p, wts=rep( 1, length( y)))
-  {
-    mu <- exp( X.p %*% parms[seq_len(ncol( X.p))] + offsetty)
-
-    p.flag <- phi.flag <- FALSE
-    if( is.null( phi) & is.null( p)){
-      p.flag <- phi.flag <- TRUE
-      phi <- parms[ncol( X.p) + 1]
-      p <- parms[ncol( X.p) + 2]
-    }
-    if( is.null( phi) & !is.null( p)){
-      phi <- parms[ncol( X.p)+1]
-      phi.flag <- TRUE
-    }
-    if( !is.null( phi) & is.null( p)){
-      p <- parms[ncol( X.p)+1]
-      p.flag <- TRUE
-    }
-
-    lambda <- ( mu^( 2-p)) / ( phi*(2-p))
-    alpha <- ( 2-p) / ( p-1)
-    tau <- phi*(p-1)*mu^(p-1)
-    mu.Z <- alpha * tau
-
-    dTweedparms <- -wts * dPoisGamDerivs( y, lambda=lambda, mu.Z=mu.Z, alpha=alpha)
-
-    DTweedparmsDmu <- matrix( c( ( mu^(1-p)) / phi, alpha*phi*( ( p-1)^2)*( mu^(p-2)), rep( 0, length( mu))), nrow=3, byrow=TRUE)
-    tmp <- rowSums( dTweedparms * t( DTweedparmsDmu))
-    tmp <- tmp * mu
-    tmp <- apply( X.p, 2, function( x) x*tmp)
-
-    derivs <- colSums( tmp)
-
-    if( phi.flag){
-      DTweedparmsDphi <- matrix( c( -( ( mu^(2-p)) / ( ( phi^2)*(2-p))), alpha*( p-1)*( mu^( p-1)), rep( 0, length( mu))), nrow=3, byrow=TRUE)
-      tmpPhi <- rowSums( dTweedparms * t( DTweedparmsDphi))#vectorised way of doing odd calculation
-      derivs <- c( derivs, sum( tmpPhi))
-      names( derivs)[length( derivs)] <- "phi"
-    }
-    if( p.flag){
-      dalphadp <- -( 1+alpha) / ( p-1)
-      DTweedparmsDp <- matrix( c( lambda*( 1/(2-p) - log( mu)), mu.Z*( dalphadp/alpha + 1/( p-1) + log( mu)), rep( dalphadp, length( y))), nrow=3, byrow=TRUE)
-      tmpP <- rowSums( dTweedparms * t( DTweedparmsDp))
-      derivs <- c( derivs, sum( tmpP))
-      names( derivs)[length( derivs)] <- "p"
-    }
-
-    return( derivs)
-  }
+# "nbglm" <-
+#   function (form,data,weights=NULL,mustart=NULL,control)
+#   {
+#     X <- stats::model.matrix(form,data)
+#     t1 <- stats::model.frame(form,data)
+#     y <- stats::model.response(t1)
+#     offset <- stats::model.offset(t1)
+#     if(is.null(offset)) offset <- 0
+#     if(is.null(weights)) weights <- rep(1,length(y))
+#     gradient <- rep(0,ncol(X)+1)
+#     if(is.null(mustart)){ pars <- gradient+1}else{pars <- mustart}
+#     fitted.values <- rep(0,length(y))
+#
+#     logl <- .Call("Neg_Bin",pars,X,y,weights,offset,gradient,fitted.values,PACKAGE="ecomix")
+#     vcov <- 0
+#     se <- rep(0,length(pars))
+#     if(control$calculate_hessian_cpp) {
+#       calc_deriv <- function(p){
+#         gradient <- rep(0,length(pars))
+#         ll <- .Call("Neg_Bin_Gradient",p,X,y,weights,offset,gradient,PACKAGE="ecomix")
+#         return(gradient)
+#       }
+#       hes <- numDeriv::jacobian(calc_deriv,pars)
+#       dim(hes) <- rep(length(pars),2)
+#       vcov <- try(solve(hes))
+#       se <- try(sqrt(diag(vcov)))
+#       colnames(vcov) <- rownames(vcov) <- c("theta",colnames(X))
+#     }
+#     names(pars) <- names(se) <- names(gradient) <- c("theta",colnames(X))
+#
+#     return(list(logl=logl,coef=pars[-1],theta=pars[1],se=se[-1],se.theta=se[1],fitted=fitted.values,gradient=gradient,vcov=vcov))
+#   }
 
 
 # "logLike.pars" <-
@@ -2065,51 +1509,6 @@
 #     log.like
 #   }
 
-
-"logLmix_gaussian" <-
-  function (pars,first.fit,G,S,sp,spname,out.tau=FALSE)
-  {
-    tau <- matrix(0,S,G)
-    ##tau,out.tau=FALSE
-    if(G>1){
-      fm <- pars[-1*(1:((G-1)+G))]  ## remove pi
-      sp.int <- fm[(length(fm)-(S*G-1)):length(fm)]
-      fm <- fm[-1*((length(fm)-(S*G-1)):length(fm))]
-      pi <- pars[(1:(G-1))]
-      theta <- pars[G:(G+G-1)]
-
-      ##    fm <- tau[-1*((length(tau)-(G-2)):length(tau))]
-      #pi <- tau[((length(tau)-(G-2)):length(tau))]
-      dim(sp.int) <- c(S,G)
-      dim(fm) <- c(G,length(fm)/G)
-      ##pi[G] <- 1-sum(pi)
-      pi <- additive_logistic(pi)
-
-    } else{
-      return(0)
-      fm <- tau[1:(length(pars)-1)]
-      dim(fm) <- c(1,length(fm))
-      pi <- 1
-    }
-
-
-
-    log.like <- 0
-    for(j in 1:S){
-      sel.sp <- which(sp==spname[j])
-      tmp.like <- rep(0,G)
-      for(i in 1:G){
-        lpre <- cbind(1,first.fit$x[sel.sp,])%*%c(sp.int[j,i],fm[i,])
-        ##tmp.like[i] <- sum(dpois(first.fit$y[sel.sp],exp(lpre),log=TRUE))
-        tmp.like[i] <- sum(stats::dnorm(first.fit$y[sel.sp],mean=lpre,sd=theta[i],log=TRUE))
-        eps <- max(tmp.like)
-        log.like <- log.like +  (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
-        tau[j,] <- log(pi) + tmp.like - (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
-      }
-    }
-    if(out.tau)return(list(logl=log.like,tau=tau))
-    log.like
-  }
 
 # "logLmix_poisson" <- function (pars, first_fit, G){# keep weights and offsets in first fit, weights, offsets, out_tau=FALSE){
 #   S <- ncol(first_fit$y)
@@ -2251,15 +1650,6 @@
   }
 
 
-"pTweedie" <-  function ( quant, mu, phi, p){
-    lambda <- ( mu^( 2-p)) / ( phi*(2-p))
-    alpha <- ( 2-p) / ( p-1)
-    tau <- phi*(p-1)*mu^(p-1)
-    mu.Z <- alpha * tau
-    ps <- 0
-    return( ps)
-  }
-
 "rPoisGam" <- function ( n, lambda, mu.Z, alpha) {
     mu.N <- lambda
     #simulate n random variables from the same compound poisson distribution
@@ -2285,15 +1675,6 @@
     y <- apply( cbind( np, alpha, beta), 1, my.fun)
 
     return( y)
-  }
-
-"rTweedie" <- function ( n, mu, phi, p) {
-    lambda <- ( mu^( 2-p)) / ( phi*(2-p))
-    alpha <- ( 2-p) / ( p-1)
-    tau <- phi*(p-1)*mu^(p-1)
-    mu.Z <- alpha * tau
-    rans <- rPoisGam( n, lambda, mu.Z, alpha)
-    return( rans)
   }
 
 # "species_mix_bernoulli" <- function (sp.form, sp.data,covar.data,G=2, pars=NA, control) {
@@ -2374,208 +1755,6 @@
 #
 #     fmM.out
 #   }
-
-
-"species_mix_em_gaussian" <- function (sp.form,sp.data,covar.data,G=2,control){
-    S <- dim(sp.data)[2]
-    if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
-    n <- dim(sp.data)[1]
-    sp <- rep(sp.name,each=n)
-
-    var.names <- colnames(covar.data)
-    covar.data <- data.frame(kronecker( rep( 1, S), as.matrix(covar.data)))
-    names(covar.data) <- var.names
-    sp.data <- as.data.frame(sp.data)
-    data <- data.frame(obs=unlist(sp.data),covar.data)
-
-    fmM.out <- fitmix_gaussian(sp.form,data,sp,G,control$maxit,control$trace)
-    if(control$em_refit>1)
-      for(i in 2:control$em_refit){
-        fmM <- fitmix_gaussian(sp.form,data,sp,G,control$maxit,control$trace)
-        if(fmM$logl>fmM.out$logl) fmM.out <- fmM
-      }
-    if(control$em_calculate_hessian){
-      var <- 0
-      t.pi <- additive_logistic(fmM.out$pi,TRUE)
-      parms <- c(t.pi[1:(G-1)],fmM.out$theta,unlist(fmM.out$coef),unlist(fmM.out$sp.intercept))
-      first.fit <- list(y=data[,1],x=stats::model.matrix(sp.form,data=data)[,-1])
-      fun_est_var <- function(x){-logLmix_gaussian(x,first.fit,G,S,sp,sp.name)}
-      var <- solve(numDeriv::hessian(fun_est_var, parms))
-      colnames( var) <- rownames( var) <- names( parms)
-      fmM.out$covar <- var
-    }
-    # residuals <- FALSE
-    if(control$residuals) fmM.out$residuals <- mix.residuals(fmM.out,sp.form,data,sp)
-    fmM.out$formula <- sp.form
-
-    fmM.out
-  }
-
-"species_mix_em_nbinom" <- function (sp.form,sp.data,covar.data,G=2,control){
-    S <- dim(sp.data)[2]
-    if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
-    n <- dim(sp.data)[1]
-    sp <- rep(sp.name,each=n)
-
-    var.names <- colnames(covar.data)
-    covar.data <- data.frame(kronecker( rep( 1, S), as.matrix(covar.data)))
-    names(covar.data) <- var.names
-    sp.data <- as.data.frame(sp.data)
-    data <- data.frame(obs=unlist(sp.data),covar.data)
-
-    fmM.out <- fitmix_nbinom(sp.form,data,sp,G,maxit,control$trace)
-    if(control$em_refit>1)
-      for(i in 2:control$em_refit){
-        fmM <- fitmix_nbinom(sp.form,data,sp,G,maxit,control$trace)
-        if(fmM$logl>fmM.out$logl) fmM.out <- fmM
-      }
-    if(control$em_calculate_hessian){
-      var <- 0
-      t.pi <- additive_logistic(fmM.out$pi,TRUE)
-      parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef),fmM.out$sp.intercept,rep(1,S))##unlist(fmM.out$sp.intercept))
-      first.fit <- list(y=data[,1],x=stats::model.matrix(sp.form,data=data)[,-1])
-      fun_est_var <- function(x){-logLmix_nbinom(x,first.fit,G,S,sp,sp.name)}
-      deriv <- numDeriv::jacobian(fun_est_var,parms)
-      var <- solve(numDeriv::hessian(fun_est_var, parms))
-      colnames( var) <- rownames( var) <- names( parms)
-      fmM.out$covar <- var
-    }
-    if(control$residuals) fmM.out$residuals <- mix.residuals(fmM.out,sp.form,data,sp)
-    fmM.out$formula <- sp.form
-
-    fmM.out
-  }
-
-
-"species_mix_em_tweedie" <- function (sp.form,sp.data,covar.data,G=2,control){
-    S <- dim(sp.data)[2]
-    if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
-    n <- dim(sp.data)[1]
-    sp <- rep(sp.name,each=n)
-
-    var.names <- colnames(covar.data)
-    covar.data <- data.frame(kronecker( rep( 1, S), as.matrix(covar.data)))
-    names(covar.data) <- var.names
-    sp.data <- as.data.frame(sp.data)
-    data <- data.frame(obs=unlist(sp.data),covar.data)
-
-    fmM.out <- fitmix_tweedie(sp.form,data,sp,G,maxit,control$trace)
-    if(control$em_refit>1)
-      for(i in 2:control$em_refit){
-        fmM <- fitmix_tweedie(sp.form,data,sp,G,maxit,control$trace)
-        if(fmM$logl>fmM.out$logl) fmM.out <- fmM
-      }
-    # control$em_calculate_hessian <- FALSE
-    if(control$em_calculate_hessian){
-      var <- 0
-      t.pi <- additive_logistic(fmM.out$pi,TRUE)
-      parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef),unlist(fmM.out$sp.intercept),fmM.out$theta)
-      first.fit <- list(y=data[,1],x=stats::model.matrix(sp.form,data=data)[,-1])
-      fun_est_var <- function(x){-logLmix_tweedie(x,first.fit,G,S,sp,sp.name)}
-      var <- solve(numDeriv::hessian(fun_est_var, parms))
-      colnames( var) <- rownames( var) <- names( parms)
-      fmM.out$covar <- var
-    }
-    if(control$residuals) fmM.out$residuals <- mix.residuals(fmM.out,sp.form,data,sp)
-    fmM.out$formula <- sp.form
-
-    fmM.out
-  }
-
-
-"species_mix_gaussian" <- function (sp.form,sp.data,covar.data,G=2, pars=NA, control){
-    t.covar.data <- covar.data
-    t.sp.data <- sp.data
-    sp.form <- update.formula(sp.form,obs~1+.)
-    control$em_steps=100
-    prefit <- species_mix_em_gaussian(sp.form,sp.data,covar.data,G,control)
-    return(prefit)
-  }
-
-
-"species_mix_nbinom" <-  function (sp.form,sp.data,covar.data,G=2, pars=NA, control){
-    t.covar.data <- covar.data
-    t.sp.data <- sp.data
-    sp.form <- update.formula(sp.form,obs~1+.)
-    if(control$em_prefit | G==1){
-      prefit <- species_mix_em_nbinom(sp.form,sp.data,covar.data,G,control)
-      pars <- prefit$pars#c(additive_logistic(prefit$pi,TRUE)[1:(G-1)],unlist(prefit$coef))
-    }
-    S <- dim(sp.data)[2]
-    if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
-    n <- dim(sp.data)[1]
-    sp <- rep(sp.name,each=n)
-    if(G==1) return(prefit)
-    var.names <- colnames(covar.data)
-    covar.data <- data.frame(kronecker( rep( 1, S), as.matrix(covar.data)))
-    names(covar.data) <- var.names
-    sp.data <- as.data.frame(sp.data)
-    data <- data.frame(obs=as.numeric(unlist(sp.data)),covar.data)
-    names(data)[1] <- as.character(sp.form)[2]
-    sp.form <- update.formula(sp.form,obs~-1+.)
-    fmM.out <- fitmix_nbinom.cpp(sp.form,data,sp,G,pars=pars,control)
-    rownames(fmM.out$tau) <- sp.name ## add names to taus
-    fmM.out$se <- NA
-    if(control$calculate_hessian_cpp){
-      fmM.out$covar <- try(solve(fmM.out$hessian))
-      if(class(fmM.out$covar)!="try-error"){
-        tmp <- sqrt(diag(fmM.out$covar))
-        tmp <- tmp[-1*(1:((G-1)))]
-        tmp <- tmp[-1*((length(tmp)-(2*S-1)):length(tmp))]
-        fmM.out$se <- matrix(tmp,G,ncol(fmM.out$coef))
-        colnames(fmM.out$se) <- colnames(fmM.out$coef)
-        rownames(fmM.out$se) <- rownames(fmM.out$coef)
-      }
-     }
-    if(control$residuals) fmM.out$residuals <- mix.residuals(fmM.out,sp.form,data,sp)
-    fmM.out$formula <- sp.form
-    class(fmM.out) <- c("species_mix","negbin")
-    fmM.out
-  }
-
-"species_mix_tweedie" <- function (sp.form,sp.data,covar.data,G=2, pars=NA, em_prefit=TRUE,control){
-    t.covar.data <- covar.data
-    t.sp.data <- sp.data
-    sp.form <- update.formula(sp.form,obs~1+.)
-    pars <- NA
-    if(control$em_prefit | G==1){
-      prefit <- species_mix_em_tweedie(sp.form,sp.data,covar.data,G,control)
-      pars <- prefit$pars##pars <- c(additive_logistic(prefit$pi,TRUE)[1:(G-1)],unlist(prefit$coef))
-    }
-    S <- dim(sp.data)[2]
-    if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
-    n <- dim(sp.data)[1]
-    sp <- rep(sp.name,each=n)
-    if(G==1) return(prefit)
-    var.names <- colnames(covar.data)
-    covar.data <- data.frame(kronecker( rep( 1, S), as.matrix(covar.data)))
-    names(covar.data) <- var.names
-    sp.data <- as.data.frame(sp.data)
-    data <- data.frame(obs=as.numeric(unlist(sp.data)),covar.data)
-    names(data)[1] <- as.character(sp.form)[2]
-    sp.form <- update.formula(sp.form,obs~-1+.)
-    fmM.out <- fitmix_tweedie.cpp(sp.form,data,sp,G,pars=pars,calc.hes=control$calculate_hessian)
-     rownames(fmM.out$tau) <- sp.name ## add names to taus
-    fmM.out$se <- NA
-    if(control$calculate_hessian){
-      fmM.out$covar <- try(solve(fmM.out$hessian))
-      if(class(fmM.out$covar)!="try-error"){
-        colnames(fmM.out$covar) <- rownames(fmM.out$covar) <- names(fmM.out$gradient)
-        tmp <- sqrt(diag(fmM.out$covar))
-        tmp <- tmp[-1*(1:((G-1)))]
-        tmp <- tmp[-1*((length(tmp)-(2*S-1)):length(tmp))]
-        fmM.out$se <- matrix(tmp,G,ncol(fmM.out$coef))
-        colnames(fmM.out$se) <- colnames(fmM.out$coef)
-        rownames(fmM.out$se) <- rownames(fmM.out$coef)
-      }
-    }
-    if(control$residuals) fmM.out$residuals <- mix.residuals(fmM.out,sp.form,data,sp)
-    fmM.out$formula <- sp.form
-    class(fmM.out) <- c("species_mix","tweedie")
-    fmM.out
-  }
-
-
 
 ##### Bernoulli functions #####
 
@@ -3416,6 +2595,186 @@
   return(list(pi = pi, fmM = fmM, tau = tau, first.fit = first.fit))
 }
 
+"estimate_pi_nbinom" <- function (j,sp,spname,datsp,fmM,pi,G,first.fit){
+
+  tmp.like <- rep(0,G)
+  tau <- rep(0,G)
+  sel.sp <- which(sp==spname[j])
+
+  for(i in 1:G) {
+    lpre <- stats::dnbinom(first.fit$y[sel.sp],mu=fmM[[i]]$fitted[sel.sp],size=fmM[[i]]$theta,log=TRUE)
+    tmp.like[i] <- sum(lpre)
+  }
+
+  eps <- max(tmp.like)
+  sum.like <- (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
+  for(i in 1:G) {
+    tau[i] <- exp((log(pi[i]) + tmp.like[i]) - sum.like )
+  }
+  return(list(tau=tau,sum.like=sum.like))
+}
+
+"fitmix_nbinom" <- function (form, datsp, sp, G = 2, control){
+  temp.warn <- getOption("warn")
+  options(warn = -1)
+  sp.name <- unique(sp)
+  S <- length(unique(sp))
+  n <- length(which(sp == sp.name[1]))
+  cat("Fitting Group", G, "\n")
+  if (trace==1)
+    cat("Iteration | LogL \n")
+  dat.tau <- 0
+  pi <- rep(0, G)
+  ite <- 1
+  logL <- -99999999
+  old.logL <- -88888888
+  if (ite != 1)
+    t1 <- create_starting_values_nbinom(S, G, n, form, datsp)
+  t1 <- create_starting_values_nbinom_kmeans(S, G, n, form, datsp)
+  pi <- t1$pi
+  fmM <- t1$fmM
+  tau <- t1$tau
+  dat.tau <- t1$dat.tau
+  first.fit <- t1$first.fit
+  while (abs(logL - old.logL) > 1e-04 & ite <= control$maxit) {
+    old.logL <- logL
+    for (i in 1:G) {
+      pi[i] <- sum(tau[, i])/S
+    }
+    if (any(pi == 0)) {
+      cat("pi has gone to zero - restarting fitting \n")
+      t1 <- create_starting_values_nbinom(S, G, n, form, datsp)
+      pi <- t1$pi
+      fmM <- t1$fmM
+      tau <- t1$tau
+      dat.tau <- t1$dat.tau
+      first.fit <- t1$first.fit
+      ite <- 1
+    }
+    fmM <- surveillance::plapply(1:G, weighted_glm_nbinom, first.fit, tau, n, fmM, sp,.parallel=control$cores, .verbose = !control$quiet)
+    for (j in 1:S) {
+      tmp <- rep(0, G)
+      for (g in 1:G) tmp[g] <- fmM[[g]]$sp.intercept[j]
+      tmp <- sum(tmp * tau[j, ])
+      for (g in 1:G) fmM[[g]]$sp.intercept[j] <- tmp
+    }
+    logL <- 0
+    tmp.like <- matrix(0, S, G)
+    est.tau <- surveillance::plapply(1:S, estimate_pi_nbinom, sp, sp.name, datsp, fmM, pi, G, first.fit, .parallel=control$cores, .verbose = !control$quiet)
+    for (j in 1:S) {
+      if (is.atomic(est.tau[[j]])) {
+        print(est.tau[[j]])
+      }
+      else {
+        tau[j, ] <- est.tau[[j]]$tau
+        logL <- logL + est.tau[[j]]$sum.like
+      }
+    }
+    if (trace)
+      cat(ite, "     | ", logL, "\n")
+    ite <- ite + 1
+  }
+  fm.out <- data.frame(matrix(0, G, length(fmM[[1]]$coef)))
+  int.out <- rep(0, S)
+  names(fm.out) <- names(fmM[[1]]$coef)
+  tau <- data.frame(tau)
+  names(tau) <- paste("grp.", 1:G, sep = "")
+  EN <- -sum(unlist(tau) * log(unlist(tau)))
+  d <- length(unlist(fm.out)) + length(tau) - 1
+  fm.theta <- rep(0, G)
+  int.out <- fmM[[1]]$sp.intercept
+  for (i in 1:G) {
+    fm.out[i, ] <- fmM[[i]]$coef
+  }
+  names(pi) <- paste("G", 1:G, sep = ".")
+  t.pi <- additive_logistic(pi, TRUE)
+  parms <- c(t.pi[1:(G - 1)], unlist(fm.out), int.out, rep(1,
+                                                           S))
+  logL.full <- logL
+  logL <- logLmix_nbinom(parms, first.fit, G, S, sp, sp.name)
+  options(warn = temp.warn)
+  if (control$em_full_model)
+    return(list(logl = logL, aic = -2 * logL + 2 * d, tau = round(tau,
+                                                                  4), pi = pi, bic = -2 * logL + log(S) * d, ICL = -2 *
+                  logL + log(S) * d + 2 * EN, coef = fm.out, sp.intercept = int.out,
+                theta = fm.theta, fmM = fmM, model.tau = dat.tau,
+                covar = 0, aic.full = -2 * logL.full + 2 * d, bic.full = -2 *
+                  logL.full + log(S) * d, pars = parms))
+  return(list(logl = logL, aic = -2 * logL + 2 * d, tau = round(tau,
+                                                                4), pi = pi, bic = -2 * logL + log(S) * d, ICL = -2 *
+                logL + log(S) * d + 2 * EN, coef = fm.out, sp.intercept = int.out,
+              theta = fm.theta, covar = 0, aic.full = -2 * logL.full +
+                2 * d, bic.full = -2 * logL.full + log(S) * d, pars = parms))
+}
+
+"fitmix_nbinom.cpp" <- function (form, datsp, sp, G=2, pars=NA, control){
+  if(!is.numeric(sp)){
+    sp <- as.integer(factor(sp))
+  }
+  sp.name <- unique(sp)
+  S <- length(unique(sp))
+  n <- length(which(sp==sp.name[1]))
+
+  X <- stats::model.matrix(form, data = datsp[sp==sp.name[1],])
+  offset <- stats::model.frame(form, data = datsp[sp==sp.name[1],])
+  offset <- stats::model.offset(offset)
+  if(is.null(offset)) offset <-  rep(0,n)
+  y <- datsp$obs
+  if(is.na(pars[1])) {
+    sp.int <- rep(0.5,S)
+    sp.dispersion <- rep(1,S)
+    fm <- matrix(stats::runif(ncol(X)*G,-1,1),G,ncol(X))
+    pars <- c(stats::runif(G-1),unlist(fm),sp.int,sp.dispersion)
+  }
+
+  gradient <- rep(0,length(pars))
+  tau <- matrix(0,S,G) ##must leave this in as defines S & G
+
+  loglike <- try(.Call("SpeciesMix",pars,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="ecomix"))
+
+  calc_deriv <- function(p){
+    gradient <- rep(0,length(pars))
+    ll <- .Call("Calculate_Gradient",p,y,X,sp,tau,gradient,offset,as.integer(2),PACKAGE="ecomix")
+    return(gradient)
+  }
+  r.deriv <- function(p){ logLmix_nbinom(p,list(y=y,x=stats::model.matrix(form, data = datsp)),G,S,sp,sp.name,out.tau=FALSE)}
+
+  ##print(r.grad)
+  hes <- 0
+  covar <- 0
+  if(control$calc.hes){
+    hes <- numDeriv::jacobian(calc_deriv,pars)
+    dim(hes) <- rep(length(pars),2)
+    dim(hes) <- rep(length(pars),2)
+    covar <- try(solve(hes))
+    #rownames(hes) <- colnames(hes) <- c(paste("G.",1:(G-1),sep=""),paste("G",1:G,rep(colnames(X),each=G),sep="."))
+  }
+  if(!is.numeric(loglike)) loglike <- 0
+  pi <- pars[1:(G-1)]
+  #coef <- pars[ (G):length(pars)]
+  coef <- pars[-1*(1:((G-1)))]  ## remove pi
+  sp.int <- coef[(length(coef)-(2*S-1)):(length(coef)-S)]
+  sp.dispersion <- coef[(length(coef)-(S-1)):length(coef)]
+  fm <- coef[-1*((length(coef)-(2*S-1)):length(coef))]
+  offset <- stats::model.frame(form, data = datsp)
+  offset <- stats::model.offset(offset)
+  if(is.null(offset)) offset <-  rep(0,nrow(datsp))
+
+  r.logl <- logLmix_nbinom(pars,list(y=y,x=stats::model.matrix(form, data = datsp),offset=offset),G,S,sp,sp.name,out.tau=TRUE)
+  print(r.logl$logl)
+  pi <- additive_logistic(pi)
+  names(pi) <- paste("G.",1:G,sep="")
+  coef <- matrix(fm,G,ncol(X))
+  rownames(coef) <- paste("G.",1:G,sep="")
+  colnames(coef) <- colnames(X)
+
+  AIC <- 2*loglike + 2*length(pars)
+  BIC <- 2*loglike + log(S)*length(pars)
+  ##list(logl=loglike,r.logl=r.logl$logl,pi=pi,coef=coef,tau=round(exp(r.logl$tau),4),aic=AIC,bic=BIC,hessian=hes,gradient=gradient)
+  list(logl=loglike,pi=pi,coef=coef,sp.intercept=sp.int,sp.dispersion=sp.dispersion,tau=round(exp(r.logl$tau),4),aic=AIC,bic=BIC,hessian=hes,gradient=gradient,covar=covar)#,r.grad=r.grad)
+
+}
+
 
 "logLmix_nbinom" <-
   function (pars,first.fit,G,S,sp,spname,out.tau=FALSE)
@@ -3469,6 +2828,80 @@
     log.like
   }
 
+"species_mix_em_nbinom" <- function (sp.form,sp.data,covar.data,G=2,control){
+  S <- dim(sp.data)[2]
+  if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
+  n <- dim(sp.data)[1]
+  sp <- rep(sp.name,each=n)
+
+  var.names <- colnames(covar.data)
+  covar.data <- data.frame(kronecker( rep( 1, S), as.matrix(covar.data)))
+  names(covar.data) <- var.names
+  sp.data <- as.data.frame(sp.data)
+  data <- data.frame(obs=unlist(sp.data),covar.data)
+
+  fmM.out <- fitmix_nbinom(sp.form,data,sp,G,maxit,control$trace)
+  if(control$em_refit>1)
+    for(i in 2:control$em_refit){
+      fmM <- fitmix_nbinom(sp.form,data,sp,G,maxit,control$trace)
+      if(fmM$logl>fmM.out$logl) fmM.out <- fmM
+    }
+  if(control$em_calculate_hessian){
+    var <- 0
+    t.pi <- additive_logistic(fmM.out$pi,TRUE)
+    parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef),fmM.out$sp.intercept,rep(1,S))##unlist(fmM.out$sp.intercept))
+    first.fit <- list(y=data[,1],x=stats::model.matrix(sp.form,data=data)[,-1])
+    fun_est_var <- function(x){-logLmix_nbinom(x,first.fit,G,S,sp,sp.name)}
+    deriv <- numDeriv::jacobian(fun_est_var,parms)
+    var <- solve(numDeriv::hessian(fun_est_var, parms))
+    colnames( var) <- rownames( var) <- names( parms)
+    fmM.out$covar <- var
+  }
+  if(control$residuals) fmM.out$residuals <- mix.residuals(fmM.out,sp.form,data,sp)
+  fmM.out$formula <- sp.form
+
+  fmM.out
+}
+
+"species_mix_nbinom" <-  function (sp.form,sp.data,covar.data,G=2, pars=NA, control){
+  t.covar.data <- covar.data
+  t.sp.data <- sp.data
+  sp.form <- update.formula(sp.form,obs~1+.)
+  if(control$em_prefit | G==1){
+    prefit <- species_mix_em_nbinom(sp.form,sp.data,covar.data,G,control)
+    pars <- prefit$pars#c(additive_logistic(prefit$pi,TRUE)[1:(G-1)],unlist(prefit$coef))
+  }
+  S <- dim(sp.data)[2]
+  if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
+  n <- dim(sp.data)[1]
+  sp <- rep(sp.name,each=n)
+  if(G==1) return(prefit)
+  var.names <- colnames(covar.data)
+  covar.data <- data.frame(kronecker( rep( 1, S), as.matrix(covar.data)))
+  names(covar.data) <- var.names
+  sp.data <- as.data.frame(sp.data)
+  data <- data.frame(obs=as.numeric(unlist(sp.data)),covar.data)
+  names(data)[1] <- as.character(sp.form)[2]
+  sp.form <- update.formula(sp.form,obs~-1+.)
+  fmM.out <- fitmix_nbinom.cpp(sp.form,data,sp,G,pars=pars,control)
+  rownames(fmM.out$tau) <- sp.name ## add names to taus
+  fmM.out$se <- NA
+  if(control$calculate_hessian_cpp){
+    fmM.out$covar <- try(solve(fmM.out$hessian))
+    if(class(fmM.out$covar)!="try-error"){
+      tmp <- sqrt(diag(fmM.out$covar))
+      tmp <- tmp[-1*(1:((G-1)))]
+      tmp <- tmp[-1*((length(tmp)-(2*S-1)):length(tmp))]
+      fmM.out$se <- matrix(tmp,G,ncol(fmM.out$coef))
+      colnames(fmM.out$se) <- colnames(fmM.out$coef)
+      rownames(fmM.out$se) <- rownames(fmM.out$coef)
+    }
+  }
+  if(control$residuals) fmM.out$residuals <- mix.residuals(fmM.out,sp.form,data,sp)
+  fmM.out$formula <- sp.form
+  class(fmM.out) <- c("species_mix","negbin")
+  fmM.out
+}
 
 "weighted_glm_nbinom" <-  function (g,first.fit,tau,n,fmM,sp){
   dat.tau <- rep(tau[,g],each=n)
@@ -3497,19 +2930,6 @@
   f.mix <- fishMod::tglm(stats::as.formula(form),data=datsp,wts=dat.tau,vcov=FALSE,residuals=FALSE,trace=0)
   sp.int <- rep(f.mix$coef[1],dim(tau)[1])
   return(list(coef=f.mix$coef[c(-1,-(length(f.mix$coef)-1),-(length(f.mix$coef)))],phi=f.mix$coef["phi"],p=f.mix$coef["p"],sp.intercept=sp.int))
-}
-
-
-"weighted_glm_tweedie" <-  function (g, first.fit, tau, n, fmM, sp, control){
-  dat.tau <- rep(tau[, g], each = n)
-  sp.int.offset <- rep(fmM[[g]]$sp.intercept, each = n)+first.fit$offset
-  sp.name <- unique(sp)
-  X <- first.fit$x
-  f.mix <- fishMod::tglm.fit(x = X, y = first.fit$y, wts = dat.tau,
-                    offset = sp.int.offset, control=control, inits = fmM[[g]]$coef, phi = fmM[[g]]$phi,
-                    p = 1.6)
-  return(list(coef = f.mix$coef, phi = fmM[[g]]$phi, p = 1.6,
-              sp.intercept = fmM[[g]]$sp.intercept, fitted = f.mix$fitted))
 }
 
 "create_starting_values_tweedie" <- function (S,G,n,form,datsp,control){
@@ -3586,8 +3006,393 @@
   return(list(pi = pi, fmM = fmM, tau = tau, first.fit = first.fit))
 }
 
+"estimate_pi_tweedie" <- function (j, sp, spname, datsp, fmM, pi, G, first.fit){
+  tmp.like <- rep(0, G)
+  tau <- rep(0, G)
+  sel.sp <- which(sp == spname[j])
+  for (i in 1:G) {
+    lpre <- dTweedie(first.fit$y[sel.sp], mu = fmM[[i]]$fitted[sel.sp],
+                     phi = fmM[[i]]$phi, p = fmM[[i]]$p, LOG = TRUE)
+    tmp.like[i] <- sum(lpre)
+  }
+  eps <- max(tmp.like)
+  sum.like <- (log(sum(pi * exp((tmp.like) - (eps)))) + (eps))
+  for (i in 1:G) {
+    tau[i] <- exp((log(pi[i]) + tmp.like[i]) - sum.like)
+  }
+  return(list(tau = tau, sum.like = sum.like))
+}
+
+
+
+"fitmix_tweedie" <-  function (form, datsp, sp, G = 2, control){
+  temp.warn <- getOption("warn")
+  options(warn = -1)
+  sp.name <- unique(sp)
+  S <- length(unique(sp))
+  n <- length(which(sp == sp.name[1]))
+  cat("Fitting Group", G, "\n")
+  if (trace)
+    cat("Iteration | LogL \n")
+  dat.tau <- 0
+  pi <- rep(0, G)
+  ite <- 1
+  logL <- -99999999
+  old.logL <- -88888888
+  if (ite != 1)
+    t1 <- create_starting_values_tweedie(S, G, n, form, datsp)
+  t1 <- create_starting_values_tweedie_kmeans(S, G, n, form,
+                                              datsp)
+  pi <- t1$pi
+  fmM <- t1$fmM
+  tau <- t1$tau
+  dat.tau <- t1$dat.tau
+  first.fit <- t1$first.fit
+  while (abs(logL - old.logL) > 1e-04 & ite <= maxit) {
+    old.logL <- logL
+    for (i in 1:G) {
+      pi[i] <- sum(tau[, i])/S
+    }
+    if (any(pi == 0)) {
+      cat("pi has gone to zero - restarting fitting \n")
+      t1 <- create_starting_values_tweedie(S, G, n, form,
+                                           datsp)
+      pi <- t1$pi
+      fmM <- t1$fmM
+      tau <- t1$tau
+      dat.tau <- t1$dat.tau
+      first.fit <- t1$first.fit
+      ite <- 1
+    }
+    fmM <- surveillance::plapply(1:G, weighted_glm_tweedie, first.fit, tau, n, fmM, sp, .parallel=control$cores, .verbose = !control$quiet)
+    for (j in 1:S) {
+      tmp <- rep(0, G)
+      for (g in 1:G) tmp[g] <- fmM[[g]]$sp.intercept[j]
+      tmp <- sum(tmp * tau[j, ])
+      for (g in 1:G) fmM[[g]]$sp.intercept[j] <- tmp
+    }
+    logL <- 0
+    tmp.like <- matrix(0, S, G)
+    est.tau <- surveillance::plapply(1:S, estimate_pi_tweedie, sp, sp.name,
+                                     datsp, fmM, pi, G, first.fit, .parallel=control$cores, .verbose = !control$quiet)
+    for (j in 1:S) {
+      if (is.atomic(est.tau[[j]])) {
+        print(est.tau[[j]])
+      }
+      else {
+        tau[j, ] <- est.tau[[j]]$tau
+        logL <- logL + est.tau[[j]]$sum.like
+      }
+    }
+    if (trace)
+      cat(ite, "     | ", logL, "\n")
+    ite <- ite + 1
+  }
+  fm.out <- data.frame(matrix(0, G, length(fmM[[1]]$coef)))
+  int.out <- fmM[[1]]$sp.intercept
+  names(fm.out) <- names(fmM[[1]]$coef)
+  tau <- data.frame(tau)
+  names(tau) <- paste("grp.", 1:G, sep = "")
+  EN <- -sum(unlist(tau) * log(unlist(tau)))
+  d <- length(unlist(fm.out)) + length(tau) - 1
+  fm.phi <- fm.p <- rep(0, G)
+  for (i in 1:G) {
+    fm.out[i, ] <- fmM[[i]]$coef
+    fm.phi[i] <- fmM[[i]]$phi
+    fm.p[i] <- fmM[[i]]$p
+  }
+  names(pi) <- paste("G", 1:G, sep = ".")
+  t.pi <- additive_logistic(pi, TRUE)
+  parms <- c(t.pi[1:(G - 1)], unlist(fm.out), int.out, rep(2,
+                                                           S))
+  names(parms) <- c(rep("pi", G - 1), rep("coef", length(unlist(fm.out))),
+                    rep("int", length(int.out)), rep("phi", S))
+  logL.full <- logL
+  logL <- logLmix_tweedie(parms, first.fit, G, S, sp, sp.name)
+  print(logL)
+  options(warn = temp.warn)
+  if (control$em_full_model)
+    return(list(logl = logL, aic = -2 * logL + 2 * d, tau = round(tau,
+                                                                  4), pi = pi, bic = -2 * logL + log(S) * d, ICL = -2 *
+                  logL + log(S) * d + 2 * EN, coef = fm.out, sp.intercept = int.out,
+                phi = fm.phi, p = fm.p, fmM = fmM, model.tau = dat.tau,
+                covar = 0, aic.full = -2 * logL.full + 2 * d, bic.full = -2 *
+                  logL.full + log(S) * d, pars = parms))
+  return(list(logl = logL, aic = -2 * logL + 2 * d, tau = round(tau,
+                                                                4), pi = pi, bic = -2 * logL + log(S) * d, ICL = -2 *
+                logL + log(S) * d + 2 * EN, coef = fm.out, sp.intercept = int.out,
+              phi = fm.phi, p = fm.p, covar = 0, aic.full = -2 * logL.full +
+                2 * d, bic.full = -2 * logL.full + log(S) * d, pars = parms))
+}
+
+
+"fitmix_tweedie.cpp" <-
+  function (form, datsp, sp, G = 2, pars = NA, trace = TRUE, calc.hes = FALSE)
+  {
+    if (!is.numeric(sp)) {
+      sp <- as.integer(factor(sp))
+    }
+    sp.name <- unique(sp)
+    S <- length(unique(sp))
+    n <- length(which(sp == sp.name[1]))
+    X <- stats::model.matrix(form, data = datsp[sp == sp.name[1], ])
+    offset <- stats::model.frame(form, data = datsp[sp==sp.name[1],])
+    offset <- stats::model.offset(offset)
+    if(is.null(offset)) offset <-  rep(0,n)
+
+    y <- datsp$obs
+    if (is.na(pars[1])) {
+      sp.int <- rep(0.5, S)
+      sp.phi <- rep(1, S)
+      sp.p <- rep(1.6, S)
+      fm <- matrix(rep(0.5, ncol(X) * G), G, ncol(X))
+      pars <- c(rep(0.5, G - 1), unlist(fm), sp.int, sp.phi)
+    }
+    pars.og <- pars
+    pars.og[1] <- pars.og[1] * 0.99
+    gradient <- rep(0, length(pars))
+    tau <- matrix(0, S, G)
+    loglike <- try(.Call("SpeciesMix", pars, y, X, sp, tau, gradient,
+                         offset, as.integer(3),PACKAGE="ecomix"))
+    calc_deriv <- function(p) {
+      gradient <- rep(0, length(pars))
+      ll <- .Call("Calculate_Gradient", p, y, X, sp, tau, gradient,
+                  offset, as.integer(3),PACKAGE="ecomix")
+      return(gradient)
+    }
+    hes <- 0
+    if (calc.hes) {
+      hes <- numDeriv::jacobian(calc_deriv, pars, method = "simple")
+      dim(hes) <- rep(length(pars), 2)
+      dim(hes) <- rep(length(pars), 2)
+    }
+    if (!is.numeric(loglike))
+      loglike <- 0
+    pi <- pars[1:(G - 1)]
+    coef <- pars[-1 * (1:((G - 1)))]
+    sp.int <- coef[(length(coef) - (2 * S - 1)):(length(coef) -
+                                                   S)]
+    sp.dispersion <- coef[(length(coef) - (S - 1)):length(coef)]
+    sp.phi <- sp.dispersion[1:S]
+    sp.p <- rep(1.6, S)
+    fm <- coef[-1 * ((length(coef) - (2 * S - 1)):length(coef))]
+    offset <- stats::model.frame(form, data = datsp)
+    offset <- stats::model.offset(offset)
+    if(is.null(offset)) offset <- rep(0,nrow(datsp))
+
+    names(gradient) <- names(pars) <- c(rep("pi", G - 1), rep("coef",
+                                                              length(unlist(fm))), rep("int", length(sp.int)), rep("phi",
+                                                                                                                   S))
+    r.deriv <- function(p) {
+      logLmix_tweedie(p, list(y = y, x = stats::model.matrix(form,
+                                                             data = datsp)), G, S, sp, sp.name, out.tau = FALSE)
+    }
+    r.logl <- logLmix_tweedie(pars, list(y = y, x = stats::model.matrix(form,
+                                                                        data = datsp),offset=offset), G, S, sp, sp.name, out.tau = TRUE)
+    print(r.logl$logl)
+    pi <- additive_logistic(pi)
+    names(pi) <- paste("G.", 1:G, sep = "")
+    coef <- matrix(fm, G, ncol(X))
+    rownames(coef) <- paste("G.", 1:G, sep = "")
+    colnames(coef) <- colnames(X)
+    AIC <- 2 * loglike + 2 * length(pars)
+    BIC <- 2 * loglike + log(S) * length(pars)
+    list(logl = loglike, pi = pi, coef = coef, sp.intercept = sp.int,
+         phi = sp.phi, p = sp.p, tau = round(exp(r.logl$tau),
+                                             4), aic = AIC, bic = BIC, hessian = hes, gradient = gradient)
+  }
+"ldTweedie.lp" <- function ( parms, y, X.p, offsetty, phi, p, wts=rep( 1, length( y))){
+  mu <- exp( X.p %*% parms[seq_len(ncol(X.p))] + offsetty)
+
+  if( is.null( phi) & is.null( p)){
+    phi <- parms[ncol( X.p) + 1]
+    p <- parms[ncol( X.p) + 2]
+  }
+  if( is.null( phi) & !is.null( p))
+    phi <- parms[ncol( X.p)+1]
+  if( !is.null( phi) & is.null( p))
+    p <- parms[ncol( X.p)+1]
+
+  lambda <- ( mu^( 2-p)) / ( phi*(2-p))
+  alpha <- ( 2-p) / ( p-1)
+  tau <- phi*(p-1)*mu^(p-1)
+  mu.Z <- alpha * tau
+
+  return( -sum( wts * dPoisGam( y, lambda=lambda, mu.Z=mu.Z, alpha=alpha, LOG=TRUE)))
+}
+
+
+"ldTweedie.lp.deriv" <-
+  function ( parms, y, X.p, offsetty, phi, p, wts=rep( 1, length( y)))
+  {
+    mu <- exp( X.p %*% parms[seq_len(ncol( X.p))] + offsetty)
+
+    p.flag <- phi.flag <- FALSE
+    if( is.null( phi) & is.null( p)){
+      p.flag <- phi.flag <- TRUE
+      phi <- parms[ncol( X.p) + 1]
+      p <- parms[ncol( X.p) + 2]
+    }
+    if( is.null( phi) & !is.null( p)){
+      phi <- parms[ncol( X.p)+1]
+      phi.flag <- TRUE
+    }
+    if( !is.null( phi) & is.null( p)){
+      p <- parms[ncol( X.p)+1]
+      p.flag <- TRUE
+    }
+
+    lambda <- ( mu^( 2-p)) / ( phi*(2-p))
+    alpha <- ( 2-p) / ( p-1)
+    tau <- phi*(p-1)*mu^(p-1)
+    mu.Z <- alpha * tau
+
+    dTweedparms <- -wts * dPoisGamDerivs( y, lambda=lambda, mu.Z=mu.Z, alpha=alpha)
+
+    DTweedparmsDmu <- matrix( c( ( mu^(1-p)) / phi, alpha*phi*( ( p-1)^2)*( mu^(p-2)), rep( 0, length( mu))), nrow=3, byrow=TRUE)
+    tmp <- rowSums( dTweedparms * t( DTweedparmsDmu))
+    tmp <- tmp * mu
+    tmp <- apply( X.p, 2, function( x) x*tmp)
+
+    derivs <- colSums( tmp)
+
+    if( phi.flag){
+      DTweedparmsDphi <- matrix( c( -( ( mu^(2-p)) / ( ( phi^2)*(2-p))), alpha*( p-1)*( mu^( p-1)), rep( 0, length( mu))), nrow=3, byrow=TRUE)
+      tmpPhi <- rowSums( dTweedparms * t( DTweedparmsDphi))#vectorised way of doing odd calculation
+      derivs <- c( derivs, sum( tmpPhi))
+      names( derivs)[length( derivs)] <- "phi"
+    }
+    if( p.flag){
+      dalphadp <- -( 1+alpha) / ( p-1)
+      DTweedparmsDp <- matrix( c( lambda*( 1/(2-p) - log( mu)), mu.Z*( dalphadp/alpha + 1/( p-1) + log( mu)), rep( dalphadp, length( y))), nrow=3, byrow=TRUE)
+      tmpP <- rowSums( dTweedparms * t( DTweedparmsDp))
+      derivs <- c( derivs, sum( tmpP))
+      names( derivs)[length( derivs)] <- "p"
+    }
+
+    return( derivs)
+  }
+
+"pTweedie" <-  function ( quant, mu, phi, p){
+  lambda <- ( mu^( 2-p)) / ( phi*(2-p))
+  alpha <- ( 2-p) / ( p-1)
+  tau <- phi*(p-1)*mu^(p-1)
+  mu.Z <- alpha * tau
+  ps <- 0
+  return( ps)
+}
+
+"rTweedie" <- function ( n, mu, phi, p) {
+  lambda <- ( mu^( 2-p)) / ( phi*(2-p))
+  alpha <- ( 2-p) / ( p-1)
+  tau <- phi*(p-1)*mu^(p-1)
+  mu.Z <- alpha * tau
+  rans <- rPoisGam( n, lambda, mu.Z, alpha)
+  return( rans)
+}
+
+"species_mix_em_tweedie" <- function (sp.form,sp.data,covar.data,G=2,control){
+  S <- dim(sp.data)[2]
+  if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
+  n <- dim(sp.data)[1]
+  sp <- rep(sp.name,each=n)
+
+  var.names <- colnames(covar.data)
+  covar.data <- data.frame(kronecker( rep( 1, S), as.matrix(covar.data)))
+  names(covar.data) <- var.names
+  sp.data <- as.data.frame(sp.data)
+  data <- data.frame(obs=unlist(sp.data),covar.data)
+
+  fmM.out <- fitmix_tweedie(sp.form,data,sp,G,maxit,control$trace)
+  if(control$em_refit>1)
+    for(i in 2:control$em_refit){
+      fmM <- fitmix_tweedie(sp.form,data,sp,G,maxit,control$trace)
+      if(fmM$logl>fmM.out$logl) fmM.out <- fmM
+    }
+  # control$em_calculate_hessian <- FALSE
+  if(control$em_calculate_hessian){
+    var <- 0
+    t.pi <- additive_logistic(fmM.out$pi,TRUE)
+    parms <- c(t.pi[1:(G-1)],unlist(fmM.out$coef),unlist(fmM.out$sp.intercept),fmM.out$theta)
+    first.fit <- list(y=data[,1],x=stats::model.matrix(sp.form,data=data)[,-1])
+    fun_est_var <- function(x){-logLmix_tweedie(x,first.fit,G,S,sp,sp.name)}
+    var <- solve(numDeriv::hessian(fun_est_var, parms))
+    colnames( var) <- rownames( var) <- names( parms)
+    fmM.out$covar <- var
+  }
+  if(control$residuals) fmM.out$residuals <- mix.residuals(fmM.out,sp.form,data,sp)
+  fmM.out$formula <- sp.form
+
+  fmM.out
+}
+
+"species_mix_tweedie" <- function (sp.form,sp.data,covar.data,G=2, pars=NA, em_prefit=TRUE,control){
+  t.covar.data <- covar.data
+  t.sp.data <- sp.data
+  sp.form <- update.formula(sp.form,obs~1+.)
+  pars <- NA
+  if(control$em_prefit | G==1){
+    prefit <- species_mix_em_tweedie(sp.form,sp.data,covar.data,G,control)
+    pars <- prefit$pars##pars <- c(additive_logistic(prefit$pi,TRUE)[1:(G-1)],unlist(prefit$coef))
+  }
+  S <- dim(sp.data)[2]
+  if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
+  n <- dim(sp.data)[1]
+  sp <- rep(sp.name,each=n)
+  if(G==1) return(prefit)
+  var.names <- colnames(covar.data)
+  covar.data <- data.frame(kronecker( rep( 1, S), as.matrix(covar.data)))
+  names(covar.data) <- var.names
+  sp.data <- as.data.frame(sp.data)
+  data <- data.frame(obs=as.numeric(unlist(sp.data)),covar.data)
+  names(data)[1] <- as.character(sp.form)[2]
+  sp.form <- update.formula(sp.form,obs~-1+.)
+  fmM.out <- fitmix_tweedie.cpp(sp.form,data,sp,G,pars=pars,calc.hes=control$calculate_hessian)
+  rownames(fmM.out$tau) <- sp.name ## add names to taus
+  fmM.out$se <- NA
+  if(control$calculate_hessian){
+    fmM.out$covar <- try(solve(fmM.out$hessian))
+    if(class(fmM.out$covar)!="try-error"){
+      colnames(fmM.out$covar) <- rownames(fmM.out$covar) <- names(fmM.out$gradient)
+      tmp <- sqrt(diag(fmM.out$covar))
+      tmp <- tmp[-1*(1:((G-1)))]
+      tmp <- tmp[-1*((length(tmp)-(2*S-1)):length(tmp))]
+      fmM.out$se <- matrix(tmp,G,ncol(fmM.out$coef))
+      colnames(fmM.out$se) <- colnames(fmM.out$coef)
+      rownames(fmM.out$se) <- rownames(fmM.out$coef)
+    }
+  }
+  if(control$residuals) fmM.out$residuals <- mix.residuals(fmM.out,sp.form,data,sp)
+  fmM.out$formula <- sp.form
+  class(fmM.out) <- c("species_mix","tweedie")
+  fmM.out
+}
+
+
+
+"weighted_glm_tweedie" <-  function (g, first.fit, tau, n, fmM, sp, control){
+  dat.tau <- rep(tau[, g], each = n)
+  sp.int.offset <- rep(fmM[[g]]$sp.intercept, each = n)+first.fit$offset
+  sp.name <- unique(sp)
+  X <- first.fit$x
+  f.mix <- fishMod::tglm.fit(x = X, y = first.fit$y, wts = dat.tau,
+                             offset = sp.int.offset, control=control, inits = fmM[[g]]$coef, phi = fmM[[g]]$phi,
+                             p = 1.6)
+  return(list(coef = f.mix$coef, phi = fmM[[g]]$phi, p = 1.6,
+              sp.intercept = fmM[[g]]$sp.intercept, fitted = f.mix$fitted))
+}
 
 ##### Gaussian functions #####
+
+"apply_glm_gaussian" <-  function (i,form,datsp,tau,n){
+  dat.tau <- rep(tau[,i],each=n)
+  x <- stats::model.matrix(stats::as.formula(form),data=datsp)
+  y <- datsp$obs
+  environment(form) <- environment()
+  f.mix <- stats::glm(stats::as.formula(form),data=datsp,weights=dat.tau,family="gaussian")
+  sp.int <- rep(f.mix$coef[1],dim(tau)[1])
+  return(list(coef=f.mix$coef[-1],theta=sqrt(f.mix$deviance/f.mix$df.residual),sp.intercept=sp.int))
+}
 
 "create_starting_values_gaussian" <- function (S,G,n,form,datsp,control){
   environment(form) <- environment()
@@ -3602,16 +3407,203 @@
   return(list(pi=pi,fmM=fmM,tau=tau,first.fit=first.fit))
 }
 
-"apply_glm_gaussian" <-  function (i,form,datsp,tau,n){
-  dat.tau <- rep(tau[,i],each=n)
-  x <- stats::model.matrix(stats::as.formula(form),data=datsp)
-  y <- datsp$obs
-  environment(form) <- environment()
-  f.mix <- stats::glm(stats::as.formula(form),data=datsp,weights=dat.tau,family="gaussian")
-  sp.int <- rep(f.mix$coef[1],dim(tau)[1])
-  return(list(coef=f.mix$coef[-1],theta=sqrt(f.mix$deviance/f.mix$df.residual),sp.intercept=sp.int))
+"estimate_pi_gaussian" <-  function (j,sp,spname,datsp,fmM,pi,G,first.fit){
+
+  tmp.like <- rep(0,G)
+  tau <- rep(0,G)
+  sel.sp <- which(sp==spname[j])
+
+  for(i in 1:G) {
+    lpre <- stats::dnorm(first.fit$y[sel.sp],mean=fmM[[i]]$fitted[sel.sp],sd=1,log=TRUE)
+    tmp.like[i] <- sum(lpre)
+  }
+
+  eps <- max(tmp.like)
+  sum.like <- (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
+  for(i in 1:G) {
+    tau[i] <- exp((log(pi[i]) + tmp.like[i]) - sum.like )
+  }
+  return(list(tau=tau,sum.like=sum.like))
 }
 
+"fitmix_gaussian" <- function (form,datsp,sp,G=2,maxit=500,control){
+  ## fitting abundance data with a negative binomial distribution
+  ## dat2 has colums obs,sp
+  ##
+  temp.warn <- getOption( "warn")
+  options( warn=-1)
+
+  sp.name <- unique(sp)
+  S <- length(unique(sp))
+  n <- length(which(sp==sp.name[1]))
+
+  cat("Fitting Group",G,"\n")
+  if(control$trace==1) cat("Iteration | LogL \n")
+
+  ##dat.tau <- data.frame(matrix(0,dim(datsp)[1],G))
+  dat.tau <- 0
+  ##dat <- data.frame(datsp,dat.tau)
+  pi <- rep(0,G)
+  ite <- 1
+  logL <- -99999999
+  old.logL <- -88888888
+
+  ## set up initial GLM
+  t1 <- create_starting_values_gaussian(S,G,n,form,datsp)
+  pi <- t1$pi;fmM <- t1$fmM;tau <- t1$tau;dat.tau <- t1$dat.tau;first.fit <- t1$first.fit
+
+
+  while(abs(logL-old.logL) > 0.0001 & ite<=maxit){
+    old.logL <- logL
+
+    for(i in 1:G){
+      ##dat.tau[,i] <- rep(tau[,i],each=n)
+      pi[i] <- sum(tau[,i])/S
+    }
+
+    if(any(pi==0)) { ## occasionally with complicated models the random starting values result in a pi[i]==0; so restart with new random starts
+      cat("pi has gone to zero - restarting fitting \n")
+      t1 <- create_starting_values_gaussian(S,G,n,form,datsp)
+      pi <- t1$pi;fmM <- t1$fmM;tau <- t1$tau;dat.tau <- t1$dat.tau;first.fit <- t1$first.fit
+      ite <- 1
+    }
+
+    fmM <- surveillance::plapply(1:G,weighted_glm_gaussian,first.fit,tau,n,fmM,sp,.parallel=cores, .verbose = !control$quiet)
+
+
+    logL <- 0
+    tmp.like <- matrix(0,S,G)
+
+    est.tau <- surveillance::plapply(1:S,estimate_pi_gaussian,sp,sp.name,datsp,fmM,pi,G,first.fit, .parallel=control$cores, .verbose = !control$quiet)
+
+    for(j in 1:S){
+      if(is.atomic(est.tau[[j]])){ print (est.tau[[j]])} else
+      {
+        tau[j,] <- est.tau[[j]]$tau
+        logL <- logL+est.tau[[j]]$sum.like
+      }
+    }
+
+    if(control$trace==1) cat(ite,"     | ",logL,"\n")
+    ite <- ite+1
+  }
+  fm.out <- data.frame(matrix(0,G,length(fmM[[1]]$coef)))
+  int.out <- data.frame(matrix(0,S,G))
+  names(int.out) <- paste("grp.",1:G,sep="")
+  names(fm.out) <- names(fmM[[1]]$coef)
+  tau <- data.frame(tau)
+  names(tau) <- paste("grp.",1:G,sep="")
+  EN <- -sum(unlist(tau)*log(unlist(tau)))
+  d <- length(unlist(fm.out)) + length(tau)-1
+  fm.theta <- rep(0,G)
+  for(i in 1:G) {
+    fm.out[i,] <- fmM[[i]]$coef
+    int.out[,i] <- fmM[[i]]$sp.intercept
+    ##dat.tau[,i] <- rep(tau[,i],each=n)
+    fm.theta[i] <- fmM[[i]]$theta
+  }
+
+  names(pi) <- paste("G",1:G,sep=".")
+  t.pi <- additive_logistic(pi,TRUE)
+  parms <- c(t.pi[1:(G-1)],fm.theta,unlist(fm.out),unlist(int.out))
+  logL.full <- logL
+  logL <- logLmix_gaussian(parms,first.fit,G,S,sp,sp.name)
+
+  options(warn=temp.warn)
+  if(control$em_full_model)  return(list(logl=logL,aic = -2*logL + 2*d,tau=round(tau,4),pi=pi,bic=-2*logL + log(S)*d,ICL= -2*logL + log(S)*d +2*EN,coef=fm.out,sp.intercept=int.out,theta=fm.theta,fmM=fmM,model.tau=dat.tau,covar=0,aic.full= -2*logL.full + 2*d,bic.full= -2*logL.full + log(S)*d))
+
+  return(list(logl=logL,aic = -2*logL + 2*d,tau=round(tau,4),pi=pi,bic=-2*logL + log(S)*d,ICL= -2*logL + log(S)*d +2*EN,coef=fm.out,sp.intercept=int.out,theta=fm.theta,covar=0,aic.full= -2*logL.full + 2*d,bic.full= -2*logL.full + log(S)*d))
+
+}
+
+"logLmix_gaussian" <-
+  function (pars,first.fit,G,S,sp,spname,out.tau=FALSE)
+  {
+    tau <- matrix(0,S,G)
+    ##tau,out.tau=FALSE
+    if(G>1){
+      fm <- pars[-1*(1:((G-1)+G))]  ## remove pi
+      sp.int <- fm[(length(fm)-(S*G-1)):length(fm)]
+      fm <- fm[-1*((length(fm)-(S*G-1)):length(fm))]
+      pi <- pars[(1:(G-1))]
+      theta <- pars[G:(G+G-1)]
+
+      ##    fm <- tau[-1*((length(tau)-(G-2)):length(tau))]
+      #pi <- tau[((length(tau)-(G-2)):length(tau))]
+      dim(sp.int) <- c(S,G)
+      dim(fm) <- c(G,length(fm)/G)
+      ##pi[G] <- 1-sum(pi)
+      pi <- additive_logistic(pi)
+
+    } else{
+      return(0)
+      fm <- tau[1:(length(pars)-1)]
+      dim(fm) <- c(1,length(fm))
+      pi <- 1
+    }
+
+
+
+    log.like <- 0
+    for(j in 1:S){
+      sel.sp <- which(sp==spname[j])
+      tmp.like <- rep(0,G)
+      for(i in 1:G){
+        lpre <- cbind(1,first.fit$x[sel.sp,])%*%c(sp.int[j,i],fm[i,])
+        ##tmp.like[i] <- sum(dpois(first.fit$y[sel.sp],exp(lpre),log=TRUE))
+        tmp.like[i] <- sum(stats::dnorm(first.fit$y[sel.sp],mean=lpre,sd=theta[i],log=TRUE))
+        eps <- max(tmp.like)
+        log.like <- log.like +  (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
+        tau[j,] <- log(pi) + tmp.like - (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
+      }
+    }
+    if(out.tau)return(list(logl=log.like,tau=tau))
+    log.like
+  }
+
+"species_mix_em_gaussian" <- function (sp.form,sp.data,covar.data,G=2,control){
+  S <- dim(sp.data)[2]
+  if(is.null(colnames(sp.data))){sp.name <- 1:S} else {sp.name <- colnames(sp.data)}
+  n <- dim(sp.data)[1]
+  sp <- rep(sp.name,each=n)
+
+  var.names <- colnames(covar.data)
+  covar.data <- data.frame(kronecker( rep( 1, S), as.matrix(covar.data)))
+  names(covar.data) <- var.names
+  sp.data <- as.data.frame(sp.data)
+  data <- data.frame(obs=unlist(sp.data),covar.data)
+
+  fmM.out <- fitmix_gaussian(sp.form,data,sp,G,control$maxit,control$trace)
+  if(control$em_refit>1)
+    for(i in 2:control$em_refit){
+      fmM <- fitmix_gaussian(sp.form,data,sp,G,control$maxit,control$trace)
+      if(fmM$logl>fmM.out$logl) fmM.out <- fmM
+    }
+  if(control$em_calculate_hessian){
+    var <- 0
+    t.pi <- additive_logistic(fmM.out$pi,TRUE)
+    parms <- c(t.pi[1:(G-1)],fmM.out$theta,unlist(fmM.out$coef),unlist(fmM.out$sp.intercept))
+    first.fit <- list(y=data[,1],x=stats::model.matrix(sp.form,data=data)[,-1])
+    fun_est_var <- function(x){-logLmix_gaussian(x,first.fit,G,S,sp,sp.name)}
+    var <- solve(numDeriv::hessian(fun_est_var, parms))
+    colnames( var) <- rownames( var) <- names( parms)
+    fmM.out$covar <- var
+  }
+  # residuals <- FALSE
+  if(control$residuals) fmM.out$residuals <- mix.residuals(fmM.out,sp.form,data,sp)
+  fmM.out$formula <- sp.form
+
+  fmM.out
+}
+
+"species_mix_gaussian" <- function (sp.form,sp.data,covar.data,G=2, pars=NA, control){
+  t.covar.data <- covar.data
+  t.sp.data <- sp.data
+  sp.form <- update.formula(sp.form,obs~1+.)
+  control$em_steps=100
+  prefit <- species_mix_em_gaussian(sp.form,sp.data,covar.data,G,control)
+  return(prefit)
+}
 "weighted_glm_gaussian" <-  function (g,first.fit,tau,n,fmM,sp){
   dat.tau <- rep(tau[,g],each=n)
   sp.name <- unique(sp)
