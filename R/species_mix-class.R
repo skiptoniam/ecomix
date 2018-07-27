@@ -230,7 +230,7 @@
   # get_starting_values_sam() which will generate starting values based on EM or clustering of coefs.
   # sam_optimise() which will fit the model in cpp
 
-  starting_values <- get_start_vals_sam(y, X, offset, weights, disty, G, S,  y_is_na, control)
+  starting_values <- get_start_vals_sam(y, X, offset, weights, distribution_numeric, G, S,  y_is_na, control)
 
   spp_wts <- starting_values$spp_wts
   site_spp_wts <- starting_values$site_spp_wts
@@ -779,10 +779,26 @@
 
 ###### SAM internal functions #####
 
-"lambda_penalisation_fun" <- function(x,kappa=0.1){
-  res <- min(x,na.rm = TRUE)+kappa*(max(x,na.rm = TRUE)-min(x,na.rm = TRUE))
-  res
+"get_taus" <- function(pi, logls, G, S){
+  fullLogPis <- matrix(rep(log(pi), each=S), nrow=S, ncol=G)
+  a_k <- fullLogPis + logls
+  a_m <- apply( a_k, 1, max)
+  tmp <- exp( a_k - rep( a_m, times=G))
+  log_denom <- a_m + log( rowSums( tmp))
+  return( exp( a_k - log_denom))
 }
+
+"skrink_taus" <- function( taus, max_tau=0.7, G){
+  if( G==1)
+    return( taus)
+  alpha <- (1-max_tau*G) / ( max_tau*(2-G)-1)
+  tau_star <- ( 2*alpha*taus - alpha + 1 ) / ( 2*alpha - alpha*G + G)
+  return(tau_star)
+}
+# "lambda_penalisation_fun" <- function(x,kappa=0.1){
+#   res <- min(x,na.rm = TRUE)+kappa*(max(x,na.rm = TRUE)-min(x,na.rm = TRUE))
+#   res
+# }
 
 "lambda_penalisation_fun" <- function(x,lambda,kappa=0.1){ #assumes that x spans to pretty-well the unpenalised estiamtes
   min.effective.penalty <- min( which( abs( x-tail( x, 1)) < 0.01 * abs( tail( x, 1))))    #the first that lambda that gives a coef close to the last lambda's corresponding coef
@@ -1105,95 +1121,20 @@
 
 
 
-"create_starting_values_tweedie" <- function (S,G,n,form,datsp,control){
-    environment(form) <- environment()
-    tau <- matrix(stats::runif(S*G),S,G)
-    tau <- (tau/rowSums(tau))
-    fmM <- list()
-    for(i in 1:G){
-      pi[i] <- sum(tau[,i])/S
-    }
-    offset <- stats::model.frame(form,datsp)
-    offset <- stats::model.offset(offset)
-    if(is.null(offset)) offset <- rep(0,length(datsp$obs))
-    fmM <- surveillance::plapply(1:G,apply_glm_tweedie,form,datsp,tau,n,.parallel=control$cores, .verbose = !control$quiet)
-    first.fit <- list(x=stats::model.matrix(stats::as.formula(form),data=datsp)[,-1],y=datsp$obs,formula=form)
-    return(list(pi=pi,fmM=fmM,tau=tau,first.fit=first.fit))
-  }
-
-"create_starting_values_tweedie_kmeans" <- function(S, G, n, form, datsp, tol = 0.1, control){
-    MM <- stats::model.matrix(form, datsp)
-    offset <- stats::model.frame(form,datsp)
-    offset <- stats::model.offset(offset)
-    if(is.null(offset)) offset <- rep(0,nrow(MM))
-    first.fit <- list(x = stats::model.matrix(stats::as.formula(form), data = datsp)[,
-      -1], y = datsp$obs, offset=offset,formula = form)
-    if(class(first.fit$x)=="numeric") {first.fit$x <- matrix(first.fit$x,length(first.fit$x),1) }#deal with model matrix returning a vector for covar == 1
-    if (tol < 0 || tol >= 1)
-      stop("Minimum Prevalence % must be between 0 and 1")
-    sp.name <- 1:S
-    sp <- rep(sp.name, each = n)
-    starting.fitem <- list(intercepts = rep(0, S), alpha = rep(0,
-      S))
-    all.betas <- matrix(0, nrow = S, ncol = ncol(MM))
-    colnames(all.betas) <- colnames(MM)
-    for (j in 1:S) {
-      fit <- fishMod::tglm(form, datsp[((j - 1) * n):(j * n - 1), ],
-        vcov = FALSE, trace = 0, p = 1.6, control)
-      starting.fitem$sp.intercepts[j] <- fit$coef[1]
-      all.betas[j, ] <- fit$coef[-length(fit$coef)]
-      starting.fitem$phi[j] = fit$coef["phi"]
-    }
-    all.betas[, 1] <- 0
-    cat("Clustering...\n")
-    fmmvnorm <- stats::kmeans(x = all.betas, centers = G, iter.max = 100,
-      nstart = 50)
-    starting.fitem$coef <- fmmvnorm$centers
-    fmM <- list()
-    for (i in 1:G) {
-      B <- matrix(rep(fmmvnorm$centers[i, ], nrow(datsp)),
-        nrow(datsp), ncol(fmmvnorm$centers), byrow = TRUE)
-      B[, 1] <- rep(starting.fitem$sp.intercepts, each = n)
-      fitted <- exp(rowSums(MM * B)+offset)
-      fmM[[i]] <- list(coef = fmmvnorm$centers[i, 2:ncol(fmmvnorm$centers)],
-        phi = mean(starting.fitem$phi[fmmvnorm$cluster ==
-            i]), p = 1.6, sp.intercept = starting.fitem$sp.intercepts,
-        fitted = fitted)
-    }
-    tau <- matrix(0, S, G)
-    pi <- rep(1/G, G)
-    pi <- stats::runif(G, 0.2, 0.8)
-    pi <- pi/sum(pi)
-    est.tau <- surveillance::plapply(1:S, estimate_pi_tweedie, sp, sp.name,
-      datsp, fmM, pi, G, first.fit,.parallel=control$cores, .verbose = !control$quiet)
-    max.newTau <- 0.8
-    alpha <- (1 - max.newTau * G)/(max.newTau * (2 - G) - 1)
-    for (j in 1:S) {
-      newTau <- (2 * alpha * est.tau[[j]]$tau - alpha + 1)/(2 *
-          alpha - alpha * G + G)
-      tau[j, ] <- newTau
-    }
-    for (i in 1:G) {
-      pi[i] <- sum(tau[, i])/S
-    }
-    return(list(pi = pi, fmM = fmM, tau = tau, first.fit = first.fit))
-  }
-
-
-"distr.binom" <- function( p){
-    nobs <- length( p)
-    new.dist <- old.dist <- rep( 0, nobs+1)
-    old.dist[1] <- 1-p[1]
-    old.dist[2] <- p[1]
-    for( ii in 2:nobs){
-      new.dist[1] <- old.dist[1]*(1-p[ii])
-      for( jj in 2:ii)
-        new.dist[jj] <- old.dist[jj-1]*p[ii] + old.dist[jj]*(1-p[ii])
-      new.dist[ii+1] <- old.dist[ii]*p[ii]
-      old.dist <- new.dist
-    }
-    return( new.dist)
-  }
+# "distr.binom" <- function( p){
+#     nobs <- length( p)
+#     new.dist <- old.dist <- rep( 0, nobs+1)
+#     old.dist[1] <- 1-p[1]
+#     old.dist[2] <- p[1]
+#     for( ii in 2:nobs){
+#       new.dist[1] <- old.dist[1]*(1-p[ii])
+#       for( jj in 2:ii)
+#         new.dist[jj] <- old.dist[jj-1]*p[ii] + old.dist[jj]*(1-p[ii])
+#       new.dist[ii+1] <- old.dist[ii]*p[ii]
+#       old.dist <- new.dist
+#     }
+#     return( new.dist)
+#   }
 
 
 # "dPoisGam" <- function ( y, lambda, mu.Z, alpha, LOG=TRUE){
@@ -1227,59 +1168,59 @@
 #   }
 
 
-"dPoisGamDerivs" <- function ( y=NULL, lambda=NULL, mu.Z=NULL, alpha=NULL, do.checks=TRUE){
-    #function to calculate Random sum (Tweedie) densities.
-    #y is the value of the r.v.  Can be a vector
-    #mu.N is the mean of the Poisson summing r.v. Can be a vector of length(y)
-    #mu.Z is the mean of the Gamma rv Can be a vector of length(y)
-    #alpha is the `other' parameter of the gamma distribution s.t. var = ( mu.Z^2)/alpha Can be a vector of length(y)
-    #If mu.N, mu.Z or alpha are scalare but y isn't then they will be used for all y. If lengths mis-match then error
-    #LOG=TRUE gives the density on the log scale
-    #do.checks=TRUE checks the input vectors for compatability and gives errors / changes them as appropriate.
-    #do.checks=FALSE doesn't check and relies on the user to have things right. If not right then catastrophic failure may occur.
+# "dPoisGamDerivs" <- function ( y=NULL, lambda=NULL, mu.Z=NULL, alpha=NULL, do.checks=TRUE){
+#     #function to calculate Random sum (Tweedie) densities.
+#     #y is the value of the r.v.  Can be a vector
+#     #mu.N is the mean of the Poisson summing r.v. Can be a vector of length(y)
+#     #mu.Z is the mean of the Gamma rv Can be a vector of length(y)
+#     #alpha is the `other' parameter of the gamma distribution s.t. var = ( mu.Z^2)/alpha Can be a vector of length(y)
+#     #If mu.N, mu.Z or alpha are scalare but y isn't then they will be used for all y. If lengths mis-match then error
+#     #LOG=TRUE gives the density on the log scale
+#     #do.checks=TRUE checks the input vectors for compatability and gives errors / changes them as appropriate.
+#     #do.checks=FALSE doesn't check and relies on the user to have things right. If not right then catastrophic failure may occur.
+#
+#     mu.N <- lambda
+#     if( do.checks){
+#       if( any( is.null( c( y, mu.N, mu.Z, alpha)))){
+#         print( "Error: null input values -- please check.  Null values are:")
+#         tmp <- double( is.null( c( y, mu.N, mu.Z, alpha)))
+#         names( tmp) <- c( "y", "mu.N","mu.Z","alpha")
+#         print( tmp)
+#         print( "Exitting")
+#         return()
+#       }
+#
+#       if( !all( is.element( c( length( mu.N), length( mu.Z), length( alpha)), c( length( y), 1)))){
+#         print( "Error: length of parameter vectors does not match length of random variable vector")
+#         print( "Exitting")
+#       }
+#
+#       if( length( mu.N) != length( y))
+#         mu.N <- rep( mu.N, length( y))
+#       if( length( mu.Z) != length( y))
+#         mu.Z <- rep( mu.Z, length( y))
+#       if( length( alpha) != length( y))
+#         alpha <- rep( alpha, length( y))
+#     }
+#
+#     res <- .Call( "dTweedieDeriv", as.numeric( y), as.numeric( mu.N), as.numeric( mu.Z), as.numeric( alpha),PACKAGE="ecomix")
+#     colnames( res) <- c("lambda","mu.Z","alpha")
+#     return( res)
+#
+#   }
 
-    mu.N <- lambda
-    if( do.checks){
-      if( any( is.null( c( y, mu.N, mu.Z, alpha)))){
-        print( "Error: null input values -- please check.  Null values are:")
-        tmp <- double( is.null( c( y, mu.N, mu.Z, alpha)))
-        names( tmp) <- c( "y", "mu.N","mu.Z","alpha")
-        print( tmp)
-        print( "Exitting")
-        return()
-      }
-
-      if( !all( is.element( c( length( mu.N), length( mu.Z), length( alpha)), c( length( y), 1)))){
-        print( "Error: length of parameter vectors does not match length of random variable vector")
-        print( "Exitting")
-      }
-
-      if( length( mu.N) != length( y))
-        mu.N <- rep( mu.N, length( y))
-      if( length( mu.Z) != length( y))
-        mu.Z <- rep( mu.Z, length( y))
-      if( length( alpha) != length( y))
-        alpha <- rep( alpha, length( y))
-    }
-
-    res <- .Call( "dTweedieDeriv", as.numeric( y), as.numeric( mu.N), as.numeric( mu.Z), as.numeric( alpha),PACKAGE="ecomix")
-    colnames( res) <- c("lambda","mu.Z","alpha")
-    return( res)
-
-  }
-
-
-"dTweedie" <- function ( y, mu, phi, p, LOG=TRUE){
-    lambda <- ( mu^( 2-p)) / ( phi*(2-p))
-    alpha <- ( 2-p) / ( p-1)
-    tau <- phi*(p-1)*mu^(p-1)
-    mu.Z <- alpha * tau
-
-    dens <- dPoisGam( y, lambda, mu.Z, alpha, LOG)
-
-    return( dens)
-
-  }
+#
+# "dTweedie" <- function ( y, mu, phi, p, LOG=TRUE){
+#     lambda <- ( mu^( 2-p)) / ( phi*(2-p))
+#     alpha <- ( 2-p) / ( p-1)
+#     tau <- phi*(p-1)*mu^(p-1)
+#     mu.Z <- alpha * tau
+#
+#     dens <- dPoisGam( y, lambda, mu.Z, alpha, LOG)
+#
+#     return( dens)
+#
+#   }
 
 
 # "estimate_pi" <- function (j,sp,spname,datsp,fmM,pi,G,first.fit){
@@ -2170,184 +2111,131 @@
     log.like
   }
 
+# "logLmix_poisson" <- function (pars, first_fit, G){# keep weights and offsets in first fit, weights, offsets, out_tau=FALSE){
+#   S <- ncol(first_fit$y)
+#   tau <- matrix(0,S,G)
+#   if(G>1){
+#
+#     # remove pi
+#     fm <- pars[-1*(1:((G-1)))]  ## remove pi
+#
+#     # get species intercepts
+#     sp_int <- fm[(length(fm)-(S-1)):(length(fm))]
+#
+#     # get mixture parameters
+#     fm <- fm[-1*(length(fm)-(S-1)):(length(fm))]
+#
+#     # get pi's
+#     pi <- pars[(1:(G-1))]
+#
+#     # re-structure vector to matrix
+#     dim(fm) <- c(G,length(fm)/G)
+#
+#     # re calculate pi's
+#     pi <- additive_logistic(pi)
+#
+#   } else{
+#     return(0)
+#     fm <- tau[1:(length(pars)-1)]
+#     dim(fm) <- c(1,length(fm))
+#     pi <- 1
+#   }
+#
+#   log_like <- 0
+#   S <- ncol(first_fit$y)
+#
+#   for(j in 1:S){
+#     tmp_like <- rep(0,G)
+#     for(i in 1:G){
+#       lpre <- first_fit$x%*%c(sp_int[j],fm[i,])+first_fit$offset
+#       tmp_like[i] <- sum(dpois(first_fit$y[,j],lambda=exp(lpre),log=TRUE)*first_fit$weights[,j])
+#     }
+#       eps <- max(tmp_like)
+#       log_like <- log_like + (log(sum(pi*exp((tmp_like)-(eps))))+(eps))
+#       tau[j,] <- log(pi) + tmp_like - (log(sum(pi*exp((tmp_like)-(eps))))+(eps))
+#     }
+#   log_like
+# }
 
-"logLmix_nbinom" <-
-  function (pars,first.fit,G,S,sp,spname,out.tau=FALSE)
-  {
-    tau <- matrix(0,S,G)
-    ##tau,out.tau=FALSE
-    if(G>1){
-      fm <- pars[-1*(1:((G-1)))]  ## remove pi
-      ##sp.int <- fm[(length(fm)-(S*G-1)):length(fm)]
-      sp.int <- fm[(length(fm)-(2*S-1)):(length(fm)-S)]
-      sp.dispersion <- fm[(length(fm)-(S-1)):length(fm)]
-
-      ##fm <- fm[-1*((length(fm)-(S*G-1)):length(fm))]
-      fm <- fm[-1*((length(fm)-(2*S-1)):length(fm))]
-      pi <- pars[(1:(G-1))]
-      theta <- pars[G:(G+G-1)]
-
-      ##    fm <- tau[-1*((length(tau)-(G-2)):length(tau))]
-      #pi <- tau[((length(tau)-(G-2)):length(tau))]
-      ##dim(sp.int) <- c(S,G)
-      dim(fm) <- c(G,length(fm)/G)
-
-      ##pi[G] <- 1-sum(pi)
-      pi <- additive_logistic(pi)
-
-    } else{
-      return(0)
-      fm <- tau[1:(length(pars)-1)]
-      dim(fm) <- c(1,length(fm))
-      pi <- 1
-    }
-
-
-
-    log.like <- 0
-    for(j in 1:S){
-      sel.sp <- which(sp==spname[j])
-      tmp.like <- rep(0,G)
-      for(i in 1:G){
-        lpre <- cbind(1,first.fit$x[sel.sp,])%*%c(sp.int[j],fm[i,])+first.fit$offset[sel.sp]##,i],fm[i,])
-        ##tmp.like[i] <- sum(dpois(first.fit$y[sel.sp],exp(lpre),log=TRUE))
-        tmp.like[i] <- sum(stats::dnbinom(first.fit$y[sel.sp],mu=exp(lpre),size=sp.dispersion[j],log=TRUE))
-      }
-      # print(tmp.like)
-      eps <- max(tmp.like)
-      log.like <- log.like +  (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
-      tau[j,] <- log(pi) + tmp.like - (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
-    }
-
-    if(out.tau)return(list(logl=log.like,tau=tau))
-    log.like
-  }
-
-"logLmix_poisson" <- function (pars, first_fit, G){# keep weights and offsets in first fit, weights, offsets, out_tau=FALSE){
-  S <- ncol(first_fit$y)
-  tau <- matrix(0,S,G)
-  if(G>1){
-
-    # remove pi
-    fm <- pars[-1*(1:((G-1)))]  ## remove pi
-
-    # get species intercepts
-    sp_int <- fm[(length(fm)-(S-1)):(length(fm))]
-
-    # get mixture parameters
-    fm <- fm[-1*(length(fm)-(S-1)):(length(fm))]
-
-    # get pi's
-    pi <- pars[(1:(G-1))]
-
-    # re-structure vector to matrix
-    dim(fm) <- c(G,length(fm)/G)
-
-    # re calculate pi's
-    pi <- additive_logistic(pi)
-
-  } else{
-    return(0)
-    fm <- tau[1:(length(pars)-1)]
-    dim(fm) <- c(1,length(fm))
-    pi <- 1
-  }
-
-  log_like <- 0
-  S <- ncol(first_fit$y)
-
-  for(j in 1:S){
-    tmp_like <- rep(0,G)
-    for(i in 1:G){
-      lpre <- first_fit$x%*%c(sp_int[j],fm[i,])+first_fit$offset
-      tmp_like[i] <- sum(dpois(first_fit$y[,j],lambda=exp(lpre),log=TRUE)*first_fit$weights[,j])
-    }
-      eps <- max(tmp_like)
-      log_like <- log_like + (log(sum(pi*exp((tmp_like)-(eps))))+(eps))
-      tau[j,] <- log(pi) + tmp_like - (log(sum(pi*exp((tmp_like)-(eps))))+(eps))
-    }
-  log_like
-}
-
-"logLmix_tweedie" <-
-  function (pars,first.fit,G,S,sp,spname,out.tau=FALSE)
-  {
-    tau <- matrix(0,S,G)
-    ##tau,out.tau=FALSE
-    if(G>1){
-      pi <- pars[which(names(pars)=="pi")]
-      phi <- pars[which(names(pars)=="phi")]
-      p <- rep(1.6,S)
-      fm <- pars[which(names(pars)=="coef")]
-      sp.int <- pars[which(names(pars)=="int")]
-      ##fm <- pars[-1*(1:((G-1)+G))]  ## remove pi
-      ##sp.int <- fm[(length(fm)-(S*G-1)):length(fm)]
-      ##fm <- fm[-1*((length(fm)-(S*G-1)):length(fm))]
-      ##pi <- pars[(1:(G-1))]
-      ##theta <- pars[G:(G+G-1)]
-
-      ##    fm <- tau[-1*((length(tau)-(G-2)):length(tau))]
-      #pi <- tau[((length(tau)-(G-2)):length(tau))]
-      ##dim(sp.int) <- c(S,G)
-      dim(fm) <- c(G,length(fm)/G)
-      ##pi[G] <- 1-sum(pi)
-      pi <- additive_logistic(pi)
-
-    } else{
-      return(0)
-      fm <- tau[1:(length(pars)-1)]
-      dim(fm) <- c(1,length(fm))
-      pi <- 1
-    }
+# "logLmix_tweedie" <-
+#   function (pars,first.fit,G,S,sp,spname,out.tau=FALSE)
+#   {
+#     tau <- matrix(0,S,G)
+#     ##tau,out.tau=FALSE
+#     if(G>1){
+#       pi <- pars[which(names(pars)=="pi")]
+#       phi <- pars[which(names(pars)=="phi")]
+#       p <- rep(1.6,S)
+#       fm <- pars[which(names(pars)=="coef")]
+#       sp.int <- pars[which(names(pars)=="int")]
+#       ##fm <- pars[-1*(1:((G-1)+G))]  ## remove pi
+#       ##sp.int <- fm[(length(fm)-(S*G-1)):length(fm)]
+#       ##fm <- fm[-1*((length(fm)-(S*G-1)):length(fm))]
+#       ##pi <- pars[(1:(G-1))]
+#       ##theta <- pars[G:(G+G-1)]
+#
+#       ##    fm <- tau[-1*((length(tau)-(G-2)):length(tau))]
+#       #pi <- tau[((length(tau)-(G-2)):length(tau))]
+#       ##dim(sp.int) <- c(S,G)
+#       dim(fm) <- c(G,length(fm)/G)
+#       ##pi[G] <- 1-sum(pi)
+#       pi <- additive_logistic(pi)
+#
+#     } else{
+#       return(0)
+#       fm <- tau[1:(length(pars)-1)]
+#       dim(fm) <- c(1,length(fm))
+#       pi <- 1
+#     }
+#
+#
+#
+#     log.like <- 0
+#     for(j in 1:S){
+#       sel.sp <- which(sp==spname[j])
+#       tmp.like <- rep(0,G)
+#       for(i in 1:G){
+#         lpre <- cbind(1,first.fit$x[sel.sp,])%*%c(sp.int[j],fm[i,])+first.fit$offset[sel.sp]
+#         ##tmp.like[i] <- sum(dpois(first.fit$y[sel.sp],exp(lpre),log=TRUE))
+#         tmp.like[i] <- sum(dTweedie(y=first.fit$y[sel.sp],mu=exp(lpre),phi=phi[j],p=p[j],LOG=TRUE))
+#       }
+#       ##print(tmp.like)
+#       eps <- max(tmp.like)
+#       log.like <- log.like +  (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
+#       tau[j,] <- log(pi) + tmp.like - (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
+#
+#     }
+#     if(out.tau)return(list(logl=log.like,tau=tau))
+#     log.like
+#   }
 
 
-
-    log.like <- 0
-    for(j in 1:S){
-      sel.sp <- which(sp==spname[j])
-      tmp.like <- rep(0,G)
-      for(i in 1:G){
-        lpre <- cbind(1,first.fit$x[sel.sp,])%*%c(sp.int[j],fm[i,])+first.fit$offset[sel.sp]
-        ##tmp.like[i] <- sum(dpois(first.fit$y[sel.sp],exp(lpre),log=TRUE))
-        tmp.like[i] <- sum(dTweedie(y=first.fit$y[sel.sp],mu=exp(lpre),phi=phi[j],p=p[j],LOG=TRUE))
-      }
-      ##print(tmp.like)
-      eps <- max(tmp.like)
-      log.like <- log.like +  (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
-      tau[j,] <- log(pi) + tmp.like - (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
-
-    }
-    if(out.tau)return(list(logl=log.like,tau=tau))
-    log.like
-  }
-
-
-"mix.residuals" <- function (fmM,form,datsp,sp){
-    cat("calculating residuals \n")
-    link.fun <- stats::make.link("logit")
-    x <- stats::model.matrix(form,data=datsp)
-    spname <- unique(sp)
-    S <- length(spname)
-    G <- ncol(fmM$tau)
-
-    PIT <- matrix(NA,S,G)
-    for(g in 1:G){
-      for(s in seq_along(spname)){
-        sel.sp <- which(sp==spname[s])
-        t.obs <- sum(datsp$obs[sel.sp])
-        pre <- link.fun$linkinv(x[sel.sp,]%*%fmM$coef[g,])
-        obs <- datsp$obs[sel.sp]
-        dis <- distr.binom(pre)
-        #      PIT[s,g] <- qnorm(sum(dis[1:(length(dis)-1)],dis[length(dis)]/2))
-        nSucc <- sum( obs)
-        transfo <- sum( dis[1:nSucc],dis[nSucc+1]/2)
-        transfo <- min( transfo, 1)
-        ##transfor <- max( transfo, 0)
-        PIT[s,g] <- qnorm( transfo)
-      }
-    }
-    PIT
-  }
+# "mix.residuals" <- function (fmM,form,datsp,sp){
+#     cat("calculating residuals \n")
+#     link.fun <- stats::make.link("logit")
+#     x <- stats::model.matrix(form,data=datsp)
+#     spname <- unique(sp)
+#     S <- length(spname)
+#     G <- ncol(fmM$tau)
+#
+#     PIT <- matrix(NA,S,G)
+#     for(g in 1:G){
+#       for(s in seq_along(spname)){
+#         sel.sp <- which(sp==spname[s])
+#         t.obs <- sum(datsp$obs[sel.sp])
+#         pre <- link.fun$linkinv(x[sel.sp,]%*%fmM$coef[g,])
+#         obs <- datsp$obs[sel.sp]
+#         dis <- distr.binom(pre)
+#         #      PIT[s,g] <- qnorm(sum(dis[1:(length(dis)-1)],dis[length(dis)]/2))
+#         nSucc <- sum( obs)
+#         transfo <- sum( dis[1:nSucc],dis[nSucc+1]/2)
+#         transfo <- min( transfo, 1)
+#         ##transfor <- max( transfo, 0)
+#         PIT[s,g] <- qnorm( transfo)
+#       }
+#     }
+#     PIT
+#   }
 
 "print.species_mix" <-  function (x,...){
     cat("\nMixing probabilities\n")
@@ -2686,24 +2574,7 @@
     class(fmM.out) <- c("species_mix","tweedie")
     fmM.out
   }
-#### Generic internal functions ####
 
-"get_taus" <- function(pi, logls, G, S){
-  fullLogPis <- matrix(rep(log(pi), each=S), nrow=S, ncol=G)
-  a_k <- fullLogPis + logls
-  a_m <- apply( a_k, 1, max)
-  tmp <- exp( a_k - rep( a_m, times=G))
-  log_denom <- a_m + log( rowSums( tmp))
-  return( exp( a_k - log_denom))
-}
-
-"skrink_taus" <- function( taus, max_tau=0.7, G){
-  if( G==1)
-    return( taus)
-  alpha <- (1-max_tau*G) / ( max_tau*(2-G)-1)
-  tau_star <- ( 2*alpha*taus - alpha + 1 ) / ( 2*alpha - alpha*G + G)
-  return(tau_star)
-}
 
 
 ##### Bernoulli functions #####
@@ -2975,13 +2846,14 @@
     if(!control$quiet)message('You are not using the EM algorith to find starting values; starting values are
                               generated using',control$init_method,'\n')
 
-  starting_values <- get_initial_values_poisson(y = y, X = X, weights = weights,
-                                             offset = offset,
-                                             G = G, S = S,
-                                             control = control)
-  start_vals <- list(alphas=starting_values$fits$alphas,
-                     betas=starting_values$fits$betas,
-                     pis=starting_values$pis)
+    starting_values <- get_initial_values_poisson(y = y, X = X, weights = weights,
+                                               offset = offset,
+                                               G = G, S = S,
+                                               control = control)
+    start_vals <- list(alphas=starting_values$fits$alphas,
+                       betas=starting_values$fits$betas,
+                       pis=starting_values$pis)
+  }
 
   ## all the things we need to c++ optimisation.
   start_vals$eta <- additive_logistic(start_vals$pis,inv = TRUE)[-G]
@@ -3220,36 +3092,6 @@
 
 ###### IPPM functions #######
 
-"get_starting_values_ippm" <- function(y, X, offset, weights, S, G, y_is_na, control){ #try and keep control at the end
-
-          starting_values <- get_initial_values_ippm(y = y, X = X, weights = weights,
-                                                         offset = offset, y_is_na = y_is_na,
-                                                         G = G, S = S,
-                                                         control = control)
-          start_vals <- list(alphas=starting_values$fits$alphas,
-                                 betas=starting_values$fits$betas,
-                                 pis=starting_values$pis)
-
-          ## all the things we need to c++ optimisation.
-          start_vals$eta <- additive_logistic(start_vals$pis,inv = TRUE)[-G]
-          start_vals$disp <- rep(NA,S)
-          start_vals$spp_wts <- rep(1,nrow(y)) # bootstrap weights - not doing anything here.
-          start_vals$site_spp_wts <- weights #ippm weights
-          start_vals$y_is_na <- y_is_na #which data are missing.
-          start_vals$nS <- S
-          start_vals$nG <- G
-          start_vals$nObs <- nrow(y)
-          return(start_vals)
-}
-
-
-# "skrink_taus" <- function( taus, max_tau=0.7, G){
-#   if( G==1)
-#     return( taus)
-#   alpha <- (1-max_tau*G) / ( max_tau*(2-G)-1)
-#   tau_star <- ( 2*alpha*taus - alpha + 1 ) / ( 2*alpha - alpha*G + G)
-#   return(tau_star)
-# }
 
 # "apply_glm_ippm" <- function(i, y, X, weights, offset, y_is_na){
 #   ids_i <- !y_is_na[,i]
@@ -3337,37 +3179,28 @@
 #   return(as.matrix(my_coefs))
 # }
 
+"get_starting_values_ippm" <- function(y, X, offset, weights, S, G, y_is_na, control){ #try and keep control at the end
 
-"initiate_fit_ippm" <- function(y, X, weights, offset, y_is_na, G, S, control){
-  fm_ippm <- surveillance::plapply(1:S,apply_glmnet_ippm, y, X, weights, offset, y_is_na,
-                                   .parallel = control$cores, .verbose = !control$quiet)
-  # fm_ippm <- surveillance::plapply(1:S,apply_glm_ippm, y, X, weights, offset, y_is_na,
-  #                                  .parallel = control$cores, .verbose = !control$quiet)
-  all_coefs <- t(do.call(cbind,fm_ippm)) #be careful with this transformation from glmnet.
-  mix_coefs <- all_coefs[,-1] # drop intercepts
-  if(control$init_method=='kmeans'){
-    if(!control$quiet)message( "Initial groups by K-means clustering\n")
-    tmp1 <- stats::kmeans(mix_coefs, centers=G, nstart=100)
-    tmp_grp <- tmp1$cluster
-    grp_coefs <- apply(mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
-  }
-  if(control$init_method=='hclust'){
-    stop( "EHNT!... IPPM cannot use a hierachial cluster - stick to K-means\n")
-  }
-  if(control$init_method=='random' | is.null(tmp_grp)){
-    if(!control$quiet)message( "Initial groups by random allocation and means from random numbers\n")
-    grp_coefs <- matrix( stats::rnorm(G*ncol(mix_coefs), sd=control$init_sd, mean=0), nrow=G, ncol=ncol(mix_coefs))
-    tmp_grp <- sample(1:G, S, replace=TRUE)
-  }
+  starting_values <- get_initial_values_ippm(y = y, X = X, weights = weights,
+                                             offset = offset, y_is_na = y_is_na,
+                                             G = G, S = S,
+                                             control = control)
+  start_vals <- list(alphas=starting_values$fits$alphas,
+                     betas=starting_values$fits$betas,
+                     pis=starting_values$pis)
 
-  colnames(grp_coefs) <- colnames(X[,-1])
-  results <- list()
-  results$grps <- tmp_grp
-  results$mix_coefs <- grp_coefs
-  results$sp_intercepts <- all_coefs[,1]
-  results$all_coefs <- all_coefs
-  return(results)
+  ## all the things we need to c++ optimisation.
+  start_vals$eta <- additive_logistic(start_vals$pis,inv = TRUE)[-G]
+  start_vals$disp <- rep(NA,S)
+  start_vals$spp_wts <- rep(1,nrow(y)) # bootstrap weights - not doing anything here.
+  start_vals$site_spp_wts <- weights #ippm weights
+  start_vals$y_is_na <- y_is_na #which data are missing.
+  start_vals$nS <- S
+  start_vals$nG <- G
+  start_vals$nObs <- nrow(y)
+  return(start_vals)
 }
+
 
 ## new version with glmnet for regularisation.
 "get_initial_values_ippm" <- function(y, X, weights, offset, y_is_na, G, S, control){
@@ -3425,26 +3258,6 @@
   return(res)
 }
 
-
-"incom_logl_ippm" <- function(x, first_fit, pis, fits, G, S){
-  fits$betas <- matrix(x,nrow=nrow(fits$betas),ncol=ncol(fits$betas))
-  tmp <- get_incomplete_logl_ippm(pis, first_fit, fits, G, S)
-  return(-tmp)
-}
-
-"get_logls_ippm" <- function(first_fit, fits, G, S){
-  logl_sp_ippm <- matrix(NA, nrow=S, ncol=G)
-  for(ss in 1:S){
-    sp_idx<-!first_fit$y_is_na[,ss]
-    for(gg in 1:G){
-      #eta is the same as log_lambda (linear predictor)
-      eta <- first_fit$x[sp_idx,1] * fits$alphas[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$betas[gg,] + first_fit$offset[sp_idx]
-      logl_sp_ippm[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
-    }
-  }
-  return(logl_sp_ippm)
-}
-
 "get_incomplete_logl_ippm" <-  function(pis, first_fit, fits, G, S){
   incomplete.logl <- 0
   logl_sp_ippm <- matrix(NA, nrow=S, ncol=G)
@@ -3464,9 +3277,68 @@
   return( logl)
 }
 
+"get_logls_ippm" <- function(first_fit, fits, G, S){
+  logl_sp_ippm <- matrix(NA, nrow=S, ncol=G)
+  for(ss in 1:S){
+    sp_idx<-!first_fit$y_is_na[,ss]
+    for(gg in 1:G){
+      #eta is the same as log_lambda (linear predictor)
+      eta <- first_fit$x[sp_idx,1] * fits$alphas[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$betas[gg,] + first_fit$offset[sp_idx]
+      logl_sp_ippm[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
+    }
+  }
+  return(logl_sp_ippm)
+}
+
+"incom_logl_ippm" <- function(x, first_fit, pis, fits, G, S){
+  fits$betas <- matrix(x,nrow=nrow(fits$betas),ncol=ncol(fits$betas))
+  tmp <- get_incomplete_logl_ippm(pis, first_fit, fits, G, S)
+  return(-tmp)
+}
+
+"initiate_fit_ippm" <- function(y, X, weights, offset, y_is_na, G, S, control){
+  fm_ippm <- surveillance::plapply(1:S,apply_glmnet_ippm, y, X, weights, offset, y_is_na,
+                                   .parallel = control$cores, .verbose = !control$quiet)
+  # fm_ippm <- surveillance::plapply(1:S,apply_glm_ippm, y, X, weights, offset, y_is_na,
+  #                                  .parallel = control$cores, .verbose = !control$quiet)
+  all_coefs <- t(do.call(cbind,fm_ippm)) #be careful with this transformation from glmnet.
+  mix_coefs <- all_coefs[,-1] # drop intercepts
+  if(control$init_method=='kmeans'){
+    if(!control$quiet)message( "Initial groups by K-means clustering\n")
+    tmp1 <- stats::kmeans(mix_coefs, centers=G, nstart=100)
+    tmp_grp <- tmp1$cluster
+    grp_coefs <- apply(mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
+  }
+  if(control$init_method=='hclust'){
+    stop( "EHNT!... IPPM cannot use a hierachial cluster - stick to K-means\n")
+  }
+  if(control$init_method=='random' | is.null(tmp_grp)){
+    if(!control$quiet)message( "Initial groups by random allocation and means from random numbers\n")
+    grp_coefs <- matrix( stats::rnorm(G*ncol(mix_coefs), sd=control$init_sd, mean=0), nrow=G, ncol=ncol(mix_coefs))
+    tmp_grp <- sample(1:G, S, replace=TRUE)
+  }
+
+  colnames(grp_coefs) <- colnames(X[,-1])
+  results <- list()
+  results$grps <- tmp_grp
+  results$mix_coefs <- grp_coefs
+  results$sp_intercepts <- all_coefs[,1]
+  results$all_coefs <- all_coefs
+  return(results)
+}
+
+
+
 ##### Negative Binomial Functions #####
-
-
+"apply_glm_nbinom" <- function (i,form,datsp,tau,n){
+  dat.tau <- rep(tau[,i],each=n)
+  x <- stats::model.matrix(stats::as.formula(form),data=datsp)
+  y <- datsp$obs
+  environment(form) <- environment()
+  f.mix <- nbglm(stats::as.formula(form),data=datsp,weights=dat.tau)
+  sp.int <- rep(f.mix$coef[1],dim(tau)[1])
+  return(list(coef=f.mix$coef[-1],theta=f.mix$theta,sp.intercept=sp.int))
+}
 
 "create_starting_values_nbinom" <- function (S,G,n,form,datsp,control) {
   environment(form) <- environment()
@@ -3545,15 +3417,58 @@
 }
 
 
-"apply_glm_nbinom" <- function (i,form,datsp,tau,n){
-  dat.tau <- rep(tau[,i],each=n)
-  x <- stats::model.matrix(stats::as.formula(form),data=datsp)
-  y <- datsp$obs
-  environment(form) <- environment()
-  f.mix <- nbglm(stats::as.formula(form),data=datsp,weights=dat.tau)
-  sp.int <- rep(f.mix$coef[1],dim(tau)[1])
-  return(list(coef=f.mix$coef[-1],theta=f.mix$theta,sp.intercept=sp.int))
-}
+"logLmix_nbinom" <-
+  function (pars,first.fit,G,S,sp,spname,out.tau=FALSE)
+  {
+    tau <- matrix(0,S,G)
+    ##tau,out.tau=FALSE
+    if(G>1){
+      fm <- pars[-1*(1:((G-1)))]  ## remove pi
+      ##sp.int <- fm[(length(fm)-(S*G-1)):length(fm)]
+      sp.int <- fm[(length(fm)-(2*S-1)):(length(fm)-S)]
+      sp.dispersion <- fm[(length(fm)-(S-1)):length(fm)]
+
+      ##fm <- fm[-1*((length(fm)-(S*G-1)):length(fm))]
+      fm <- fm[-1*((length(fm)-(2*S-1)):length(fm))]
+      pi <- pars[(1:(G-1))]
+      theta <- pars[G:(G+G-1)]
+
+      ##    fm <- tau[-1*((length(tau)-(G-2)):length(tau))]
+      #pi <- tau[((length(tau)-(G-2)):length(tau))]
+      ##dim(sp.int) <- c(S,G)
+      dim(fm) <- c(G,length(fm)/G)
+
+      ##pi[G] <- 1-sum(pi)
+      pi <- additive_logistic(pi)
+
+    } else{
+      return(0)
+      fm <- tau[1:(length(pars)-1)]
+      dim(fm) <- c(1,length(fm))
+      pi <- 1
+    }
+
+
+
+    log.like <- 0
+    for(j in 1:S){
+      sel.sp <- which(sp==spname[j])
+      tmp.like <- rep(0,G)
+      for(i in 1:G){
+        lpre <- cbind(1,first.fit$x[sel.sp,])%*%c(sp.int[j],fm[i,])+first.fit$offset[sel.sp]##,i],fm[i,])
+        ##tmp.like[i] <- sum(dpois(first.fit$y[sel.sp],exp(lpre),log=TRUE))
+        tmp.like[i] <- sum(stats::dnbinom(first.fit$y[sel.sp],mu=exp(lpre),size=sp.dispersion[j],log=TRUE))
+      }
+      # print(tmp.like)
+      eps <- max(tmp.like)
+      log.like <- log.like +  (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
+      tau[j,] <- log(pi) + tmp.like - (log(sum(pi*exp((tmp.like)-(eps))))+(eps))
+    }
+
+    if(out.tau)return(list(logl=log.like,tau=tau))
+    log.like
+  }
+
 
 "weighted_glm_nbinom" <-  function (g,first.fit,tau,n,fmM,sp){
   dat.tau <- rep(tau[,g],each=n)
@@ -3597,7 +3512,82 @@
               sp.intercept = fmM[[g]]$sp.intercept, fitted = f.mix$fitted))
 }
 
-##### Normal functions #####
+"create_starting_values_tweedie" <- function (S,G,n,form,datsp,control){
+  environment(form) <- environment()
+  tau <- matrix(stats::runif(S*G),S,G)
+  tau <- (tau/rowSums(tau))
+  fmM <- list()
+  for(i in 1:G){
+    pi[i] <- sum(tau[,i])/S
+  }
+  offset <- stats::model.frame(form,datsp)
+  offset <- stats::model.offset(offset)
+  if(is.null(offset)) offset <- rep(0,length(datsp$obs))
+  fmM <- surveillance::plapply(1:G,apply_glm_tweedie,form,datsp,tau,n,.parallel=control$cores, .verbose = !control$quiet)
+  first.fit <- list(x=stats::model.matrix(stats::as.formula(form),data=datsp)[,-1],y=datsp$obs,formula=form)
+  return(list(pi=pi,fmM=fmM,tau=tau,first.fit=first.fit))
+}
+
+"create_starting_values_tweedie_kmeans" <- function(S, G, n, form, datsp, tol = 0.1, control){
+  MM <- stats::model.matrix(form, datsp)
+  offset <- stats::model.frame(form,datsp)
+  offset <- stats::model.offset(offset)
+  if(is.null(offset)) offset <- rep(0,nrow(MM))
+  first.fit <- list(x = stats::model.matrix(stats::as.formula(form), data = datsp)[,
+                                                                                   -1], y = datsp$obs, offset=offset,formula = form)
+  if(class(first.fit$x)=="numeric") {first.fit$x <- matrix(first.fit$x,length(first.fit$x),1) }#deal with model matrix returning a vector for covar == 1
+  if (tol < 0 || tol >= 1)
+    stop("Minimum Prevalence % must be between 0 and 1")
+  sp.name <- 1:S
+  sp <- rep(sp.name, each = n)
+  starting.fitem <- list(intercepts = rep(0, S), alpha = rep(0,
+                                                             S))
+  all.betas <- matrix(0, nrow = S, ncol = ncol(MM))
+  colnames(all.betas) <- colnames(MM)
+  for (j in 1:S) {
+    fit <- fishMod::tglm(form, datsp[((j - 1) * n):(j * n - 1), ],
+                         vcov = FALSE, trace = 0, p = 1.6, control)
+    starting.fitem$sp.intercepts[j] <- fit$coef[1]
+    all.betas[j, ] <- fit$coef[-length(fit$coef)]
+    starting.fitem$phi[j] = fit$coef["phi"]
+  }
+  all.betas[, 1] <- 0
+  cat("Clustering...\n")
+  fmmvnorm <- stats::kmeans(x = all.betas, centers = G, iter.max = 100,
+                            nstart = 50)
+  starting.fitem$coef <- fmmvnorm$centers
+  fmM <- list()
+  for (i in 1:G) {
+    B <- matrix(rep(fmmvnorm$centers[i, ], nrow(datsp)),
+                nrow(datsp), ncol(fmmvnorm$centers), byrow = TRUE)
+    B[, 1] <- rep(starting.fitem$sp.intercepts, each = n)
+    fitted <- exp(rowSums(MM * B)+offset)
+    fmM[[i]] <- list(coef = fmmvnorm$centers[i, 2:ncol(fmmvnorm$centers)],
+                     phi = mean(starting.fitem$phi[fmmvnorm$cluster ==
+                                                     i]), p = 1.6, sp.intercept = starting.fitem$sp.intercepts,
+                     fitted = fitted)
+  }
+  tau <- matrix(0, S, G)
+  pi <- rep(1/G, G)
+  pi <- stats::runif(G, 0.2, 0.8)
+  pi <- pi/sum(pi)
+  est.tau <- surveillance::plapply(1:S, estimate_pi_tweedie, sp, sp.name,
+                                   datsp, fmM, pi, G, first.fit,.parallel=control$cores, .verbose = !control$quiet)
+  max.newTau <- 0.8
+  alpha <- (1 - max.newTau * G)/(max.newTau * (2 - G) - 1)
+  for (j in 1:S) {
+    newTau <- (2 * alpha * est.tau[[j]]$tau - alpha + 1)/(2 *
+                                                            alpha - alpha * G + G)
+    tau[j, ] <- newTau
+  }
+  for (i in 1:G) {
+    pi[i] <- sum(tau[, i])/S
+  }
+  return(list(pi = pi, fmM = fmM, tau = tau, first.fit = first.fit))
+}
+
+
+##### Gaussian functions #####
 
 "create_starting_values_gaussian" <- function (S,G,n,form,datsp,control){
   environment(form) <- environment()
