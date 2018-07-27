@@ -457,7 +457,7 @@
                # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
                as.integer( control$optimise_cpp), as.integer(control$loglOnly_cpp), as.integer( control$derivOnly_cpp), as.integer(control$optiDisp),
                # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
-               PACKAGE = "ecomix.dev")
+               PACKAGE = "ecomix")
 
   ret <- tmp
   ret$logl <- ret$logl * -1
