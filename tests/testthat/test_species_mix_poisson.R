@@ -45,10 +45,9 @@ taus <- skrink_taus(taus, max_tau=1/G + 0.1, G)
 gg <- 1
 testthat::expect_length(ecomix:::apply_glm_poisson_group_tau(gg, y, X, taus),2)
 
-
 # ## now let's try and fit the optimisation
-# tmp <- get_starting_values_poisson(y,X,offset,weights,S,G,control)
-# y_is_na <- is.na(y)
-# res <- ecomix:::sam_optimise(y,X,offset,tmp$spp_wts,tmp$site_spp_wts, y_is_na, tmp$nS, tmp$nG, tmp$nObs, disty=2, start_vals = tmp, control)
-
+tmp <- get_starting_values_poisson(y,X,offset,weights,S,G,control)
+y_is_na <- is.na(y)
+res <- ecomix:::sam_optimise(y,X,offset,tmp$spp_wts,tmp$site_spp_wts, y_is_na, tmp$nS, tmp$nG, tmp$nObs, disty=2, start_vals = tmp, control)
+testthat::expect_length(res,14)
 })
