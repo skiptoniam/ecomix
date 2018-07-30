@@ -58,7 +58,7 @@ testthat::expect_length(tmp,15)
 ## most of the internal functions seem to be working.
 ## now let's test the species_mix function
 sp_form <- ~1
-fmp <- species_mix(sam_form, sp_form, model_data, distribution = 'poisson', n_mixtures=3, control = species_mix.control(quiet=TRUE,calculate_hessian_cpp = FALSE))
+fmp <- species_mix(sam_form, sp_form, model_data, distribution = 'poisson', n_mixtures=4, control = species_mix.control(quiet=TRUE,calculate_hessian_cpp = FALSE))
 testthat::expect_s3_class(fmp, "species_mix")
 testthat::expect_s3_class(fmp, "poisson")
 
