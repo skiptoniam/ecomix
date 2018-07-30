@@ -202,7 +202,7 @@
   tmp <- calc_info_crit_sam(tmp)
 
   #titbits object, if wanted/needed.
-  tmp$titbits <- get_titbits_sam(titbits, y, X, W=NULL, offset, weights, archetype_formula, species_formula, control, disty.cases[disty])
+  tmp$titbits <- get_titbits_sam(titbits, y, X, W=NULL, weights, offset, archetype_formula, species_formula, control, disty.cases[disty])
   class(tmp) <- c("species_mix",distribution)
   return(tmp)
 }
@@ -234,7 +234,7 @@
   # sam_optimise() which will fit the model in cpp
   S <- ncol(y) # how many species are there?
 
-  starting_values <- get_start_vals_sam(y=y, X=X, offset=offset, weights=weights,
+  starting_values <- get_start_vals_sam(y=y, X=X, weights=weights, offset=offset,
                                         disty=distribution_numeric,
                                         G=G, S=S, y_is_na=y_is_na, control=control)
 
@@ -379,7 +379,7 @@
       tmp <- calc_info_crit_sam(tmp)
 
       #titbits object, if wanted/needed.
-      tmp$titbits <- get_titbits_sam(titbits, y, X, W, offset, weights, archetype_formula, species_formula, control, disty.cases[disty])
+      tmp$titbits <- get_titbits_sam(titbits, y, X, W, weights, offset, archetype_formula, species_formula, control, disty.cases[disty])
       # tmp$titbits$disty <- disty
 
       #the last bit of the regional_mix object puzzle
@@ -393,21 +393,21 @@
    return(many_starts)
 }
 
-"get_start_vals_sam" <- function(y, X, offset, weights, disty, G, S, y_is_na, control){
+"get_start_vals_sam" <- function(y, X, weights, offset, disty, G, S, y_is_na, control){
 
   if(!control$quiet)
     print( "Obtaining starting values...")
 
   if(disty==1){
-    tmp <- get_starting_values_bernoulli_sp(y=y, X=X, offset=offset, weights=weights,
+    tmp <- get_starting_values_bernoulli_sp(y=y, X=X, weights=weights, offset=offset,
                                             G=G, S=S, control=control)
   }
   if(disty==2){
-    tmp <- get_starting_values_poisson(y=y, X=X, offset=offset, weights=weights,
+    tmp <- get_starting_values_poisson(y=y, X=X, weights=weights, offset=offset,
                                        G=G, S=S, control=control)
   }
   if(disty==3){
-    tmp <- get_starting_values_ippm(y=y, X=X, offset=offset, weights=weights,
+    tmp <- get_starting_values_ippm(y=y, X=X, weights=weights, offset=offset,
                                     G=G, S=S, y_is_na=y_is_na, control=control)
   }
   if(disty==4){
@@ -447,7 +447,7 @@
   #model quantities
   pis_out <- as.numeric(rep(NA, nG))  #container for the fitted RCP model
   mus <- as.numeric(array( NA, dim=c( nObs, nS, nG)))  #container for the fitted spp model
-  loglikeS <- as.numeric(rep(NA, S))
+  loglikeS <- as.numeric(rep(NA, nS))
   loglikeSG  <- as.numeric(matrix(NA, nrow = nS, ncol = nG))
 
   #c++ call to optimise the model (needs pretty good starting values)
@@ -895,11 +895,11 @@
   return(offset)
 }
 
-"get_titbits_sam" <- function( titbits, y, X, W, offset, weights,
+"get_titbits_sam" <- function( titbits, y, X, W, weights, offset,
                                archetype_formula, species_formula, control,
                                distribution)  {
     if( titbits==TRUE)
-      titbits <- list( Y = y, X = X, W = W, offset = offset, weights=weights,
+      titbits <- list( Y = y, X = X, W = W, weights=weights, offset=offset,
                        archetype_formula =  archetype_formula,
                        species_formula = species_formula,
                        control = control,
@@ -1770,7 +1770,54 @@
 
 ##### Bernoulli functions #####
 
-"get_starting_values_bernoulli_sp" <- function(y, X, offset, weights, S, G, control){
+"apply_glmnet_bernoulli_sp" <- function(ss, y, X, weights, offset){
+  options(warn=-1)
+  lambda.seq <- sort( unique( c(seq( from=1/0.1, to=1, length=10),seq( from=0.1, to=1, length=10))), decreasing=TRUE)
+  tmp.fm <- glmnet::glmnet(y=y[,ss], x=X[,-1], weights=weights,
+                           offset=offset,
+                           family='binomial',
+                           alpha=0, #ridge penalty
+                           lambda=lambda.seq, #the range of penalties, note that only one will be used
+                           standardize=FALSE,  #don't standardize the covariates (they are already standardised)
+                           intercept=TRUE)
+  my.coefs <- apply(glmnet::coef.glmnet(tmp.fm),1,lambda_penalisation_fun, lambda.seq)
+  return(my.coefs)
+}
+
+"apply_glm_bernoulli_sp_tau" <- function (ss, y, X, offset, tau, G, S, fits){
+  Y_sp_tau <- as.matrix(rep(y[,ss],G))
+  X_sp_tau <- do.call(rbind, replicate(G, X, simplify=FALSE))
+  wts_sp_tau <- rep(tau[ss,],each=length(y[,ss]))
+  offy <- rep(offset,G)
+  lambda.seq <- sort( unique( c(seq( from=1/0.1, to=1, length=10),seq( from=0.1, to=1, length=10))), decreasing=TRUE)
+  f_mix <- glmnet::glmnet(x = X_sp_tau[,-1], y = Y_sp_tau, weights = wts_sp_tau,
+                          offset=offy, family='binomial',
+                          alpha=0, #ridge penalty
+                          lambda=lambda.seq, #the range of penalties, note that only one will be used
+                          standardize=FALSE,  #don't standardize the covariates (they are already standardised)
+                          intercept=TRUE)
+  my.coefs <- apply(glmnet::coef.glmnet(f_mix),1,lambda_penalisation_fun)
+  return(sp_coef=my.coefs)
+}
+
+"apply_glm_binomial_group_tau" <- function (gg, y, X, tau){
+
+  ### setup the data stucture for this model.
+  Y_tau <- as.matrix(unlist(as.data.frame(y)))
+  X_no_NA <- list()
+  for (jj in 1:ncol(y)){
+    X_no_NA[[jj]] <- X
+  }
+  X_tau <- do.call(rbind, X_no_NA)
+  n_ys <- sapply(X_no_NA,nrow)
+  wts_tau <- rep(tau[,gg],n_ys)
+
+  ft_mix <- stats::glm.fit(x = X_tau, y = Y_tau, weights = wts_tau, family=stats::binomial())
+  mix_coefs <- ft_mix$coef[-1]
+  return(mix_coefs)
+}
+
+"get_starting_values_bernoulli_sp" <- function(y, X, weights, offset, G, S, control){
   temp.warn <- getOption( "warn")
   options( warn=-1)
 
@@ -1781,7 +1828,7 @@
                               control$em_refit,'refits\n')
     emfits <- list()
     for(ii in seq_len(control$em_refit)){
-      emfits[[ii]] <-  fitmix_EM_bernoulli_sp(y, X, offset, weights, G, control)
+      emfits[[ii]] <-  fitmix_EM_bernoulli_sp(y, X, weights, offset, G, control)
     }
     bf <- which.max(vapply(emfits,function(x)c(x$logl),c(logl=0)))
     emfit <- emfits[[bf]]
@@ -1791,8 +1838,8 @@
   } else {
     if(!control$quiet)message('You are not using the EM algorith to find starting values; starting values are
                               generated using',control$init_method,'\n')
-    starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
-                                                       weights = weights, G = G, S = S,
+    starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, weights = weights,
+                                                       offset = offset, G = G, S = S,
                                                        control = control)
     start_vals <- list(alphas=starting_values$fits$alphas,
                        betas=starting_values$fits$betas,
@@ -1813,8 +1860,8 @@
 }
 
 
-"initiate_fit_bernoulli_sp" <- function(y, X, offset, G, S, control){#cores, inits='kmeans', init.sd=1){
-  fm_bern_sp_int <- surveillance::plapply(1:S, apply_glmnet_bernoulli_sp, y, X, offset, .parallel = control$cores, .verbose = !control$quiet)
+"initiate_fit_bernoulli_sp" <- function(y, X, weights, offset, G, S, control){#cores, inits='kmeans', init.sd=1){
+  fm_bern_sp_int <- surveillance::plapply(1:S, apply_glmnet_bernoulli_sp, y, X, weights, offset, .parallel = control$cores, .verbose = !control$quiet)
   all_coefs <- do.call(rbind, fm_bern_sp_int)
   mix_coefs <- all_coefs[,-1] # drop intercepts
   # print(all_coefs)
@@ -1845,32 +1892,7 @@
   return(results)
 }
 
-"apply_glmnet_bernoulli_sp" <- function(ss, y, X, offset){
-  options(warn=-1)
-  lambda.seq <- sort( unique( c(seq( from=1/0.1, to=1, length=10),seq( from=0.1, to=1, length=10))), decreasing=TRUE)
-  tmp.fm <- glmnet::glmnet(y=y[,ss], x=X[,-1], offset=offset, family='binomial',alpha=0, #ridge penalty
-                           lambda=lambda.seq, #the range of penalties, note that only one will be used
-                           standardize=FALSE,  #don't standardize the covariates (they are already standardised)
-                           intercept=TRUE)
-  my.coefs <- apply(glmnet::coef.glmnet(tmp.fm),1,lambda_penalisation_fun)
-  return(my.coefs)
-}
 
-"apply_glm_bernoulli_sp_tau" <- function (ss, y, X, offset, tau, G, S, fits){
-  Y_sp_tau <- as.matrix(rep(y[,ss],G))
-  X_sp_tau <- do.call(rbind, replicate(G, X, simplify=FALSE))
-  wts_sp_tau <- rep(tau[ss,],each=length(y[,ss]))
-  offy <- rep(offset,G)
-  lambda.seq <- sort( unique( c(seq( from=1/0.1, to=1, length=10),seq( from=0.1, to=1, length=10))), decreasing=TRUE)
-  f_mix <- glmnet::glmnet(x = X_sp_tau[,-1], y = Y_sp_tau, weights = wts_sp_tau,
-                          offset=offy, family='binomial',
-                          alpha=0, #ridge penalty
-                          lambda=lambda.seq, #the range of penalties, note that only one will be used
-                          standardize=FALSE,  #don't standardize the covariates (they are already standardised)
-                          intercept=TRUE)
-  my.coefs <- apply(glmnet::coef.glmnet(f_mix),1,lambda_penalisation_fun)
-  return(sp_coef=my.coefs)
-}
 
 
 "get_logls_bernoulli_sp" <- function(first_fit, fits, G, S){
@@ -1886,14 +1908,26 @@
   return(logl_sp_bernoulli_sp)
 }
 
-"get_initial_values_bernoulli_sp" <- function(y, X, offset, weights, G, S, control){#cores, inits='kmeans', init.sd=1){
+"get_initial_values_bernoulli_sp" <- function(y, X, weights, offset, G, S, control){#cores, inits='kmeans', init.sd=1){
   starting_values <- initiate_fit_bernoulli_sp(y, X, offset, G, S, control)# cores, inits, init.sd)
   fits <- list(alphas=starting_values$sp_intercepts,betas=starting_values$mix_coefs,disp=rep(NA,S))
-  first_fit <- list(x = X, y = y, offset=offset, weights=weights)
+  first_fit <- list(x = X, y = y, weights=weights, offset=offset)
   logls <- get_logls_bernoulli_sp(first_fit, fits, G, S)
   pis <- rep(1/G, G)
   taus <- get_taus(pis, logls, G, S)
   taus <- skrink_taus(taus,max_tau=1/G + 0.1, G)
+
+  #use glm for the step.
+  fmix_coefs <- surveillance::plapply(1:G, apply_glm_poisson_group_tau,
+                                      first_fit$y,
+                                      first_fit$x,
+                                      taus,
+                                      .parallel = control$cores,
+                                      .verbose = !control$quiet)
+
+  #update the mix coefs.
+  fmix_coefs <- do.call(rbind,fmix_coefs)
+  fits$betas <- as.matrix(fmix_coefs)
 
   res <- list()
   res$fits <- fits
@@ -1947,7 +1981,7 @@
   return( logl)
 }
 
-"fitmix_EM_bernoulli_sp" <- function(y, X, offset, weights, G, control){
+"fitmix_EM_bernoulli_sp" <- function(y, X, weights, offset, G, control){
 
   S <- ncol(y)
   pis <- rep(0, G)
@@ -1956,8 +1990,10 @@
   logl_new <- -88888888
 
   # get starting values
-  starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
-                                                     weights = weights, G = G, S = S,
+  starting_values <- get_initial_values_bernoulli_sp(y = y, X = X,
+                                                     weights = weights,
+                                                     offset = offset,
+                                                     G = G, S = S,
                                                      control = control)
 
   # first e-step
@@ -1972,8 +2008,9 @@
     pis <- colSums(taus)/S
 
     if (any(pis == 0)) {
-      starting_values <- get_initial_values_bernoulli_sp(y = y, X = X, offset = offset,
-                                                         weights = weights, G = G, S = S,
+      starting_values <- get_initial_values_bernoulli_sp(y = y, X = X,
+                                                         weights = weights, offset = offset,
+                                                         G = G, S = S,
                                                          control = control)
 
       pis <- starting_values$pis
@@ -1986,8 +2023,8 @@
     tmp <- stats::nlminb(start=fits$betas, objective=incom_logl_bernoulli_sp_beta, gradient=NULL, hessian=NULL,
                          first_fit=first_fit, eta=additive_logistic(pis,inv = TRUE)[-G], fits=fits, G=G, S=S)
     fits$betas <- update_mix_coefs(fits$betas, tmp$par)
-    fm_bernoulli_sp_int <- surveillance::plapply(1:S, apply_glm_bernoulli_sp_tau, y, X, offset, taus, G, S, fits, .parallel = control$cores, .verbose = !control$quiet) #check weights in this.
-    sp_int <- do.call(rbind,fm_bernoulli_sp_int)[,1]
+    fm_bernoulli_sp_int <- surveillance::plapply(1:S, apply_glmnet_bernoulli_sp, y, X, weights, offset, .parallel = control$cores, .verbose = !control$quiet) #check weights in this.
+    sp_int <- do.call(cbind,fm_bernoulli_sp_int)[1,]
     fits$alphas <- update_sp_coefs(fits$alphas,sp_int)
 
     # e-step
@@ -2073,14 +2110,14 @@
   return(mix_coefs)
 }
 
-"get_starting_values_poisson" <- function(y, X, offset, weights, G, S, control){ #try and keep control at the end
+"get_starting_values_poisson" <- function(y, X, weights, offset, G, S, control){ #try and keep control at the end
 
   if(isTRUE(control$em_prefit)){
     if(!control$quiet)message('Using EM algorithm to find starting values; using ',
                               control$em_refit,' refits\n')
     emfits <- list()
     for(ii in seq_len(control$em_refit)){
-      emfits[[ii]] <-  fitmix_EM_poisson(y, X, offset, weights, G, S, control)
+      emfits[[ii]] <-  fitmix_EM_poisson(y, X, weights, offset, G, S, control)
     }
     bf <- which.max(vapply(emfits,function(x)c(x$logl),c(logl=0)))
     emfit <- emfits[[bf]]
@@ -2224,7 +2261,7 @@
   return(-tmp)
 }
 
-"fitmix_EM_poisson" <- function(y, X, offset, weights, G, S, control){
+"fitmix_EM_poisson" <- function(y, X, weights, offset, G, S, control){
 
   # S <- ncol(y)
   pis <- rep(0, G)
@@ -2382,7 +2419,7 @@
 #   return(as.matrix(my_coefs))
 # }
 
-"get_starting_values_ippm" <- function(y, X, offset, weights, S, G, y_is_na, control){ #try and keep control at the end
+"get_starting_values_ippm" <- function(y, X, weights, offset, S, G, y_is_na, control){ #try and keep control at the end
 
   starting_values <- get_initial_values_ippm(y = y, X = X, weights = weights,
                                              offset = offset, y_is_na = y_is_na,
