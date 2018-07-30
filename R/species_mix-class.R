@@ -121,8 +121,9 @@
   dist_dat <- check_distribution_clean_data_sam(archetype_formula, species_formula, mf, distribution)
   fit_distribution <- dist_dat[[1]]
   dat <- dist_dat[[2]]
+  print(fit_distribution)
 
-  # get responses
+    # get responses
   y <- stats::model.response(dat$mf.X)
 
   # logical matirx needed for removing NAs from response and weights.
@@ -1866,8 +1867,8 @@
   p <- stats::make.link(link = "logit")
   for(ss in 1:S){
     for(gg in 1:G){
-      eta <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
-      logl_sp_bernoulli_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, p$linkinv(eta),log = TRUE))
+      lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+      logl_sp_bernoulli_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, p$linkinv(lp),log = TRUE))
     }
     logl_sp_bernoulli_sp[ss,gg] <- logl_sp_bernoulli_sp[ss,gg]*first_fit$weights[ss]
   }
@@ -1917,14 +1918,13 @@
 "get_incomplete_logl_bernoulli_sp_function" <-  function(eta, first_fit, fits, G, S){
 
   p <- stats::make.link('logit')
-  # print(eta,"\n")
   pis <- additive_logistic(eta)
   logl_sp_ippm <- matrix(NA,nrow=S, ncol=G)
   for(ss in 1:S){
     for(gg in 1:G){
-      #eta is the same as log_mu (linear predictor)
-      eta <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
-      logl_sp_ippm[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, p$linkinv(eta),log = TRUE)*first_fit$weights)
+      #lp is the same as log_mu (linear predictor)
+      lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+      logl_sp_ippm[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, p$linkinv(lp),log = TRUE)*first_fit$weights)
     }
   }
   # print(log(pis))
@@ -2007,6 +2007,61 @@
 
 ###### Poisson functions ####
 
+# "apply_glm_poisson_sp_tau" <- function (ss, y, X, offset, tau, G, S, fits){
+#   Y_sp_tau <- as.matrix(rep(y[,ss],G))
+#   X_sp_tau <- do.call(rbind, replicate(G, X, simplify=FALSE))
+#   wts_sp_tau <- rep(tau[ss,],each=length(y[,ss]))
+#   offy <- rep(offset,G)
+#   lambda.seq <- sort( unique( c(seq( from=1/0.1, to=1, length=10),seq( from=0.1, to=1, length=10))), decreasing=TRUE)
+#   f_mix <- glmnet::glmnet(x = X_sp_tau[,-1], y = Y_sp_tau, weights = wts_sp_tau,
+#                           offset=offy, family='poisson',
+#                           alpha=0, #ridge penalty
+#                           lambda=lambda.seq, #the range of penalties, note that only one will be used
+#                           standardize=FALSE,  #don't standardize the covariates (they are already standardised)
+#                           intercept=TRUE)
+#   my.coefs <- apply(glmnet::coef.glmnet(f_mix),1,lambda_penalisation_fun)
+#   return(sp_coef=my.coefs)
+# }
+#
+
+"apply_glmnet_poisson" <- function(ss, y, X, weights, offset){
+
+  lambda.seq <- sort( unique( c( seq( from=1/0.01, to=1, length=10), seq( from=1/0.1, to=1, length=10),seq(from=0.9, to=10^-2, length=10))), decreasing=TRUE)
+  # ids_i <- !y_is_na[,i]
+  ft_pos <- glmnet::glmnet(x=as.matrix(X[,-1]),y=as.matrix(y[,ss]),weights=weights,
+                           offset=offset,family='poisson',
+                           alpha=0,
+                           lambda = lambda.seq,
+                           standardize = FALSE,
+                           intercept = TRUE)
+  locat_s <- min(lambda.seq) # relatively small penalty 1/10 - the other ones were to restrictive.
+  my_coefs <- glmnet::coef.glmnet(ft_pos, s=locat_s)
+  if( any( is.na( my_coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
+    my_coefs <- glmnet::coef.glmnet(ft_poisson, s=lambda.seq)
+    lastID <- apply( my_coefs, 2, function(x) !any( is.na(x)))
+    lastID <- tail( (seq_along( lastID))[lastID], 1)
+    my_coefs <- my_coefs[,lastID]
+  }
+  return(as.matrix(my_coefs))
+}
+
+"apply_glm_poisson_group_tau" <- function (gg, y, X, tau){
+
+  ### setup the data stucture for this model.
+  Y_tau <- as.matrix(unlist(as.data.frame(y)))
+  X_no_NA <- list()
+  for (jj in 1:ncol(y)){
+    X_no_NA[[jj]] <- X
+  }
+  X_tau <- do.call(rbind, X_no_NA)
+  n_ys <- sapply(X_no_NA,nrow)
+  wts_tau <- rep(tau[,gg],n_ys)
+
+  ft_mix <- stats::glm.fit(x = X_tau, y = Y_tau, weights = wts_tau, family=stats::poisson())
+  mix_coefs <- ft_mix$coef[-1]
+  return(mix_coefs)
+}
+
 "get_starting_values_poisson" <- function(y, X, offset, weights, S, G, control){ #try and keep control at the end
 
   if(isTRUE(control$em_prefit)){
@@ -2045,77 +2100,6 @@
   return(start_vals)
 }
 
-
-
-"apply_glmnet_poisson" <- function(i, y, X, weights, offset){
-
-  lambda.seq <- sort( unique( c( seq( from=1/0.01, to=1, length=10), seq( from=1/0.1, to=1, length=10),seq(from=0.9, to=10^-2, length=10))), decreasing=TRUE)
-  # ids_i <- !y_is_na[,i]
-  ft_pos <- glmnet::glmnet(x=as.matrix(X[,-1]),y=as.matrix(y[,i]),weights=weights,
-                            offset=offset,family='poisson',
-                            alpha=0,
-                            lambda = lambda.seq,
-                            standardize = FALSE,
-                            intercept = TRUE)
-  locat_s <- min(lambda.seq) # relatively small penalty 1/10 - the other ones were to restrictive.
-  my_coefs <- glmnet::coef.glmnet(ft_pos, s=locat_s)
-  if( any( is.na( my_coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
-    my_coefs <- glmnet::coef.glmnet(ft_poisson, s=lambda.seq)
-    lastID <- apply( my_coefs, 2, function(x) !any( is.na(x)))
-    lastID <- tail( (seq_along( lastID))[lastID], 1)
-    my_coefs <- my_coefs[,lastID]
-  }
-  return(as.matrix(my_coefs))
-}
-
-"apply_glm_poisson_group_tau" <- function (gg, y, X, tau){
-
-  ### setup the data stucture for this model.
-  Y_tau <- as.matrix(unlist(as.data.frame(y)))
-  X_no_NA <- list()
-  for (jj in 1:ncol(y)){
-    X_no_NA[[jj]] <- X
-  }
-  X_tau <- do.call(rbind, X_no_NA)
-  n_ys <- sapply(X_no_NA,nrow)
-  wts_tau <- rep(tau[,gg],n_ys)
-
-  ft_mix <- stats::glm.fit(x = X_tau, y = Y_tau, weights = wts_tau, family=stats::poisson())
-  mix_coefs <- ft_mix$coef[-1]
-  return(mix_coefs)
-}
-
-"initiate_fit_poisson" <- function(y, X, weights, offset, G, S, control){
-  fm_pos <- surveillance::plapply(1:S,apply_glmnet_poisson, y, X, weights, offset,
-                                   .parallel = control$cores, .verbose = !control$quiet)
-  # fm_pos <- surveillance::plapply(1:S,apply_glm_poisson, y, X, weights, offset, y_is_na,
-  #                                  .parallel = control$cores, .verbose = !control$quiet)
-  all_coefs <- t(do.call(cbind,fm_pos)) #be careful with this transformation from glmnet.
-  mix_coefs <- all_coefs[,-1] # drop intercepts
-  if(control$init_method=='kmeans'){
-    if(!control$quiet)message( "Initial groups by K-means clustering\n")
-    tmp1 <- stats::kmeans(mix_coefs, centers=G, nstart=100)
-    tmp_grp <- tmp1$cluster
-    grp_coefs <- apply(mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
-  }
-  if(control$init_method=='hclust'){
-    stop( "EHNT!... Poisson cannot use a hierachial cluster - stick to K-means\n")
-  }
-  if(control$init_method=='random' | is.null(tmp_grp)){
-    if(!control$quiet)message( "Initial groups by random allocation and means from random numbers\n")
-    grp_coefs <- matrix( stats::rnorm(G*ncol(mix_coefs), sd=control$init_sd, mean=0), nrow=G, ncol=ncol(mix_coefs))
-    tmp_grp <- sample(1:G, S, replace=TRUE)
-  }
-
-  colnames(grp_coefs) <- colnames(X[,-1])
-  results <- list()
-  results$grps <- tmp_grp
-  results$mix_coefs <- grp_coefs
-  results$sp_intercepts <- all_coefs[,1]
-  results$all_coefs <- all_coefs
-  return(results)
-}
-
 ## new version with glmnet for regularisation.
 "get_initial_values_poisson" <- function(y, X, weights, offset, G, S, control){
 
@@ -2152,38 +2136,8 @@
   return(res)
 }
 
-
-"incom_logl_poisson" <- function(x, first_fit, pis, fits, G, S){
-  fits$betas <- matrix(x,nrow=nrow(fits$betas),ncol=ncol(fits$betas))
-  tmp <- get_incomplete_logl_poisson(pis, first_fit, fits, G, S)
-  return(-tmp)
-}
-
-"get_logls_poisson" <- function(first_fit, fits, G, S){
-  logl_sp_poisson <- matrix(NA, nrow=S, ncol=G)
-  for(ss in 1:S){
-    # sp_idx<-!first_fit$y_is_na[,ss]
-    for(gg in 1:G){
-      #eta is the same as log_lambda (linear predictor)
-      eta <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
-      logl_sp_poisson[ss,gg] <- sum(dpois(first_fit$y[,ss],exp(eta),log=TRUE))
-    }
-  }
-  return(logl_sp_poisson)
-}
-
-
-"incom_logl_poisson_beta" <- function(x, first_fit, eta, fits, G, S){
-
-  fits$betas <- matrix(x,nrow=nrow(fits$betas),ncol=ncol(fits$betas))
-  # pis <- additive_logistic(eta)
-  tmp <- get_incomplete_logl_poisson(eta, first_fit, fits, G, S)
-  return(-tmp)
-}
-
-
-"get_incomplete_logl_poisson" <-  function(pis, first_fit, fits, G, S){
-  incomplete.logl <- 0
+"get_incomplete_logl_poisson" <-  function(eta, first_fit, fits, G, S){
+  pis <- additive_logistic(eta)
   logl_sp_poisson <- matrix(NA, nrow=S, ncol=G)
   for(ss in 1:S){
     for(gg in 1:G){
@@ -2198,6 +2152,65 @@
   sppLogls <- am + log( rowSums( ak))
   logl <- sum( sppLogls)
   return( logl)
+}
+
+"get_logls_poisson" <- function(first_fit, fits, G, S){
+  logl_sp_poisson <- matrix(NA, nrow=S, ncol=G)
+  for(ss in 1:S){
+    # sp_idx<-!first_fit$y_is_na[,ss]
+    for(gg in 1:G){
+      #lp is the same as log_lambda (linear predictor)
+      lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+      logl_sp_poisson[ss,gg] <- sum(dpois(first_fit$y[,ss],exp(lp),log=TRUE))
+    }
+  }
+  return(logl_sp_poisson)
+}
+
+
+"initiate_fit_poisson" <- function(y, X, weights, offset, G, S, control){
+  fm_pos <- surveillance::plapply(1:S,apply_glmnet_poisson, y, X, weights, offset,
+                                   .parallel = control$cores, .verbose = !control$quiet)
+  # fm_pos <- surveillance::plapply(1:S,apply_glm_poisson, y, X, weights, offset, y_is_na,
+  #                                  .parallel = control$cores, .verbose = !control$quiet)
+  all_coefs <- t(do.call(cbind,fm_pos)) #be careful with this transformation from glmnet.
+  mix_coefs <- all_coefs[,-1] # drop intercepts
+  if(control$init_method=='kmeans'){
+    if(!control$quiet)message( "Initial groups by K-means clustering\n")
+    tmp1 <- stats::kmeans(mix_coefs, centers=G, nstart=100)
+    tmp_grp <- tmp1$cluster
+    grp_coefs <- apply(mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
+  }
+  if(control$init_method=='hclust'){
+    stop( "EHNT!... Poisson cannot use a hierachial cluster - stick to K-means\n")
+  }
+  if(control$init_method=='random' | is.null(tmp_grp)){
+    if(!control$quiet)message( "Initial groups by random allocation and means from random numbers\n")
+    grp_coefs <- matrix( stats::rnorm(G*ncol(mix_coefs), sd=control$init_sd, mean=0), nrow=G, ncol=ncol(mix_coefs))
+    tmp_grp <- sample(1:G, S, replace=TRUE)
+  }
+
+  colnames(grp_coefs) <- colnames(X[,-1])
+  results <- list()
+  results$grps <- tmp_grp
+  results$mix_coefs <- grp_coefs
+  results$sp_intercepts <- all_coefs[,1]
+  results$all_coefs <- all_coefs
+  return(results)
+}
+
+"incom_logl_poisson" <- function(x, first_fit, pis, fits, G, S){
+  fits$betas <- matrix(x,nrow=nrow(fits$betas),ncol=ncol(fits$betas))
+  tmp <- get_incomplete_logl_poisson(pis, first_fit, fits, G, S)
+  return(-tmp)
+}
+
+"incom_logl_poisson_beta" <- function(x, first_fit, eta, fits, G, S){
+
+  fits$betas <- matrix(x,nrow=nrow(fits$betas),ncol=ncol(fits$betas))
+  # pis <- additive_logistic(eta)
+  tmp <- get_incomplete_logl_poisson(eta, first_fit, fits, G, S)
+  return(-tmp)
 }
 
 "fitmix_EM_poisson" <- function(y, X, offset, weights, G, control){
@@ -2239,18 +2252,18 @@
     tmp <- stats::nlminb(start=fits$betas, objective=incom_logl_poisson_beta, gradient=NULL, hessian=NULL,
                          first_fit=first_fit, eta=additive_logistic(pis,inv = TRUE)[-G], fits=fits, G=G, S=S)
     fits$betas <- update_mix_coefs(fits$betas, tmp$par)
-    fm_poissonint <- surveillance::plapply(1:S, apply_glm_bernoulli_sp_tau, y, X, offset, taus, G, S, fits, .parallel = control$cores, .verbose = !control$quiet) #check weights in this.
-    sp_int <- do.call(rbind,fm_bernoulli_sp_int)[,1]
+    fm_poissonint <- surveillance::plapply(1:S, apply_glmnet_poisson, y, X, weights, offset, .parallel = control$cores, .verbose = !control$quiet) #check weights in this.
+    sp_int <- do.call(cbind,fm_poissonint)[1,]
     fits$alphas <- update_sp_coefs(fits$alphas,sp_int)
 
     # e-step
     # get the log-likes and taus
-    logls <- get_logls_bernoulli_sp(first_fit, fits, G, S)
+    logls <- get_logls_poisson(first_fit, fits, G, S)
     taus <- get_taus(pis, logls, G, S)
 
     #update the likelihood
     logl_old <- logl_new
-    logl_new <- get_incomplete_logl_bernoulli_sp_function(eta = additive_logistic(pis,inv = TRUE)[-G], first_fit, fits, G, S)
+    logl_new <- get_incomplete_logl_poisson(eta = additive_logistic(pis,inv = TRUE)[-G], first_fit, fits, G, S)
     ite <- ite + 1
   }
 
@@ -2259,10 +2272,10 @@
   int_out <- fits$alphas
   fm_out <- fits$betas
   names(pis) <- paste("G", 1:G, sep = ".")
-  eta <- additive_logistic(pis, TRUE)[-1]
+  eta <- additive_logistic(pis, TRUE)[-G]
 
   # estimate log-likelihood
-  logl_new <- get_incomplete_logl_bernoulli_sp_function(eta, first_fit, fits, G, S)
+  logl_new <- get_incomplete_logl_poisson(eta, first_fit, fits, G, S)
 
   return(list(logl = logl_new, alpha = int_out, beta = fm_out,
               eta = eta, pis = pis, taus = round(taus,4)))
@@ -2444,8 +2457,8 @@
     sp_idx<-!first_fit$y_is_na[,ss]
     for(gg in 1:G){
       #eta is the same as log_lambda (linear predictor)
-      eta <- first_fit$x[sp_idx,1] * fits$alphas[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$betas[gg,] + first_fit$offset[sp_idx]
-      logl_sp_ippm[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
+      lp <- first_fit$x[sp_idx,1] * fits$alphas[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$betas[gg,] + first_fit$offset[sp_idx]
+      logl_sp_ippm[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$weights[sp_idx,ss] %*% exp(lp)
     }
   }
   ak <- logl_sp_ippm + matrix( rep( log( pis), each=S), nrow=S, ncol=G)
@@ -2461,9 +2474,9 @@
   for(ss in 1:S){
     sp_idx<-!first_fit$y_is_na[,ss]
     for(gg in 1:G){
-      #eta is the same as log_lambda (linear predictor)
-      eta <- first_fit$x[sp_idx,1] * fits$alphas[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$betas[gg,] + first_fit$offset[sp_idx]
-      logl_sp_ippm[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$weights[sp_idx,ss] %*% exp(eta)
+      #lp is the same as log_lambda (linear predictor)
+      lp <- first_fit$x[sp_idx,1] * fits$alphas[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$betas[gg,] + first_fit$offset[sp_idx]
+      logl_sp_ippm[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$weights[sp_idx,ss] %*% exp(lp)
     }
   }
   return(logl_sp_ippm)
