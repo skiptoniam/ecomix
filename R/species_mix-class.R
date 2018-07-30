@@ -118,10 +118,12 @@
   rownames(mf)<-seq_len(nrow(mf))
 
   # get the model matrix and find the fitting formula.
-  dist_dat <- check_distribution_clean_data_sam(archetype_formula, species_formula, mf, distribution)
-  fit_distribution <- dist_dat[[1]]
-  dat <- dist_dat[[2]]
-  print(fit_distribution)
+  # dist_dat <- check_distribution_clean_data_sam(archetype_formula, species_formula, mf, distribution)
+  # fit_distribution <- dist_dat[[1]]
+  # dat <- dist_dat[[2]]
+  # print(fit_distribution)
+
+  dat <- clean_data_sam(mf, archetype_formula, NULL, distribution)
 
     # get responses
   y <- stats::model.response(dat$mf.X)
@@ -150,7 +152,7 @@
   # disty.cases <- c("bernoulli","bernoulli_sp","poisson","ippm",
   #                  "negative_binomial","tweedie","gaussian")
   disty.cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
-  disty <- get_distribution_sam(disty.cases, fit_distribution)
+  disty <- get_distribution_sam(disty.cases, distribution)
 
   # get offsets
   offset <- get_offset_sam(dat$mf.X)
@@ -191,17 +193,17 @@
 
   tmp$dist <- disty.cases[disty]
 
-  tmp$pis <- additive_logistic(tmp$eta)
+  tmp$pis <- ecomix:::additive_logistic(tmp$eta)
 
   if(n_mixtures>1)
-    tmp$post_probs <- calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
+    tmp$post_probs <- ecomix:::calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
 
   #Information criteria
   tmp <- calc_info_crit_sam(tmp)
 
   #titbits object, if wanted/needed.
-  tmp$titbits <- get_titbits_sam(titbits, y, X, W, offset, weights, archetype_formula, species_formula, control, disty.cases[disty])
-  class(tmp) <- c("species_mix",fit_distribution)
+  tmp$titbits <- get_titbits_sam(titbits, y, X, W=NULL, offset, weights, archetype_formula, species_formula, control, disty.cases[disty])
+  class(tmp) <- c("species_mix",distribution)
   return(tmp)
 }
 
@@ -230,14 +232,19 @@
   # need to insert two new calls:
   # get_starting_values_sam() which will generate starting values based on EM or clustering of coefs.
   # sam_optimise() which will fit the model in cpp
+  S <- ncol(y) # how many species are there?
 
-  starting_values <- get_start_vals_sam(y, X, offset, weights, distribution_numeric, G, S,  y_is_na, control)
+  starting_values <- get_start_vals_sam(y=y, X=X, offset=offset, weights=weights,
+                                        disty=distribution_numeric,
+                                        G=G, S=S, y_is_na=y_is_na, control=control)
 
-  spp_wts <- starting_values$spp_wts
-  site_spp_wts <- starting_values$site_spp_wts
+  # spp_wts <- starting_values$spp_wts
+  # site_spp_wts <- starting_values$site_spp_wts
   if(is.null(y_is_na))y_is_na <- matrix(FALSE,nrow(y),ncol(y)) #generate y_is_na for for c++ code.
 
-  tmp <- sam_optimise(y, X, offset, spp_wts, site_spp_wts, y_is_na, nS, nG, nObs, disty, start_vals, control)
+  tmp <- sam_optimise(y, X, offset, starting_values$spp_wts, starting_values$site_spp_wts,
+                      y_is_na, starting_values$nS, starting_values$nG, starting_values$nObs,
+                      distribution_numeric, starting_values, control)
 
   # tmp <- switch(distribution,
   #               # bernoulli = species_mix_bernoulli(sp.form, y, X, G, inits,
@@ -386,19 +393,22 @@
    return(many_starts)
 }
 
-"get_start_vals_sam" <- function(y, X, offset, weights, disty, S, G, y_is_na, control){
+"get_start_vals_sam" <- function(y, X, offset, weights, disty, G, S, y_is_na, control){
 
   if(!control$quiet)
-    message( "Obtaining starting values...")
+    print( "Obtaining starting values...")
 
   if(disty==1){
-    tmp <- get_starting_values_bernoulli_sp(y, X, offset, weights, S, G, control)
+    tmp <- get_starting_values_bernoulli_sp(y=y, X=X, offset=offset, weights=weights,
+                                            G=G, S=S, control=control)
   }
   if(disty==2){
-    tmp <- get_starting_values_poisson(y, X, offset, weights, S, G, control)
+    tmp <- get_starting_values_poisson(y=y, X=X, offset=offset, weights=weights,
+                                       G=G, S=S, control=control)
   }
   if(disty==3){
-    tmp <- get_starting_values_ippm(y, X, offset, weights, S, G, y_is_na, control)
+    tmp <- get_starting_values_ippm(y=y, X=X, offset=offset, weights=weights,
+                                    G=G, S=S, y_is_na=y_is_na, control=control)
   }
   if(disty==4){
     tmp <- get_intital_values_negative_binomial()
@@ -463,10 +473,11 @@
   ret <- tmp
   ret$logl <- ret$logl * -1
   ret$mus <- array(mus, dim=c(n, S, G))
+  ret$coefs <- list(alpha = ret$alpha, beta = ret$beta, eta = ret$eta, disp = ret$disp)
   ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score, disp.scores=disp.score)
   ret$S <- S; ret$G <- G; ret$np <- np; ret$n <- n;
   ret$start.vals <- inits
-  ret$loglikeSG <- loglikeSG  #for residuals
+  ret$loglikeSG <- matrix(loglikeSG, ncol=G)  #for residuals
   ret$loglikeS <- loglikeS  #for residuals
   return(ret)
 }
@@ -971,11 +982,11 @@
   return(list(X = X, dat.means = dat.means, dat.sds = dat.sds))
 }
 
-"calc_info_crit_sam" <-  function(ret) {
-    k <- length(unlist(ret$coefs))
-    ret$BIC <- -2 * ret$logl + log(ret$n) * k
-    ret$AIC <- -2 * ret$logl + 2 * k
-    return( ret)
+"calc_info_crit_sam" <-  function(tmp) {
+    k <- length(unlist(tmp$coefs))
+    tmp$BIC <- -2 * tmp$logl + log(tmp$n) * k
+    tmp$AIC <- -2 * tmp$logl + 2 * k
+    return( tmp)
 }
 
 "calc_post_probs_sam" <- function( pis, logCondDens)  {
@@ -2062,14 +2073,14 @@
   return(mix_coefs)
 }
 
-"get_starting_values_poisson" <- function(y, X, offset, weights, S, G, control){ #try and keep control at the end
+"get_starting_values_poisson" <- function(y, X, offset, weights, G, S, control){ #try and keep control at the end
 
   if(isTRUE(control$em_prefit)){
-    if(!control$quiet)message('Using EM algorithm to find starting values; using',
-                              control$em_refit,'refits\n')
+    if(!control$quiet)message('Using EM algorithm to find starting values; using ',
+                              control$em_refit,' refits\n')
     emfits <- list()
     for(ii in seq_len(control$em_refit)){
-      emfits[[ii]] <-  fitmix_EM_poisson(y, X, offset, weights, G, control)
+      emfits[[ii]] <-  fitmix_EM_poisson(y, X, offset, weights, G, S, control)
     }
     bf <- which.max(vapply(emfits,function(x)c(x$logl),c(logl=0)))
     emfit <- emfits[[bf]]
@@ -2213,14 +2224,14 @@
   return(-tmp)
 }
 
-"fitmix_EM_poisson" <- function(y, X, offset, weights, G, control){
+"fitmix_EM_poisson" <- function(y, X, offset, weights, G, S, control){
 
-  S <- ncol(y)
+  # S <- ncol(y)
   pis <- rep(0, G)
   ite <- 1
   logl_old <- -99999999
   logl_new <- -88888888
-
+  control$quiet <- TRUE
   # get starting values
   starting_values <- get_initial_values_poisson(y = y, X = X, offset = offset,
                                                      weights = weights, G = G, S = S,

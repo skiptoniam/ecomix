@@ -6,11 +6,11 @@ library(ecomix)
 testthat::test_that('species mix poisson', {
 
 set.seed(42)
-form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~1+x1+x2"))
+sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~1+x1+x2"))
 theta <- matrix(c(-2.9,1.6,0.5,1,-0.9,1,.9,2.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
 dat[,-1] <- scale(dat[,-1])
-simulated_data <- simulate_species_mix_data(form,~1,dat,theta,dist="poisson")
+simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="poisson")
 model_data <- make_mixture_data(species_data = simulated_data$species_data,
                                 covariate_data = simulated_data$covariate_data[,-1])
 
@@ -32,7 +32,7 @@ fm_poissonint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_poisson, y, X,
 testthat::expect_length(do.call(cbind,fm_poissonint)[1,],S)
 
 # test that the starting values work.
-testthat::expect_length(tmp <- get_starting_values_poisson(y,X,offset,weights,S,G,control),10)
+testthat::expect_length(tmp <- ecomix:::get_starting_values_poisson(y,X,offset,weights,G,S,control),10)
 
 #get the taus
 starting_values <- ecomix:::initiate_fit_poisson(y, X, weights, offset, G, S, control)
@@ -50,19 +50,17 @@ gg <- 1
 testthat::expect_length(ecomix:::apply_glm_poisson_group_tau(gg, y, X, taus),2)
 
 # ## now let's try and fit the optimisation
-tmp <- ecomix:::get_starting_values_poisson(y,X,offset,weights,S,G,control)
+sv <- ecomix:::get_starting_values_poisson(y,X,offset,weights, G, S,control)
 y_is_na <- is.na(y)
-res <- ecomix:::sam_optimise(y,X,offset,tmp$spp_wts,tmp$site_spp_wts, y_is_na, tmp$nS, tmp$nG, tmp$nObs, disty=2, start_vals = tmp, control)
-testthat::expect_length(res,14)
+tmp <- ecomix:::sam_optimise(y,X,offset,sv$spp_wts,sv$site_spp_wts, y_is_na, sv$nS, sv$nG, sv$nObs, disty=2, start_vals = sv, control)
+testthat::expect_length(tmp,15)
 
 ## most of the internal functions seem to be working.
 ## now let's test the species_mix function
-sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
 sp_form <- ~1
-
 fmp <- species_mix(sam_form, sp_form, model_data, distribution = 'poisson', n_mixtures=3, control = species_mix.control(quiet=TRUE,calculate_hessian_cpp = FALSE))
-testthat::expect_s3_class(fm4, "species_mix")
-testthat::expect_s3_class(fm4, "bernoulli")
+testthat::expect_s3_class(fmp, "species_mix")
+testthat::expect_s3_class(fmp, "poisson")
 
 
 })
