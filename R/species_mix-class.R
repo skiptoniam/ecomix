@@ -632,7 +632,7 @@
       sp.int <- NULL
       tmp <- rep(1e+05, dim(X)[1])
       while (max(tmp, na.rm = TRUE) > 50000 | sum(tmp) < 100) {
-        theta[g, 1] <- stats::runif(1, 100, 500)
+        theta[g, 1] <- stats::runif(1, 1, 500)
         lgtp <- X %*% theta[g, ]
         p <- (lgtp)
         tmp <- stats::rnorm(dim(X)[1], mean = p, sd = 1)
