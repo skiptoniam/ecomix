@@ -107,11 +107,11 @@ testthat::test_that('species mix ippm', {
   G <- 4
 
   # test if one species ippm working - expect matrix of coefs back
-  one_sp_ippm <- ecomix:::apply_glmnet_ippm(1, y = y, X = X, weights = weights, offset = offy, y_is_na = y_is_na)
+  one_sp_ippm <- ecomix:::apply_glmnet_ippm(1, y = y, X = X, weights = weights, offset = offset, y_is_na = y_is_na)
   testthat::expect_is(one_sp_ippm,'matrix')
 
   # check that many species ippms work - expect back a list.
-  all_sp_ippm <-surveillance::plapply(1:n_sp, ecomix:::apply_glmnet_ippm, y, X, weights , offy , y_is_na )
+  all_sp_ippm <-surveillance::plapply(1:n_sp, ecomix:::apply_glmnet_ippm, y, X, weights , offset , y_is_na )
   testthat::expect_is(all_sp_ippm,'list')
 
   #glmnet coefs
@@ -121,39 +121,23 @@ testthat::test_that('species mix ippm', {
   tmp_grp <- tmp1$cluster
   grp_coefs <- apply(mix_coefs, 2, function(x) tapply(x, tmp_grp, mean))
 
-  # test if one species ippm working - expect matrix of coefs back
-  one_sp_ippm_glm <- ecomix:::apply_glm_ippm(1, y = y, X = X, weights = weights, offset = offy, y_is_na = y_is_na)
-  testthat::expect_is(one_sp_ippm,'matrix')
-
-  # check that many species ippms work - expect back a list.
-  testthat::expect_warning(all_sp_ippm_glm <-surveillance::plapply(1:n_sp, ecomix:::apply_glm_ippm, y, X, weights , offy, y_is_na ))
-  testthat::expect_is(all_sp_ippm,'list')
-
-  ## make these into a matrix
-  all_coefs_mat_glm <- t(do.call(cbind,all_sp_ippm_glm))
-  mix_coefs_glm <- all_coefs_mat_glm[,-1] # drop intercepts
-
-  tmp2 <- kmeans(mix_coefs_glm, centers=G, nstart=100)
-  tmp_grp_glm <- tmp2$cluster
-  grp_coefs_glm <- apply(mix_coefs_glm, 2, function(x) tapply(x, tmp_grp, mean))
-
   #now we need to estimate the taus.
   S <- 50
   G <- 4
   control <- species_mix.control()
 
   # expect error if wrong data is in the starting values
-  testthat::expect_error(  starting_values <- ecomix:::initiate_fit_ippm(NULL, X, weights, offy, y_is_na, G, S, control))
-  testthat::expect_error(  starting_values <- ecomix:::initiate_fit_ippm(y, NULL, weights, offy, y_is_na, G, S, control))
-  testthat::expect_error(  starting_values <- ecomix:::initiate_fit_ippm(y, X, NULL, offy, y_is_na, G, S, control))
-  testthat::expect_error(  starting_values <- ecomix:::initiate_fit_ippm(y, X, weights, offy, NULL, G, S, control))
+  testthat::expect_error(  starting_values <- ecomix:::initiate_fit_ippm(NULL, X, weights, offset, y_is_na, G, S, control))
+  testthat::expect_error(  starting_values <- ecomix:::initiate_fit_ippm(y, NULL, weights, offset, y_is_na, G, S, control))
+  testthat::expect_error(  starting_values <- ecomix:::initiate_fit_ippm(y, X, NULL, offset, y_is_na, G, S, control))
+  testthat::expect_error(  starting_values <- ecomix:::initiate_fit_ippm(y, X, weights, offset, NULL, G, S, control))
 
   #expect list back
-  starting_values <- ecomix:::initiate_fit_ippm(y, X, weights, offy, y_is_na, G, S, control)
+  starting_values <- ecomix:::initiate_fit_ippm(y, X, weights, offset, y_is_na, G, S, control)
   testthat::expect_is(starting_values,'list')
 
   fits <- list(betas=starting_values$mix_coefs, alphas=starting_values$sp_intercepts)
-  first_fit <- list(x = X, y = y, weights=weights, offset=offy, y_is_na=y_is_na)
+  first_fit <- list(x = X, y = y, weights=weights, offset=offset, y_is_na=y_is_na)
 
   # get the loglikelihood based on these values
   logls <- ecomix:::get_logls_ippm(first_fit, fits, G, S)
@@ -163,61 +147,60 @@ testthat::test_that('species mix ippm', {
 
   # estimate the posteriors for taus
   pis <- rep(1/G, G)
-  taus <- ecomix:::get_taus_ippm(pis, logls, G, S)
+  taus <- ecomix:::get_taus(pis, logls, G, S)
   testthat::expect_is(taus,'matrix')
   testthat::expect_equal(ncol(taus), G)
   testthat::expect_equal(nrow(taus), S)
 
   # skrink the taus
-  taus <- skrink_taus_ippm(taus, max_tau=0.99, G)
+  taus <- ecomix:::skrink_taus(taus, max_tau=0.99, G)
 #
 
   ## now test if the group_tau glm works
 
-  testthat::expect_error(fm_g1 <- ecomix:::apply_glmnet_ippm_group_tau_v2(gg = 1, y = y, X = X, weights = weights, offset = offy,
+  testthat::expect_error(fm_g1 <- ecomix:::apply_glmnet_ippm_group_tau_v2(gg = 1, y = y, X = X, weights = weights, offset = offset,
                                           y_is_na = y_is_na, tau = tau, return_all_coefs = FALSE))
-  testthat::expect_error(fm_g1 <- ecomix:::apply_glmnet_ippm_group_tau_v2(gg = 1, y = NULL, X = X, weights = weights, offset = offy,
+  testthat::expect_error(fm_g1 <- ecomix:::apply_glmnet_ippm_group_tau_v2(gg = 1, y = NULL, X = X, weights = weights, offset = offset,
                                                    y_is_na = y_is_na, tau = taus, return_all_coefs = FALSE))
   testthat::expect_error(fm_g1 <- ecomix:::apply_glmnet_ippm_group_tau_v2(gg = 1, y = y, X = NULL, weights = weights, offset = 'blah',
                                                    y_is_na = y_is_na, tau = taus, return_all_coefs = FALSE))
-  testthat::expect_error(fm_g1 <- ecomix:::apply_glmnet_ippm_group_tau_v2(gg = 1, y = y, X = X, weights = 'a', offset = offy,
+  testthat::expect_error(fm_g1 <- ecomix:::apply_glmnet_ippm_group_tau_v2(gg = 1, y = y, X = X, weights = 'a', offset = offset,
                                                    y_is_na = y_is_na, tau = taus, return_all_coefs = FALSE))
-  fm_g1 <- ecomix:::apply_glmnet_ippm_group_tau_v2(gg = 1, y = y, X = X, weights = weights, offset = offy,
-                                                   y_is_na = y_is_na, tau = taus, return_all_coefs = FALSE)
+  fm_g1 <- ecomix:::apply_glm_ippm_group_tau(gg = 1, y = y, X = X, y_is_na = y_is_na, tau = taus)
 
-  testthat::expect_is(fm_g1,'matrix')
+  testthat::expect_is(fm_g1,'numeric')
 
   fm_g2 <- ecomix:::apply_glm_ippm_group_tau(gg = 1, y = y, X = X, y_is_na = y_is_na, tau = taus)
   all_grp_ippm1 <- surveillance::plapply(seq_len(G), ecomix:::apply_glm_ippm_group_tau, y, X, y_is_na, taus)
-  do.call(rbind,all_grp_ippm1)
+  betas <- do.call(rbind,all_grp_ippm1)
 
-  testthat::expect_is(fm_g1,'matrix')
+  testthat::expect_is(betas,'matrix')
 
   #now we test if it works with lapply
-  all_grp_ippm1 <- surveillance::plapply(seq_len(G), ecomix:::apply_glmnet_ippm_group_tau_v2, y, X, weights, offy, y_is_na, taus)
-  testthat::expect_is(all_grp_ippm1,'list')
-  all_grp_ippm2 <- surveillance::plapply(seq_len(G), ecomix:::apply_glmnet_ippm_group_tau_v2, y, X, weights, offy, y_is_na, taus, lambda_pen = 1/2)
-  testthat::expect_is(all_grp_ippm2,'list')
-  all_grp_ippm3 <- surveillance::plapply(seq_len(G), ecomix:::apply_glmnet_ippm_group_tau_v2, y, X, weights, offy, y_is_na, taus, lambda_pen = 1/3)
-  testthat::expect_is(all_grp_ippm3,'list')
-  all_grp_ippm4 <- surveillance::plapply(seq_len(G), ecomix:::apply_glmnet_ippm_group_tau_v2, y, X, weights, offy, y_is_na, taus, lambda_pen = 1/5)
-  testthat::expect_is(all_grp_ippm4,'list')
-  all_grp_ippm5 <- surveillance::plapply(seq_len(G), ecomix:::apply_glmnet_ippm_group_tau_v2, y, X, weights, offy, y_is_na, taus, lambda_pen = 1/10)
-  mix_coefs <- t(do.call(cbind,all_grp_ippm1))[,-1]
+  # all_grp_ippm1 <- surveillance::plapply(seq_len(G), ecomix:::apply_glmnet_ippm_group_tau_v2, y, X, weights, offset, y_is_na, taus)
+  # testthat::expect_is(all_grp_ippm1,'list')
+  # all_grp_ippm2 <- surveillance::plapply(seq_len(G), ecomix:::apply_glmnet_ippm_group_tau_v2, y, X, weights, offset, y_is_na, taus, lambda_pen = 1/2)
+  # testthat::expect_is(all_grp_ippm2,'list')
+  # all_grp_ippm3 <- surveillance::plapply(seq_len(G), ecomix:::apply_glmnet_ippm_group_tau_v2, y, X, weights, offset, y_is_na, taus, lambda_pen = 1/3)
+  # testthat::expect_is(all_grp_ippm3,'list')
+  # all_grp_ippm4 <- surveillance::plapply(seq_len(G), ecomix:::apply_glmnet_ippm_group_tau_v2, y, X, weights, offset, y_is_na, taus, lambda_pen = 1/5)
+  # testthat::expect_is(all_grp_ippm4,'list')
+  # all_grp_ippm5 <- surveillance::plapply(seq_len(G), ecomix:::apply_glmnet_ippm_group_tau_v2, y, X, weights, offset, y_is_na, taus, lambda_pen = 1/10)
+  # mix_coefs <- t(do.call(cbind,all_grp_ippm1))[,-1]
 
 
   # does a ippm work?
   wts <- rbind(presence_sites[,-1],background_sites[,-1])
   colnames(wts) <- c(sp_name)#,"const","x1","x2")
-  offy <- rep(0,nrow(wts))
+  offset <- rep(0,nrow(wts))
   sam_form <- as.formula(paste0('cbind(',paste(LETTERS702[1:(n_sp)],collapse = ','),")~1+x1+x2"))
   sp_form <- ~ 1
-  fm_ippm1 <- ecomix::species_mix(archetype_formula = sam_form, species_formula = sp_form, data = dat,  weights = as.matrix(wts),
-                                  offset = as.numeric(offy), distribution = 'ippm', n_mixtures = 4,
-                                  control = species_mix.control(cores=3,em_prefit = FALSE,calculate_hessian_cpp = FALSE))
-
-  testthat::expect_s3_class(fm_ippm1,'species_mix')
-  testthat::expect_s3_class(fm_ippm1,'ippm')
+  # fm_ippm1 <- ecomix::species_mix(archetype_formula = sam_form, species_formula = sp_form, data = dat,  weights = wts,
+  #                                 offset = offset, distribution = 'ippm', n_mixtures = 4,
+  #                                 control = species_mix.control(cores=3,em_prefit = FALSE,calculate_hessian_cpp = FALSE))
+  #
+  # testthat::expect_s3_class(fm_ippm1,'species_mix')
+  # testthat::expect_s3_class(fm_ippm1,'ippm')
 
 
 })

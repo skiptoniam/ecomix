@@ -51,7 +51,7 @@ testthat::test_that('species mix bernoulli', {
 
   ## get to this in a bit
   gg <- 1
-  testthat::expect_length(ecomix:::apply_glm_bernoulli_group_tau(gg, y, X, taus),4)
+  testthat::expect_length(ecomix:::apply_glmnet_bernoulli_group_tau(gg, y, X, taus),4)
 
   # ## now let's try and fit the optimisation
   sv <- ecomix:::get_starting_values_bernoulli_sp(y, X, weights, offset, G, S, control)
@@ -63,7 +63,7 @@ testthat::test_that('species mix bernoulli', {
   ## now let's test the species_mix function
   sp_form <- ~1
   fmb <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli', n_mixtures=3, control = species_mix.control(quiet=FALSE,calculate_hessian_cpp = FALSE))
-  testthat::expect_s3_class(fmp, "species_mix")
-  testthat::expect_s3_class(fmp, "bernoulli")
+  testthat::expect_s3_class(fmb, "species_mix")
+  testthat::expect_s3_class(fmb, "bernoulli")
 
 })

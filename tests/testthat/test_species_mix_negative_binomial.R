@@ -1,6 +1,6 @@
 context('species_mix negative binomial')
 library(ecomix)
-library(raster)
+
 
 
 testthat::test_that('species_mix negative binomial', {

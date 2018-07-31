@@ -32,7 +32,7 @@ fm_poissonint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_poisson, y, X,
 testthat::expect_length(do.call(cbind,fm_poissonint)[1,],S)
 
 # test that the starting values work.
-testthat::expect_length(tmp <- ecomix:::get_starting_values_poisson(y,X,offset,weights,G,S,control),10)
+testthat::expect_length(tmp <- ecomix:::get_starting_values_poisson(y,X,weights,offset,G,S,control),10)
 
 #get the taus
 starting_values <- ecomix:::initiate_fit_poisson(y, X, weights, offset, G, S, control)
@@ -50,7 +50,7 @@ gg <- 1
 testthat::expect_length(ecomix:::apply_glm_poisson_group_tau(gg, y, X, taus),2)
 
 # ## now let's try and fit the optimisation
-sv <- ecomix:::get_starting_values_poisson(y,X,offset,weights, G, S, control)
+sv <- ecomix:::get_starting_values_poisson(y, X, weights,offset,  G, S, control)
 y_is_na <- is.na(y)
 tmp <- ecomix:::sam_optimise(y,X,offset,sv$spp_wts,sv$site_spp_wts, y_is_na, sv$nS, sv$nG, sv$nObs, disty=2, start_vals = sv, control)
 testthat::expect_length(tmp,15)
