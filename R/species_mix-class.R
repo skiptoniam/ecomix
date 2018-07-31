@@ -1784,7 +1784,7 @@
   return(my.coefs)
 }
 
-"apply_glm_bernoulli_sp_tau" <- function (ss, y, X, offset, tau, G, S, fits){
+"apply_glmnet_bernoulli_sp_tau" <- function (ss, y, X, offset, tau, G, S, fits){
   Y_sp_tau <- as.matrix(rep(y[,ss],G))
   X_sp_tau <- do.call(rbind, replicate(G, X, simplify=FALSE))
   wts_sp_tau <- rep(tau[ss,],each=length(y[,ss]))
@@ -1796,11 +1796,11 @@
                           lambda=lambda.seq, #the range of penalties, note that only one will be used
                           standardize=FALSE,  #don't standardize the covariates (they are already standardised)
                           intercept=TRUE)
-  my.coefs <- apply(glmnet::coef.glmnet(f_mix),1,lambda_penalisation_fun)
+  my.coefs <- apply(glmnet::coef.glmnet(f_mix),1,lambda_penalisation_fun,lambda.seq)
   return(sp_coef=my.coefs)
 }
 
-"apply_glm_binomial_group_tau" <- function (gg, y, X, tau){
+"apply_glmnet_bernoulli_group_tau" <- function (gg, y, X, tau){
 
   ### setup the data stucture for this model.
   Y_tau <- as.matrix(unlist(as.data.frame(y)))
@@ -1812,8 +1812,17 @@
   n_ys <- sapply(X_no_NA,nrow)
   wts_tau <- rep(tau[,gg],n_ys)
 
-  ft_mix <- stats::glm.fit(x = X_tau, y = Y_tau, weights = wts_tau, family=stats::binomial())
-  mix_coefs <- ft_mix$coef[-1]
+  # ft_mix <- stats::glm.fit(x = X_tau, y = Y_tau, weights = wts_tau, family=stats::binomial())
+  lambda.seq <- sort( unique( c(seq( from=1/0.1, to=1, length=10),seq( from=0.1, to=1, length=10))), decreasing=TRUE)
+  ft_mix <- glmnet::glmnet(y=Y_tau, x=X_tau[,-1], weights=wts_tau,
+                 # offset=offset,
+                 family='binomial',
+                 alpha=0, #ridge penalty
+                 lambda=lambda.seq, #the range of penalties, note that only one will be used
+                 standardize=FALSE,  #don't standardize the covariates (they are already standardised)
+                 intercept=TRUE)
+  mix_coefs <- apply(glmnet::coef.glmnet(ft_mix),1,lambda_penalisation_fun,lambda.seq)[-1]
+  # mix_coefs <- ft_mix$coef[-1]
   return(mix_coefs)
 }
 
@@ -1860,6 +1869,94 @@
 }
 
 
+"get_logls_bernoulli_sp" <- function(first_fit, fits, G, S){
+  logl_sp_bernoulli_sp <- matrix(NA, nrow=S, ncol=G)
+  p <- stats::make.link(link = "logit")
+  for(ss in 1:S){
+    for(gg in 1:G){
+      lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+      logl_sp_bernoulli_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, p$linkinv(lp),log = TRUE))
+    }
+    logl_sp_bernoulli_sp[ss,gg] <- logl_sp_bernoulli_sp[ss,gg]*first_fit$weights[ss]
+  }
+  return(logl_sp_bernoulli_sp)
+}
+
+"get_initial_values_bernoulli_sp" <- function(y, X, weights, offset, G, S, control){#cores, inits='kmeans', init.sd=1){
+  starting_values <- initiate_fit_bernoulli_sp(y, X, weights, offset, G, S, control)# cores, inits, init.sd)
+  fits <- list(alphas=starting_values$sp_intercepts,betas=starting_values$mix_coefs,disp=rep(NA,S))
+  first_fit <- list(x = X, y = y, weights=weights, offset=offset)
+  logls <- get_logls_bernoulli_sp(first_fit, fits, G, S)
+  pis <- rep(1/G, G)
+  taus <- get_taus(pis, logls, G, S)
+  taus <- skrink_taus(taus,max_tau=1/G + 0.1, G)
+
+  #use glm for the step.
+  fmix_coefs <- surveillance::plapply(1:G, apply_glm_poisson_group_tau,
+                                      first_fit$y,
+                                      first_fit$x,
+                                      taus,
+                                      .parallel = control$cores,
+                                      .verbose = !control$quiet)
+
+  #update the mix coefs.
+  fmix_coefs <- do.call(rbind,fmix_coefs)
+  fits$betas <- as.matrix(fmix_coefs)
+
+  res <- list()
+  res$fits <- fits
+  res$first_fit <- first_fit
+  res$pis <- pis
+  res$taus <- taus
+  return(res)
+}
+
+
+"get_incomplete_logl_bernoulli_sp_function" <-  function(eta, first_fit, fits, G, S){
+
+  p <- stats::make.link('logit')
+  pis <- additive_logistic(eta)
+  logl_sp_ippm <- matrix(NA,nrow=S, ncol=G)
+  for(ss in 1:S){
+    for(gg in 1:G){
+      #lp is the same as log_mu (linear predictor)
+      lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+      logl_sp_ippm[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, p$linkinv(lp),log = TRUE)*first_fit$weights)
+    }
+  }
+  # print(log(pis))
+  ak <- logl_sp_ippm + matrix(rep(log(pis), each=S), nrow=S, ncol=G)
+  am <- apply( ak, 1, max)
+  ak <- exp( ak-am)
+  sppLogls <- am + log( rowSums( ak))
+  logl <- sum( sppLogls)
+  return( logl)
+}
+
+
+## gradient stuff
+# "incom_logl_bernoulli_sp_alpha" <- function(x, first_fit, eta, fits, G, S){
+#   fits$alphas <- x
+#   # pis <- additive_logistic(eta)
+#   tmp <- get_incomplete_logl_bernoulli_sp_function(eta, first_fit, fits, G, S)
+#   return(-tmp)
+# }
+
+"incom_logl_bernoulli_sp_beta" <- function(x, first_fit, eta, fits, G, S){
+
+  fits$betas <- matrix(x,nrow=nrow(fits$betas),ncol=ncol(fits$betas))
+  # pis <- additive_logistic(eta)
+  tmp <- get_incomplete_logl_bernoulli_sp_function(eta, first_fit, fits, G, S)
+  return(-tmp)
+}
+
+# "incom_logl_bernoulli_sp_pi" <- function(x, first_fit, fits, G, S){
+#   eta <- x
+#   # pis <- additive_logistic(eta)
+#   tmp <- get_incomplete_logl_bernoulli_sp_function(eta, first_fit, fits, G, S)
+#   return(-tmp)
+# }
+
 "initiate_fit_bernoulli_sp" <- function(y, X, weights, offset, G, S, control){#cores, inits='kmeans', init.sd=1){
   fm_bern_sp_int <- surveillance::plapply(1:S, apply_glmnet_bernoulli_sp, y, X, weights, offset, .parallel = control$cores, .verbose = !control$quiet)
   all_coefs <- do.call(rbind, fm_bern_sp_int)
@@ -1890,95 +1987,6 @@
   results$sp_intercepts <- all_coefs[,1]
   results$all_coefs <- all_coefs
   return(results)
-}
-
-
-
-
-"get_logls_bernoulli_sp" <- function(first_fit, fits, G, S){
-  logl_sp_bernoulli_sp <- matrix(NA, nrow=S, ncol=G)
-  p <- stats::make.link(link = "logit")
-  for(ss in 1:S){
-    for(gg in 1:G){
-      lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
-      logl_sp_bernoulli_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, p$linkinv(lp),log = TRUE))
-    }
-    logl_sp_bernoulli_sp[ss,gg] <- logl_sp_bernoulli_sp[ss,gg]*first_fit$weights[ss]
-  }
-  return(logl_sp_bernoulli_sp)
-}
-
-"get_initial_values_bernoulli_sp" <- function(y, X, weights, offset, G, S, control){#cores, inits='kmeans', init.sd=1){
-  starting_values <- initiate_fit_bernoulli_sp(y, X, offset, G, S, control)# cores, inits, init.sd)
-  fits <- list(alphas=starting_values$sp_intercepts,betas=starting_values$mix_coefs,disp=rep(NA,S))
-  first_fit <- list(x = X, y = y, weights=weights, offset=offset)
-  logls <- get_logls_bernoulli_sp(first_fit, fits, G, S)
-  pis <- rep(1/G, G)
-  taus <- get_taus(pis, logls, G, S)
-  taus <- skrink_taus(taus,max_tau=1/G + 0.1, G)
-
-  #use glm for the step.
-  fmix_coefs <- surveillance::plapply(1:G, apply_glm_poisson_group_tau,
-                                      first_fit$y,
-                                      first_fit$x,
-                                      taus,
-                                      .parallel = control$cores,
-                                      .verbose = !control$quiet)
-
-  #update the mix coefs.
-  fmix_coefs <- do.call(rbind,fmix_coefs)
-  fits$betas <- as.matrix(fmix_coefs)
-
-  res <- list()
-  res$fits <- fits
-  res$first_fit <- first_fit
-  res$pis <- pis
-  res$taus <- taus
-  return(res)
-}
-
-## gradient stuff
-# "incom_logl_bernoulli_sp_alpha" <- function(x, first_fit, eta, fits, G, S){
-#   fits$alphas <- x
-#   # pis <- additive_logistic(eta)
-#   tmp <- get_incomplete_logl_bernoulli_sp_function(eta, first_fit, fits, G, S)
-#   return(-tmp)
-# }
-
-"incom_logl_bernoulli_sp_beta" <- function(x, first_fit, eta, fits, G, S){
-
-  fits$betas <- matrix(x,nrow=nrow(fits$betas),ncol=ncol(fits$betas))
-  # pis <- additive_logistic(eta)
-  tmp <- get_incomplete_logl_bernoulli_sp_function(eta, first_fit, fits, G, S)
-  return(-tmp)
-}
-
-# "incom_logl_bernoulli_sp_pi" <- function(x, first_fit, fits, G, S){
-#   eta <- x
-#   # pis <- additive_logistic(eta)
-#   tmp <- get_incomplete_logl_bernoulli_sp_function(eta, first_fit, fits, G, S)
-#   return(-tmp)
-# }
-
-"get_incomplete_logl_bernoulli_sp_function" <-  function(eta, first_fit, fits, G, S){
-
-  p <- stats::make.link('logit')
-  pis <- additive_logistic(eta)
-  logl_sp_ippm <- matrix(NA,nrow=S, ncol=G)
-  for(ss in 1:S){
-    for(gg in 1:G){
-      #lp is the same as log_mu (linear predictor)
-      lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
-      logl_sp_ippm[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, p$linkinv(lp),log = TRUE)*first_fit$weights)
-    }
-  }
-  # print(log(pis))
-  ak <- logl_sp_ippm + matrix(rep(log(pis), each=S), nrow=S, ncol=G)
-  am <- apply( ak, 1, max)
-  ak <- exp( ak-am)
-  sppLogls <- am + log( rowSums( ak))
-  logl <- sum( sppLogls)
-  return( logl)
 }
 
 "fitmix_EM_bernoulli_sp" <- function(y, X, weights, offset, G, control){

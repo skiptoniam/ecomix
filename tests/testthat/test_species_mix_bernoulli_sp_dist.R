@@ -1,6 +1,5 @@
 context('species_mix bernoulli')
 library(ecomix)
-library(raster)
 
 
 testthat::test_that('species mix bernoulli', {
@@ -30,41 +29,41 @@ testthat::test_that('species mix bernoulli', {
   S <- length(simulated_data$sp.int)
   control <- species_mix.control()
 
-  # test a single poisson model
+  # test a single bernoulli model
   ss <- 1
   testthat::expect_length(ecomix:::apply_glmnet_bernoulli_sp(ss, y, X, weights, offset),5)
   fm_bern_int <- surveillance::plapply(1:S, ecomix:::apply_glmnet_bernoulli_sp, y, X, weights, offset, .parallel = control$cores, .verbose = !control$quiet)
   testthat::expect_length(do.call(cbind,fm_bern_int)[1,],S)
 
   # test that the starting values work.
-  testthat::expect_length(tmp <- ecomix:::get_starting_values_bernoulli_sp(y, X, weights, offset, G, S, control),10)
+  testthat::expect_length(tmp <- ecomix:::get_starting_values_bernoulli_sp(y, X, weights, offset, G, S, control),11)
 
   #get the taus
-  starting_values <- ecomix:::initiate_fit_poisson(y, X, weights, offset, G, S, control)
+  starting_values <- ecomix:::initiate_fit_bernoulli_sp(y, X, weights, offset, G, S, control)
   fits <- list(betas=starting_values$mix_coefs, alphas=starting_values$sp_intercepts)
   first_fit <- list(x = X, y = y, weights=weights, offset=offset)
 
   # get the loglikelihood based on these values
-  logls <- ecomix:::get_logls_poisson(first_fit, fits, G, S)
+  logls <- ecomix:::get_logls_bernoulli_sp(first_fit, fits, G, S)
   pis <- rep(1/G, G)
   taus <- ecomix:::get_taus(pis, logls, G, S)
   taus <- ecomix:::skrink_taus(taus, max_tau=1/G + 0.1, G)
 
   ## get to this in a bit
   gg <- 1
-  testthat::expect_length(ecomix:::apply_glm_poisson_group_tau(gg, y, X, taus),2)
+  testthat::expect_length(ecomix:::apply_glm_bernoulli_group_tau(gg, y, X, taus),4)
 
   # ## now let's try and fit the optimisation
-  sv <- ecomix:::get_starting_values_poisson(y,X,offset,weights, G, S, control)
+  sv <- ecomix:::get_starting_values_bernoulli_sp(y, X, weights, offset, G, S, control)
   y_is_na <- is.na(y)
-  tmp <- ecomix:::sam_optimise(y,X,offset,sv$spp_wts,sv$site_spp_wts, y_is_na, sv$nS, sv$nG, sv$nObs, disty=2, start_vals = sv, control)
+  tmp <- ecomix:::sam_optimise(y,X,offset,sv$spp_wts,sv$site_spp_wts, y_is_na, sv$nS, sv$nG, sv$nObs, disty=1, start_vals = sv, control)
   testthat::expect_length(tmp,15)
 
   ## most of the internal functions seem to be working.
   ## now let's test the species_mix function
   sp_form <- ~1
-  fmp <- species_mix(sam_form, sp_form, model_data, distribution = 'poisson', n_mixtures=4, control = species_mix.control(quiet=TRUE,calculate_hessian_cpp = FALSE))
+  fmb <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli', n_mixtures=3, control = species_mix.control(quiet=FALSE,calculate_hessian_cpp = FALSE))
   testthat::expect_s3_class(fmp, "species_mix")
-  testthat::expect_s3_class(fmp, "poisson")
+  testthat::expect_s3_class(fmp, "bernoulli")
 
 })
