@@ -9,7 +9,7 @@
   return( res)
 }
 
-"apply_glmnet_sam" <- function(ss, y, X, weights, offset, y_is_na, disty){
+"apply_glmnet_sam" <- function(ss, y, X, site_spp_weights, offset, y_is_na, disty){
 
   options(warn = -1)
   # which family to use?
@@ -66,3 +66,22 @@
   return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
 
 }
+
+"apply_glm_group_tau_sam" <- function (gg, y, X, weights, offset, y_is_na, disty, tau){
+
+  ### setup the data stucture for this model.
+  Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
+  X_no_NA <- list()
+  for (jj in 1:ncol(y)){
+    X_no_NA[[jj]] <- X[!y_is_na[,jj],]
+  }
+  X_tau <- do.call(rbind, X_no_NA)
+  n_ys <- sapply(X_no_NA,nrow)
+  wts_tau <- rep(tau[,gg],n_ys)
+
+  ft_mix <- stats::glm.fit(x = X_tau, y = Y_tau, weights = wts_tau, family=stats::poisson())
+  mix_coefs <- ft_mix$coef[-1]
+  return(mix_coefs)
+}
+
+

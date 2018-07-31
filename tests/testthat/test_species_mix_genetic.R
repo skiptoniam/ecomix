@@ -27,11 +27,11 @@ testthat::test_that('species mix generic', {
   # test a new glmnet function bernoulli
   ss <- 1
   disty <- 1
-  fm1 <- ecomix:::apply_glmnet_sam(ss, y, X, site_spp_wts, offset, y_is_na, disty)
+  fm1 <- ecomix:::apply_glmnet_sam(ss, y, X, site_spp_weights, offset, y_is_na, disty)
   testthat::expect_is(fm1,'list')
   testthat::expect_length(fm1,3)
 
-  fm_bern <- surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam, y, X, site_spp_wts, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  fm_bern <- surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
 
   alphas <- lapply(fm_bern, `[[`, 1)
   testthat::expect_length(unlist(alphas),S)
@@ -59,11 +59,11 @@ testthat::test_that('species mix generic', {
 
   ss <- 1
   disty <- 2
-  fm1 <- ecomix:::apply_glmnet_sam(ss, y, X, site_spp_wts, offset, y_is_na, disty)
+  fm1 <- ecomix:::apply_glmnet_sam(ss, y, X, site_spp_weights, offset, y_is_na, disty)
   testthat::expect_is(fm1,'list')
   testthat::expect_length(fm1,3)
 
-  fm_pois <- surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam, y, X, site_spp_wts, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  fm_pois <- surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
 
   alphas <- lapply(fm_pois, `[[`, 1)
   testthat::expect_length(unlist(alphas),S)
@@ -92,11 +92,11 @@ testthat::test_that('species mix generic', {
 
   ss <- 1
   disty <- 4
-  fm1 <- ecomix:::apply_glmnet_sam(ss, y, X, site_spp_wts, offset, y_is_na, disty)
+  fm1 <- ecomix:::apply_glmnet_sam(ss, y, X, site_spp_weights, offset, y_is_na, disty)
   testthat::expect_is(fm1,'list')
   testthat::expect_length(fm1,3)
 
-  fm_nb <- surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam, y, X, site_spp_wts, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  fm_nb <- surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
 
   alphas <- lapply(fm_nb, `[[`, 1)
   testthat::expect_length(unlist(alphas),S)
@@ -106,38 +106,5 @@ testthat::test_that('species mix generic', {
 
   disp <- unlist(lapply(fm_nb, `[[`, 3))
   testthat::expect_length(disp,S)
-
-  ## negative binomial
-  simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="")
-
-  y <- simulated_data$species_data
-  X <- simulated_data$covariate_data
-  offset <- rep(0,nrow(y))
-  # weights <- rep(1,nrow(y))
-  spp_weights <- rep(1,ncol(y))
-  site_spp_weights <- matrix(1,nrow(y),ncol(y))
-  y_is_na <- matrix(FALSE,nrow(y),ncol(y))
-  G <- length(simulated_data$pi)
-  S <- length(simulated_data$sp.int)
-  nP <- ncol(X[,-1])
-  control <- species_mix.control()
-
-  ss <- 1
-  disty <- 4
-  fm1 <- ecomix:::apply_glmnet_sam(ss, y, X, site_spp_wts, offset, y_is_na, disty)
-  testthat::expect_is(fm1,'list')
-  testthat::expect_length(fm1,3)
-
-  fm_nb <- surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam, y, X, site_spp_wts, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
-
-  alphas <- lapply(fm_nb, `[[`, 1)
-  testthat::expect_length(unlist(alphas),S)
-
-  betas <- lapply(fm_nb, `[[`, 2)
-  testthat::expect_length(do.call(rbind, betas),S*nP)
-
-  disp <- unlist(lapply(fm_nb, `[[`, 3))
-  testthat::expect_length(disp,S)
-
 
 })
