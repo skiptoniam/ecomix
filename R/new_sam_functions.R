@@ -326,7 +326,7 @@
   return(logl_sp)
 }
 
-fitmix_EM_sam <- function(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control){
+fitmix_EM_sam <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
 
   ite <- 1
@@ -369,12 +369,18 @@ fitmix_EM_sam <- function(y, X, site_spp_weights, offset, y_is_na, G, S, disty, 
   }
 
   # m-step
-  tmp <- stats::nlminb(start=fits$betas, objective=incom_logl_bernoulli_sp_beta, gradient=NULL, hessian=NULL,
-  first_fit=first_fit, eta=additive_logistic(pis,inv = TRUE)[-G], fits=fits, G=G, S=S)
+  tmp <- stats::nlminb(start=fits$betas, objective=incom_logl_mix_coefs, gradient=NULL, hessian=NULL,
+                       eta=additive_logistic(pis,inv = TRUE)[-G],
+                       first_fit = first_fit,
+                       fits = fits,
+                       spp_weights = spp_weights,
+                       G=G, S=S,
+                       disty = disty)
   fits$betas <- update_mix_coefs(fits$betas, tmp$par)
-  fm_bernoulli_sp_int <- surveillance::plapply(1:S, apply_glmnet_bernoulli_sp, y, X, weights, offset, .parallel = control$cores, .verbose = !control$quiet) #check weights in this.
-  sp_int <- do.call(cbind,fm_bernoulli_sp_int)[1,]
-  fits$alphas <- update_sp_coefs(fits$alphas,sp_int)
+
+  fm_sp_int <- surveillance::plapply(1:S, apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet) #check weights in this.
+  alphas <- unlist(lapply(fm_sp_int, `[[`, 1))
+  fits$alphas <- update_sp_coefs(fits$alphas,alphas)
 
   # e-step
   # get the log-likes and taus
@@ -384,7 +390,7 @@ fitmix_EM_sam <- function(y, X, site_spp_weights, offset, y_is_na, G, S, disty, 
 
   #update the likelihood
   logl_old <- logl_new
-  logl_new <- get_incomplete_logl_bernoulli_sp_function(eta = additive_logistic(pis,inv = TRUE)[-G], first_fit, fits, G, S)
+  logl_new <- get_incomplete_logl_sam(eta = additive_logistic(pis,inv = TRUE)[-G], first_fit, fits, spp_weights, G, S, disty)
   ite <- ite + 1
   }
 
@@ -402,4 +408,94 @@ fitmix_EM_sam <- function(y, X, site_spp_weights, offset, y_is_na, G, S, disty, 
   eta = eta, pis = pis, taus = round(taus,4)))
 
 }
+
+"incom_logl_mix_coefs" <- function(x, eta, first_fit, fits, spp_weights, G, S, disty){
+
+  fits$betas <- matrix(x,nrow=nrow(fits$betas),ncol=ncol(fits$betas))
+  tmp <- get_incomplete_logl_sam(eta, first_fit, fits, spp_weights, G, S, disty)
+  return(-tmp)
+}
+
+# this appears to be working.
+"get_incomplete_logl_sam" <- function(eta, first_fit, fits, spp_weights, G, S, disty){
+
+  pis <- additive_logistic(eta)
+  if(is.null(spp_weights))spp_weights <- rep(1,S) #for bayesian boostrap.
+
+  #bernoulli
+  if(disty==1){
+    logl_sp <- matrix(NA, nrow=S, ncol=G)
+    link <- stats::make.link(link = "logit")
+    for(ss in 1:S){
+      for(gg in 1:G){
+        lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+        logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, link$linkinv(lp),log = TRUE))
+      }
+      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
+    }
+  }
+  #poisson
+  if(disty==2){
+    logl_sp <- matrix(NA, nrow=S, ncol=G)
+    for(ss in 1:S){
+      for(gg in 1:G){
+        #lp is the same as log_lambda (linear predictor)
+        lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+        logl_sp[ss,gg] <- sum(dpois(first_fit$y[,ss],exp(lp),log=TRUE))
+      }
+      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
+    }
+  }
+  #ippm
+  if(disty==3){
+    logl_sp <- matrix(NA, nrow=S, ncol=G)
+    for(ss in 1:S){
+      sp_idx<-!first_fit$y_is_na[,ss]
+      for(gg in 1:G){
+        #lp is the same as log_lambda (linear predictor)
+        lp <- first_fit$x[sp_idx,1] * fits$alphas[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$betas[gg,] + first_fit$offset[sp_idx]
+        logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$weights[sp_idx,ss] %*% exp(lp)
+      }
+    }
+  }
+  #negative binomial
+  if(disty==4){
+    logl_sp <- matrix(NA, nrow=S, ncol=G)
+    for(ss in 1:S){
+      for(gg in 1:G){
+        #lp is the same as log_lambda (linear predictor)
+        lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=fits$disp[ss],log=TRUE))
+      }
+      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
+    }
+  }
+  #tweedie
+  if(disty==5){
+    stop('no tweedie')
+
+  }
+  # gaussian
+  if(disty==6){
+    logl_sp <- matrix(NA, nrow=S, ncol=G)
+    for(ss in 1:S){
+      for(gg in 1:G){
+        #lp is the same as log_lambda (linear predictor)
+        lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+        logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=lp,sd=fits$disp[ss],log=TRUE))
+      }
+      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
+    }
+  }
+
+  ak <- logl_sp + matrix(rep(log( pis), each=S), nrow=S, ncol=G)
+  am <- apply( ak, 1, max)
+  ak <- exp( ak-am)
+  sppLogls <- am + log( rowSums( ak))
+  logl <- sum( sppLogls)
+
+  return(logl)
+}
+
+
 
