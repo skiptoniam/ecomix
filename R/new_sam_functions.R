@@ -67,21 +67,84 @@
 
 }
 
-"apply_glm_group_tau_sam" <- function (gg, y, X, weights, offset, y_is_na, disty, tau){
+"apply_glm_group_tau_sam" <- function (gg, y, X, site_spp_weights, offset, y_is_na, disty, tau){
 
-  ### setup the data stucture for this model.
-  Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
-  X_no_NA <- list()
-  for (jj in 1:ncol(y)){
-    X_no_NA[[jj]] <- X[!y_is_na[,jj],]
+    ### setup the data stucture for this model.
+    Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
+    X_no_NA <- list()
+    for (jj in 1:ncol(y)){
+      X_no_NA[[jj]] <- X[!y_is_na[,jj],]
+    }
+    X_tau <- do.call(rbind, X_no_NA)
+    n_ys <- sapply(X_no_NA,nrow)
+    wts_tau <- rep(tau[,gg],c(n_ys))
+
+
+    ippm_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
+    Z_tau <- as.matrix(Y_tau/ippm_weights)
+    wts_tauXippm_weights <- wts_tau*ippm_weights
+    offy_mat <- replicate(ncol(y),offset)
+    offy <- unlist(as.data.frame(offy_mat[!y_is_na]))
+
+    options(warn = -1)
+    # which family to use?
+    if( disty == 1)
+      fam <- "binomial"
+    if( disty == 2 | disty == 3 | disty == 4)
+      fam <- "poisson"
+    if( disty == 6)
+      fam <- "gaussian"
+
+    if (disty==3){ Y_tau <- as.matrix(Y_tau/ippm_weights)
+    } else { Y_tau <- as.matrix(Y_tau)
+    }
+
+    #lambdas for penalised glm
+    lambda.seq <- sort( unique( c( seq( from=1/0.1, to=1, length=10), seq( from=1/0.1, to=1, length=10),seq(from=0.9, to=10^-2, length=10))), decreasing=TRUE)
+    if( disty != 5){ #don't use for tweedie
+      # ft_sp <- glmnet::glmnet(x=as.matrix(X[ids_i,-1]),
+      #                         y=outcomes,
+      #                         weights=c(site_spp_weights[ids_i,ss]),
+      #                         offset=offset[ids_i],
+      #                         family=fam,
+      #                         alpha=0,
+      #                         lambda = lambda.seq,
+      #                         standardize = FALSE,
+      #                         intercept = TRUE)
+      ft_mix <- glmnet::glmnet(x=as.matrix(X_tau[,-1]),
+                               y=as.matrix(Y_tau),
+                               weights=c(wts_tauXippm_weights),
+                               offset = offy,
+                               family=fam,
+                               alpha=0,
+                               lambda = lambda.seq,
+                               standardize = FALSE,
+                               intercept = FALSE)
+      my_coefs <- apply(glmnet::coef.glmnet(ft_mix), 1, lambda_penalisation_fun, lambda.seq)
+    }
+    disp <- NULL
+    if( disty == 4){
+      locat.s <- lambda.seq[max(which(as.matrix(glmnet::coef.glmnet(ft_mix))==my_coefs,arr.ind = TRUE)[,2])]
+      preds <-as.numeric(predict(ft_mix, s=locat.s,
+                                 type="response",
+                                 newx=X_tau[,-1],
+                                 offset=offy))
+      tmp <- MASS::theta.mm(Y_tau, preds,
+                            weights=wts_tauXippm_weights,
+                            dfr=nrow(Y_tau),
+                            eps=1e-4)
+      if(tmp>2)
+        tmp <- 2
+      disp <- log( 1/tmp)
+    }
+    if( disty == 6){
+      preds <-as.numeric(predict(ft_mix, s=locat.s,
+                                 type="response",
+                                 newx=X_tau[,-1],
+                                 offset=offu))
+      disp <- log(sqrt(sum((Y_tau - preds)^2)/length(Y_tau)))  #should be something like the resid standard Deviation.
+    }
+
+    return(as.matrix(my_coefs))
   }
-  X_tau <- do.call(rbind, X_no_NA)
-  n_ys <- sapply(X_no_NA,nrow)
-  wts_tau <- rep(tau[,gg],n_ys)
-
-  ft_mix <- stats::glm.fit(x = X_tau, y = Y_tau, weights = wts_tau, family=stats::poisson())
-  mix_coefs <- ft_mix$coef[-1]
-  return(mix_coefs)
-}
-
 

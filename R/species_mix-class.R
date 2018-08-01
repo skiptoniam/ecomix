@@ -560,15 +560,88 @@
 #' @export
 #' @examples
 #' \dontrun{
-#' archetype_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+#' archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
 #' theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
 #' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
-#' simulated_data <- simulate_species_mix_data(archetype_form,~1,dat,theta,dist="bernoulli")
+#' simulated_data <- simulate_species_mix_data(archetype_formula,~1,dat,theta,dist="bernoulli")
 #' }
 ## need to update this to take the new formula framework and simulate ippm data.
 "simulate_species_mix_data" <-  function (archetype_formula, species_formula, dat, theta, distribution = "bernoulli"){
 
-  if(distribution=='ippm')stop('simulation of ippm data has not been set up yet, watch this space')
+  if(distribution=='ippm'){#stop('simulation of ippm data has not been set up yet, watch this space')
+  message('simulating Inhomogenous Point Process Data on a regular 100x100 grid')
+
+    n_sp <- length(archetype_formula[[2]])-1
+    n_g <- dim(theta)[1]
+    x <- y <- 1:100 / 100
+    grid2D <- expand.grid( x, y)
+    grid2D$cellArea <- rep( 1/100, nrow( grid2D))  #all cells have same size here
+    grid2D$x1 <- runif(nrow(grid2D))
+    grid2D$x2 <- runif(rnorm(grid2D))
+
+    sp_name <- all.vars(archetype_formula)[seq_len(n_sp)]
+
+    X <- as.matrix(data.frame(const=1,x1=grid2D$x1,x2=grid2D$x2))
+    lambdas <- matrix(0, dim(X)[1], n_sp, dimnames=list(NULL,sp_name))
+    sp_int <- rep(0, n_sp)
+    group <- rep(0, n_sp)
+    for (s in seq_len(n_sp)) {
+      g <- sample(n_g,1)
+      sp_int[s] <- runif(1, -1, .5)
+      log_lambda <-  X%*%c(sp_int[s],theta[g,-1])
+      lambdas[, s] <- exp(log_lambda)
+      group[s] <- g
+    }
+
+    LAMBDAS <- apply(lambdas,2,function(x)sum(x*grid2D$cellArea))
+    Ns <- sapply(LAMBDAS,function(x)rpois(n=1, lambda= x))  #the observed number of presences
+    preds_df <- data.frame(idx=1:nrow(X),X)
+    presences <- list()
+    for(i in seq_len(n_sp)){
+      presences[[i]] <- sample(x=preds_df$idx,size=Ns[i], replace=TRUE, prob=lambdas[,i]/LAMBDAS[i])# TRUE
+    }
+
+    presence_coords <- lapply(presences,function(x)grid2D[x,1:2])
+    presences_sort <- lapply(presences,sort)
+
+    sp_dat_po_ul<- data.frame(sp=rep(sp_name,unlist(lapply(presences,length))),cell_num=unlist(presences_sort))
+    po_matrix <- table_to_species_data(sp_dat_po_ul,site_id = 'cell_num',species_id = 'sp')
+    po_matrix[po_matrix==0]<-NA
+    po_covariates <- X[as.numeric(rownames(po_matrix)),]
+    presence_data <- data.frame(po_matrix,po_covariates)
+    bkdata <- cbind(matrix(0,nrow(X),n_sp),X)
+    colnames(bkdata) <- colnames(presence_data)
+    mm <- rbind(presence_data,bkdata)
+    dat <- mm[c(sp_name,"const","x1","x2")]
+
+    species_specific_cell_counts <- lapply(seq_along(sp_name),
+                                           function(x)table(sp_dat_po_ul[sp_dat_po_ul$sp==sp_name[x],2]))
+
+    df <- data.frame(id=preds_df$idx,area=grid2D$cellArea,x1=grid2D$x1)
+
+    sp_weights <- lapply(seq_along(sp_name),function(x)(weights=df$area/as.numeric(species_specific_cell_counts[[x]][match(df$id,as.numeric(names(species_specific_cell_counts[[x]])))])))
+
+    sp_weights_mat <- data.frame(cell_id = 1:10000, do.call(cbind,sp_weights))
+
+    m <- sp_weights_mat
+    presence_sites <- m[rowSums(is.na(m[,-1]))!=ncol(m[,-1]), ]
+    presence_sites <- data.frame(presence_sites)
+    background_sites <- data.frame(cell_id=1:10000,matrix(rep(grid2D$cellArea,n_sp),
+                                                          nrow(grid2D),n_sp))
+
+    wts <- rbind(presence_sites[,-1],background_sites[,-1])
+    colnames(wts) <- c(sp_name)#,"const","x1","x2")
+    y <- dat[,1:n_sp]
+    X <- dat[,c(n_sp+1):ncol(dat)]
+    y_is_na <- is.na(y)
+    weights <- wts
+    offset <- rep(0,nrow(dat))
+    pi <- tapply(group, group, length)/S
+    return(list(species_data = y, covariate_data = X, background_weights = wts, offset=offset,
+         y_is_na=y_is_na,group = group, pi = pi, sp.int = sp_int, lambdas = LAMBDAS))
+
+  } else {
+
   S <- length(archetype_formula[[2]])-1
   #update the formula to old format.
   if(!is.null(archetype_formula))
@@ -646,6 +719,7 @@
   out <- as.matrix(out)
   dat <- as.matrix(dat)
   return(list(species_data = out, covariate_data = dat, group = group, pi = pi, sp.int = sp.int))
+  }
 }
 
 #'@rdname species_mix-class

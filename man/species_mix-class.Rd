@@ -193,10 +193,10 @@ fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli',
 fmods <- species_mix.multifit(sam_form, sp_form, model_data, distribution = 'bernoulli', nstarts = 10, n_mixtures=3)
 }
 \dontrun{
-archetype_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
 theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
-simulated_data <- simulate_species_mix_data(archetype_form,~1,dat,theta,dist="bernoulli")
+simulated_data <- simulate_species_mix_data(archetype_formula,~1,dat,theta,dist="bernoulli")
 }
 \dontrun{
 fm1 <- species_mix(form,data)
