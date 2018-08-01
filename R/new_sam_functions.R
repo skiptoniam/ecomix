@@ -46,9 +46,9 @@
     preds <-as.numeric(predict(ft_sp, s=locat.s,
                                type="response",
                                newx=X[ids_i,-1],
-                               offset=offset))
+                               offset=offset[ids_i]))
     tmp <- MASS::theta.mm(outcomes, preds,
-                          weights=spp_weights,
+                          weights=c(site_spp_weights[ids_i,ss]),
                           dfr=length(y[ids_i,ss]),
                           eps=1e-4)
     if(tmp>2)
@@ -59,7 +59,7 @@
     preds <-as.numeric(predict(ft_sp, s=locat.s,
                                type="response",
                                newx=X[ids_i,-1],
-                               offset=offset))
+                               offset=offset[ids_i]))
     disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
   }
 
@@ -102,15 +102,6 @@
     #lambdas for penalised glm
     lambda.seq <- sort( unique( c( seq( from=1/0.1, to=1, length=10), seq( from=1/0.1, to=1, length=10),seq(from=0.9, to=10^-2, length=10))), decreasing=TRUE)
     if( disty != 5){ #don't use for tweedie
-      # ft_sp <- glmnet::glmnet(x=as.matrix(X[ids_i,-1]),
-      #                         y=outcomes,
-      #                         weights=c(site_spp_weights[ids_i,ss]),
-      #                         offset=offset[ids_i],
-      #                         family=fam,
-      #                         alpha=0,
-      #                         lambda = lambda.seq,
-      #                         standardize = FALSE,
-      #                         intercept = TRUE)
       ft_mix <- glmnet::glmnet(x=as.matrix(X_tau[,-1]),
                                y=as.matrix(Y_tau),
                                weights=c(wts_tauXippm_weights),

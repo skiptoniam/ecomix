@@ -636,7 +636,7 @@
     y_is_na <- is.na(y)
     weights <- wts
     offset <- rep(0,nrow(dat))
-    pi <- tapply(group, group, length)/S
+    pi <- tapply(group, group, length)/n_sp
     return(list(species_data = y, covariate_data = X, background_weights = wts, offset=offset,
          y_is_na=y_is_na,group = group, pi = pi, sp.int = sp_int, lambdas = LAMBDAS))
 
