@@ -82,11 +82,11 @@ testthat::test_that('species mix generic', {
   site_spp_weights <- simulated_data$background_weights
   y_is_na <- simulated_data$y_is_na
 
-  dim(y)
-  dim(X)
-  dim(y_is_na)
-  dim(site_spp_weights)
-  length(offset)
+  # dim(y)
+  # dim(X)
+  # dim(y_is_na)
+  # dim(site_spp_weights)
+  # length(offset)
 
   ss <- 1
   disty <- 3
