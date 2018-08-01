@@ -40,7 +40,7 @@ testthat::test_that('species mix generic', {
   testthat::expect_length(do.call(rbind, betas),S*nP)
 
   disp <- unlist(lapply(fm_bern, `[[`, 3))
-  testthat::expect_null(disp)
+  testthat::expect_true(all(is.na(disp)))
 
   ## poisson
   simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="poisson")
@@ -72,7 +72,7 @@ testthat::test_that('species mix generic', {
   testthat::expect_length(do.call(rbind, betas),S*nP)
 
   disp <- unlist(lapply(fm_pois, `[[`, 3))
-  testthat::expect_null(disp)
+  testthat::expect_true(all(is.na(disp)))
 
   ##ippm test
   simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="ippm")
@@ -103,7 +103,7 @@ testthat::test_that('species mix generic', {
   testthat::expect_length(do.call(rbind, betas),S*nP)
 
   disp <- unlist(lapply(fm_ippm, `[[`, 3))
-  testthat::expect_null(disp)
+  testthat::expect_true(all(is.na(disp)))
 
 
   ## negative binomial
