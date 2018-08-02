@@ -9,7 +9,6 @@
 \alias{species_mix.control}
 \alias{simulate_species_mix_data}
 \alias{species_mix_estimate_groups}
-\alias{species_mix.predict}
 \title{species_mix objects}
 \usage{
 species_mix(archetype_formula = NULL,
@@ -18,9 +17,8 @@ species_mix(archetype_formula = NULL,
   control = species_mix.control(), inits = NULL, standardise = FALSE,
   titbits = TRUE)
 
-species_mix.fit(y, X, W = NULL, G, weights, offset, distribution_numeric,
-  control, y_is_na = NULL, inits = NULL, archetype_formula = NULL,
-  species_formula = NULL)
+species_mix.fit(y, X, G, S, spp_weights, site_spp_weights, offset,
+  y_is_na = NULL, distribution_numeric, control, inits = NULL)
 
 species_mix.multifit(archetype_formula = NULL, species_formula = ~1, data,
   distribution = "bernoulli", nstart = 10, n_mixtures = 3,
@@ -45,8 +43,6 @@ species_mix_estimate_groups(archetype_formula = NULL, species_formula = ~1,
   data, n_mixtures = 1:10, distribution = "bernoulli", offset = NULL,
   weights = NULL, control = species_mix.control(), inits = NULL,
   standardise = FALSE)
-
-species_mix.predict(object, new_obs, ...)
 }
 \arguments{
 \item{species_formula}{an object of class "formula" (or an object that can be
@@ -92,13 +88,17 @@ minimum you will need pis (additive_logitic transformed), alphas
 
 \item{X}{is a design matrix for the archetype_formula dimension n_sites * n_covariates.}
 
-\item{W}{is a design matrix for species_formula and will be implemented if species_formula has covariates.}
-
 \item{G}{is the number of species archetypes that are being estimated.}
 
-\item{distribution_numeric}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'tweedie' are avaliable - internal conversion of distribution to a integer.}
+\item{S}{is the number of species to be modelled (this will be calculated internally in species_mix())}
+
+\item{spp_weights}{These are weights on the species logls and are specifically used in the Bayesian Boostrap.}
+
+\item{site_spp_weights}{These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.}
 
 \item{y_is_na}{This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!}
+
+\item{distribution_numeric}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are avaliable - internal conversion of distribution to a integer.}
 
 \item{maxit}{Maximum number of evaluations of the objective function allowed. Defaults to 500.}
 
@@ -118,10 +118,6 @@ minimum you will need pis (additive_logitic transformed), alphas
 
 \item{theta}{coefficents for each species archetype. Matrix of G x number of parameters. Each row is a different species archetype.}
 
-\item{object}{is a matrix model returned from the species_mix model.}
-
-\item{new_obs}{a matrix of new observations for prediction.}
-
 \item{archetype_fromula}{an object of class "formula" (or an object that can be
 coerced to that class). The response variable (left hand side of the
 formula) needs to be either 'presence', 'occurrence', 'abundance',
@@ -137,11 +133,11 @@ matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
 const, temperature, rainfall. dims of matirx should be
 nsites*(nspecies+const+covariates).}
 
-\item{weights}{is used in alternative way depending on the error distribution used. See \link[ecomix]{species_mix} for more details.}
-
 \item{offset}{this is a vector of site specific offsets, this might be something like area sampled at sites.}
 
 \item{control}{this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.}
+
+\item{inits}{This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).}
 
 \item{quite}{Should any reporting be performed? Default is FALSE, for reporting.}
 
@@ -160,8 +156,6 @@ Fits a finite mixture model to identify species archetype
 models (SAMs).
 
 This function runs the 'species_mix' function but it iterates through groups (1 to 10) by default.
-
-Predicts SAM probabilities at a series of sites. Confidence intervals can be calculated if variance-covariance matrix is estimated during species_mix model fit.
 }
 \details{
 species_mix is used to fit mixtures of glms to multivariate
@@ -198,7 +192,4 @@ theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9,2.9,-1,0.2,-0.4),4,3,byrow=TRU
 dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
 simulated_data <- simulate_species_mix_data(archetype_formula,~1,dat,theta,dist="bernoulli")
 }
-\dontrun{
-fm1 <- species_mix(form,data)
-preds_fm1 <- predict(fm1,newdata)}
 }

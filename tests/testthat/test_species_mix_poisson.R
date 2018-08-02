@@ -24,30 +24,31 @@ y_is_na <- matrix(FALSE,nrow(y),ncol(y))
 G <- length(simulated_data$pi)
 S <- length(simulated_data$sp.int)
 control <- species_mix.control()
+disty <- 2
 
 # test a single poisson model
 i <- 1
-testthat::expect_length(ecomix:::apply_glmnet_poisson(i, y, X, weights, offset),3)
-fm_poissonint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_poisson, y, X, weights, offset, .parallel = control$cores, .verbose = !control$quiet)
+testthat::expect_length(ecomix:::apply_glmnet_sam(i, y, X, site_spp_wts, offset, y_is_na, disty),3)
+fm_poissonint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam,  y, X, site_spp_wts, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
 testthat::expect_length(do.call(cbind,fm_poissonint)[1,],S)
 
 # test that the starting values work.
-testthat::expect_length(tmp <- ecomix:::get_starting_values_poisson(y,X,weights,offset,G,S,control),10)
+# testthat::expect_length(tmp <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control),10)
 
 #get the taus
-starting_values <- ecomix:::initiate_fit_poisson(y, X, weights, offset, G, S, control)
-fits <- list(betas=starting_values$mix_coefs, alphas=starting_values$sp_intercepts)
-first_fit <- list(x = X, y = y, weights=weights, offset=offset)
+starting_values <- ecomix:::initiate_fit_sam(y, X, site_spp_wts, offset, y_is_na, G, S, disty, control)
+fits <- list(alphas=starting_values$alphas,betas=starting_values$betas,disp=starting_values$disp)
+first_fit <- list(x = X, y = y, weights=site_spp_wts, offset=offset)
 
 # get the loglikelihood based on these values
-logls <- ecomix:::get_logls_poisson(first_fit, fits, G, S)
+logls <- ecomix:::get_logls_sam(first_fit, fits, spp_wts, G, S, disty)
 pis <- rep(1/G, G)
 taus <- ecomix:::get_taus(pis, logls, G, S)
 taus <- ecomix:::skrink_taus(taus, max_tau=1/G + 0.1, G)
 
 ## get to this in a bit
 gg <- 1
-testthat::expect_length(ecomix:::apply_glm_poisson_group_tau(gg, y, X, taus),2)
+testthat::expect_length(ecomix:::apply_glm_group_tau_sam(gg, y, X, site_spp_wts, offset, y_is_na, disty, taus),3)
 
 # ## now let's try and fit the optimisation
 sv <- ecomix:::get_starting_values_poisson(y, X, weights,offset,  G, S, control)
