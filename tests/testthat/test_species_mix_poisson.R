@@ -51,7 +51,7 @@ gg <- 1
 testthat::expect_length(ecomix:::apply_glm_group_tau_sam(gg, y, X, site_spp_wts, offset, y_is_na, disty, taus),3)
 
 # ## now let's try and fit the optimisation
-sv <- ecomix:::get_starting_values_poisson(y, X, weights,offset,  G, S, control)
+sv <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control)
 y_is_na <- is.na(y)
 tmp <- ecomix:::sam_optimise(y,X,offset,sv$spp_wts,sv$site_spp_wts, y_is_na, sv$nS, sv$nG, sv$nObs, disty=2, start_vals = sv, control)
 testthat::expect_length(tmp,15)

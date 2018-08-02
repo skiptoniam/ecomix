@@ -988,7 +988,7 @@
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[sp_idx,1] * fits$alphas[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$betas[gg,] + first_fit$offset[sp_idx]
-        logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$weights[sp_idx,ss] %*% exp(lp)
+        logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$site_spp_weights[sp_idx,ss] %*% exp(lp)
       }
     }
   }
@@ -1033,9 +1033,9 @@
 
 "get_initial_values_sam" <- function(y, X, spp_weights = NULL, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
-  starting_values <- ecomix:::initiate_fit_sam(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control)
+  starting_values <- initiate_fit_sam(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control)
   fits <- list(alphas=starting_values$alphas,betas=starting_values$betas,disp=starting_values$disp)
-  first_fit <- list(x = X, y = y, weights = weights, offset = offset, y_is_na = y_is_na)
+  first_fit <- list(x = X, y = y, site_spp_weights = site_spp_weights, offset = offset, y_is_na = y_is_na)
   logls <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
   pis <- rep(1/G, G)
   taus <- get_taus(pis, logls, G, S)
@@ -1045,7 +1045,7 @@
   fmix_coefs <- surveillance::plapply(1:G, apply_glm_group_tau_sam,
                                       first_fit$y,
                                       first_fit$x,
-                                      first_fit$weights,
+                                      first_fit$site_spp_weights,
                                       first_fit$offset,
                                       first_fit$y_is_na,
                                       disty,
@@ -1101,7 +1101,7 @@
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[sp_idx,1] * fits$alphas[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$betas[gg,] + first_fit$offset[sp_idx]
-        logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$weights[sp_idx,ss] %*% exp(lp)
+        logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$site_spp_weights[sp_idx,ss] %*% exp(lp)
       }
     }
   }
@@ -1221,7 +1221,7 @@
 }
 
 "initiate_fit_sam" <- function(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control){
-  fm_sp_mods <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty,
+  fm_sp_mods <- surveillance::plapply(seq_len(S), apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty,
                                       .parallel = control$cores, .verbose = !control$quiet)
 
   alphas <- unlist(lapply(fm_sp_mods, `[[`, 1))
