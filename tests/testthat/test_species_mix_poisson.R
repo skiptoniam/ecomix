@@ -52,16 +52,15 @@ testthat::expect_length(ecomix:::apply_glm_group_tau_sam(gg, y, X, site_spp_wts,
 
 # ## now let's try and fit the optimisation
 sv <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control)
-y_is_na <- is.na(y)
-tmp <- ecomix:::sam_optimise(y,X,offset,sv$spp_wts,sv$site_spp_wts, y_is_na, sv$nS, sv$nG, sv$nObs, disty=2, start_vals = sv, control)
+tmp <- ecomix:::sam_optimise(y,X,offset,spp_wts,site_spp_wts, y_is_na, S, G, nrow(y), disty=2, start_vals = sv, control)
 testthat::expect_length(tmp,15)
 
 ## most of the internal functions seem to be working.
 ## now let's test the species_mix function
-sp_form <- ~1
-fmp <- species_mix(sam_form, sp_form, model_data, distribution = 'poisson', n_mixtures=4, control = species_mix.control(quiet=TRUE,calculate_hessian_cpp = FALSE))
-testthat::expect_s3_class(fmp, "species_mix")
-testthat::expect_s3_class(fmp, "poisson")
+# sp_form <- ~1
+# fmp <- species_mix(sam_form, sp_form, model_data, distribution = 'poisson', n_mixtures=4, control = species_mix.control(quiet=TRUE,calculate_hessian_cpp = FALSE))
+# testthat::expect_s3_class(fmp, "species_mix")
+# testthat::expect_s3_class(fmp, "poisson")
 
 
 })
