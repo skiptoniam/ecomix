@@ -51,6 +51,8 @@
 #'  weights must be a nrow(data)*n_species matrix, which provides a
 #'  species-specific background weights used to estimate the species-specific
 #'  marginal likelihoods.
+#'  @param bb_weights a numeric vector of n species long. This is used for undertaking
+#'  a Bayesian Bootstrap. See 'vcov.species_mix' for more details.
 #' @param control a list of control parameters for optimisation and calculation.
 #' See details. From \code{species_mix.control} for details on optimistaion
 #' parameters.
@@ -85,7 +87,7 @@
 
 "species_mix" <- function(archetype_formula = NULL, species_formula = stats::as.formula(~1), data,
                           n_mixtures = 3, distribution="bernoulli", offset=NULL,
-                          weights=NULL, control=species_mix.control(), inits=NULL,
+                          weights=NULL, bb_weights=NULL, control=species_mix.control(), inits=NULL,
                           standardise = FALSE, titbits = TRUE){
 
   #the control parameters
@@ -159,16 +161,18 @@
 
   # get the weights
   species_names <- colnames(y)
-  weights <- get_weights_sam(mf,species_names,distribution)
+  site_spp_weights <- get_site_spp_weights_sam(mf,species_names,distribution)
+  spp_weights <- check_spp_weights(bb_weights,S)
+
   # cat(colnames(weights),"\n")
 
   if(distribution=='ippm'){
-    if(!all(colnames(y)%in%colnames(weights)))
+    if(!all(colnames(y)%in%colnames(site_spp_weights)))
       # cat(colnames(y),"\n")
-      # cat(colnames(weights),"\n")
+      # cat(colnames(site_spp_weights),"\n")
       stop('When modelling a inhomogenous poisson point process model,
            weights colnames must match species data colnames')
-    if(any(dim(y)!=dim(weights)))
+    if(any(dim(y)!=dim(site_spp_weights)))
       stop('When modelling a inhomogenous poisson point process model,
            weights needs to have the same dimensions at the
            species data - n_sites x n_species')
@@ -187,9 +191,8 @@
   print_input_sam(y, X, S, archetype_formula, species_formula, distribution, quiet=control$quiet)
 
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
-  tmp <- species_mix.fit(y=y, X=X, W=W, G=n_mixtures, weights=weights, offset=offset,
-                         distribution_numeric=disty, control, y_is_na=y_is_na, inits=inits,
-                         archetype_formula=archetype_formula,species_formula=species_formula)
+  tmp <- species_mix.fit(y=y, X=X, G=n_mixtures, spp_weights=spp_weights, site_spp_weights=site_spp_weights,
+                         offset=offset, distribution_numeric=disty, y_is_na=y_is_na, control=control, inits=inits)
 
   tmp$dist <- disty.cases[disty]
 
@@ -202,8 +205,10 @@
   tmp <- calc_info_crit_sam(tmp)
 
   #titbits object, if wanted/needed.
-  tmp$titbits <- get_titbits_sam(titbits, y, X, W=NULL, weights, offset, archetype_formula, species_formula, control, disty.cases[disty])
-  class(tmp) <- c("species_mix",distribution)
+  tmp$titbits <- get_titbits_sam(titbits, y, X, spp_weights, site_spp_weights, offset,
+                                 y_is_na , archetype_formula, species_formula,
+                                 control, disty.cases[disty])
+  class(tmp) <- c("species_mix", disty.cases[disty])
   return(tmp)
 }
 
@@ -1427,11 +1432,13 @@
   return(offset)
 }
 
-"get_titbits_sam" <- function( titbits, y, X, W, weights, offset,
-                               archetype_formula, species_formula, control,
-                               distribution)  {
+"get_titbits_sam" <- function( titbits, y, X, spp_weights, site_spp_weights, offset,
+                               y_is_na , archetype_formula, species_formula,
+                               control, distribution)  {
     if( titbits==TRUE)
-      titbits <- list( Y = y, X = X, W = W, weights=weights, offset=offset,
+      titbits <- list( Y = y, X = X, spp_weights=spp_weights,
+                       site_spp_weights=site_spp_weights, offset=offset,
+                       y_is_na=y_is_na,
                        archetype_formula =  archetype_formula,
                        species_formula = species_formula,
                        control = control,
@@ -1442,12 +1449,16 @@
         titbits$Y <- y
       if( "X" %in% titbits)
         titbits$X <- X
-      if( "W" %in% titbits)
-        titbits$W <- W
+      # if( "W" %in% titbits)
+        # titbits$W <- W
+      if( "spp_weights" %in% titbits)
+        titbits$spp_weights <- spp_weights
+      if( "site_spp_weights" %in% titbits)
+        titbits$site_spp_weights <- site_spp_weights
       if( "offset" %in% titbits)
         titbits$offset <- offset
-      if( "weights" %in% titbits)
-        titbits$weights <- weights
+      if( "y_is_na" %in% titbits)
+        titbits$y_is_na <- y_is_na
       if( "archetype_formula" %in% titbits)
         titbits$archetype_formula <- archetype_formula
       if( "species_formula" %in% titbits)
@@ -1460,7 +1471,7 @@
     return( titbits)
 }
 
-"get_weights_sam"  <- function(mf,sp_names,distribution){
+"get_site_spp_weights_sam"  <- function(mf,sp_names,distribution){
   if(distribution=='ippm'){
     weights <- model.weights(mf)
     if(!is.null(weights)){
@@ -1469,9 +1480,29 @@
       weights <- matrix(1,nrow(mf),length(sp_names))
     }
   } else {
-    weights <- rep(1, nrow(mf))
+
+    if(!is.null(weights)){
+      weights <- replicate(length(sp_names),weights)
+    } else {
+      weights <- matrix(1,nrow(mf),length(sp_names))
+    }
   }
   return(weights)
+}
+
+"check_spp_weights" <- function(bb_weights, nS){
+
+  if(!is.null(bb_weights)){
+    if(all.equal(length(bb_weights),nS)) {
+      spp_weights <- bb_weights
+    } else {
+      message('species weights for Bayesian bootstrap do not match the number of species in the model. Please check.')
+      spp_weights <- rep(1,nS)
+    }
+  } else {
+    spp_weights <- rep(1,nS)
+  }
+  return(spp_weights)
 }
 
 "update_mix_coefs" <- function(old, new, kappa=1){
