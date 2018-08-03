@@ -195,10 +195,11 @@ testthat::test_that('species mix ippm', {
   # offset <- rep(0,nrow(wts))
   # sam_form <- as.formula(paste0('cbind(',paste(LETTERS702[1:(n_sp)],collapse = ','),")~1+x1+x2"))
   # sp_form <- ~ 1
-  # fm_ippm1 <- ecomix::species_mix(archetype_formula = sam_form, species_formula = sp_form, data = dat,  weights = wts,
-  #                                 offset = offset, distribution = 'ippm', n_mixtures = 4,
-  #                                 control = species_mix.control(cores=3,em_prefit = FALSE,calculate_hessian_cpp = FALSE))
-  # #
+  # fm_ippm1 <- ecomix::species_mix(archetype_formula = sam_form, species_formula = sp_form, data = dat,
+  #                                 weights = wts, bb_weights = rep(1,nrow(wts)), offset = offset,
+  #                                 distribution = 'ippm', n_mixtures = 4,
+  #                                 control = control)
+  # # #
   # testthat::expect_s3_class(fm_ippm1,'species_mix')
   # testthat::expect_s3_class(fm_ippm1,'ippm')
 

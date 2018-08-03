@@ -14,8 +14,8 @@
 species_mix(archetype_formula = NULL,
   species_formula = stats::as.formula(~1), data, n_mixtures = 3,
   distribution = "bernoulli", offset = NULL, weights = NULL,
-  control = species_mix.control(), inits = NULL, standardise = FALSE,
-  titbits = TRUE)
+  bb_weights = NULL, control = species_mix.control(), inits = NULL,
+  standardise = FALSE, titbits = TRUE)
 
 species_mix.fit(y, X, G, S, spp_weights, site_spp_weights, offset,
   y_is_na = NULL, distribution_numeric, control, inits = NULL)
@@ -73,7 +73,9 @@ over species (rather than sites), the weights should be a vector n species
 long. The exception is under the use of the 'ippm' distribution where
 weights must be a nrow(data)*n_species matrix, which provides a
 species-specific background weights used to estimate the species-specific
-marginal likelihoods.}
+marginal likelihoods.
+@param bb_weights a numeric vector of n species long. This is used for undertaking
+a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
 
 \item{control}{a list of control parameters for optimisation and calculation.
 See details. From \code{species_mix.control} for details on optimistaion

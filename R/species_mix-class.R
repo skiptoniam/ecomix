@@ -110,9 +110,11 @@
   m <- match(c("data","offset","weights"), names(mf), 0L)
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
-  # if(distribution=="ippm")
-  mf$na.action <- "na.pass"
-  # else mf$na.action <- "na.exclude"
+  if(distribution=="ippm"){
+    mf$na.action <- "na.pass"
+  } else {
+    mf$na.action <- "na.exclude"
+  }
   mf[[1L]] <- quote(stats::model.frame)
   mf <- eval(mf, parent.frame())
 
