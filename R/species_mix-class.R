@@ -193,15 +193,21 @@
   print_input_sam(y, X, S, archetype_formula, species_formula, distribution, quiet=control$quiet)
 
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
-  tmp <- species_mix.fit(y=y, X=X, G=n_mixtures, spp_weights=spp_weights, site_spp_weights=site_spp_weights,
-                         offset=offset, distribution_numeric=disty, y_is_na=y_is_na, control=control, inits=inits)
+  tmp <- species_mix.fit(y=y, X=X, G=n_mixtures, S=S, spp_weights=spp_weights,
+                         site_spp_weights=site_spp_weights,
+                         offset=offset, distribution_numeric=disty, y_is_na=y_is_na,
+                         control=control, inits=inits)
 
   tmp$dist <- disty.cases[disty]
 
+
   tmp$pis <- ecomix:::additive_logistic(tmp$eta)
 
+  #calc posterior porbs and pis.
   if(n_mixtures>1)
     tmp$post_probs <- ecomix:::calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
+
+  tmp$pis <- colSums(tmp$post_probs)/S
 
   #Information criteria
   tmp <- calc_info_crit_sam(tmp)
@@ -247,12 +253,12 @@
   if(is.null(inits)){
 
     starting_values  <-  get_starting_values_sam(y=y, X=X,
-                                               spp_weights = bb_weights,
-                                               site_spp_weights = weights,
+                                               spp_weights = spp_weights,
+                                               site_spp_weights = site_spp_weights,
                                                offset=offset,
                                                y_is_na = y_is_na,
                                                G=G, S=S,
-                                               disty=disty,
+                                               disty=distribution_numeric,
                                                control=control)
 
   } else {
@@ -1474,22 +1480,24 @@
 }
 
 "get_site_spp_weights_sam"  <- function(mf,sp_names,distribution){
+
+  site_spp_wts <- model.weights(mf)
+
   if(distribution=='ippm'){
-    weights <- model.weights(mf)
-    if(!is.null(weights)){
-      weights <- subset(weights, select = colnames(weights)%in%sp_names)
+    if(!is.null(site_spp_wts)){
+      site_spp_wts <- subset(site_spp_wts, select = colnames(site_spp_wts)%in%sp_names)
     } else {
-      weights <- matrix(1,nrow(mf),length(sp_names))
+      site_spp_wts <- matrix(1,nrow(mf),length(sp_names))
     }
   } else {
 
-    if(!is.null(weights)){
-      weights <- replicate(length(sp_names),weights)
+    if(!is.null(site_spp_wts)){
+      site_spp_wts <- replicate(length(sp_names),site_spp_wts)
     } else {
-      weights <- matrix(1,nrow(mf),length(sp_names))
+      site_spp_wts <- matrix(1,nrow(mf),length(sp_names))
     }
   }
-  return(weights)
+  return(site_spp_wts)
 }
 
 "check_spp_weights" <- function(bb_weights, nS){
