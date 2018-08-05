@@ -71,4 +71,10 @@ testthat::test_that('species mix bernoulli', {
   testthat::expect_s3_class(fm1,'bernoulli')
   testthat::expect_s3_class(fm1,'species_mix')
 
+  fm2 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli',
+                     n_mixtures=3,control=species_mix.control(em_prefit = FALSE))
+  testthat::expect_s3_class(fm2,'bernoulli')
+  testthat::expect_s3_class(fm2,'species_mix')
+
+
 })
