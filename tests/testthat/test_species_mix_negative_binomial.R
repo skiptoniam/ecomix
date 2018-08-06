@@ -193,7 +193,8 @@ testthat::test_that('species_mix negative binomial', {
   # #   ret$loglikeS <- loglikeS  #for residuals
   # # #   return(ret)
   # # # }
-
+  # init_disp <- start_vals$disp
+  # start_vals$disp <- rep(0,S)
   tmp <- ecomix:::sam_optimise(y,X,offset,spp_weights,site_spp_weights, y_is_na, S, G, nrow(y), disty, start_vals, control)
   testthat::expect_length(tmp,15)
 
