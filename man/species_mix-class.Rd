@@ -16,7 +16,7 @@ species_mix(archetype_formula = NULL,
   species_formula = stats::as.formula(~1), data, n_mixtures = 3,
   distribution = "bernoulli", offset = NULL, weights = NULL,
   bb_weights = NULL, control = species_mix.control(), inits = NULL,
-  standardise = FALSE, titbits = TRUE)
+  standardise = TRUE, titbits = TRUE)
 
 species_mix.fit(y, X, G, S, spp_weights, site_spp_weights, offset,
   y_is_na = NULL, distribution_numeric, control, inits = NULL)
@@ -42,8 +42,8 @@ simulate_species_mix_data(archetype_formula, species_formula, dat, theta,
 
 species_mix_estimate_groups(archetype_formula = NULL, species_formula = ~1,
   data, n_mixtures = 1:10, distribution = "bernoulli", offset = NULL,
-  weights = NULL, control = species_mix.control(), inits = NULL,
-  standardise = FALSE)
+  weights = NULL, control = species_mix.control(cores = 1), inits = NULL,
+  standardise = TRUE, titbits = FALSE)
 
 \method{print}{species_mix}(x, ...)
 }
@@ -196,6 +196,11 @@ archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
 theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
 simulated_data <- simulate_species_mix_data(archetype_formula,~1,dat,theta,dist="bernoulli")
+}
+
+\dontrun{
+fm_groups <- species_mix_estimate_groups(sam_form, sp_form, model_data, distribution = 'bernoulli',
+ n_mixtures=3)
 }
 
 #Print information about a species_mix model

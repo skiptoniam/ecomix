@@ -88,7 +88,7 @@
 "species_mix" <- function(archetype_formula = NULL, species_formula = stats::as.formula(~1), data,
                           n_mixtures = 3, distribution="bernoulli", offset=NULL,
                           weights=NULL, bb_weights=NULL, control=species_mix.control(), inits=NULL,
-                          standardise = FALSE, titbits = TRUE){
+                          standardise = TRUE, titbits = TRUE){
 
   #the control parameters
   control <- set_control_sam(control)
@@ -649,27 +649,42 @@
 }
 
 #'@rdname species_mix-class
+#'
 #'@name species_mix_estimate_groups
+#'
 #'@description This function runs the 'species_mix' function but it iterates through groups (1 to 10) by default.
+#'
+#'@export
+#'
+#'@examples
+#'
+#' \dontrun{
+#' fm_groups <- species_mix_estimate_groups(sam_form, sp_form, model_data, distribution = 'bernoulli', n_mixtures=1:10)
+#'}
 "species_mix_estimate_groups" <- function(archetype_formula = NULL, species_formula = ~1,
                                           data, n_mixtures = 1:10, distribution="bernoulli",
-                                          offset=NULL, weights=NULL, control=species_mix.control(),
-                                          inits=NULL, standardise = FALSE){
-  my.fun <- function(G,archetype_formula,species_formula,data,offset,weights,distribution,inits,control){
+                                          offset=NULL, weights=NULL, control= species_mix.control(cores = 1),
+                                          inits=NULL, standardise = TRUE, titbits=FALSE){
+  my.fun <- function(G, archetype_formula, species_formula, data, distribution, offset,
+                     weights, bb_weights, control, inits, standardise, titbits){
+
     message("Fitting group",G,"\n")
+    tmp <- species_mix(archetype_formula, species_formula, data, G, distribution, offset,
+                        weights, bb_weights, control, inits, standardise, titbits)
+    return(tmp)
+    }
 
-    ecomix::species_mix(archetype_formula, species_formula, data, n_mixtures)
-
-  }
-  out <- surveillance::plapply(G, my.fun, form, dat, .parallel = control$cores, .verbose = !control$quiet)
-  aic <- rep(0,length(G))
-  bic <- rep(0,length(G))
+  out <- surveillance::plapply(n_mixtures, my.fun, archetype_formula, species_formula, data, distribution, offset,
+                               weights, bb_weights, control, inits, standardise, titbits,
+                               .parallel = control$cores, .verbose = !control$quiet)
+  aic <- rep(0,length(n_mixtures))
+  bic <- rep(0,length(n_mixtures))
   fm <- list()
-  for(i in seq_along(G))
+  for(i in seq_along(n_mixtures))
     if(!is.atomic(out[[i]])){
       aic[i] <- out[[i]]$aic
       bic[i] <- out[[i]]$bic
-      fm[[i]] <- list(logl=out[[i]]$logl,coef=out[[i]]$coef,tau=out[[i]]$tau,pi=out[[i]]$pi,covar=out[[i]]$covar)
+      fm[[i]] <- list(logl=out[[i]]$logl,coef=out[[i]]$coef,tau=out[[i]]$post_probs,pi=out[[i]]$pi)#,covar=out[[i]]$covar)
     }
   return(list(aic=aic,bic=bic,fm=fm))
 }
