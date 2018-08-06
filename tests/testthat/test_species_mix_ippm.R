@@ -104,7 +104,7 @@ testthat::test_that('species mix ippm', {
   X <- dat[,c(n_sp+1):ncol(dat)]
   y_is_na <- is.na(y)
   spp_weights <- rep(1,nrow(y))
-  site_spp_weights <- wts
+  site_spp_weights <- as.matrix(wts)
   G <- 4
   S <- n_sp
   ss <- 1
@@ -192,16 +192,24 @@ testthat::test_that('species mix ippm', {
   # does a ippm work?
   # wts <- rbind(presence_sites[,-1],background_sites[,-1])
   # colnames(wts) <- c(sp_name)#,"const","x1","x2")
-  # offset <- rep(0,nrow(wts))
-  # sam_form <- as.formula(paste0('cbind(',paste(LETTERS702[1:(n_sp)],collapse = ','),")~1+x1+x2"))
-  # sp_form <- ~ 1
-  # fm_ippm1 <- ecomix::species_mix(archetype_formula = sam_form, species_formula = sp_form, data = dat,
-  #                                 weights = wts, bb_weights = rep(1,nrow(wts)), offset = offset,
-  #                                 distribution = 'ippm', n_mixtures = 4,
-  #                                 control = control)
-  # # #
-  # testthat::expect_s3_class(fm_ippm1,'species_mix')
-  # testthat::expect_s3_class(fm_ippm1,'ippm')
+  # wts <- as.matrix(wts)
+  offset <- rep(0,nrow(wts))
+  sam_form <- as.formula(paste0('cbind(',paste(LETTERS702[1:(n_sp)],collapse = ','),")~1+x1+x2"))
+  sp_form <- ~ 1
+
+  model_data <- make_mixture_data(y,X[,-1])
+
+  print(head(site_spp_weights))
+  fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'ippm',
+                     weights = site_spp_weights,
+                     n_mixtures=4)
+  testthat::expect_s3_class(fm1,'ippm')
+  testthat::expect_s3_class(fm1,'species_mix')
+
+  # expect error if there are no weights
+  testthat::expect_error(  fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'ippm',weights = 1,
+                                              n_mixtures=4))
+
 
 
 })

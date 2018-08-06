@@ -56,6 +56,8 @@ testthat::test_that('species mix poisson', {
   testthat::expect_length(tmp,15)
 
 
+
+
   set.seed(42)
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~1+x1+x2"))
   sp_form <- ~1
