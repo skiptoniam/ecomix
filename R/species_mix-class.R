@@ -674,6 +674,179 @@
   return(list(aic=aic,bic=bic,fm=fm))
 }
 
+#'@rdname species_mix-class
+#'
+#'@export
+#'
+#'@examples
+#'
+#'#Print information about a species_mix model
+#'print(fm1)
+
+"print.species_mix" <-  function (x,...){
+  cat(fm1$titbits$distribution, "species_mix model\n")
+  cat("\nMixing probabilities\n")
+  print(x$pi)
+  cat("\nCoefficents\n")
+  print(x$coef)
+  # if(!is.na(x$se[1])){
+  #   cat("\nStandard Errors of coefficents\n")
+  #   print(x$se)
+  # }
+  cat("\nPosterior Probabilities\n")
+  print(x$post_probs)
+}
+
+
+"vcov.species_mix" <- function (object, ..., object2=NULL, method = "FiniteDifference", nboot = 1000, mc.cores=1, D.accuracy=2)
+  {
+    if( method %in% c("simple","Richardson"))
+      method <- "FiniteDifference"
+    if (!method %in% c("FiniteDifference", "BayesBoot", "SimpleBoot", "EmpiricalInfo")) {
+      error("Unknown method to calculate variance matrix, viable options are: 'FiniteDifference' (numerical), 'BayesBoot' (bootstrap), 'SimpleBoot' (bootstrap)', and 'EmpiricalInfo'.")
+      return(NULL)
+    }
+    if( Sys.info()['sysname'] == "Windows")
+      mc.cores <- 1
+    X <- object$titbits$X
+    p.x <- ncol( X)
+    if( class( object$titbits$species_formula)=="formula"){
+      form.W <- object$titbits$species_formula
+      W <- object$titbits$W
+      p.w <- ncol( W)
+    }
+    else{
+      form.W <- NULL
+      W <- -999999
+      p.w <- 0
+    }
+    offy <- object$titbits$offset
+    wts <- object$titbits$wts
+    Y <- object$titbits$Y
+    disty <- object$titbits$disty
+    power <- object$titbits$power
+    S <- object$S
+    nRCP <- object$nRCP
+    p.x <- object$p.x
+    p.w <- object$p.w
+    n <- object$n
+    disty <- object$titbits$disty
+    control <- object$titbits$control
+    pis <- as.numeric( matrix( -999999, nrow = n, ncol = nRCP))
+    mus <- as.numeric( array( -999999, dim=c( n, S, nRCP)))
+    logCondDens <- as.numeric( matrix( -999999, nrow = n, ncol = nRCP))
+    logls <- as.numeric(rep(-999999, n))
+    alpha.score <- as.numeric(rep(-999999, S))
+    tau.score <- as.numeric(matrix(-999999, nrow = nRCP - 1, ncol = S))
+    beta.score <- as.numeric(matrix(-999999, nrow = nRCP - 1, ncol = p.x))
+    if( p.w > 0)
+      gamma.score <- as.numeric( matrix( -999999, nrow = S, ncol = p.w))
+    else
+      gamma.score <- -999999
+    if( !is.null( object$coef$disp))
+      disp.score <- as.numeric( rep( -999999, S))
+    else
+      disp.score <- -999999
+    conv <- FALSE
+
+    if (method %in% c("FiniteDifference")) {
+      my.fun <- function(x) {
+        start <- 0
+        alpha <- x[start + 1:S]
+        start <- start + S
+        tau <- x[start + 1:((nRCP - 1) * S)]
+        start <- start + (nRCP-1)*S
+        beta <- x[start + 1:((nRCP - 1) * p.x)]
+        start <- start + (nRCP-1)*p.x
+        if( p.w > 0){
+          gamma <- x[start + 1:(S*p.w)]
+          start <- start + S*p.w
+        }
+        else
+          gamma <- -999999
+        if( any( !is.null( object$coef$disp)))
+          disp <- x[start + 1:S]
+        else
+          disp <- -999999
+        scoreContri <- -999999
+        tmp <- .Call("RCP_C", as.numeric(Y), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
+                     as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
+                     alpha, tau, beta, gamma, disp, power,
+                     as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
+                     alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
+                     pis, mus, logCondDens, logls,
+                     as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
+                     as.integer( FALSE), as.integer( FALSE), as.integer( TRUE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "ecomix")
+
+        tmp1 <- c(alpha.score, tau.score, beta.score)
+        if( p.w > 0)#class( object$titbits$species_formula) == "formula")
+          tmp1 <- c( tmp1, gamma.score)
+        if( !is.null( object$coef$disp))
+          tmp1 <- c( tmp1, disp.score)
+        return(tmp1)
+      }
+      hess <- nd2(x0=unlist( object$coefs), f=my.fun, mc.cores=mc.cores, D.accur=D.accuracy)#numDeriv::jacobian(my.fun, unlist(object$coefs), method = method)
+      vcov.mat <- try( -solve(hess))
+      if( inherits( vcov.mat, 'try-error')){
+        attr(vcov.mat, "hess") <- hess
+        warning( "Hessian appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe Hessian is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data.")
+      }
+      else
+        vcov.mat <- ( vcov.mat + t(vcov.mat)) / 2 #to ensure symmetry
+    }
+    if( method %in% c( "BayesBoot","SimpleBoot")){
+      object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
+      if( is.null( object2))
+        coefMat <- regiboot( object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE, orderSamps=FALSE)
+      else
+        coefMat <- object2
+      vcov.mat <- cov( coefMat)
+    }
+    if( method=="EmpiricalInfo"){
+      message( "Information approximated by empirical methods.  I have not been able to get this to work, even for simulated data.  I hope that you are feeling brave!")
+      alpha <- object$coef$alpha
+      tau <- object$coef$tau
+      beta <- object$coef$beta
+      if( p.w > 0)
+        gamma <- object$coef$gamma
+      else
+        gamma <- -999999
+      if( any( !is.null( object$coef$disp)))
+        disp <- object$coef$disp
+      else
+        disp <- -999999
+      scoreContri <- as.numeric( matrix( NA, nrow=n, ncol=length( unlist( object$coef))))
+      tmp <- .Call("RCP_C", as.numeric(Y), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
+                   as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
+                   alpha, tau, beta, gamma, disp, power,
+                   as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
+                   alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
+                   pis, mus, logCondDens, logls,
+                   as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
+                   as.integer( FALSE), as.integer( FALSE), as.integer( TRUE), as.integer( TRUE), as.integer( TRUE), PACKAGE = "ecomix")
+      scoreContri <- matrix( scoreContri, nrow=n)
+      summy <- matrix( 0, ncol=ncol( scoreContri), nrow=ncol( scoreContri))
+      for( ii in 1:n){
+        summy <- summy + scoreContri[ii,] %o% scoreContri[ii,]
+      }
+      tmp <- colSums( scoreContri)
+      tmp <- tmp %o% tmp / n
+      emp.info <- summy - tmp
+      #    diag( emp.info) <- diag( emp.info) + 0.00001 #makes it invertable but not realistic.
+      vcov.mat <- try( solve( emp.info))
+      if( inherits( vcov.mat, 'try-error')){
+        attr(vcov.mat, "hess") <- emp.info
+        warning( "Empirical information matrix (average of the cross-products of the scores for each observation) appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe empirical inverse is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data. Note that you have chosen to use method=\"EmpricalInfo\", which is likely to cause heartache (albeit computationally thrifty heartache) -- try other methods (and probably do that first).")
+      }
+      else
+        vcov.mat <- ( vcov.mat + t(vcov.mat)) / 2 #to ensure symmetry
+    }
+
+    return(vcov.mat)
+  }
+
+
+
 # #'@rdname species_mix-class
 # #'@name species_mix.predict
 # #'@param object is a matrix model returned from the species_mix model.
@@ -1698,18 +1871,7 @@
     return( res)
   }
 
-"print.species_mix" <-  function (x,...){
-    cat("\nMixing probabilities\n")
-    print(x$pi)
-    cat("\nCoefficents\n")
-    print(x$coef)
-    if(!is.na(x$se[1])){
-      cat("\nStandard Errors of coefficents\n")
-      print(x$se)
-    }
-    cat("\nPosterior Probabilities\n")
-    print(x$tau)
-  }
+
 
 
 

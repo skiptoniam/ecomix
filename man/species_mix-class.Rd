@@ -9,6 +9,7 @@
 \alias{species_mix.control}
 \alias{simulate_species_mix_data}
 \alias{species_mix_estimate_groups}
+\alias{print.species_mix}
 \title{species_mix objects}
 \usage{
 species_mix(archetype_formula = NULL,
@@ -43,6 +44,8 @@ species_mix_estimate_groups(archetype_formula = NULL, species_formula = ~1,
   data, n_mixtures = 1:10, distribution = "bernoulli", offset = NULL,
   weights = NULL, control = species_mix.control(), inits = NULL,
   standardise = FALSE)
+
+\method{print}{species_mix}(x, ...)
 }
 \arguments{
 \item{species_formula}{an object of class "formula" (or an object that can be
@@ -194,4 +197,7 @@ theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9,2.9,-1,0.2,-0.4),4,3,byrow=TRU
 dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
 simulated_data <- simulate_species_mix_data(archetype_formula,~1,dat,theta,dist="bernoulli")
 }
+
+#Print information about a species_mix model
+print(fm1)
 }
