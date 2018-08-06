@@ -482,7 +482,10 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	calc_beta_deriv(betaDerivs, fits.dlogdbeta, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
 	
 	//derivate w.r.t dispersions
-	if( dat.isDispersion()){ // if no disperion?  move along please 
+	//std::cout << dat.isDispersion() << '\n';	
+	if( dat.isDispersion()){
+			//std::cout << dat.isDispersion() << '\n';	
+	//{ // if no disperion?  move along please 
 		calc_dlog_ddispersionS(fits.dlogddispersion, fits.allMus, dat, params);
 		calc_dispersion_deriv(dispDerivs, fits.dlogddispersion, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);	
     }
@@ -545,7 +548,7 @@ void calc_eta_mu_deriv( vector<double> &etaDerivs, const sam_data &dat, const ve
 						if(dat.disty==3){ // ippm
 							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = dat.site_spp_wts[MATREF2D(i,s,dat.nObs)] * fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)); // loglink + weights	
 						}
-						if(dat.disty==2 | dat.disty==4 | dat.disty==4){ // poisson, negative binomial, tweedie
+						if(dat.disty==2 | dat.disty==4 | dat.disty==5){ // poisson, negative binomial, tweedie
 							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//log link
 						}
 						if(dat.disty==6){ // normal 
@@ -571,7 +574,7 @@ void calc_dlog_dalpha(vector<double> &dlda, vector<double> const &mu_eta_derivs,
 			  if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
 					// this is the tmp log poisson derivative (lpd)
 					//tmp_lpd = log_ippm_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.st_sp_wts[MATREF2D(i,s,dat.nObs)]);
-					dlda.at(MATREF2D(g,s,dat.nG)) += mu_eta_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));//this is for the BB
+					dlda.at(MATREF2D(g,s,dat.nG)) += mu_eta_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));
 				}
 			}
 			dlda.at(MATREF2D(g,s,dat.nG)) = dlda.at(MATREF2D(g,s,dat.nG))*dat.spp_wts[s]; //this is for the BB weights
@@ -614,9 +617,10 @@ void calc_dlog_ddispersionS(vector<double> &dldd, vector<double> const &mus, con
 	for(int g=0; g<dat.nG; g++){
 		for(int s=0;s<dat.nS; s++){
 			for(int i=0; i<dat.nObs; i++){
-				//switch(dat.disty){
+				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
 					if(dat.disty==4){ // negative binomial
 						dldd.at(MATREF2D(g,s,dat.nG)) += log_negative_binomial_deriv_disp_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Disp[s]);
+						//std::cout << dldd.at(MATREF2D(g,s,dat.nG)) << '\n';
 					}
 					//case 5:	// tweedie
 						//dldd.at(MATREF2D(g,s,dat.nG)) += log_tweedie_deriv_disp_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Disp[s]);
@@ -624,9 +628,9 @@ void calc_dlog_ddispersionS(vector<double> &dldd, vector<double> const &mus, con
 					if(dat.disty==6){ // normal
 						dldd.at(MATREF2D(g,s,dat.nG)) += log_normal_deriv_disp_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Disp[s]);
 					}
-						//}
+				}
 			}
-		dldd.at(MATREF2D(g,s,dat.nG)) = dldd.at(MATREF2D(g,s,dat.nG))*dat.spp_wts[s];
+		//dldd.at(MATREF2D(g,s,dat.nG)) = dldd.at(MATREF2D(g,s,dat.nG))*dat.spp_wts[s];
 		}
 	}
 }

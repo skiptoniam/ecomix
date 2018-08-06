@@ -27,7 +27,7 @@ void sam_fits::initialise( const int &nObs, const int &nG, const int &nS, const 
 	dlogdpi.resize(nG, NAnum);
 	
 	// array for catching for dlogddispersion
-	dlogddispersion.resize(nS, NAnum);
+	dlogddispersion.resize(nS*nG, NAnum);
 	
 };
 
