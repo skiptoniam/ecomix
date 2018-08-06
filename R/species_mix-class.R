@@ -107,6 +107,11 @@
 
   # Create model matrix
   mf <- match.call(expand.dots = FALSE)
+  if(distribution=="ippm"){
+    m <- match(c("data","offset"), names(mf), 0L)
+  } else {
+    m <- match(c("data","offset","weights"), names(mf), 0L)
+  }
   m <- match(c("data","offset","weights"), names(mf), 0L)
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
@@ -829,8 +834,7 @@
                           weights=c(site_spp_weights[ids_i,ss]),
                           dfr=length(y[ids_i,ss]),
                           eps=1e-4)
-    if(tmp>2)
-      tmp <- 2
+    if(tmp>2) tmp <- 2
     disp <- log( 1/tmp)
   }
   if( disty == 6){
@@ -1012,7 +1016,7 @@
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
-        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=fits$disp[ss],log=TRUE))
+        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=exp(-fits$disp[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -1052,7 +1056,7 @@
   logls <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
   pis <- rep(1/G, G)
   taus <- get_taus(pis, logls, G, S)
-  taus <- skrink_taus(taus,max_tau=0.9, G) #max_tau=1/G + 0.1
+  if(disty!=3) taus <- skrink_taus(taus,max_tau=0.9, G) #max_tau=1/G + 0.1
 
   #use glm for the step.
   fmix_coefs <- surveillance::plapply(1:G, apply_glm_group_tau_sam,
@@ -1125,7 +1129,7 @@
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
-        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=fits$disp[ss],log=TRUE))
+        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=exp(-fits$disp[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -1206,6 +1210,11 @@
     alphas <- unlist(lapply(fm_sp_int, `[[`, 1))
     fits$alphas <- update_sp_coefs(fits$alphas,alphas)
 
+    if(disty%in%c(4,6)){
+      disp <- unlist(lapply(fm_sp_int, `[[`, 3))
+      fits$disp <- update_sp_dispersion(fits$disp,disp)
+    }
+
     # e-step
     # get the log-likes and taus
     logls <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
@@ -1228,7 +1237,7 @@
   # estimate log-likelihood
   logl_new <- get_incomplete_logl_sam(eta, first_fit, fits, spp_weights, G, S, disty)
 
-  return(list(logl = logl_new, alpha = int_out, beta = fm_out,
+  return(list(logl = logl_new, alpha = int_out, beta = fm_out, disp = fits$disp,
               eta = eta, pis = pis, taus = round(taus,4)))
 
 }
@@ -1280,7 +1289,7 @@
   return( res)
 }
 
-"sam_optimise" <- function(y, X, offset, spp_wts, site_spp_wts, y_is_na, nS, nG, nObs, disty, start_vals, control){
+"sam_optimise" <- function(y, X, offset, spp_weights, site_spp_weights, y_is_na, S, G, Obs, disty, start_vals, control){
 
   inits <- c(start_vals$alphas, start_vals$betas, start_vals$eta, start_vals$disp)
   np <- as.integer(ncol(X[,-1]))
@@ -1300,18 +1309,25 @@
   getscores <- 1
   scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,disp))))
 
+
+  if(disty%in%c(4,6)){
+    control$optiDisp <- as.integer(1)
+  }else{
+    control$optiDisp <- as.integer(0)
+  }
+
   #model quantities
-  pis_out <- as.numeric(rep(NA, nG))  #container for the fitted RCP model
-  mus <- as.numeric(array( NA, dim=c( nObs, nS, nG)))  #container for the fitted spp model
-  loglikeS <- as.numeric(rep(NA, nS))
-  loglikeSG  <- as.numeric(matrix(NA, nrow = nS, ncol = nG))
+  pis_out <- as.numeric(rep(NA, G))  #container for the fitted RCP model
+  mus <- as.numeric(array( NA, dim=c( Obs, S, G)))  #container for the fitted spp model
+  loglikeS <- as.numeric(rep(NA, S))
+  loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
 
   #c++ call to optimise the model (needs pretty good starting values)
   tmp <- .Call("species_mix_cpp",
-               as.numeric(as.matrix(y)), as.numeric(as.matrix(X[,-1])), as.numeric(offset), as.numeric(spp_wts),
-               as.numeric(as.matrix(site_spp_wts)), as.integer(as.matrix(!y_is_na)),
-               # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, // data
-               as.integer(nS), as.integer(nG), as.integer(np), as.integer(nObs), as.integer(disty),
+               as.numeric(as.matrix(y)), as.numeric(as.matrix(X[,-1])), as.numeric(offset), as.numeric(spp_weights),
+               as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
+               # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
+               as.integer(S), as.integer(G), as.integer(np), as.integer(Obs), as.integer(disty),as.integer(control$optiDisp),
                # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
                as.double(alpha), as.double(beta), as.double(eta), as.double(disp),
                # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
@@ -1322,18 +1338,18 @@
                as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
                as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp), as.integer(control$printparams_cpp),
                # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
-               as.integer( control$optimise_cpp), as.integer(control$loglOnly_cpp), as.integer( control$derivOnly_cpp), as.integer(control$optiDisp),
+               as.integer( control$optimise_cpp), as.integer(control$loglOnly_cpp), as.integer( control$derivOnly_cpp),
                # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
                PACKAGE = "ecomix")
 
   ret <- tmp
   ret$logl <- ret$logl * -1
-  ret$mus <- array(mus, dim=c(nObs, nS, nG))
+  ret$mus <- array(mus, dim=c(Obs, S, G))
   ret$coefs <- list(alpha = ret$alpha, beta = ret$beta, eta = ret$eta, disp = ret$disp)
   ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score, disp.scores=disp.score)
-  ret$S <- nS; ret$G <- nG; ret$np <- np; ret$n <- nObs;
+  ret$S <- S; ret$G <- G; ret$np <- np; ret$n <- Obs;
   ret$start.vals <- inits
-  ret$loglikeSG <- matrix(loglikeSG,  nrow = nS, ncol = nG)  #for residuals
+  ret$loglikeSG <- matrix(loglikeSG,  nrow = S, ncol = G)  #for residuals
   ret$loglikeS <- loglikeS  #for residuals
   return(ret)
 }
@@ -1524,6 +1540,14 @@
 }
 
 "update_sp_coefs" <- function(old, new, kappa=1){
+  if(any(is.na( old)))
+    tmp <- new
+  else
+    tmp <- old + kappa*(new-old)
+  return( tmp)
+}
+
+"update_sp_dispersion" <- function(old, new, kappa=1){
   if(any(is.na( old)))
     tmp <- new
   else
