@@ -8,12 +8,12 @@
 
 extern "C" {
 	SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na,
-							  SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty,
+							  SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp,
 							  SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp, 
 							  SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
 							  SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
 							  SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
-							  SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp){
+							  SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly){
 
 	sam_cpp_all_classes all;
 
@@ -324,18 +324,33 @@ double log_negative_binomial_sam( const double &y, const double &mu, const doubl
 
 double log_negative_binomial_deriv_disp_sam(const double &y, const double &mu, const double &od){
 	
-	double theta, tmp = 0.0;
+	//double theta, tmp = 0.0;
 	
-    //sig = exp(od);
-    theta = 1 / exp(od); 
+    ////sig = exp(od);
+    //theta = 1 / exp(od); 
     
-    tmp = digamma( theta+y);
-    tmp -= digamma( theta);
-    tmp += 1 + log(theta) - log(theta+mu);
-    tmp -= (theta+y)/(theta+mu);
+    //tmp = digamma( theta+y);
+    //tmp -= digamma( theta);
+    //tmp += 1 + log(theta) - log(theta+mu);
+    //tmp -= (theta+y)/(theta+mu);
     
-    return(tmp);
-    }
+    //return(tmp);
+    
+    double theta, sig, res=0.0;
+
+	sig = exp(od);
+	theta = 1 / sig;
+
+	res = digamma( theta+y);
+	res -= digamma( theta);
+	res += 1 + log( theta) - log(mu+theta) - (theta+y)/(theta+mu);
+	res /= -sig*sig;	//for the change of variable sig --> r
+	res *= sig;	//for the change of variable dispParm --> sig
+
+	return( res);
+    
+    }    
+    
     
 double log_negative_binomial_deriv_mu_sam( const double &y, const double &mu, const double &od){
 	double tmp = 0.0, theta;

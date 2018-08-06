@@ -139,12 +139,12 @@ class sam_cpp_all_classes
 ////////////////////////////////////////////////////////
 
 extern "C" SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na,
-									 SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty,
+									 SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp,
 									 SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
 									 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
 									 SEXP Rpis, SEXP Rmus, SEXP logliS, SEXP logliSG,
 									 SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
-									 SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp);
+									 SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly);
 
 
 // functions for optimisation.
