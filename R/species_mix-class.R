@@ -239,6 +239,7 @@
 #'@param distribution_numeric the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are avaliable - internal conversion of distribution to a integer.
 #'@param control this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.
 #'@param inits This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).
+#'@export
 
 "species_mix.fit" <- function(y, X, G, S, spp_weights, site_spp_weights, offset, y_is_na=NULL, distribution_numeric, control, inits=NULL){
 
@@ -1565,13 +1566,14 @@
   return(ret)
 }
 
-"sam_bootstap" <-function (object, nboot=1000, type="BayesBoot", mc.cores=1, quiet=FALSE, orderSamps=FALSE, MLstart=TRUE){
+"sam_bootstrap" <-function (object, nboot=1000, type="BayesBoot", mc.cores=1,
+                            quiet=FALSE, orderSamps=FALSE, MLstart=TRUE){
   if (nboot < 1)
     stop( "No Boostrap samples requested.  Please set nboot to something > 1.")
   if( ! type %in% c("BayesBoot","SimpleBoot"))
     stop( "Unknown boostrap type, choices are BayesBoot and SimpleBoot.")
   n.reorder <- 0
-  object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
+  object$titbits$control$optimise <- TRUE #just in case it was turned off
   if(object$titbits$distribution=='ippm')
     stop('IPPM vcov matrix needs to estimated using FiniteDifference method.\n')
 
@@ -1579,15 +1581,15 @@
     chars <- c("><(('> ","_@_'' ","@(*O*)@ ")
     pb <- txtProgressBar(min = 1, max = nboot, style = 3, char = chars[sample(length(chars),1)]) }
   if( type == "SimpleBoot"){
-    all.wts <- matrix( sample( 1:object$n, nboot*object$n, replace=TRUE), nrow=nboot, ncol=object$n)
+    all.wts <- matrix( sample( 1:object$S, nboot*object$S, replace=TRUE), nrow=nboot, ncol=object$S)
     tmp <- apply( all.wts, 1, table)
-    all.wts <- matrix( 0, nrow=nboot, ncol=object$n)
+    all.wts <- matrix( 0, nrow=nboot, ncol=object$S)
     for( ii in seq_along( tmp))
       all.wts[ii, as.numeric( names( tmp[[ii]]))] <- tmp[[ii]]
   }
   if( type == "BayesBoot")
-    all.wts <- object$n * gtools::rdirichlet( nboot, rep( 1, object$n))
-  if( MLstart)
+    all.wts <- object$S * gtools::rdirichlet( nboot, rep( 1, object$S))
+  if(MLstart)
     my.inits <- unlist( object$coef)
   else{
     my.inits <- "random"
@@ -1595,10 +1597,19 @@
   }
 
   my.fun <- function(dummy){
+    disty.cases <- c("bernoulli", "poisson", "ippm", "negative_binomial", "tweedie", "gaussian")
+    disty <- get_distribution_sam(disty.cases, object$dist)
     if( !quiet)
       setTxtProgressBar(pb, dummy)
     dumbOut <- capture.output(
-      samp.object <- regional_mix.fit( outcomes=object$titbits$Y, W=object$titbits$W, X=object$titbits$X, offy=object$titbits$offset, wts=object$titbits$wts * all.wts[dummy,,drop=TRUE], disty=object$titbits$disty, nRCP=object$nRCP, power=object$titbits$power, inits=my.inits, control=object$titbits$control, n=object$n, S=object$S, p.x=object$p.x, p.w=object$p.w))
+      samp.object <- ecomix::species_mix.fit(y=object$titbits$Y,
+                                             X=object$titbits$X,
+                                             offset = object$titbits$offset,
+                                             spp_weights = all.wts[dummy,,drop=TRUE],
+                                             site_spp_weights = object$titbits$site_spp_weights,
+                                             G = object$G, y_is_na = object$titbits$y_is_na,
+                                             distribution_numeric = disty, control = object$titbits$control,
+                                             inits = my.inits))
     if( orderSamps)
       samp.object <- orderPost( samp.object, object)
     return( unlist( samp.object$coef))
@@ -1627,7 +1638,7 @@
   if( !quiet)
     message( "")
   colnames( boot.estis) <- get_long_names_rcp( object)
-  class( boot.estis) <- "regiboot"
+  class( boot.estis) <- "sam_bootstrap"
   return( boot.estis)
 }
 

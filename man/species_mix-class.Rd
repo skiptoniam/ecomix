@@ -10,6 +10,7 @@
 \alias{simulate_species_mix_data}
 \alias{species_mix_estimate_groups}
 \alias{print.species_mix}
+\alias{vcov.species_mix}
 \title{species_mix objects}
 \usage{
 species_mix(archetype_formula = NULL,
@@ -46,6 +47,9 @@ species_mix_estimate_groups(archetype_formula = NULL, species_formula = ~1,
   standardise = TRUE, titbits = FALSE)
 
 \method{print}{species_mix}(x, ...)
+
+\method{vcov}{species_mix}(object, ..., object2 = NULL,
+  method = "FiniteDifference", nboot = 1000, D.accuracy = 2)
 }
 \arguments{
 \item{species_formula}{an object of class "formula" (or an object that can be
@@ -199,10 +203,13 @@ simulated_data <- simulate_species_mix_data(archetype_formula,~1,dat,theta,dist=
 }
 
 \dontrun{
-fm_groups <- species_mix_estimate_groups(sam_form, sp_form, model_data, distribution = 'bernoulli',
- n_mixtures=3)
+fm_groups <- species_mix_estimate_groups(sam_form, sp_form, model_data, distribution = 'bernoulli', n_mixtures=1:10)
 }
 
 #Print information about a species_mix model
 print(fm1)
+
+# Estimate the variance-covariance matrix.
+# This will provide estimates of uncertainty for model parameters.
+vcov(fm1)
 }
