@@ -712,9 +712,15 @@
   print(x$post_probs)
 }
 
-
-"vcov.species_mix" <- function (object, ..., object2=NULL, method = "FiniteDifference", nboot = 1000, mc.cores=1, D.accuracy=2)
-  {
+#'@rdname species_mix-class
+#'
+#'@export
+#'
+#'@examples
+#'
+#'#Print information about a species_mix model
+#' vcov(fm1)
+"vcov.species_mix" <- function (object, ..., object2=NULL, method = "FiniteDifference", nboot = 1000, mc.cores=1, D.accuracy=2){
     if( method %in% c("simple","Richardson"))
       method <- "FiniteDifference"
     if (!method %in% c("FiniteDifference", "BayesBoot", "SimpleBoot", "EmpiricalInfo")) {
@@ -724,83 +730,99 @@
     if( Sys.info()['sysname'] == "Windows")
       mc.cores <- 1
     X <- object$titbits$X
-    p.x <- ncol( X)
-    if( class( object$titbits$species_formula)=="formula"){
-      form.W <- object$titbits$species_formula
-      W <- object$titbits$W
-      p.w <- ncol( W)
-    }
-    else{
-      form.W <- NULL
-      W <- -999999
-      p.w <- 0
-    }
+    # p.x <- ncol(X[,-1])
     offy <- object$titbits$offset
-    wts <- object$titbits$wts
+    spp_wts <- object$titbits$spp_weights
+    site_spp_wts <- object$titbits$site_spp_weights
     Y <- object$titbits$Y
-    disty <- object$titbits$disty
-    power <- object$titbits$power
+    y_is_na <- object$titbits$y_is_na
+    distribution <- object$titbits$distribution
+    disty.cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
+    disty <- ecomix:::get_distribution_sam(disty.cases, distribution)
     S <- object$S
-    nRCP <- object$nRCP
-    p.x <- object$p.x
-    p.w <- object$p.w
+    G <- object$G
     n <- object$n
-    disty <- object$titbits$disty
     control <- object$titbits$control
-    pis <- as.numeric( matrix( -999999, nrow = n, ncol = nRCP))
-    mus <- as.numeric( array( -999999, dim=c( n, S, nRCP)))
-    logCondDens <- as.numeric( matrix( -999999, nrow = n, ncol = nRCP))
-    logls <- as.numeric(rep(-999999, n))
-    alpha.score <- as.numeric(rep(-999999, S))
-    tau.score <- as.numeric(matrix(-999999, nrow = nRCP - 1, ncol = S))
-    beta.score <- as.numeric(matrix(-999999, nrow = nRCP - 1, ncol = p.x))
-    if( p.w > 0)
-      gamma.score <- as.numeric( matrix( -999999, nrow = S, ncol = p.w))
-    else
-      gamma.score <- -999999
-    if( !is.null( object$coef$disp))
-      disp.score <- as.numeric( rep( -999999, S))
-    else
-      disp.score <- -999999
-    conv <- FALSE
+
+    # values for optimisation.
+    inits <- unlist(object$coefs)
+    np <- as.integer(ncol(X[,-1]))
+    n <- Obs <- as.integer(nrow(X))
+
+    # parameters to optimise
+    alpha <- as.numeric(start_vals$alphas)
+    beta <- as.numeric(start_vals$betas)
+    eta <- as.numeric(start_vals$eta)
+    disp <- as.numeric(start_vals$disp)
+
+    #scores
+    alpha.score <- as.numeric(rep(NA, length(alpha)))
+    beta.score <- as.numeric(rep(NA, length(beta)))
+    eta.score <- as.numeric(rep(NA, length(eta)))
+    disp.score <- as.numeric(rep(NA, length(disp)))
+    getscores <- 1
+    scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,disp))))
+
+
+    if(disty%in%c(4,6)){
+      control$optiDisp <- as.integer(1)
+    }else{
+      control$optiDisp <- as.integer(0)
+    }
+
+    #model quantities
+    pis_out <- as.numeric(rep(NA, G))  #container for the fitted RCP model
+    mus <- as.numeric(array( NA, dim=c( Obs, S, G)))  #container for the fitted spp model
+    loglikeS <- as.numeric(rep(NA, S))
+    loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
+
+    #c++ call to optimise the model (needs pretty good starting values)
 
     if (method %in% c("FiniteDifference")) {
-      my.fun <- function(x) {
+      grad_fun <- function(x) {
+        #x is a vector of first order derivates to optimise using numDeriv in order to find second order derivates.
         start <- 0
         alpha <- x[start + 1:S]
         start <- start + S
-        tau <- x[start + 1:((nRCP - 1) * S)]
-        start <- start + (nRCP-1)*S
-        beta <- x[start + 1:((nRCP - 1) * p.x)]
-        start <- start + (nRCP-1)*p.x
-        if( p.w > 0){
-          gamma <- x[start + 1:(S*p.w)]
-          start <- start + S*p.w
-        }
-        else
-          gamma <- -999999
-        if( any( !is.null( object$coef$disp)))
+        beta <- x[start + 1:((G*np))]
+        start <- start + (G*np)
+        eta <- x[start + 1:(G - 1)]
+        start <- start + (G-1)
+        if(any(!is.na( object$coef$disp)))
           disp <- x[start + 1:S]
         else
-          disp <- -999999
-        scoreContri <- -999999
-        tmp <- .Call("RCP_C", as.numeric(Y), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
-                     as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
-                     alpha, tau, beta, gamma, disp, power,
-                     as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
-                     alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
-                     pis, mus, logCondDens, logls,
-                     as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-                     as.integer( FALSE), as.integer( FALSE), as.integer( TRUE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "ecomix")
+          disp <- rep(-999999,S)
+        tmp <- .Call("species_mix_cpp",
+                 as.numeric(as.matrix(Y)), as.numeric(as.matrix(X[,-1])), as.numeric(offy), as.numeric(spp_wts),
+                 as.numeric(as.matrix(site_spp_wts)), as.integer(as.matrix(!y_is_na)),
+                 # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
+                 as.integer(S), as.integer(G), as.integer(np), as.integer(Obs), as.integer(disty),as.integer(control$optiDisp),
+                 # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
+                 as.double(alpha), as.double(beta), as.double(eta), as.double(disp),
+                 # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
+                 alpha.score, beta.score, eta.score, disp.score, as.integer(control$getscores), scores,
+                 # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
+                 pis_out, mus, loglikeS, loglikeSG,
+                 # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
+                 as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
+                 as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp),
+                 as.integer(control$printparams_cpp),
+                 # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
+                 as.integer(0), as.integer(0), as.integer(1),
+                 # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly,
+                 PACKAGE = "ecomix")
 
-        tmp1 <- c(alpha.score, tau.score, beta.score)
-        if( p.w > 0)#class( object$titbits$species_formula) == "formula")
-          tmp1 <- c( tmp1, gamma.score)
-        if( !is.null( object$coef$disp))
+        tmp1 <- c(alpha.score, beta.score, eta.score)
+        # if( p.w > 0)#class( object$titbits$species_formula) == "formula")
+          # tmp1 <- c( tmp1, gamma.score)
+        if( any(!is.na(object$coef$disp)))
           tmp1 <- c( tmp1, disp.score)
         return(tmp1)
       }
-      hess <- nd2(x0=unlist( object$coefs), f=my.fun, mc.cores=mc.cores, D.accur=D.accuracy)#numDeriv::jacobian(my.fun, unlist(object$coefs), method = method)
+      mod_coefs <- unlist(object$coefs)
+      if(any(is.na( object$coef$disp))) mod_coefs <- mod_coefs[!is.na(mod_coefs)]
+
+      hess <- numDeriv::jacobian(grad_fun, mod_coefs)
       vcov.mat <- try( -solve(hess))
       if( inherits( vcov.mat, 'try-error')){
         attr(vcov.mat, "hess") <- hess

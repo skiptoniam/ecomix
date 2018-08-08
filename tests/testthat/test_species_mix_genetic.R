@@ -138,8 +138,10 @@ testthat::test_that('species mix generic', {
   # disp <- unlist(lapply(fm_nb, `[[`, 3))
   # testthat::expect_length(disp,S)
 
-  ##gaussian test
+})
 
+
+testthat::test_that('species mix generic vcov functions', {
 
 
 })
