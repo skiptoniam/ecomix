@@ -718,17 +718,18 @@
 #'
 #'@examples
 #'
-#'#Print information about a species_mix model
+#'# Estimate the variance-covariance matrix.
+#'# This will provide estimates of uncertainty for model parameters.
 #' vcov(fm1)
-"vcov.species_mix" <- function (object, ..., object2=NULL, method = "FiniteDifference", nboot = 1000, mc.cores=1, D.accuracy=2){
+"vcov.species_mix" <- function (object, ..., object2=NULL, method = "FiniteDifference", nboot = 1000, D.accuracy=2){
     if( method %in% c("simple","Richardson"))
       method <- "FiniteDifference"
-    if (!method %in% c("FiniteDifference", "BayesBoot", "SimpleBoot", "EmpiricalInfo")) {
-      error("Unknown method to calculate variance matrix, viable options are: 'FiniteDifference' (numerical), 'BayesBoot' (bootstrap), 'SimpleBoot' (bootstrap)', and 'EmpiricalInfo'.")
+    if (!method %in% c("FiniteDifference", "BayesBoot", "SimpleBoot")) {
+      error("Unknown method to calculate variance matrix, viable options are: 'FiniteDifference' (numerical), 'BayesBoot' (bayesian bootstrap) and 'SimpleBoot' (case-resample bootstrap)'.")
       return(NULL)
     }
     if( Sys.info()['sysname'] == "Windows")
-      mc.cores <- 1
+    mc.cores <- 1
     X <- object$titbits$X
     # p.x <- ncol(X[,-1])
     offy <- object$titbits$offset
@@ -834,50 +835,50 @@
     if( method %in% c( "BayesBoot","SimpleBoot")){
       object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
       if( is.null( object2))
-        coefMat <- regiboot( object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE, orderSamps=FALSE)
+        coefMat <- sam_bootstap(object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE, orderSamps=FALSE)
       else
         coefMat <- object2
       vcov.mat <- cov( coefMat)
     }
-    if( method=="EmpiricalInfo"){
-      message( "Information approximated by empirical methods.  I have not been able to get this to work, even for simulated data.  I hope that you are feeling brave!")
-      alpha <- object$coef$alpha
-      tau <- object$coef$tau
-      beta <- object$coef$beta
-      if( p.w > 0)
-        gamma <- object$coef$gamma
-      else
-        gamma <- -999999
-      if( any( !is.null( object$coef$disp)))
-        disp <- object$coef$disp
-      else
-        disp <- -999999
-      scoreContri <- as.numeric( matrix( NA, nrow=n, ncol=length( unlist( object$coef))))
-      tmp <- .Call("RCP_C", as.numeric(Y), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
-                   as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
-                   alpha, tau, beta, gamma, disp, power,
-                   as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
-                   alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
-                   pis, mus, logCondDens, logls,
-                   as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-                   as.integer( FALSE), as.integer( FALSE), as.integer( TRUE), as.integer( TRUE), as.integer( TRUE), PACKAGE = "ecomix")
-      scoreContri <- matrix( scoreContri, nrow=n)
-      summy <- matrix( 0, ncol=ncol( scoreContri), nrow=ncol( scoreContri))
-      for( ii in 1:n){
-        summy <- summy + scoreContri[ii,] %o% scoreContri[ii,]
-      }
-      tmp <- colSums( scoreContri)
-      tmp <- tmp %o% tmp / n
-      emp.info <- summy - tmp
-      #    diag( emp.info) <- diag( emp.info) + 0.00001 #makes it invertable but not realistic.
-      vcov.mat <- try( solve( emp.info))
-      if( inherits( vcov.mat, 'try-error')){
-        attr(vcov.mat, "hess") <- emp.info
-        warning( "Empirical information matrix (average of the cross-products of the scores for each observation) appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe empirical inverse is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data. Note that you have chosen to use method=\"EmpricalInfo\", which is likely to cause heartache (albeit computationally thrifty heartache) -- try other methods (and probably do that first).")
-      }
-      else
-        vcov.mat <- ( vcov.mat + t(vcov.mat)) / 2 #to ensure symmetry
-    }
+    # if( method=="EmpiricalInfo"){
+    #   message( "Information approximated by empirical methods.  I have not been able to get this to work, even for simulated data.  I hope that you are feeling brave!")
+    #   alpha <- object$coef$alpha
+    #   tau <- object$coef$tau
+    #   beta <- object$coef$beta
+    #   if( p.w > 0)
+    #     gamma <- object$coef$gamma
+    #   else
+    #     gamma <- -999999
+    #   if( any( !is.null( object$coef$disp)))
+    #     disp <- object$coef$disp
+    #   else
+    #     disp <- -999999
+    #   scoreContri <- as.numeric( matrix( NA, nrow=n, ncol=length( unlist( object$coef))))
+    #   tmp <- .Call("RCP_C", as.numeric(Y), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
+    #                as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
+    #                alpha, tau, beta, gamma, disp, power,
+    #                as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
+    #                alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
+    #                pis, mus, logCondDens, logls,
+    #                as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
+    #                as.integer( FALSE), as.integer( FALSE), as.integer( TRUE), as.integer( TRUE), as.integer( TRUE), PACKAGE = "ecomix")
+    #   scoreContri <- matrix( scoreContri, nrow=n)
+    #   summy <- matrix( 0, ncol=ncol( scoreContri), nrow=ncol( scoreContri))
+    #   for( ii in 1:n){
+    #     summy <- summy + scoreContri[ii,] %o% scoreContri[ii,]
+    #   }
+    #   tmp <- colSums( scoreContri)
+    #   tmp <- tmp %o% tmp / n
+    #   emp.info <- summy - tmp
+    #   #    diag( emp.info) <- diag( emp.info) + 0.00001 #makes it invertable but not realistic.
+    #   vcov.mat <- try( solve( emp.info))
+    #   if( inherits( vcov.mat, 'try-error')){
+    #     attr(vcov.mat, "hess") <- emp.info
+    #     warning( "Empirical information matrix (average of the cross-products of the scores for each observation) appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe empirical inverse is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data. Note that you have chosen to use method=\"EmpricalInfo\", which is likely to cause heartache (albeit computationally thrifty heartache) -- try other methods (and probably do that first).")
+    #   }
+    #   else
+    #     vcov.mat <- ( vcov.mat + t(vcov.mat)) / 2 #to ensure symmetry
+    # }
 
     return(vcov.mat)
   }
@@ -1563,6 +1564,73 @@
   ret$loglikeS <- loglikeS  #for residuals
   return(ret)
 }
+
+"sam_bootstap" <-function (object, nboot=1000, type="BayesBoot", mc.cores=1, quiet=FALSE, orderSamps=FALSE, MLstart=TRUE){
+  if (nboot < 1)
+    stop( "No Boostrap samples requested.  Please set nboot to something > 1.")
+  if( ! type %in% c("BayesBoot","SimpleBoot"))
+    stop( "Unknown boostrap type, choices are BayesBoot and SimpleBoot.")
+  n.reorder <- 0
+  object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
+  if(object$titbits$distribution=='ippm')
+    stop('IPPM vcov matrix needs to estimated using FiniteDifference method.\n')
+
+  if( !quiet){
+    chars <- c("><(('> ","_@_'' ","@(*O*)@ ")
+    pb <- txtProgressBar(min = 1, max = nboot, style = 3, char = chars[sample(length(chars),1)]) }
+  if( type == "SimpleBoot"){
+    all.wts <- matrix( sample( 1:object$n, nboot*object$n, replace=TRUE), nrow=nboot, ncol=object$n)
+    tmp <- apply( all.wts, 1, table)
+    all.wts <- matrix( 0, nrow=nboot, ncol=object$n)
+    for( ii in seq_along( tmp))
+      all.wts[ii, as.numeric( names( tmp[[ii]]))] <- tmp[[ii]]
+  }
+  if( type == "BayesBoot")
+    all.wts <- object$n * gtools::rdirichlet( nboot, rep( 1, object$n))
+  if( MLstart)
+    my.inits <- unlist( object$coef)
+  else{
+    my.inits <- "random"
+    orderSamps <- TRUE
+  }
+
+  my.fun <- function(dummy){
+    if( !quiet)
+      setTxtProgressBar(pb, dummy)
+    dumbOut <- capture.output(
+      samp.object <- regional_mix.fit( outcomes=object$titbits$Y, W=object$titbits$W, X=object$titbits$X, offy=object$titbits$offset, wts=object$titbits$wts * all.wts[dummy,,drop=TRUE], disty=object$titbits$disty, nRCP=object$nRCP, power=object$titbits$power, inits=my.inits, control=object$titbits$control, n=object$n, S=object$S, p.x=object$p.x, p.w=object$p.w))
+    if( orderSamps)
+      samp.object <- orderPost( samp.object, object)
+    return( unlist( samp.object$coef))
+  }
+  flag <- TRUE
+  tmpOldQuiet <- object$titbits$control$quiet
+  object$titbits$control$quiet <- TRUE
+  if( Sys.info()['sysname'] == "Windows" | mc.cores==1){
+    boot.estis <- matrix(NA, nrow = nboot, ncol = length(unlist(object$coef)))
+    for (ii in 1:nboot) {
+      if( !quiet)
+        setTxtProgressBar(pb, ii)
+      boot.estis[ii, ] <- my.fun( ii)
+    }
+    flag <- FALSE
+  }
+  if( flag){  #has this already been done sequencially?
+    if( !quiet)
+      message( "Progress bar may not be monotonic due to the vaguaries of parallelisation")
+    tmp <- parallel::mclapply( 1:nboot, my.fun, mc.silent=quiet, mc.cores=mc.cores)
+    #    if( !quiet)
+    #      message("")
+    boot.estis <- do.call( "rbind", tmp)
+  }
+  object$titbits$control$quiet <- tmpOldQuiet
+  if( !quiet)
+    message( "")
+  colnames( boot.estis) <- get_long_names_rcp( object)
+  class( boot.estis) <- "regiboot"
+  return( boot.estis)
+}
+
 
 ###### SAM internal functions ######
 
