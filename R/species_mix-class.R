@@ -197,6 +197,9 @@
   # summarising data to console
   print_input_sam(y, X, S, archetype_formula, species_formula, distribution, quiet=control$quiet)
 
+  # getting the inits right
+  inits <- setup_inits_sam(inits)
+
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
   tmp <- species_mix.fit(y=y, X=X, G=n_mixtures, S=S, spp_weights=spp_weights,
                          site_spp_weights=site_spp_weights,
@@ -269,8 +272,9 @@
 
   } else {
     message('Be careful! You are using your own initial starting values to optimise the species_mix model.')
+    inits <- ecomix:::setup_inits_sam(inits, S=S, G=G,
+                                      np=ncol(y), return_list = TRUE)
     starting_values <- inits
-
   }
 
   tmp <- sam_optimise(y, X, offset, spp_weights, site_spp_weights,
@@ -722,15 +726,17 @@
 #'# Estimate the variance-covariance matrix.
 #'# This will provide estimates of uncertainty for model parameters.
 #' vcov(fm1)
-"vcov.species_mix" <- function (object, ..., object2=NULL, method = "FiniteDifference", nboot = 1000, D.accuracy=2){
+"vcov.species_mix" <- function (object, ..., object2=NULL, method = "FiniteDifference",
+                                nboot = 1000, D.accuracy=2){
     if( method %in% c("simple","Richardson"))
       method <- "FiniteDifference"
     if (!method %in% c("FiniteDifference", "BayesBoot", "SimpleBoot")) {
-      error("Unknown method to calculate variance matrix, viable options are: 'FiniteDifference' (numerical), 'BayesBoot' (bayesian bootstrap) and 'SimpleBoot' (case-resample bootstrap)'.")
+      error("Unknown method to calculate variance matrix, viable options are:
+            'FiniteDifference' (numerical), 'BayesBoot' (bayesian bootstrap)
+            and 'SimpleBoot' (case-resample bootstrap)'.")
       return(NULL)
     }
-    if( Sys.info()['sysname'] == "Windows")
-    mc.cores <- 1
+    # if( Sys.info()['sysname'] == "Windows")
     X <- object$titbits$X
     # p.x <- ncol(X[,-1])
     offy <- object$titbits$offset
@@ -750,6 +756,7 @@
     inits <- unlist(object$coefs)
     np <- as.integer(ncol(X[,-1]))
     n <- Obs <- as.integer(nrow(X))
+    start_vals <- ecomix:::setup_inits_sam(inits,S,G,np,return_list = TRUE)
 
     # parameters to optimise
     alpha <- as.numeric(start_vals$alphas)
@@ -798,7 +805,8 @@
                  as.numeric(as.matrix(Y)), as.numeric(as.matrix(X[,-1])), as.numeric(offy), as.numeric(spp_wts),
                  as.numeric(as.matrix(site_spp_wts)), as.integer(as.matrix(!y_is_na)),
                  # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
-                 as.integer(S), as.integer(G), as.integer(np), as.integer(Obs), as.integer(disty),as.integer(control$optiDisp),
+                 as.integer(S), as.integer(G), as.integer(np), as.integer(Obs), as.integer(disty),
+                 as.integer(control$optiDisp),
                  # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
                  as.double(alpha), as.double(beta), as.double(eta), as.double(disp),
                  # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
@@ -1578,8 +1586,10 @@
     stop('IPPM vcov matrix needs to estimated using FiniteDifference method.\n')
 
   if( !quiet){
-    chars <- c("><(('> ","_@_'' ","@(*O*)@ ")
-    pb <- txtProgressBar(min = 1, max = nboot, style = 3, char = chars[sample(length(chars),1)]) }
+    pb <- progress::progress_bar$new(
+      format = " Running Bayesian bootstrap [:bar] :percent eta: :eta",
+      total = nboot, clear = FALSE, width= 60)
+    }
   if( type == "SimpleBoot"){
     all.wts <- matrix( sample( 1:object$S, nboot*object$S, replace=TRUE), nrow=nboot, ncol=object$S)
     tmp <- apply( all.wts, 1, table)
@@ -1600,20 +1610,24 @@
     disty.cases <- c("bernoulli", "poisson", "ippm", "negative_binomial", "tweedie", "gaussian")
     disty <- get_distribution_sam(disty.cases, object$dist)
     if( !quiet)
-      setTxtProgressBar(pb, dummy)
+      # setTxtProgressBar(pb, dummy)
     dumbOut <- capture.output(
-      samp.object <- ecomix::species_mix.fit(y=object$titbits$Y,
-                                             X=object$titbits$X,
-                                             offset = object$titbits$offset,
-                                             spp_weights = all.wts[dummy,,drop=TRUE],
-                                             site_spp_weights = object$titbits$site_spp_weights,
-                                             G = object$G, y_is_na = object$titbits$y_is_na,
-                                             distribution_numeric = disty, control = object$titbits$control,
-                                             inits = my.inits))
+      samp.object <- species_mix.fit(y=object$titbits$Y,
+                                     X=object$titbits$X,
+                                     offset = object$titbits$offset,
+                                     spp_weights = all.wts[dummy,,drop=TRUE],
+                                     site_spp_weights = object$titbits$site_spp_weights,
+                                     G = object$G, S = object$S,
+                                     y_is_na = object$titbits$y_is_na,
+                                     distribution_numeric = disty,
+                                     control = object$titbits$control,
+                                     inits = my.inits))
+    pb$tick()
     if( orderSamps)
       samp.object <- orderPost( samp.object, object)
     return( unlist( samp.object$coef))
   }
+
   flag <- TRUE
   tmpOldQuiet <- object$titbits$control$quiet
   object$titbits$control$quiet <- TRUE
@@ -1846,6 +1860,44 @@
 
 "reltol_fun" <- function(logl_n1, logl_n){
   return(abs(logl_n1 - logl_n) > (abs(logl_n1 - logl_n) / abs(logl_n)))
+}
+
+"setup_inits_sam" <- function(inits, S, G, np, return_list=TRUE){
+  if(is.null(inits))res<-NULL
+
+  if(is.list(inits)){
+    alpha <- as.numeric(inits$alphas)
+    beta <- as.numeric(inits$betas)
+    eta <- as.numeric(inits$eta)
+    # disp <- as.numeric(inits$disp)
+    if(any(!is.na(object$coef$disp)|is.null(inits$disp)))
+      disp <- as.numeric(inits$disp)
+    else
+      disp <- rep(-999999,length(alpha))
+    if(return_list) res <- list(alphas=alpha,betas=beta,etas=eta,disps=disp)
+    else res <- c(alpha,beta,eta,disp)
+  }
+
+  if(is.numeric(inits)){
+    start <- 0
+    alpha <- inits[start + 1:S]
+    start <- start + S
+    beta <- inits[start + 1:((G*np))]
+    start <- start + (G*np)
+    eta <- inits[start + 1:(G - 1)]
+    start <- start + (G-1)
+    if(any(!is.na(object$coef$disp)))
+      disp <- inits[start + 1:S]
+    else
+      disp <- rep(-999999,S)
+
+    if(return_list) res <- list(alphas=alpha,betas=beta,etas=eta,disps=disp)
+    else res <- c(alpha,beta,eta,disp)
+
+  }
+
+  return(res)
+
 }
 
 "set_control_sam" <- function(control){

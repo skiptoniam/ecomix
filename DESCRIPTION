@@ -22,7 +22,8 @@ Imports:
     raster,
     scales,
     numDeriv,
-    surveillance
+    surveillance,
+    progress
 Suggests:
     knitr,
     rmarkdown,
