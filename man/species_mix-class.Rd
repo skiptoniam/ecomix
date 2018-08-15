@@ -49,7 +49,7 @@ species_mix_estimate_groups(archetype_formula = NULL, species_formula = ~1,
 \method{print}{species_mix}(x, ...)
 
 \method{vcov}{species_mix}(object, ..., object2 = NULL,
-  method = "FiniteDifference", nboot = 1000, D.accuracy = 2)
+  method = "FiniteDifference", nboot = 10, mc.cores = 1, D.accuracy = 2)
 }
 \arguments{
 \item{species_formula}{an object of class "formula" (or an object that can be
@@ -90,8 +90,8 @@ parameters.}
 
 \item{inits}{NULL a numeric vector that provides approximate starting values
 for species_mix coefficents. These are distribution specific, but at a
-minimum you will need pis (additive_logitic transformed), alphas
-(intercepts) and betas (mixing coefs).}
+minimum you will need pis (additive_logitic transformed), alpha
+(intercepts) and beta (mixing coefs).}
 
 \item{y}{is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.}
 

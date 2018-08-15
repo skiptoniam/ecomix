@@ -58,8 +58,8 @@
 #' parameters.
 #' @param inits NULL a numeric vector that provides approximate starting values
 #' for species_mix coefficents. These are distribution specific, but at a
-#' minimum you will need pis (additive_logitic transformed), alphas
-#' (intercepts) and betas (mixing coefs).
+#' minimum you will need pis (additive_logitic transformed), alpha
+#' (intercepts) and beta (mixing coefs).
 #' @importFrom graphics abline hist legend lines matplot par plot points polygon rect
 #' @importFrom stats as.formula binomial cooks.distance cov cutree dbinom dist dnbinom dnorm dpois
 #' fitted gaussian glm hclust lm logLik model.matrix model.offset model.response
@@ -198,7 +198,7 @@
   print_input_sam(y, X, S, archetype_formula, species_formula, distribution, quiet=control$quiet)
 
   # getting the inits right
-  inits <- setup_inits_sam(inits)
+  # inits <- setup_inits_sam(inits,S,G,disty)
 
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
   tmp <- species_mix.fit(y=y, X=X, G=n_mixtures, S=S, spp_weights=spp_weights,
@@ -209,11 +209,11 @@
   tmp$dist <- disty.cases[disty]
 
 
-  tmp$pis <- ecomix:::additive_logistic(tmp$eta)
+  tmp$pis <- additive_logistic(tmp$eta)
 
   #calc posterior porbs and pis.
   if(n_mixtures>1)
-    tmp$post_probs <- ecomix:::calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
+    tmp$post_probs <- calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
 
   tmp$pis <- colSums(tmp$post_probs)/S
 
@@ -271,9 +271,9 @@
                                                control=control)
 
   } else {
-    message('Be careful! You are using your own initial starting values to optimise the species_mix model.')
-    inits <- ecomix:::setup_inits_sam(inits, S=S, G=G,
-                                      np=ncol(y), return_list = TRUE)
+    if(!control$quiet)message('Be careful! You are using your own initial starting values to optimise the species_mix model.')
+    inits <- setup_inits_sam(inits, S=S, G=G, np=ncol(y),distribution_numeric, return_list = TRUE)
+    print(inits)
     starting_values <- inits
   }
 
@@ -727,7 +727,7 @@
 #'# This will provide estimates of uncertainty for model parameters.
 #' vcov(fm1)
 "vcov.species_mix" <- function (object, ..., object2=NULL, method = "FiniteDifference",
-                                nboot = 1000, D.accuracy=2){
+                                nboot = 10, mc.cores = 1, D.accuracy=2){
     if( method %in% c("simple","Richardson"))
       method <- "FiniteDifference"
     if (!method %in% c("FiniteDifference", "BayesBoot", "SimpleBoot")) {
@@ -738,7 +738,7 @@
     }
     # if( Sys.info()['sysname'] == "Windows")
     X <- object$titbits$X
-    # p.x <- ncol(X[,-1])
+    p.x <- ncol(X[,-1])
     offy <- object$titbits$offset
     spp_wts <- object$titbits$spp_weights
     site_spp_wts <- object$titbits$site_spp_weights
@@ -753,14 +753,14 @@
     control <- object$titbits$control
 
     # values for optimisation.
-    inits <- unlist(object$coefs)
+    inits <- object$coefs
     np <- as.integer(ncol(X[,-1]))
     n <- Obs <- as.integer(nrow(X))
-    start_vals <- ecomix:::setup_inits_sam(inits,S,G,np,return_list = TRUE)
+    start_vals <- ecomix:::setup_inits_sam(inits,S,G,np,disty,return_list = TRUE)
 
     # parameters to optimise
-    alpha <- as.numeric(start_vals$alphas)
-    beta <- as.numeric(start_vals$betas)
+    alpha <- as.numeric(start_vals$alpha)
+    beta <- as.numeric(start_vals$beta)
     eta <- as.numeric(start_vals$eta)
     disp <- as.numeric(start_vals$disp)
 
@@ -791,14 +791,14 @@
       grad_fun <- function(x) {
         #x is a vector of first order derivates to optimise using numDeriv in order to find second order derivates.
         start <- 0
-        alpha <- x[start + 1:S]
+        alpha <- x[start + seq_len(S)]
         start <- start + S
-        beta <- x[start + 1:((G*np))]
+        beta <- x[start + seq_len((G*np))]
         start <- start + (G*np)
-        eta <- x[start + 1:(G - 1)]
+        eta <- x[start + seq_len(G - 1)]
         start <- start + (G-1)
-        if(any(!is.na( object$coef$disp)))
-          disp <- x[start + 1:S]
+        if(disty%in%c(4,6))
+          disp <- x[start + seq_len(S)]
         else
           disp <- rep(-999999,S)
         tmp <- .Call("species_mix_cpp",
@@ -844,51 +844,11 @@
     if( method %in% c( "BayesBoot","SimpleBoot")){
       object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
       if( is.null( object2))
-        coefMat <- sam_bootstap(object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE, orderSamps=FALSE)
+        coefMat <- sam_bootstrap(object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE, orderSamps=FALSE)
       else
         coefMat <- object2
       vcov.mat <- cov( coefMat)
     }
-    # if( method=="EmpiricalInfo"){
-    #   message( "Information approximated by empirical methods.  I have not been able to get this to work, even for simulated data.  I hope that you are feeling brave!")
-    #   alpha <- object$coef$alpha
-    #   tau <- object$coef$tau
-    #   beta <- object$coef$beta
-    #   if( p.w > 0)
-    #     gamma <- object$coef$gamma
-    #   else
-    #     gamma <- -999999
-    #   if( any( !is.null( object$coef$disp)))
-    #     disp <- object$coef$disp
-    #   else
-    #     disp <- -999999
-    #   scoreContri <- as.numeric( matrix( NA, nrow=n, ncol=length( unlist( object$coef))))
-    #   tmp <- .Call("RCP_C", as.numeric(Y), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
-    #                as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
-    #                alpha, tau, beta, gamma, disp, power,
-    #                as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
-    #                alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
-    #                pis, mus, logCondDens, logls,
-    #                as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-    #                as.integer( FALSE), as.integer( FALSE), as.integer( TRUE), as.integer( TRUE), as.integer( TRUE), PACKAGE = "ecomix")
-    #   scoreContri <- matrix( scoreContri, nrow=n)
-    #   summy <- matrix( 0, ncol=ncol( scoreContri), nrow=ncol( scoreContri))
-    #   for( ii in 1:n){
-    #     summy <- summy + scoreContri[ii,] %o% scoreContri[ii,]
-    #   }
-    #   tmp <- colSums( scoreContri)
-    #   tmp <- tmp %o% tmp / n
-    #   emp.info <- summy - tmp
-    #   #    diag( emp.info) <- diag( emp.info) + 0.00001 #makes it invertable but not realistic.
-    #   vcov.mat <- try( solve( emp.info))
-    #   if( inherits( vcov.mat, 'try-error')){
-    #     attr(vcov.mat, "hess") <- emp.info
-    #     warning( "Empirical information matrix (average of the cross-products of the scores for each observation) appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe empirical inverse is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data. Note that you have chosen to use method=\"EmpricalInfo\", which is likely to cause heartache (albeit computationally thrifty heartache) -- try other methods (and probably do that first).")
-    #   }
-    #   else
-    #     vcov.mat <- ( vcov.mat + t(vcov.mat)) / 2 #to ensure symmetry
-    # }
-
     return(vcov.mat)
   }
 
@@ -1160,8 +1120,8 @@
     }
     bf <- which.max(vapply(emfits,function(x)c(x$logl),c(logl=0)))
     emfit <- emfits[[bf]]
-    start_vals <- list(alphas=emfit$alpha,
-                       betas=emfit$beta,
+    start_vals <- list(alpha=emfit$alpha,
+                       beta=emfit$beta,
                        disp=emfit$disp,
                        pis=emfit$pis)
   } else {
@@ -1174,8 +1134,8 @@
                                               G = G, S = S,
                                               disty=disty,
                                               control = control)
-    start_vals <- list(alphas=starting_values$fits$alphas,
-                       betas=starting_values$fits$betas,
+    start_vals <- list(alpha=starting_values$fits$alpha,
+                       beta=starting_values$fits$beta,
                        disp=starting_values$fits$disp,
                        pis=starting_values$pis)
   }
@@ -1199,7 +1159,7 @@
     link <- stats::make.link(link = "logit")
     for(ss in 1:S){
       for(gg in 1:G){
-        lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+        lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
         logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, link$linkinv(lp),log = TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
@@ -1211,7 +1171,7 @@
     for(ss in 1:S){
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
-        lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+        lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
         logl_sp[ss,gg] <- sum(dpois(first_fit$y[,ss],exp(lp),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
@@ -1224,7 +1184,7 @@
       sp_idx<-!first_fit$y_is_na[,ss]
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
-        lp <- first_fit$x[sp_idx,1] * fits$alphas[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$betas[gg,] + first_fit$offset[sp_idx]
+        lp <- first_fit$x[sp_idx,1] * fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
         logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$site_spp_weights[sp_idx,ss] %*% exp(lp)
       }
     }
@@ -1235,7 +1195,7 @@
     for(ss in 1:S){
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
-        lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+        lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
         logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=exp(-fits$disp[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
@@ -1252,7 +1212,7 @@
     for(ss in 1:S){
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
-        lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+        lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
         logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=lp,sd=fits$disp[ss],log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
@@ -1271,7 +1231,7 @@
 "get_initial_values_sam" <- function(y, X, spp_weights = NULL, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
   starting_values <- initiate_fit_sam(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control)
-  fits <- list(alphas=starting_values$alphas,betas=starting_values$betas,disp=starting_values$disp)
+  fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,disp=starting_values$disp)
   first_fit <- list(x = X, y = y, site_spp_weights = site_spp_weights, offset = offset, y_is_na = y_is_na)
   logls <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
   pis <- rep(1/G, G)
@@ -1292,7 +1252,7 @@
 
   #update the mix coefs.
   fmix_coefs <- t(do.call(cbind,fmix_coefs)[-1,])
-  fits$betas <- update_mix_coefs(fits$betas,fmix_coefs)
+  fits$beta <- update_mix_coefs(fits$beta,fmix_coefs)
 
   res <- list()
   res$fits <- fits
@@ -1312,7 +1272,7 @@
     link <- stats::make.link(link = "logit")
     for(ss in 1:S){
       for(gg in 1:G){
-        lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+        lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
         logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, link$linkinv(lp),log = TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
@@ -1324,7 +1284,7 @@
     for(ss in 1:S){
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
-        lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+        lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
         logl_sp[ss,gg] <- sum(dpois(first_fit$y[,ss],exp(lp),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
@@ -1337,7 +1297,7 @@
       sp_idx<-!first_fit$y_is_na[,ss]
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
-        lp <- first_fit$x[sp_idx,1] * fits$alphas[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$betas[gg,] + first_fit$offset[sp_idx]
+        lp <- first_fit$x[sp_idx,1] * fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
         logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$site_spp_weights[sp_idx,ss] %*% exp(lp)
       }
     }
@@ -1348,7 +1308,7 @@
     for(ss in 1:S){
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
-        lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+        lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
         logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=exp(-fits$disp[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
@@ -1365,7 +1325,7 @@
     for(ss in 1:S){
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
-        lp <- first_fit$x[,1] * fits$alphas[ss] + as.matrix(first_fit$x[,-1]) %*% fits$betas[gg,] + first_fit$offset
+        lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
         logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=lp,sd=fits$disp[ss],log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
@@ -1417,18 +1377,18 @@
     }
 
     # m-step
-    tmp <- stats::nlminb(start=fits$betas, objective=incom_logl_mix_coefs, gradient=NULL, hessian=NULL,
+    tmp <- stats::nlminb(start=fits$beta, objective=incom_logl_mix_coefs, gradient=NULL, hessian=NULL,
                          eta=additive_logistic(pis,inv = TRUE)[-G],
                          first_fit = first_fit,
                          fits = fits,
                          spp_weights = spp_weights,
                          G=G, S=S,
                          disty = disty)
-    fits$betas <- update_mix_coefs(fits$betas, tmp$par)
+    fits$beta <- update_mix_coefs(fits$beta, tmp$par)
 
     fm_sp_int <- surveillance::plapply(1:S, apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet) #check weights in this.
-    alphas <- unlist(lapply(fm_sp_int, `[[`, 1))
-    fits$alphas <- update_sp_coefs(fits$alphas,alphas)
+    alpha <- unlist(lapply(fm_sp_int, `[[`, 1))
+    fits$alpha <- update_sp_coefs(fits$alpha,alpha)
 
     if(disty%in%c(4,6)){
       disp <- unlist(lapply(fm_sp_int, `[[`, 3))
@@ -1449,8 +1409,8 @@
 
   taus <- data.frame(taus)
   names(taus) <- paste("grp.", 1:G, sep = "")
-  int_out <- fits$alphas
-  fm_out <- fits$betas
+  int_out <- fits$alpha
+  fm_out <- fits$beta
   names(pis) <- paste("G", 1:G, sep = ".")
   eta <- additive_logistic(pis, TRUE)[-1]
 
@@ -1466,28 +1426,28 @@
   fm_sp_mods <- surveillance::plapply(seq_len(S), apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty,
                                       .parallel = control$cores, .verbose = !control$quiet)
 
-  alphas <- unlist(lapply(fm_sp_mods, `[[`, 1))
-  betas <- do.call(rbind,lapply(fm_sp_mods, `[[`, 2))
+  alpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
+  beta <- do.call(rbind,lapply(fm_sp_mods, `[[`, 2))
   disp <- unlist(lapply(fm_sp_mods, `[[`, 3))
 
   if(control$init_method=='kmeans'){
     if(!control$quiet)message( "Initial groups by K-means clustering\n")
-    tmp1 <- stats::kmeans(betas, centers=G, nstart=100)
+    tmp1 <- stats::kmeans(beta, centers=G, nstart=100)
     tmp_grp <- tmp1$cluster
-    grp_coefs <- apply(betas, 2, function(x) tapply(x, tmp_grp, mean))
+    grp_coefs <- apply(beta, 2, function(x) tapply(x, tmp_grp, mean))
   }
 
   if(control$init_method=='random' | is.null(tmp_grp)){
     if(!control$quiet)message( "Initial groups by random allocation and means from random numbers\n")
-    grp_coefs <- matrix( stats::rnorm(G*ncol(betas), sd=control$init_sd, mean=0), nrow=G, ncol=ncol(betas))
+    grp_coefs <- matrix( stats::rnorm(G*ncol(beta), sd=control$init_sd, mean=0), nrow=G, ncol=ncol(beta))
     tmp_grp <- sample(1:G, S, replace=TRUE)
   }
 
   colnames(grp_coefs) <- colnames(X[,-1])
   results <- list()
   results$grps <- tmp_grp
-  results$alphas <- alphas
-  results$betas <- grp_coefs
+  results$alpha <- alpha
+  results$beta <- grp_coefs
   results$disp <- disp
 
   return(results)
@@ -1495,7 +1455,7 @@
 
 "incom_logl_mix_coefs" <- function(x, eta, first_fit, fits, spp_weights, G, S, disty){
 
-  fits$betas <- matrix(x,nrow=nrow(fits$betas),ncol=ncol(fits$betas))
+  fits$beta <- matrix(x,nrow=nrow(fits$beta),ncol=ncol(fits$beta))
   tmp <- get_incomplete_logl_sam(eta, first_fit, fits, spp_weights, G, S, disty)
   return(-tmp)
 }
@@ -1511,13 +1471,13 @@
 
 "sam_optimise" <- function(y, X, offset, spp_weights, site_spp_weights, y_is_na, S, G, Obs, disty, start_vals, control){
 
-  inits <- c(start_vals$alphas, start_vals$betas, start_vals$eta, start_vals$disp)
+  inits <- c(start_vals$alpha, start_vals$beta, start_vals$eta, start_vals$disp)
   np <- as.integer(ncol(X[,-1]))
   n <- as.integer(nrow(X))
 
   # parameters to optimise
-  alpha <- as.numeric(start_vals$alphas)
-  beta <- as.numeric(start_vals$betas)
+  alpha <- as.numeric(start_vals$alpha)
+  beta <- as.numeric(start_vals$beta)
   eta <- as.numeric(start_vals$eta)
   disp <- as.numeric(start_vals$disp)
 
@@ -1565,8 +1525,17 @@
   ret <- tmp
   ret$logl <- ret$logl * -1
   ret$mus <- array(mus, dim=c(Obs, S, G))
-  ret$coefs <- list(alpha = ret$alpha, beta = ret$beta, eta = ret$eta, disp = ret$disp)
-  ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score, disp.scores=disp.score)
+
+  if(!disty%in%c(4,6))
+    ret$coefs <- list(alpha = ret$alpha, beta = ret$beta, eta = ret$eta)
+  else
+    ret$coefs <- list(alpha = ret$alpha, beta = ret$beta, eta = ret$eta, disp = ret$disp)
+
+  if(!disty%in%c(4,6))
+    ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score)
+  else
+    ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score, disp.scores=disp.score)
+
   ret$S <- S; ret$G <- G; ret$np <- np; ret$n <- Obs;
   ret$start.vals <- inits
   ret$loglikeSG <- matrix(loglikeSG,  nrow = S, ncol = G)  #for residuals
@@ -1585,11 +1554,6 @@
   if(object$titbits$distribution=='ippm')
     stop('IPPM vcov matrix needs to estimated using FiniteDifference method.\n')
 
-  if( !quiet){
-    pb <- progress::progress_bar$new(
-      format = " Running Bayesian bootstrap [:bar] :percent eta: :eta",
-      total = nboot, clear = FALSE, width= 60)
-    }
   if( type == "SimpleBoot"){
     all.wts <- matrix( sample( 1:object$S, nboot*object$S, replace=TRUE), nrow=nboot, ncol=object$S)
     tmp <- apply( all.wts, 1, table)
@@ -1600,58 +1564,47 @@
   if( type == "BayesBoot")
     all.wts <- object$S * gtools::rdirichlet( nboot, rep( 1, object$S))
   if(MLstart)
-    my.inits <- unlist( object$coef)
+    my.inits <- object$coef
   else{
     my.inits <- "random"
     orderSamps <- TRUE
   }
 
+  tmpOldQuiet <- object$titbits$control$quiet
+  object$titbits$control$quiet <- TRUE
+
   my.fun <- function(dummy){
     disty.cases <- c("bernoulli", "poisson", "ippm", "negative_binomial", "tweedie", "gaussian")
     disty <- get_distribution_sam(disty.cases, object$dist)
-    if( !quiet)
-      # setTxtProgressBar(pb, dummy)
+    # if( !object$titbits$control$quiet){
+    # pb <- progress::progress_bar$new(
+    #   format = " Running Bayesian bootstrap [:bar] :percent eta: :eta",
+    #   total = nboot, clear = FALSE, width= 60)
+      # }
     dumbOut <- capture.output(
       samp.object <- species_mix.fit(y=object$titbits$Y,
                                      X=object$titbits$X,
                                      offset = object$titbits$offset,
                                      spp_weights = all.wts[dummy,,drop=TRUE],
                                      site_spp_weights = object$titbits$site_spp_weights,
-                                     G = object$G, S = object$S,
+                                     G = object$G,
+                                     S = object$S,
                                      y_is_na = object$titbits$y_is_na,
                                      distribution_numeric = disty,
                                      control = object$titbits$control,
                                      inits = my.inits))
-    pb$tick()
+    # pb$tick()
     if( orderSamps)
       samp.object <- orderPost( samp.object, object)
     return( unlist( samp.object$coef))
   }
 
-  flag <- TRUE
-  tmpOldQuiet <- object$titbits$control$quiet
-  object$titbits$control$quiet <- TRUE
-  if( Sys.info()['sysname'] == "Windows" | mc.cores==1){
-    boot.estis <- matrix(NA, nrow = nboot, ncol = length(unlist(object$coef)))
-    for (ii in 1:nboot) {
-      if( !quiet)
-        setTxtProgressBar(pb, ii)
-      boot.estis[ii, ] <- my.fun( ii)
-    }
-    flag <- FALSE
-  }
-  if( flag){  #has this already been done sequencially?
-    if( !quiet)
-      message( "Progress bar may not be monotonic due to the vaguaries of parallelisation")
-    tmp <- parallel::mclapply( 1:nboot, my.fun, mc.silent=quiet, mc.cores=mc.cores)
-    #    if( !quiet)
-    #      message("")
-    boot.estis <- do.call( "rbind", tmp)
-  }
+  tmp <- surveillance::plapply(seq_len(nboot), my.fun, .parallel = mc.cores)
+  boot.estis <- do.call( "rbind", tmp)
   object$titbits$control$quiet <- tmpOldQuiet
-  if( !quiet)
-    message( "")
-  colnames( boot.estis) <- get_long_names_rcp( object)
+  # if( !quiet)
+    # message( "")
+  # colnames( boot.estis) <- get_long_names_rcp( object)
   class( boot.estis) <- "sam_bootstrap"
   return( boot.estis)
 }
@@ -1862,19 +1815,19 @@
   return(abs(logl_n1 - logl_n) > (abs(logl_n1 - logl_n) / abs(logl_n)))
 }
 
-"setup_inits_sam" <- function(inits, S, G, np, return_list=TRUE){
+"setup_inits_sam" <- function(inits, S, G, np, disty, return_list=TRUE){
   if(is.null(inits))res<-NULL
 
   if(is.list(inits)){
-    alpha <- as.numeric(inits$alphas)
-    beta <- as.numeric(inits$betas)
+    alpha <- as.numeric(inits$alpha)
+    beta <- as.numeric(inits$beta)
     eta <- as.numeric(inits$eta)
     # disp <- as.numeric(inits$disp)
-    if(any(!is.na(object$coef$disp)|is.null(inits$disp)))
+    if(disty%in%c(4,6)|is.null(inits$disp))
       disp <- as.numeric(inits$disp)
     else
       disp <- rep(-999999,length(alpha))
-    if(return_list) res <- list(alphas=alpha,betas=beta,etas=eta,disps=disp)
+    if(return_list) res <- list(alpha=alpha,beta=beta,eta=eta,disp=disp)
     else res <- c(alpha,beta,eta,disp)
   }
 
@@ -1886,12 +1839,12 @@
     start <- start + (G*np)
     eta <- inits[start + 1:(G - 1)]
     start <- start + (G-1)
-    if(any(!is.na(object$coef$disp)))
+    if(disty%in%c(4,6))
       disp <- inits[start + 1:S]
     else
       disp <- rep(-999999,S)
 
-    if(return_list) res <- list(alphas=alpha,betas=beta,etas=eta,disps=disp)
+    if(return_list) res <- list(alpha=alpha,beta=beta,eta=eta,disp=disp)
     else res <- c(alpha,beta,eta,disp)
 
   }

@@ -145,9 +145,10 @@ testthat::test_that('species mix generic vcov functions', {
 
   # build and test a single model.
   # estimate variance-covariance matrix
-
+  library(ecomix)
   set.seed(42)
   sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+
   sp_form <- ~ 1
   theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,7.9),3,3,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
@@ -159,7 +160,12 @@ testthat::test_that('species mix generic vcov functions', {
   fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli',
    n_mixtures=3)
 
-  vcov(object = fm1)
+  vcv_mat <- vcov(object = fm1)
+  testthat::expect_equal(nrow(vcv_mat),nrow(vcv_mat))
+  testthat::expect_is(vcv_mat,'matrix')
+  testthat::expect_true(all(is.finite(sqrt(diag(vcv_mat)))))
 
+  vcv_mat_bb <- vcov(object = fm1,method = 'BayesBoot', nboot = 100)
+  testthat::expect_equal(nrow(vcv_mat),nrow(vcv_mat))
 
 })
