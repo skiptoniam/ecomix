@@ -15,7 +15,9 @@ NULL
 #' @param offset a numeric vector of length nrow( data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the unobserved RCP type. Note that offsets cannot be included as part of the rcp_formula or species_formula arguments ??? only through this argument.
 #' @param weights a numeric vector of length nrow( data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1.
 #' @param control a list of control parameters for optimisation and calculation. See details. From \code{control} control.
-#' @param initialise a characture string which defines the method used to initialise finite mixture model clustering. #Will have to synergise this function call across RCP and SpeciesMix. Looks like SpeciesMix uses a em.prefit to setup initialisations. regional_mix has a number of methods. This seems like a good place to setup the bivariate clusting step - cobra function.
+#' @param inits a characture string which defines the method used to initialise finite mixture model clustering. #Will have to synergise this function call across RCP and SpeciesMix. Looks like SpeciesMix uses a em.prefit to setup initialisations. regional_mix has a number of methods. This seems like a good place to setup the bivariate clusting step - cobra function.
+#' @param titbits either a boolean or a vector of characters. If TRUE (default for regimix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regimix(qv) and predict.regimix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for regimix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "W" for the model matrix for the species-specific model, "offset" for the offset in the model, "wts" for the model weights, "form.RCP" for the formula for the RCPs, "form.spp" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "dist" for the conditional distribution of the species data, and "power" for the power parameters used (only used in Tweedie models). Care needs to be taken when using titbits=TRUE in regimix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory. It is more efficient, from a memory perspective, to refit the "best" model using regimix(qv) after identifying it with regimix.multifit(qv). See examples for illustration about how to do this.
+#' @param power a numeric vector (length either 1 or the number of species) defining the power parameter to use in the Tweedie models. If length(power)==1, then the same power parameter is used for all species. If length(power)==No_species, then each species gets its own power parameter. Power values must be between 1 and 2, for computational reasons they should be well away from the boundary. The default is 1.6 as this has proved to be a good ball-park value for the fisheries data that the developer has previously analysed.
 #' @importFrom graphics abline hist legend lines matplot par plot points polygon rect
 #' @importFrom stats as.formula binomial cooks.distance cov cutree dbinom dist dnbinom dnorm dpois
 #' fitted gaussian glm hclust lm logLik model.matrix model.offset model.response
@@ -29,7 +31,8 @@ NULL
 #' simulated_data <- simulate_regional_mix_data() ## need to finishing generating this function.
 #' rcp_form <- as.formula(paste0("cbind(",paste(sort(sp_name),collapse = ','),")~1+x1+x2+x3"))
 #' spp_form <- observations ~ 1 + w1 + w2
-#' model_data <- list('species_data' = Y, 'covariate_data' = X)
+#' model_data <- make_mixture_data(species_data = simulated_data$species_data,
+#'                                 covariate_data = simulated_data$covariate_data[,-1])
 #' fm_regional_mix <- regional_mix(rcp_form,spp_form,data=model_data,distribution='bernoulli',n_mixtures=5)}
 "regional_mix" <- function (rcp_formula = NULL, species_formula = NULL, data, nRCP = 3, dist="bernoulli", offset=NULL, weights=NULL, control = list(), inits="random2", titbits = TRUE, power=1.6)
 {
@@ -117,9 +120,7 @@ NULL
 
 }
 
-
-"regional_mix.fit" <-
-  function( outcomes, W, X, offy, wts, disty, nRCP, power, inits, control, n, S, p.x, p.w){#
+"regional_mix.fit" <- function(outcomes, W, X, offy, wts, disty, nRCP, power, inits, control, n, S, p.x, p.w){
     if( nRCP==1){ #if there is just one RCP type -- ie no dependence on environment
       tmp <- noRCPfit(outcomes, W, X, offy, wts, disty, nRCP, power, inits, control, n, S, p.x, p.w)
       return( tmp)
@@ -141,6 +142,11 @@ NULL
 
   }
 
+#' @rdname regional_mix-class
+#' @name regional_mix.multifit
+#' @param nstart for regimix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.
+#' @param mc.cores for regimix.multifit only. The number of cores to spread the re-fitting over.
+#' @export
 
 "regional_mix.multifit" <-
   function (rcp_formula = NULL, species_formula = NULL, data, nRCP = 3, dist="bernoulli", offset=NULL, weights=NULL, control = list(), inits = "random2", titbits = FALSE, power=1.6, nstart=10, mc.cores=1)
@@ -248,7 +254,7 @@ NULL
 NULL
 
 #' @rdname regional_mix-class
-#' @name AIC.regional_mix
+#' @export
 "AIC.regional_mix" <- function (object, ..., k = 2){
     p <- length(unlist(object$coefs))
     if (is.null(k))
@@ -257,7 +263,8 @@ NULL
     return(star.ic)
 }
 
-
+#' @rdname regional_mix-class
+#' @export
 "BIC.regional_mix" <-
 function (object, ...)
 {
@@ -1768,9 +1775,62 @@ function(control)
 
 }
 
-
-"simRCPdata" <-
-function (nRCP=3, S=20, n=200, p.x=3, p.w=0, alpha=NULL, tau=NULL, beta=NULL, gamma=NULL, logDisps=NULL, powers=NULL, X=NULL, W=NULL, offset=NULL, dist="bernoulli")
+#' @rdname regional_mix
+#' @name simulate_regional_mix_data
+#' @param nRCP Integer giving the number of RCPs
+#' @param S Integer giving the number of species
+#' @param n Integer giving the number of observations (sites)
+#' @param p.x Integer giving the number of covariates (including the intercept) for the model for the latent RCP types
+#' @param p.w Integer giving the number of covariates (excluding the intercept) for the model for the species data
+#' @param alpha Numeric vector of length S. Specifies the mean prevalence for each species, on the logit scale
+#' @param tau Numeric matrix of dimension c(nRCP-1,S). Specifies each species difference from the mean to each RCPs mean for the first nRCP-1 RCPs. The last RCP means are calculated using the sum-to-zero constraints
+#' @param beta Numeric matrix of dimension c(nRCP-1,p.x). Specifies the RCP's dependence on the covariates (in X)
+#' @param gamma Numeric matrix of dimension c(n,p.w). Specifies the species' dependence on the covariates (in W)
+#' @param logDisps Logartihm of the (over-)dispersion parameters for each species for negative binomial, Tweedie and Normal models
+#' @param powers Power parameters for each species for Tweedie model
+#' @param X Numeric matrix of dimension c(n,p.x). Specifies the covariates for the RCP model. Must include the intercept, if one is wanted. Default is random numbers in a matrix of the right size.
+#' @param W Numeric matrix of dimension c(n,p.w). Specifies the covariates for the species model. Must not include the intercept. Unless you want it included twice. Default is to give random levels of a two-level factor.
+#' @param offset Numeric vector of size n. Specifies any offset to be included into the species level model.
+#' @param dist Text string. Specifies the distribution of the species data. Current options are "bernoulli" (default), "poisson", "negative_binomial", "tweedie" and "gaussian.
+#' @export
+#' @examples
+#' \dontrun{
+#' #generates synthetic data
+#'set.seed( 151)
+#'n <- 100
+#'S <- 10
+#'nRCP <- 3
+#'my.dist <- "NegBin"
+#'X <- as.data.frame( cbind( x1=runif( n, min=-10, max=10), x2=runif( n, min=-10, max=10)))
+#'Offy <- log( runif( n, min=30, max=60))
+#'pols <- list()
+#'pols[[1]] <- poly( X$x1, degree=3)
+#important to scale covariates so that regimix can get half-way decent starting values
+#'pols[[2]] <- poly( X$x2, degree=3)
+#'X <- as.matrix( cbind( 1, X, pols[[1]], pols[[2]]))
+#'colnames( X) <- c("const", 'x1', 'x2', paste( "x1",1:3,sep='.'), paste( "x2",1:3,sep='.'))
+#'p.x <- ncol( X[,-(2:3)])
+#'p.w <- 3
+#'W <- matrix(sample( c(0,1), size=(n*p.w), replace=TRUE), nrow=n, ncol=p.w)
+#'colnames( W) <- paste( "w",1:3,sep=".")
+#'alpha <- rnorm( S)
+#'tau.var <- 0.5
+#'b <- sqrt( tau.var/2)
+#a double exponential for RCP effects
+#'tau <- matrix( rexp( n=(nRCP-1)*S,
+#' rate=1/b) - rexp( n=(nRCP-1)*S, rate=1/b), nrow=nRCP-1, ncol=S)
+#'beta <- 0.2 * matrix( c(-1.2, -2.6, 0.2, -23.4, -16.7, -18.7, -59.2, -76.0, -14.2, -28.3,
+#'                        -36.8, -17.8, -92.9,-2.7), nrow=nRCP-1, ncol=p.x)
+#'gamma <- matrix( rnorm( S*p.w), ncol=p.w, nrow=S)
+#'logDisp <- log( rexp( S, 1))
+#'set.seed(121)
+#'simDat <- simulate_regional_mix_data( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n, alpha=alpha, tau=tau,
+#'                      beta=beta, gamma=gamma, X=X[,-(2:3)], W=W, dist=my.dist, logDisp=logDisp, offset=Offy)
+#'
+#' }
+"simulate_regional_mix_data" <- function (nRCP=3, S=20, n=200, p.x=3, p.w=0, alpha=NULL,
+                          tau=NULL, beta=NULL, gamma=NULL, logDisps=NULL,
+                          powers=NULL, X=NULL, W=NULL, offset=NULL, dist="bernoulli")
 {
     if (is.null(alpha) | length(alpha) != S) {
         message("Random alpha from normal (-1,0.5) distribution")
@@ -1836,7 +1896,7 @@ function (nRCP=3, S=20, n=200, p.x=3, p.w=0, alpha=NULL, tau=NULL, beta=NULL, ga
     }
 
     etaPi <- X %*% t(beta)
-    pis <- t(apply(etaPi, 1, additive.logistic))
+    pis <- t(apply(etaPi, 1, additive_logistic))
     habis <- apply(pis, 1, function(x) sample(1:nRCP, 1, FALSE, x))
 
     tau <- rbind(tau, -colSums(tau))

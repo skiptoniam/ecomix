@@ -2,7 +2,9 @@
 % Please edit documentation in R/regional_mix-class.R
 \name{regional_mix}
 \alias{regional_mix}
+\alias{regional_mix.multifit}
 \alias{AIC.regional_mix}
+\alias{BIC.regional_mix}
 \alias{residuals}
 \alias{residuals.regional_mix}
 \title{regional_mix objects}
@@ -11,7 +13,14 @@ regional_mix(rcp_formula = NULL, species_formula = NULL, data, nRCP = 3,
   dist = "bernoulli", offset = NULL, weights = NULL, control = list(),
   inits = "random2", titbits = TRUE, power = 1.6)
 
+regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
+  nRCP = 3, dist = "bernoulli", offset = NULL, weights = NULL,
+  control = list(), inits = "random2", titbits = FALSE, power = 1.6,
+  nstart = 10, mc.cores = 1)
+
 \method{AIC}{regional_mix}(object, ..., k = 2)
+
+\method{BIC}{regional_mix}(object, ...)
 
 \method{residuals}{regional_mix}(object, ..., type = "RQR", quiet = FALSE)
 }
@@ -29,11 +38,19 @@ The response variable (left hand side of the formula) needs to be either 'presen
 
 \item{control}{a list of control parameters for optimisation and calculation. See details. From \code{control} control.}
 
+\item{inits}{a characture string which defines the method used to initialise finite mixture model clustering. #Will have to synergise this function call across RCP and SpeciesMix. Looks like SpeciesMix uses a em.prefit to setup initialisations. regional_mix has a number of methods. This seems like a good place to setup the bivariate clusting step - cobra function.}
+
+\item{titbits}{either a boolean or a vector of characters. If TRUE (default for regimix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regimix(qv) and predict.regimix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for regimix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "W" for the model matrix for the species-specific model, "offset" for the offset in the model, "wts" for the model weights, "form.RCP" for the formula for the RCPs, "form.spp" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "dist" for the conditional distribution of the species data, and "power" for the power parameters used (only used in Tweedie models). Care needs to be taken when using titbits=TRUE in regimix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory. It is more efficient, from a memory perspective, to refit the "best" model using regimix(qv) after identifying it with regimix.multifit(qv). See examples for illustration about how to do this.}
+
+\item{power}{a numeric vector (length either 1 or the number of species) defining the power parameter to use in the Tweedie models. If length(power)==1, then the same power parameter is used for all species. If length(power)==No_species, then each species gets its own power parameter. Power values must be between 1 and 2, for computational reasons they should be well away from the boundary. The default is 1.6 as this has proved to be a good ball-park value for the fisheries data that the developer has previously analysed.}
+
+\item{nstart}{for regimix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
+
+\item{mc.cores}{for regimix.multifit only. The number of cores to spread the re-fitting over.}
+
 \item{model_data}{a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containng the covariate data for each site. Names of columns must match that given in \code{rcp_formula} and \code{species_formula}.}
 
 \item{distribution}{The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial" and "gaussian" distributions are possible and applicable to specific types of data.}
-
-\item{initialise}{a characture string which defines the method used to initialise finite mixture model clustering. #Will have to synergise this function call across RCP and SpeciesMix. Looks like SpeciesMix uses a em.prefit to setup initialisations. regional_mix has a number of methods. This seems like a good place to setup the bivariate clusting step - cobra function.}
 }
 \description{
 creates an \code{regional_mix} model.
@@ -47,6 +64,7 @@ normal variates. Within a site they are likely to be correlated (as they share a
 simulated_data <- simulate_regional_mix_data() ## need to finishing generating this function.
 rcp_form <- as.formula(paste0("cbind(",paste(sort(sp_name),collapse = ','),")~1+x1+x2+x3"))
 spp_form <- observations ~ 1 + w1 + w2
-model_data <- list('species_data' = Y, 'covariate_data' = X)
+model_data <- make_mixture_data(species_data = simulated_data$species_data,
+                                covariate_data = simulated_data$covariate_data[,-1])
 fm_regional_mix <- regional_mix(rcp_form,spp_form,data=model_data,distribution='bernoulli',n_mixtures=5)}
 }
