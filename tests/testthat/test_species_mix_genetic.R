@@ -167,5 +167,7 @@ testthat::test_that('species mix generic vcov functions', {
 
   vcv_mat_bb <- vcov(object = fm1,method = 'BayesBoot', nboot = 100)
   testthat::expect_equal(nrow(vcv_mat),nrow(vcv_mat))
+  testthat::expect_is(vcv_mat_bb,'matrix')
+  testthat::expect_true(all(is.finite(sqrt(diag(vcv_mat_bb)))))
 
 })
