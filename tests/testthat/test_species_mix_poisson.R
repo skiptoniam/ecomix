@@ -37,7 +37,7 @@ testthat::test_that('species mix poisson', {
 
   #get the taus
   starting_values <- ecomix:::initiate_fit_sam(y, X, site_spp_wts, offset, y_is_na, G, S, disty, control)
-  fits <- list(alphas=starting_values$alphas,betas=starting_values$betas,disp=starting_values$disp)
+  fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,disp=starting_values$disp)
   first_fit <- list(x = X, y = y, weights=site_spp_wts, offset=offset)
 
   # get the loglikelihood based on these values

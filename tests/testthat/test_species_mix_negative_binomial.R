@@ -62,7 +62,7 @@ testthat::test_that('species_mix negative binomial', {
 
   #get the taus
   starting_values <- ecomix:::initiate_fit_sam(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control)
-  fits <- list(alphas=starting_values$alphas,betas=starting_values$betas,disp=starting_values$disp)
+  fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,disp=starting_values$disp)
   first_fit <- list(x = X, y = y, weights=site_spp_weights, offset=offset)
 
   # get the loglikelihood based on these values
@@ -79,14 +79,14 @@ testthat::test_that('species_mix negative binomial', {
   start_vals <- ecomix:::get_starting_values_sam(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
 
 
-  # inits <- c(start_vals$alphas, start_vals$betas, start_vals$eta, start_vals$disp)
+  # inits <- c(start_vals$alpha, start_vals$beta, start_vals$eta, start_vals$disp)
   # np <- as.integer(ncol(X[,-1]))
   # n <- Obs <- as.integer(nrow(X))
   #
   #
   # # parameters to optimise
-  # alpha <- as.numeric(start_vals$alphas)
-  # beta <- as.numeric(start_vals$betas)
+  # alpha <- as.numeric(start_vals$alpha)
+  # beta <- as.numeric(start_vals$beta)
   # eta <- as.numeric(start_vals$eta)
   # disp <- as.numeric(start_vals$disp)
   #

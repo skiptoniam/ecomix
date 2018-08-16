@@ -80,8 +80,9 @@ over species (rather than sites), the weights should be a vector n species
 long. The exception is under the use of the 'ippm' distribution where
 weights must be a nrow(data)*n_species matrix, which provides a
 species-specific background weights used to estimate the species-specific
-marginal likelihoods.
-@param bb_weights a numeric vector of n species long. This is used for undertaking
+marginal likelihoods.}
+
+\item{bb_weights}{a numeric vector of n species long. This is used for undertaking
 a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
 
 \item{control}{a list of control parameters for optimisation and calculation.
@@ -177,7 +178,6 @@ in fitmix.cpp. Minima is found using vmmin (BFGS). Currently 'bernoulli',
  and 'tweedie' distributions can be fitted using the species_mix function.
 }
 \examples{
-\dontrun{
 library(ecomix)
 set.seed(42)
 sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
@@ -191,7 +191,6 @@ model_data <- make_mixture_data(species_data = simulated_data$species_data,
                                 covariate_data = simulated_data$covariate_data[,-1])
 fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli',
  n_mixtures=3)
-}
 \dontrun{
 fmods <- species_mix.multifit(sam_form, sp_form, model_data, distribution = 'bernoulli', nstarts = 10, n_mixtures=3)
 }

@@ -119,17 +119,17 @@ testthat::test_that('species mix ippm', {
   all_sp_ippm <-surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na,disty)
   testthat::expect_is(all_sp_ippm,'list')
 
-  alphas <- lapply(all_sp_ippm, `[[`, 1)
-  testthat::expect_length(unlist(alphas),S)
+  alpha <- lapply(all_sp_ippm, `[[`, 1)
+  testthat::expect_length(unlist(alpha),S)
 
-  betas <- lapply(all_sp_ippm, `[[`, 2)
-  testthat::expect_length(do.call(rbind, betas),S*nP)
+  beta <- lapply(all_sp_ippm, `[[`, 2)
+  testthat::expect_length(do.call(rbind, beta),S*nP)
 
   disp <- unlist(lapply(all_sp_ippm, `[[`, 3))
   testthat::expect_true(all(is.na(disp)))
 
   #glmnet coefs
-  all_coefs_mat <- t(do.call(cbind,betas))
+  all_coefs_mat <- t(do.call(cbind,beta))
   # mix_coefs <- all_coefs_mat[,-1] # drop intercepts
   tmp1 <- kmeans(all_coefs_mat, centers=G, nstart=100)
   tmp_grp <- tmp1$cluster
@@ -150,7 +150,7 @@ testthat::test_that('species mix ippm', {
   starting_values <- ecomix:::initiate_fit_sam(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control)
   testthat::expect_is(starting_values,'list')
 
-  fits <- list(betas=starting_values$betas, alphas=starting_values$alphas)
+  fits <- list(beta=starting_values$beta, alpha=starting_values$alpha)
   first_fit <- list(x = X, y = y, site_spp_weights=site_spp_weights, offset=offset, y_is_na=y_is_na)
 
   # get the loglikelihood based on these values
@@ -185,9 +185,9 @@ testthat::test_that('species mix ippm', {
   testthat::expect_is(fm_g1,'matrix')
 
   all_grp_ippm1 <- surveillance::plapply(seq_len(G), ecomix:::apply_glm_group_tau_sam, y, X, site_spp_weights, offset, y_is_na, disty, taus)
-  betas <- t(do.call(cbind,all_grp_ippm1)[-1,])
+  beta <- t(do.call(cbind,all_grp_ippm1)[-1,])
 
-  testthat::expect_is(betas,'matrix')
+  testthat::expect_is(beta,'matrix')
 
   # does a ippm work?
   # wts <- rbind(presence_sites[,-1],background_sites[,-1])
@@ -199,9 +199,9 @@ testthat::test_that('species mix ippm', {
 
   model_data <- make_mixture_data(y,X[,-1])
 
-  print(head(site_spp_weights))
+  # print(head(site_spp_weights))
   fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'ippm',
-                     weights = site_spp_weights,
+                     weights = as.matrix(site_spp_weights),
                      n_mixtures=4)
   testthat::expect_s3_class(fm1,'ippm')
   testthat::expect_s3_class(fm1,'species_mix')

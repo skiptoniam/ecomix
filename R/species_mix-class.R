@@ -44,15 +44,15 @@
 #' the model as an offset. It is included into the conditional part of the model
 #' where conditioning is performed on the SAM.
 #' @param weights a numeric vector of length ncol(Y) (n species) that is used as weights
-#'  in the log-likelihood calculations. If NULL (default) then all weights are
-#'  assumed to be identically 1. Because we are estimating the log-likelihood
-#'  over species (rather than sites), the weights should be a vector n species
-#'  long. The exception is under the use of the 'ippm' distribution where
-#'  weights must be a nrow(data)*n_species matrix, which provides a
-#'  species-specific background weights used to estimate the species-specific
-#'  marginal likelihoods.
-#'  @param bb_weights a numeric vector of n species long. This is used for undertaking
-#'  a Bayesian Bootstrap. See 'vcov.species_mix' for more details.
+#' in the log-likelihood calculations. If NULL (default) then all weights are
+#' assumed to be identically 1. Because we are estimating the log-likelihood
+#' over species (rather than sites), the weights should be a vector n species
+#' long. The exception is under the use of the 'ippm' distribution where
+#' weights must be a nrow(data)*n_species matrix, which provides a
+#' species-specific background weights used to estimate the species-specific
+#' marginal likelihoods.
+#' @param bb_weights a numeric vector of n species long. This is used for undertaking
+#' a Bayesian Bootstrap. See 'vcov.species_mix' for more details.
 #' @param control a list of control parameters for optimisation and calculation.
 #' See details. From \code{species_mix.control} for details on optimistaion
 #' parameters.
@@ -69,7 +69,6 @@
 #' sd uniroot update update.formula
 #' @export
 #' @examples
-#' \dontrun{
 #' library(ecomix)
 #' set.seed(42)
 #' sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
@@ -83,7 +82,7 @@
 #'                                 covariate_data = simulated_data$covariate_data[,-1])
 #' fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli',
 #'  n_mixtures=3)
-#' }
+
 
 "species_mix" <- function(archetype_formula = NULL, species_formula = stats::as.formula(~1), data,
                           n_mixtures = 3, distribution="bernoulli", offset=NULL,
@@ -168,21 +167,22 @@
 
   # get the weights
   species_names <- colnames(y)
-  site_spp_weights <- get_site_spp_weights_sam(mf,species_names,distribution)
+  site_spp_weights <- get_site_spp_weights_sam(mf,weights,species_names,distribution)
   spp_weights <- check_spp_weights(bb_weights,S)
 
-  # cat(colnames(weights),"\n")
+  # cat(colnames(site_spp_weights),"\n")
 
   if(distribution=='ippm'){
-    if(!all(colnames(y)%in%colnames(site_spp_weights)))
-      # cat(colnames(y),"\n")
-      # cat(colnames(site_spp_weights),"\n")
-      stop('When modelling a inhomogenous poisson point process model,
-           weights colnames must match species data colnames')
-    if(any(dim(y)!=dim(site_spp_weights)))
+    if(!all(colnames(y)==colnames(site_spp_weights))){
+      cat(colnames(y),"\n")
+      cat(colnames(site_spp_weights),"\n")
+      stop(cat('When modelling a inhomogenous poisson point process model,\n species data colnames must match weights colnames.\n\nSpecies data colnames from "model_data" are:\n',colnames(y),'.\n\nWhile the colnames of the weights are:\n', colnames(site_spp_weights),'\n'))
+    }
+    if(any(dim(y)!=dim(site_spp_weights))){
       stop('When modelling a inhomogenous poisson point process model,
            weights needs to have the same dimensions at the
            species data - n_sites x n_species')
+    }
   }
 
   s.means <- NULL
@@ -1751,25 +1751,26 @@
     return( titbits)
 }
 
-"get_site_spp_weights_sam"  <- function(mf,sp_names,distribution){
+"get_site_spp_weights_sam"  <- function(mf, site_spp_weights, sp_names, distribution){
 
-  site_spp_wts <- model.weights(mf)
+  # site_spp_wts <- model.weights(mf)
+  if(is.null(site_spp_weights))site_spp_weights <- model.weights(mf)
 
   if(distribution=='ippm'){
-    if(!is.null(site_spp_wts)){
-      site_spp_wts <- subset(site_spp_wts, select = colnames(site_spp_wts)%in%sp_names)
+    if(!is.null(site_spp_weights)){
+      site_spp_weights <- subset(site_spp_weights, select = colnames(site_spp_weights)%in%sp_names)
     } else {
-      site_spp_wts <- matrix(1,nrow(mf),length(sp_names))
+      site_spp_weights <- matrix(1,nrow(mf),length(sp_names))
     }
   } else {
 
-    if(!is.null(site_spp_wts)){
-      site_spp_wts <- replicate(length(sp_names),site_spp_wts)
+    if(!is.null(site_spp_weights)){
+      site_spp_weights <- replicate(length(sp_names),site_spp_weights)
     } else {
-      site_spp_wts <- matrix(1,nrow(mf),length(sp_names))
+      site_spp_weights <- matrix(1,nrow(mf),length(sp_names))
     }
   }
-  return(site_spp_wts)
+  return(site_spp_weights)
 }
 
 "check_spp_weights" <- function(bb_weights, nS){
