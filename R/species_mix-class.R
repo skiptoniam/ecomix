@@ -30,7 +30,7 @@
 #' If you include a species specific formula which has more than an intercept you
 #' will be fitting a partial species archetype model which has species
 #' specific covariates and archetype specific covariates.
-#' @param model_data a matrix of dataframe which contains the 'species_data'
+#' @param data a matrix of dataframe which contains the 'species_data'
 #' matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
 #' const, temperature, rainfall. dims of matirx should be
 #' nsites*(nspecies+const+covariates).
@@ -78,9 +78,9 @@
 #' dat[,-1] <- scale(dat[,-1])
 #' simulated_data <- simulate_species_mix_data(archetype_formula=sam_form, species_formula=sp_form,
 #'                                             dat,theta,dist="bernoulli")
-#' model_data <- make_mixture_data(species_data = simulated_data$species_data,
+#' data <- make_mixture_data(species_data = simulated_data$species_data,
 #'                                 covariate_data = simulated_data$covariate_data[,-1])
-#' fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli',
+#' fm1 <- species_mix(sam_form, sp_form, data, distribution = 'bernoulli',
 #'  n_mixtures=3)
 
 
@@ -176,7 +176,7 @@
     if(!all(colnames(y)==colnames(site_spp_weights))){
       cat(colnames(y),"\n")
       cat(colnames(site_spp_weights),"\n")
-      stop(cat('When modelling a inhomogenous poisson point process model,\n species data colnames must match weights colnames.\n\nSpecies data colnames from "model_data" are:\n',colnames(y),'.\n\nWhile the colnames of the weights are:\n', colnames(site_spp_weights),'\n'))
+      stop(cat('When modelling a inhomogenous poisson point process model,\n species data colnames must match weights colnames.\n\nSpecies data colnames from "data" are:\n',colnames(y),'.\n\nWhile the colnames of the weights are:\n', colnames(site_spp_weights),'\n'))
     }
     if(any(dim(y)!=dim(site_spp_weights))){
       stop('When modelling a inhomogenous poisson point process model,
@@ -290,7 +290,7 @@
 #'@param mc.cores for species_mix.multifit only. The number of cores to spread the re-fitting over.
 #'@examples
 #' \dontrun{
-#' fmods <- species_mix.multifit(sam_form, sp_form, model_data, distribution = 'bernoulli', nstarts = 10, n_mixtures=3)
+#' fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli', nstarts = 10, n_mixtures=3)
 #' }
 "species_mix.multifit" <- function(archetype_formula = NULL, species_formula = stats::as.formula(~1), data,
            n_mixtures = 3, n_starts = 10, mc.cores=1, distribution="bernoulli", offset=NULL,
@@ -382,7 +382,7 @@
       if(!all(colnames(y)==colnames(site_spp_weights))){
         cat(colnames(y),"\n")
         cat(colnames(site_spp_weights),"\n")
-        stop(cat('When modelling a inhomogenous poisson point process model,\n species data colnames must match weights colnames.\n\nSpecies data colnames from "model_data" are:\n',colnames(y),'.\n\nWhile the colnames of the weights are:\n', colnames(site_spp_weights),'\n'))
+        stop(cat('When modelling a inhomogenous poisson point process model,\n species data colnames must match weights colnames.\n\nSpecies data colnames from "data" are:\n',colnames(y),'.\n\nWhile the colnames of the weights are:\n', colnames(site_spp_weights),'\n'))
       }
       if(any(dim(y)!=dim(site_spp_weights))){
         stop('When modelling a inhomogenous poisson point process model,
@@ -693,7 +693,7 @@
 #'@examples
 #'
 #' \dontrun{
-#' fm_groups <- species_mix_estimate_groups(sam_form, sp_form, model_data, distribution = 'bernoulli', n_mixtures=1:10)
+#' fm_groups <- species_mix_estimate_groups(sam_form, sp_form, data, distribution = 'bernoulli', n_mixtures=1:10)
 #'}
 "species_mix_estimate_groups" <- function(archetype_formula = NULL, species_formula = ~1,
                                           data, n_mixtures = 1:10, distribution="bernoulli",

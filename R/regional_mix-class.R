@@ -5,7 +5,7 @@
 #' @param rcp_formula an object of class "formula" (or an object that can be coerced to that class).
 #' The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the region of common profile (rcp) probabilities on covariates.
 #' @param species_formula an object of class "formula" (or an object that can be coerced to that class). The left hand side of this formula should be left empty (it is removed if it is not empty). The right hand side of this formula specifies the dependence of the species"'" data on covariates (typically different covariates to \code{rcp_formula} to avoid confusing confounding). An example formula is observations ~ gear_type + time_of_day, where gear_type describes the different sampling gears and time_of_day describes the time of the sample. #maybe could call this detection/bias
-#' @param model_data a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containng the covariate data for each site. Names of columns must match that given in \code{rcp_formula} and \code{species_formula}.
+#' @param data a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containng the covariate data for each site. Names of columns must match that given in \code{rcp_formula} and \code{species_formula}.
 #' @param nRCP The number of mixing components (groups) to fit.
 #' @param distribution The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial" and "gaussian" distributions are possible and applicable to specific types of data.
 #' @param offset a numeric vector of length nrow( data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the unobserved RCP type. Note that offsets cannot be included as part of the rcp_formula or species_formula arguments ??? only through this argument.
@@ -27,10 +27,10 @@
 #' simulated_data <- simulate_regional_mix_data() ## need to finishing generating this function.
 #' rcp_form <- as.formula(paste0("cbind(",paste(sort(sp_name),collapse = ','),")~1+x1+x2+x3"))
 #' spp_form <- observations ~ 1 + w1 + w2
-#' model_data <- make_mixture_data(species_data = simulated_data$species_data,
+#' data <- make_mixture_data(species_data = simulated_data$species_data,
 #'                                 covariate_data = simulated_data$covariate_data[,-1])
-#' fm_regional_mix <- regional_mix(rcp_form,spp_form,data=model_data,distribution='bernoulli',n_mixtures=5)}
-"regional_mix" <- function (rcp_formula = NULL, species_formula = NULL, data, nRCP = 3, dist="bernoulli", offset=NULL, weights=NULL, control = list(), inits="random2", titbits = TRUE, power=1.6)
+#' fm_regional_mix <- regional_mix(rcp_form,spp_form,data=data,distribution='bernoulli',n_mixtures=5)}
+"regional_mix" <- function (rcp_formula = NULL, species_formula = NULL, data, nRCP = 3, distribution="bernoulli", offset=NULL, weights=NULL, control = list(), inits="random2", titbits = TRUE, power=1.6)
 {
   #the control parameters
   control <- set.control( control)
@@ -83,7 +83,7 @@
   wts <- get_wts_rcp( mf)
   #get distribution
   disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie","gaussian")
-  disty <- get_dist_rcp( disty.cases, dist)
+  disty <- get_dist_rcp( disty.cases, distribution)
   #get power params for Tweedie
   power <- get_power_rcp( disty, power, S)
   #summarising data to console
@@ -101,7 +101,7 @@
   #Information criteria
   tmp <- calcInfoCrit( tmp)
   #titbits object, if wanted/needed.
-  tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts, rcp_formula, species_formula, control, dist, p.w=p.w, power)
+  tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts, rcp_formula, species_formula, control, distribution, p.w=p.w, power)
   tmp$titbits$disty <- disty
   #the last bit of the regional_mix object puzzle
   tmp$call <- call
@@ -242,7 +242,6 @@
   }
 
 #' @rdname regional_mix-class
-#' @name AIC.regional_mix
 #' @export
 "AIC.regional_mix" <- function (object, ..., k = 2){
     p <- length(unlist(object$coefs))
@@ -253,7 +252,6 @@
 }
 
 #' @rdname regional_mix-class
-#' @name BIC.regional_mix
 #' @export
 "BIC.regional_mix" <-
 function (object, ...)
@@ -1765,7 +1763,7 @@ function(control)
 
 }
 
-#' @rdname regional_mix
+#' @rdname regional_mix-class
 #' @name simulate_regional_mix_data
 #' @param nRCP Integer giving the number of RCPs
 #' @param S Integer giving the number of species
