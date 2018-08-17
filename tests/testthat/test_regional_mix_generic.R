@@ -40,8 +40,8 @@ my.form.RCP <- paste( paste( paste(
   ')',sep=''),
   '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
 my.form.spp <- ~w.1+w.2+w.3
-fm <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp, data = simDat,
-                   offset = Offy, distribution =  "negative_binomial", nRCP = 3, inits = "random2")
+fm <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp,
+                   data = simDat, distribution =  "negative_binomial", nRCP = 3, inits = "random2")
 
 testthat::expect_s3_class(fm,'regional_mix')
 
