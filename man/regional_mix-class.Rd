@@ -5,8 +5,11 @@
 \alias{regional_mix.multifit}
 \alias{AIC.regional_mix}
 \alias{BIC.regional_mix}
+\alias{print.regional_mix}
 \alias{residuals}
 \alias{residuals.regional_mix}
+\alias{summary.regional_mix}
+\alias{vcov.regional_mix}
 \title{regional_mix objects}
 \usage{
 regional_mix(rcp_formula = NULL, species_formula = NULL, data, nRCP = 3,
@@ -22,7 +25,15 @@ regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
 
 \method{BIC}{regional_mix}(object, ...)
 
+\method{print}{regional_mix}(x, ...)
+
 \method{residuals}{regional_mix}(object, ..., type = "RQR", quiet = FALSE)
+
+\method{summary}{regional_mix}(object, ...)
+
+\method{vcov}{regional_mix}(object, ..., object2 = NULL,
+  method = "FiniteDifference", nboot = 1000, mc.cores = 1,
+  D.accuracy = 2)
 }
 \arguments{
 \item{rcp_formula}{an object of class "formula" (or an object that can be coerced to that class).
@@ -44,9 +55,9 @@ The response variable (left hand side of the formula) needs to be either 'presen
 
 \item{power}{a numeric vector (length either 1 or the number of species) defining the power parameter to use in the Tweedie models. If length(power)==1, then the same power parameter is used for all species. If length(power)==No_species, then each species gets its own power parameter. Power values must be between 1 and 2, for computational reasons they should be well away from the boundary. The default is 1.6 as this has proved to be a good ball-park value for the fisheries data that the developer has previously analysed.}
 
-\item{nstart}{for regimix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
+\item{nstart}{for regional_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
-\item{mc.cores}{for regimix.multifit only. The number of cores to spread the re-fitting over.}
+\item{mc.cores}{for regional_mix.multifit only. The number of cores to spread the re-fitting over.}
 
 \item{model_data}{a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containng the covariate data for each site. Names of columns must match that given in \code{rcp_formula} and \code{species_formula}.}
 
