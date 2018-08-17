@@ -18,15 +18,14 @@
 species_mix(archetype_formula = NULL,
   species_formula = stats::as.formula(~1), data, n_mixtures = 3,
   distribution = "bernoulli", offset = NULL, weights = NULL,
-  bb_weights = NULL, control = species_mix.control(), inits = NULL,
-  standardise = TRUE, titbits = TRUE)
+  bb_weights = NULL, control = NULL, inits = NULL, standardise = TRUE,
+  titbits = TRUE)
 
 species_mix.multifit(archetype_formula = NULL,
   species_formula = stats::as.formula(~1), data, n_mixtures = 3,
-  n_starts = 10, mc.cores = 1, distribution = "bernoulli",
-  offset = NULL, weights = NULL, bb_weights = NULL,
-  control = species_mix.control(), inits = NULL, standardise = TRUE,
-  titbits = TRUE)
+  nstarts = 10, mc.cores = 1, distribution = "bernoulli", offset = NULL,
+  weights = NULL, bb_weights = NULL, control = species_mix.control(),
+  inits = NULL, standardise = TRUE, titbits = TRUE)
 
 species_mix.control(maxit = 1000, quiet = FALSE, trace = 1, cores = 1,
   residuals = FALSE, init_method = "kmeans", init_sd = 1,
@@ -106,6 +105,8 @@ for species_mix coefficents. These are distribution specific, but at a
 minimum you will need pis (additive_logitic transformed), alpha
 (intercepts) and beta (mixing coefs).}
 
+\item{nstarts}{for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
+
 \item{mc.cores}{for species_mix.multifit only. The number of cores to spread the re-fitting over.}
 
 \item{maxit}{Maximum number of evaluations of the objective function allowed. Defaults to 500.}
@@ -135,8 +136,6 @@ the type of error distribution to be used. The dependent variables
 species archetype probabilities on covariates. For all model the basic
 formula structure follows something like this:
 cbind(spp1,spp2,spp3)~1+temperature+rainfall}
-
-\item{nstart}{for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
 \item{quite}{Should any reporting be performed? Default is FALSE, for reporting.}
 

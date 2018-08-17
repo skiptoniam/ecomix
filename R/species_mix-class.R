@@ -284,14 +284,15 @@
 
 #'@rdname species_mix-class
 #'@name species_mix.fit
-#'@param nstart for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.
+#'@param nstarts for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.
 #'@param mc.cores for species_mix.multifit only. The number of cores to spread the re-fitting over.
+#'@export
 #'@examples
 #' \dontrun{
 #' fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli', nstarts = 10, n_mixtures=3)
 #' }
 "species_mix.multifit" <- function(archetype_formula = NULL, species_formula = stats::as.formula(~1), data,
-           n_mixtures = 3, n_starts = 10, mc.cores=1, distribution="bernoulli", offset=NULL,
+           n_mixtures = 3, nstarts = 10, mc.cores=1, distribution="bernoulli", offset=NULL,
            weights=NULL, bb_weights=NULL, control=species_mix.control(), inits=NULL,
            standardise = TRUE, titbits = TRUE){
 
@@ -402,7 +403,7 @@
     print_input_sam(y, X, S, archetype_formula, species_formula, distribution, quiet=control$quiet)
 
   tmp_fun <- function(x){
-      if( !control$quiet & nstart>1)
+      if( !control$quiet & nstarts>1)
         setTxtProgressBar(pb, x)
       tmpQuiet <- control$quiet
       control$quiet <- TRUE
@@ -434,7 +435,7 @@
    }
 
    #Fit the model many times
-   many_starts <- surveillance::plapply(seq_len(nstart), tmp_fun, .parallel = mc.cores, .verbose = !control$quiet)
+   many_starts <- surveillance::plapply(seq_len(nstarts), tmp_fun, .parallel = mc.cores, .verbose = !control$quiet)
    return(many_starts)
 }
 
