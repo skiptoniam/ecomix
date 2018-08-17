@@ -68,6 +68,11 @@ If you include a species specific formula which has more than an intercept you
 will be fitting a partial species archetype model which has species
 specific covariates and archetype specific covariates.}
 
+\item{data}{a matrix of dataframe which contains the 'species_data'
+matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
+const, temperature, rainfall. dims of matirx should be
+nsites*(nspecies+const+covariates).}
+
 \item{n_mixtures}{The number of mixing components (groups) to fit.}
 
 \item{distribution}{The family of statistical distribution to use within
@@ -131,11 +136,6 @@ species archetype probabilities on covariates. For all model the basic
 formula structure follows something like this:
 cbind(spp1,spp2,spp3)~1+temperature+rainfall}
 
-\item{model_data}{a matrix of dataframe which contains the 'species_data'
-matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
-const, temperature, rainfall. dims of matirx should be
-nsites*(nspecies+const+covariates).}
-
 \item{nstart}{for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
 \item{quite}{Should any reporting be performed? Default is FALSE, for reporting.}
@@ -176,12 +176,12 @@ dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,
 dat[,-1] <- scale(dat[,-1])
 simulated_data <- simulate_species_mix_data(archetype_formula=sam_form, species_formula=sp_form,
                                             dat,theta,dist="bernoulli")
-model_data <- make_mixture_data(species_data = simulated_data$species_data,
+data <- make_mixture_data(species_data = simulated_data$species_data,
                                 covariate_data = simulated_data$covariate_data[,-1])
-fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli',
+fm1 <- species_mix(sam_form, sp_form, data, distribution = 'bernoulli',
  n_mixtures=3)
 \dontrun{
-fmods <- species_mix.multifit(sam_form, sp_form, model_data, distribution = 'bernoulli', nstarts = 10, n_mixtures=3)
+fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli', nstarts = 10, n_mixtures=3)
 }
 \dontrun{
 archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
@@ -191,7 +191,7 @@ simulated_data <- simulate_species_mix_data(archetype_formula,~1,dat,theta,dist=
 }
 
 \dontrun{
-fm_groups <- species_mix_estimate_groups(sam_form, sp_form, model_data, distribution = 'bernoulli', n_mixtures=1:10)
+fm_groups <- species_mix_estimate_groups(sam_form, sp_form, data, distribution = 'bernoulli', n_mixtures=1:10)
 }
 
 #Print information about a species_mix model
