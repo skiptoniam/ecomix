@@ -1,5 +1,5 @@
 #' @title regional_mix objects
-#' @rdname regional_mix-class
+#' @rdname regional_mix
 #' @name regional_mix
 #' @description creates an \code{regional_mix} model.
 #' @param rcp_formula an object of class "formula" (or an object that can be coerced to that class).
@@ -138,7 +138,7 @@
 
   }
 
-#' @rdname regional_mix-class
+#' @rdname regional_mix
 #' @name regional_mix.multifit
 #' @param nstart for regional_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.
 #' @param mc.cores for regional_mix.multifit only. The number of cores to spread the re-fitting over.
@@ -241,7 +241,7 @@
     return(many.starts)
   }
 
-#' @rdname regional_mix-class
+#' @rdname regional_mix
 #' @export
 "AIC.regional_mix" <- function (object, ..., k = 2){
     p <- length(unlist(object$coefs))
@@ -250,12 +250,10 @@
     star.ic <- -2 * object$logl + k * p
     return(star.ic)
 }
-
-#' @rdname regional_mix-class
+#' @rdname regional_mix
 #' @export
-"BIC.regional_mix" <-
-function (object, ...)
-{
+#' @importFrom stats BIC
+"BIC.regional_mix" <- function (object, ...){
     p <- length(unlist(object$coefs))
     k <- log(object$n)
     star.ic <- -2 * object$logl + k * p
@@ -263,8 +261,7 @@ function (object, ...)
 }
 
 
-"calcInfoCrit" <- function( ret)
-{
+"calcInfoCrit" <- function( ret){
   k <- length(unlist(ret$coefs))
   ret$BIC <- -2 * ret$logl + log(ret$n) * k
   ret$AIC <- -2 * ret$logl + 2 * k
@@ -600,13 +597,16 @@ function( outcomes, W, X, offy, wts, disty, G, S, power, inits, quiet=FALSE)
       if( length( W) != 1)
         gamma[ss,] <- my.coefs[-(1:(G+1))]
       if( disty == 3){
-        tmp <- MASS::theta.mm( outcomes[,ss], as.numeric( predict( tmp.fm, s=locat.s, type="response", newx=df, offset=offy)), weights=wts, dfr=nrow(outcomes), eps=1e-4)
+        tmp <- MASS::theta.mm( outcomes[,ss], as.numeric(predict( tmp.fm, s=locat.s,
+                                                                   type="response",
+                                                                   newx=df, newoffset=offy)),
+                               weights=wts, dfr=nrow(outcomes), eps=1e-4)
         if( tmp>2)
           tmp <- 2
         disp[ss] <- log( 1/tmp)
       }
       if( disty == 5){
-        preds <- as.numeric( predict(tmp.fm, s=locat.s, type="link", newx=df, offset=offy))
+        preds <- as.numeric( predict(tmp.fm, s=locat.s, type="link", newx=df, newoffset=offy))
         disp[ss] <- log( sqrt( sum((outcomes[,ss] - preds)^2)/nrow( outcomes)))  #should be something like the resid standard Deviation.
       }
     }
@@ -1495,7 +1495,7 @@ function( data, dat, S, rcp_formula, species_formula, disty.cases, disty, quiet=
   message("The error distribution is: ", disty.cases[disty])
 }
 
-#'@rdname regional_mix-class
+#'@rdname regional_mix
 #'@export
 "print.regional_mix" <-
 function (x, ...)
@@ -1598,7 +1598,7 @@ function( fm, mf, nboot)
 
 
 
-#' @rdname regional_mix-class
+#' @rdname regional_mix
 #' @name residuals
 #' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep). The result is one residual per species per site and they all should be standard
 #' normal variates. Within a site they are likely to be correlated (as they share a common latent factor), but across sampling locations they will be independent.
@@ -1763,7 +1763,7 @@ function(control)
 
 }
 
-#' @rdname regional_mix-class
+#' @rdname regional_mix
 #' @name simulate_regional_mix_data
 #' @param nRCP Integer giving the number of RCPs
 #' @param S Integer giving the number of species
@@ -1962,7 +1962,7 @@ function( model, oosSizeRange=NULL, times=model$n, mc.cores=1, quiet=FALSE, doPl
   invisible( ret)
 }
 
-#' @rdname regional_mix-class
+#' @rdname regional_mix
 #' @export
 
 "summary.regional_mix" <-
@@ -2104,7 +2104,7 @@ function (object, ...)
  #  return( ret)
  # }
 
-#'@rdname regional_mix-class
+#'@rdname regional_mix
 #'@export
 "vcov.regional_mix" <-
 function (object, ..., object2=NULL, method = "FiniteDifference", nboot = 1000, mc.cores=1, D.accuracy=2)

@@ -1,7 +1,3 @@
-#' @useDynLib ecomix
-# #' @importFrom Rcpp sourceCpp
-NULL
-
 #' package file
 #'
 #' @name ecomix
@@ -12,4 +8,6 @@ NULL
 #' @docType package
 NULL
 
+#' @useDynLib ecomix
+NULL
 

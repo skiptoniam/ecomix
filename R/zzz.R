@@ -27,9 +27,9 @@
 # utils::globalVariables(".")
 
 # magrittr like functions to return something else if condition is not met
-return_if_not <- function(x, test, y) {
-  if (test) y else x
-}
+# return_if_not <- function(x, test, y) {
+#   if (test) y else x
+# }
 
 # # bind y to x if y not in z
 # bind_if_not_in <- function(x, y, z, out=base::get(z, parent.frame())) {
