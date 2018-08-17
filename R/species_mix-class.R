@@ -1076,7 +1076,7 @@
     preds <-as.numeric(predict(ft_sp, s=locat.s,
                                type="response",
                                newx=X[ids_i,-1],
-                               offset=offset[ids_i]))
+                               newoffset=offset[ids_i]))
     tmp <- MASS::theta.mm(outcomes, preds,
                           weights=c(site_spp_weights[ids_i,ss]),
                           dfr=length(y[ids_i,ss]),
@@ -1088,7 +1088,7 @@
     preds <-as.numeric(predict(ft_sp, s=locat.s,
                                type="response",
                                newx=X[ids_i,-1],
-                               offset=offset[ids_i]))
+                               newoffset=offset[ids_i]))
     disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
   }
 
