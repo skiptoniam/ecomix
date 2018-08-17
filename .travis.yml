@@ -1,7 +1,7 @@
 # Sample .travis.yml for R projects
 language: r
+sudo: false
 cache: packages
-sudo: required
 
 r_packages:
   - covr
@@ -13,3 +13,8 @@ warnings_are_errors: false
 notifications:
   on_success: always
   on_failure: always
+
+env:
+  global:
+    - R_BUILD_ARGS="--no-build-vignettes"
+    - R_CHECK_ARGS="--no-build-vignettes --as-cran"
