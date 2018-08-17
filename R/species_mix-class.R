@@ -86,7 +86,7 @@
 
 "species_mix" <- function(archetype_formula = NULL, species_formula = stats::as.formula(~1), data,
                           n_mixtures = 3, distribution="bernoulli", offset=NULL,
-                          weights=NULL, bb_weights=NULL, control=species_mix.control(), inits=NULL,
+                          weights=NULL, bb_weights=NULL, control=NULL, inits=NULL,
                           standardise = TRUE, titbits = TRUE){
 
   #the control parameters
@@ -647,18 +647,18 @@
       }
       out[, s] <- tmp
     }
-    if (distribution == "tweedie") {
-      tmp <- rep(6e+05, dim(X)[1])
-      while (max(tmp, na.rm = TRUE) > 5e+05 | sum(tmp) < 100) {
-        theta[g, 1] <- stats::runif(1, -15, 5)
-        theta[g, 1] <- stats::runif(1, 1, 5)
-        sp.int[s] <- theta[g, 1]
-        lgtp <- X %*% theta[g, ]
-        p <- exp(lgtp)
-        tmp <- rTweedie(dim(X)[1], mu = p, phi = 2, p = 1.6)
-      }
-      out[, s] <- tmp
-    }
+    # if (distribution == "tweedie") {
+    #   tmp <- rep(6e+05, dim(X)[1])
+    #   while (max(tmp, na.rm = TRUE) > 5e+05 | sum(tmp) < 100) {
+    #     theta[g, 1] <- stats::runif(1, -15, 5)
+    #     theta[g, 1] <- stats::runif(1, 1, 5)
+    #     sp.int[s] <- theta[g, 1]
+    #     lgtp <- X %*% theta[g, ]
+    #     p <- exp(lgtp)
+    #     tmp <- rTweedie(dim(X)[1], mu = p, phi = 2, p = 1.6)
+    #   }
+    #   out[, s] <- tmp
+    # }
     if (distribution == "gaussian") {
       sp.int <- NULL
       tmp <- rep(1e+05, dim(X)[1])
@@ -1963,60 +1963,60 @@
 
 }
 
-"check_distribution_clean_data_sam" <- function(arch_form, sp_form, dat, distribution){
-
-  # returns numeric 0, 1 or 2. if zero no species intercepts, if 1 speices intercepts, if 2 species model.
-  species_int_coefs <- check_species_formula(sp_form)
-  print(species_int_coefs)
-  if(species_int_coefs!=2){
-    mod_dat <- clean_data_sam(dat, arch_form, NULL, distribution)
-  } else {
-    mod_dat <- clean_data_sam(dat, arch_form, sp_form, distribution)
-  }
-
-  if(all(distribution=="bernoulli", species_int_coefs==0))fit_disty <- "bernoulli"
-  stop('Bernoulli distribution now requires species specific intercepts - look at "SpeciesMix" package for joint intercept estimation approach')
-  if(all(distribution=="bernoulli", species_int_coefs==1))fit_disty <- "bernoulli"
-  if(all(distribution=="bernoulli", species_int_coefs==2)){
-    fit_disty <- "bernoulli_partial"
-    stop('partial SAMs for a Bernoulli distribution has not been implemented yet - watch this space')
-  }
-
-  if(all(distribution=="poisson", species_int_coefs==0))
-    stop('Poisson distribution requires independent species intercepts')
-  if(all(distribution=="poisson", species_int_coefs==1))fit_disty <- "poisson"
-  if(all(distribution=="poisson", species_int_coefs==2)){
-    fit_disty <- "poisson_partial"
-    stop('partial SAMs for a Poisson distribution has not been implemented yet - watch this space')
-  }
-
-  if(all(distribution=="ippm", species_int_coefs==0))
-    stop('IPPM distribution requires independent species intercepts')
-  if(all(distribution=="ippm", species_int_coefs==1)) fit_disty <- "ippm"
-  if(all(distribution=="ippm", species_int_coefs==2)){
-    fit_disty <- "ippm_partial"
-    stop('partial SAMs for a IPPM distribution has not been implemented yet - watch this space')
-  }
-
-  if(all(distribution=="negative_binomial", species_int_coefs==0))
-    stop('Negative binomial distribution requires independent species intercepts')
-  if(all(distribution=="negative_binomial", species_int_coefs==1)) fit_disty <- "negative_binomial"
-  if(all(distribution=="negative_binomial", species_int_coefs==2)){
-    fit_disty <- "negative_binomial_partial"
-    stop('partial SAMs for a Negative Binomial distribution has not been implemented yet - watch this space')
-}
-
-  if(all(distribution=="tweedie", species_int_coefs==0))
-    stop('Tweedie distribution requires independent species intercepts')
-  if(all(distribution=="tweedie", species_int_coefs==1)) fit_disty <- "tweedie"
-  if(all(distribution=="tweedie", species_int_coefs==2)){
-    fit_disty <- "tweedie_partial"
-    stop('partial SAMs for a Tweedie distribution has not been implemented yet - watch this space')
-  }
-
-  return(list(fit_disty=fit_disty,mod_dat=mod_dat))
-
-}
+# "check_distribution_clean_data_sam" <- function(arch_form, sp_form, dat, distribution){
+#
+#   # returns numeric 0, 1 or 2. if zero no species intercepts, if 1 speices intercepts, if 2 species model.
+#   species_int_coefs <- check_species_formula(sp_form)
+#   print(species_int_coefs)
+#   if(species_int_coefs!=2){
+#     mod_dat <- clean_data_sam(dat, arch_form, NULL, distribution)
+#   } else {
+#     mod_dat <- clean_data_sam(dat, arch_form, sp_form, distribution)
+#   }
+#
+#   if(all(distribution=="bernoulli", species_int_coefs==0))fit_disty <- "bernoulli"
+#   stop('Bernoulli distribution now requires species specific intercepts - look at "SpeciesMix" package for joint intercept estimation approach')
+#   if(all(distribution=="bernoulli", species_int_coefs==1))fit_disty <- "bernoulli"
+#   if(all(distribution=="bernoulli", species_int_coefs==2)){
+#     fit_disty <- "bernoulli_partial"
+#     stop('partial SAMs for a Bernoulli distribution has not been implemented yet - watch this space')
+#   }
+#
+#   if(all(distribution=="poisson", species_int_coefs==0))
+#     stop('Poisson distribution requires independent species intercepts')
+#   if(all(distribution=="poisson", species_int_coefs==1))fit_disty <- "poisson"
+#   if(all(distribution=="poisson", species_int_coefs==2)){
+#     fit_disty <- "poisson_partial"
+#     stop('partial SAMs for a Poisson distribution has not been implemented yet - watch this space')
+#   }
+#
+#   if(all(distribution=="ippm", species_int_coefs==0))
+#     stop('IPPM distribution requires independent species intercepts')
+#   if(all(distribution=="ippm", species_int_coefs==1)) fit_disty <- "ippm"
+#   if(all(distribution=="ippm", species_int_coefs==2)){
+#     fit_disty <- "ippm_partial"
+#     stop('partial SAMs for a IPPM distribution has not been implemented yet - watch this space')
+#   }
+#
+#   if(all(distribution=="negative_binomial", species_int_coefs==0))
+#     stop('Negative binomial distribution requires independent species intercepts')
+#   if(all(distribution=="negative_binomial", species_int_coefs==1)) fit_disty <- "negative_binomial"
+#   if(all(distribution=="negative_binomial", species_int_coefs==2)){
+#     fit_disty <- "negative_binomial_partial"
+#     stop('partial SAMs for a Negative Binomial distribution has not been implemented yet - watch this space')
+# }
+#
+#   if(all(distribution=="tweedie", species_int_coefs==0))
+#     stop('Tweedie distribution requires independent species intercepts')
+#   if(all(distribution=="tweedie", species_int_coefs==1)) fit_disty <- "tweedie"
+#   if(all(distribution=="tweedie", species_int_coefs==2)){
+#     fit_disty <- "tweedie_partial"
+#     stop('partial SAMs for a Tweedie distribution has not been implemented yet - watch this space')
+#   }
+#
+#   return(list(fit_disty=fit_disty,mod_dat=mod_dat))
+#
+# }
 
 "check_reponse_sam" <-function(outs) {
   nam <- colnames( outs)
