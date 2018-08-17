@@ -1,7 +1,3 @@
-#' @useDynLib ecomix
-# #' @importFrom Rcpp sourceCpp
-NULL
-
 #' @title regional_mix objects
 #' @rdname regional_mix-class
 #' @name regional_mix
@@ -144,8 +140,8 @@ NULL
 
 #' @rdname regional_mix-class
 #' @name regional_mix.multifit
-#' @param nstart for regimix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.
-#' @param mc.cores for regimix.multifit only. The number of cores to spread the re-fitting over.
+#' @param nstart for regional_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.
+#' @param mc.cores for regional_mix.multifit only. The number of cores to spread the re-fitting over.
 #' @export
 
 "regional_mix.multifit" <-
@@ -245,15 +241,8 @@ NULL
     return(many.starts)
   }
 
-#' @title ecomix package
-#' @name ecomix-package
-#' @description ecomix is a package for implementing species archetype models (SAM) and region of
-#' common profile models (RCP) in R. The main function is \code{ecomix}, which fits either a SAM or RCP
-#' based on input parameters.
-#' @docType package
-NULL
-
 #' @rdname regional_mix-class
+#' @name AIC.regional_mix
 #' @export
 "AIC.regional_mix" <- function (object, ..., k = 2){
     p <- length(unlist(object$coefs))
@@ -264,6 +253,7 @@ NULL
 }
 
 #' @rdname regional_mix-class
+#' @name BIC.regional_mix
 #' @export
 "BIC.regional_mix" <-
 function (object, ...)
@@ -275,8 +265,7 @@ function (object, ...)
 }
 
 
-"calcInfoCrit" <-
-function( ret)
+"calcInfoCrit" <- function( ret)
 {
   k <- length(unlist(ret$coefs))
   ret$BIC <- -2 * ret$logl + log(ret$n) * k
@@ -1508,7 +1497,8 @@ function( data, dat, S, rcp_formula, species_formula, disty.cases, disty, quiet=
   message("The error distribution is: ", disty.cases[disty])
 }
 
-
+#'@rdname regional_mix-class
+#'@export
 "print.regional_mix" <-
 function (x, ...)
 {
@@ -1974,6 +1964,8 @@ function( model, oosSizeRange=NULL, times=model$n, mc.cores=1, quiet=FALSE, doPl
   invisible( ret)
 }
 
+#' @rdname regional_mix-class
+#' @export
 
 "summary.regional_mix" <-
 function (object, ...)
@@ -2114,7 +2106,8 @@ function (object, ...)
  #  return( ret)
  # }
 
-
+#'@rdname regional_mix-class
+#'@export
 "vcov.regional_mix" <-
 function (object, ..., object2=NULL, method = "FiniteDifference", nboot = 1000, mc.cores=1, D.accuracy=2)
 {

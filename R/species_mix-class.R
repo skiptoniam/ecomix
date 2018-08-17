@@ -228,21 +228,21 @@
   return(tmp)
 }
 
-#'@rdname species_mix-class
-#'@name species_mix.fit
-#'@param y is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.
-#'@param X is a design matrix for the archetype_formula dimension n_sites * n_covariates.
-# #' @param W is a design matrix for species_formula and will be implemented if species_formula has covariates.
-#'@param G is the number of species archetypes that are being estimated.
-#'@param S is the number of species to be modelled (this will be calculated internally in species_mix())
-#'@param spp_weights These are weights on the species logls and are specifically used in the Bayesian Boostrap.
-#'@param site_spp_weights These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.
-#'@param offset this is a vector of site specific offsets, this might be something like area sampled at sites.
-#'@param y_is_na This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!
-#'@param distribution_numeric the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are avaliable - internal conversion of distribution to a integer.
-#'@param control this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.
-#'@param inits This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).
-#'@export
+# @rdname species_mix-class
+# @name species_mix.fit
+# @param y is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.
+# @param X is a design matrix for the archetype_formula dimension n_sites * n_covariates.
+# @param W is a design matrix for species_formula and will be implemented if species_formula has covariates.
+# @param G is the number of species archetypes that are being estimated.
+# @param S is the number of species to be modelled (this will be calculated internally in species_mix())
+# @param spp_weights These are weights on the species logls and are specifically used in the Bayesian Boostrap.
+# @param site_spp_weights These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.
+# @param offset this is a vector of site specific offsets, this might be something like area sampled at sites.
+# @param y_is_na This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!
+# @param distribution_numeric the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are avaliable - internal conversion of distribution to a integer.
+# @param control this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.
+# @param inits This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).
+# @export
 
 "species_mix.fit" <- function(y, X, G, S, spp_weights, site_spp_weights, offset, y_is_na=NULL, distribution_numeric, control, inits=NULL){
 
@@ -286,128 +286,157 @@
 
 #'@rdname species_mix-class
 #'@name species_mix.fit
+#'@param nstart for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.
+#'@param mc.cores for species_mix.multifit only. The number of cores to spread the re-fitting over.
 #'@examples
 #' \dontrun{
 #' fmods <- species_mix.multifit(sam_form, sp_form, model_data, distribution = 'bernoulli', nstarts = 10, n_mixtures=3)
 #' }
-"species_mix.multifit" <- function(archetype_formula = NULL, species_formula = ~1, data, distribution="bernoulli",
-                                   nstart = 10, n_mixtures = 3, offset=NULL, weights=NULL,
-                                   control=species_mix.control(), inits=NULL, standardise = FALSE){
-  #the control parameters
-  control <- set_control_sam(control)
-  if(!control$quiet)
-    message( "SAM modelling")
-  call <- match.call()
-  if(!is.null(archetype_formula))
-    archetype_formula <- stats::as.formula(archetype_formula)
-  else{
+"species_mix.multifit" <- function(archetype_formula = NULL, species_formula = stats::as.formula(~1), data,
+           n_mixtures = 3, n_starts = 10, mc.cores=1, distribution="bernoulli", offset=NULL,
+           weights=NULL, bb_weights=NULL, control=species_mix.control(), inits=NULL,
+           standardise = TRUE, titbits = TRUE){
+
+    #the control parameters
+    control <- set_control_sam(control)
     if(!control$quiet)
-      message("There is no SAM model! Please provide a model (intercept at least) -- exitting now")
-    return(NULL)
-  }
+      message( "SAM modelling")
+    call <- match.call()
+    if(!is.null(archetype_formula))
+      archetype_formula <- stats::as.formula(archetype_formula)
+    else{
+      if(!control$quiet)
+        message("There is no SAM model! Please provide a model (intercept at least) -- exitting now")
+      return(NULL)
+    }
+    if(!is.null(species_formula))
+      species_formula <- stats::as.formula(species_formula)
 
+    # Create model matrix
+    mf <- match.call(expand.dots = FALSE)
+    if(distribution=="ippm"){
+      m <- match(c("data","offset"), names(mf), 0L)
+    } else {
+      m <- match(c("data","offset","weights"), names(mf), 0L)
+    }
+    # m <- match(c("data","offset","weights"), names(mf), 0L)
+    mf <- mf[c(1L, m)]
+    mf$drop.unused.levels <- TRUE
+    if(distribution=="ippm"){
+      mf$na.action <- "na.pass"
+    } else {
+      mf$na.action <- "na.exclude"
+    }
+    mf[[1L]] <- quote(stats::model.frame)
+    mf <- eval(mf, parent.frame())
 
-  # Create model matrix
-  mf <- match.call(expand.dots = FALSE)
-  m <- match(c("formula","data","offset","weights"), names(mf), 0L)
-  mf <- mf[c(1L, m)]
-  mf$drop.unused.levels <- TRUE
-  if(distribution=="ippm") mf$na.action <- "na.pass"
-  else mf$na.action <- "na.exclude"
-  mf[[1L]] <- quote(stats::model.frame)
-  mf <- eval(mf, parent.frame())
+    # need this for the na.omit step
+    rownames(mf)<-seq_len(nrow(mf))
 
-  # need this for the na.omit step
-  rownames(mf)<-seq_len(nrow(mf))
+    # get the model matrix and find the fitting formula. # could re implement this once species model is working.
+    # dist_dat <- check_distribution_clean_data_sam(archetype_formula, species_formula, mf, distribution)
+    # fit_distribution <- dist_dat[[1]]
+    # dat <- dist_dat[[2]]
+    # print(fit_distribution)
 
-  # get the model matrix and find the fitting formula.
-  dist_dat <- check_distribution_clean_data_sam(archetype_formula, species_formula, mf, distribution)
-  fit_distribution <- dist_dat[[1]]
-  dat <- dist_dat[[2]]
+    dat <- clean_data_sam(mf, archetype_formula, NULL, distribution)
 
-  # get responses
-  y <- stats::model.response(dat$mf.X)
+    # get responses
+    y <- stats::model.response(dat$mf.X)
 
-  # logical matirx needed for removing NAs from response and weights.
-  if(distribution=='ippm')y_is_na <- is.na(y)
-  else y_is_na <- NULL
+    # logical matirx needed for removing NAs from response and weights.
+    y_is_na <- is.na(y)
 
-  # check names of reponses
-  S <- check_reponse_sam(y)
+    # check names of reponses
+    S <- check_reponse_sam(y)
 
-  if (!S){
-    if(!control$quiet)
-      message("Two species have the same name -- exitting now")
-    return(NULL)
-  }
-  if( !control$quiet)
-    message( "There are ", n_mixtures, " archtypes to group the species into")
+    if (!S){
+      if(!control$quiet)
+        message("Two species have the same name -- exitting now")
+      return(NULL)
+    }
+    if( !control$quiet)
+      message( "There are ", n_mixtures, " archtypes to group the species into")
 
-  # get archetype model matrix
-  X <- get_X_sam(archetype_formula, dat$mf.X)
+    # get archetype model matrix
+    X <- get_X_sam(archetype_formula, dat$mf.X)
 
-  # get species model matrix
-  W <- get_W_sam(species_formula, dat$mf.W)
+    # get species model matrix
+    # W <- get_W_sam(species_formula, dat$mf.W) # don't need yet. but will be important for partial sams.
 
-  #get distribution
-  disty.cases <- c("bernoulli","bernoulli_sp","poisson","ippm",
-                   "negative_binomial","tweedie","gaussian")
-  print(fit_distribution)
-  disty <- get_distribution_sam(disty.cases, fit_distribution)
+    #get distribution
+    disty.cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
+    disty <- get_distribution_sam(disty.cases, distribution)
 
-  # get offsets and weights
-  offset <- get_offset_sam(mf)
-  weights <- get_weights_sam(mf,S,distribution)
+    # get offsets
+    offset <- get_offset_sam(dat$mf.X)
 
-  if(distribution=='ippm'){
-    if(!all(colnames(y)%in%colnames(weights)))
-      stop('When modelling a inhomogenous poisson point process model,
-           weights colnames must match species data colnames')
-    if(any(dim(y)!=dim(weights)))
-      stop('When modelling a inhomogenous poisson point process model,
+    # get the weights
+    species_names <- colnames(y)
+    site_spp_weights <- get_site_spp_weights_sam(mf,weights,species_names,distribution)
+    spp_weights <- check_spp_weights(bb_weights,S)
+
+    # cat(colnames(site_spp_weights),"\n")
+
+    if(distribution=='ippm'){
+      if(!all(colnames(y)==colnames(site_spp_weights))){
+        cat(colnames(y),"\n")
+        cat(colnames(site_spp_weights),"\n")
+        stop(cat('When modelling a inhomogenous poisson point process model,\n species data colnames must match weights colnames.\n\nSpecies data colnames from "model_data" are:\n',colnames(y),'.\n\nWhile the colnames of the weights are:\n', colnames(site_spp_weights),'\n'))
+      }
+      if(any(dim(y)!=dim(site_spp_weights))){
+        stop('When modelling a inhomogenous poisson point process model,
            weights needs to have the same dimensions at the
            species data - n_sites x n_species')
-  }
+      }
+    }
 
-  s.means <- NULL
-  s.sds <- NULL
-  if (standardise == TRUE) {
-    stand.X <- standardise.X(X[, -1])
-    X <- as.matrix(cbind(1, stand.X$X))
-    s.means <- stand.X$dat.means
-    s.sds <- stand.X$dat.sds
-  }
+    s.means <- NULL
+    s.sds <- NULL
+    if (standardise == TRUE) {
+      stand.X <- standardise.X(X[, -1])
+      X <- as.matrix(cbind(1, stand.X$X))
+      s.means <- stand.X$dat.means
+      s.sds <- stand.X$dat.sds
+    }
 
-  # summarising data to console
-  print_input_sam(y, X, S, archetype_formula, species_formula, distribution, quiet=control$quiet)
+    # summarising data to console
+    print_input_sam(y, X, S, archetype_formula, species_formula, distribution, quiet=control$quiet)
 
   tmp_fun <- function(x){
       if( !control$quiet & nstart>1)
         setTxtProgressBar(pb, x)
       tmpQuiet <- control$quiet
       control$quiet <- TRUE
-      dumbOut <- capture.output(tmp <- species_mix.fit(y=y, X=X, W=W, weights=weights, offset=offset,
-                                                       distribution_numeric=disty, n_mixtures=n_mixtures,
-                                                       inits = inits, control=control, y_is_na=y_is_na,
-                                                       estimate_variance=control$control$est_var))
-      control$quiet <- tmpQuiet
+      tmp <- species_mix.fit(y=y, X=X, G=n_mixtures, S=S, spp_weights=spp_weights,
+                             site_spp_weights=site_spp_weights,
+                             offset=offset, distribution_numeric=disty, y_is_na=y_is_na,
+                             control=control, inits=inits)
+
       tmp$dist <- disty.cases[disty]
+
+
+      tmp$pis <- additive_logistic(tmp$eta)
+
+      #calc posterior porbs and pis.
+      if(n_mixtures>1)
+        tmp$post_probs <- calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
+
+      tmp$pis <- colSums(tmp$post_probs)/S
 
       #Information criteria
       tmp <- calc_info_crit_sam(tmp)
 
       #titbits object, if wanted/needed.
-      tmp$titbits <- get_titbits_sam(titbits, y, X, W, weights, offset, archetype_formula, species_formula, control, disty.cases[disty])
-      # tmp$titbits$disty <- disty
-
-      #the last bit of the regional_mix object puzzle
-      # tmp$call <- call
+      tmp$titbits <- get_titbits_sam(titbits, y, X, spp_weights, site_spp_weights, offset,
+                                     y_is_na , archetype_formula, species_formula,
+                                     control, disty.cases[disty])
       class(tmp) <- c("species_mix", distribution)
       return( tmp)
    }
 
    #Fit the model many times
-   many_starts <- surveillance::plapply(seq_len(nstart), tmp_fun, .parallel = control$cores, .verbose = !control$quiet)
+   many_starts <- surveillance::plapply(seq_len(nstart), tmp_fun, .parallel = mc.cores, .verbose = !control$quiet)
    return(many_starts)
 }
 
@@ -701,7 +730,8 @@
 #'@examples
 #'
 #'#Print information about a species_mix model
-#'print(fm1)
+#'\dontrun{
+#'print(fm1)}
 
 "print.species_mix" <-  function (x,...){
   cat(fm1$titbits$distribution, "species_mix model\n")
@@ -725,7 +755,8 @@
 #'
 #'# Estimate the variance-covariance matrix.
 #'# This will provide estimates of uncertainty for model parameters.
-#' vcov(fm1)
+#'\dontrun{
+#' vcov(fm1)}
 "vcov.species_mix" <- function (object, ..., object2=NULL, method = "FiniteDifference",
                                 nboot = 10, mc.cores = 1, D.accuracy=2){
     if( method %in% c("simple","Richardson"))
@@ -852,7 +883,43 @@
     return(vcov.mat)
   }
 
+#' @rdname species_mix-class
+#' @export
+"AIC.species_mix" <- function (object, ..., k = 2){
+  p <- length(unlist(object$coefs))
+  if (is.null(k))
+    k <- 2
+  star.ic <- -2 * object$logl + k * p
+  return(star.ic)
+}
 
+#' @rdname species_mix-class
+#' @export
+"BIC.species_mix" <-  function (object, ...){
+    p <- length(unlist(object$coefs))
+    k <- log(object$n)
+    star.ic <- -2 * object$logl + k * p
+    return(star.ic)
+  }
+
+#' @rdname species_mix-class
+#' @export
+"summary.species_mix" <-
+  function (object, ...)
+  {
+    if (is.null(object$vcov)) {
+      object$vcov <- matrix(NA, nrow = length(unlist(object$coef)),
+                            ncol = length(unlist(object$coef)))
+      stop("No variance matrix has been supplied")
+
+    }
+    message("Standard errors for alpha, tau and (probably) gamma parameters may be (are likely to be) misleading")
+    res <- cbind(unlist(object$coefs), sqrt(diag(object$vcov)))
+    res <- cbind(res, res[, 1]/res[, 2])
+    res <- cbind(res, 2 * (1 - pnorm(abs(res[, 3]))))
+    colnames(res) <- c("Estimate", "SE", "z-score", "p")
+    return(res)
+  }
 
 # #'@rdname species_mix-class
 # #'@name species_mix.predict
