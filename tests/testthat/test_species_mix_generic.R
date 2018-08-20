@@ -167,6 +167,7 @@ testthat::test_that('testing species_mix call', {
 
 testthat::test_that('testing species_mix.multifit call', {
 
+  library(ecomix)
   set.seed(42)
   sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
   sp_form <- ~ 1
@@ -177,8 +178,11 @@ testthat::test_that('testing species_mix.multifit call', {
                                               dat,theta,dist="bernoulli")
   model_data <- make_mixture_data(species_data = simulated_data$species_data,
                                   covariate_data = simulated_data$covariate_data[,-1])
-  fmods <- species_mix.multifit(archetype_formula = sam_form, species_formula = sp_form,
-                                data = model_data, distribution = 'bernoulli',nstarts = 10, n_mixtures=3)
+  fmods <- species_mix.multifit(archetype_formula = sam_form,
+                                species_formula = sp_form,
+                                data = model_data,
+                                distribution = 'bernoulli',
+                                nstart = 10, n_mixtures=3)
   testthat::expect_is(fmods,'list')
   testthat::expect_length(fmods,10)
   testthat::expect_s3_class(fmods[[1]],'species_mix')

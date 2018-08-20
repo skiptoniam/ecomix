@@ -23,7 +23,7 @@ species_mix(archetype_formula = NULL,
 
 species_mix.multifit(archetype_formula = NULL,
   species_formula = stats::as.formula(~1), data, n_mixtures = 3,
-  nstarts = 10, mc.cores = 1, distribution = "bernoulli", offset = NULL,
+  nstart = 10, mc.cores = 1, distribution = "bernoulli", offset = NULL,
   weights = NULL, bb_weights = NULL, control = species_mix.control(),
   inits = NULL, standardise = TRUE, titbits = TRUE)
 
@@ -105,7 +105,7 @@ for species_mix coefficents. These are distribution specific, but at a
 minimum you will need pis (additive_logitic transformed), alpha
 (intercepts) and beta (mixing coefs).}
 
-\item{nstarts}{for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
+\item{nstart}{for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
 \item{mc.cores}{for species_mix.multifit only. The number of cores to spread the re-fitting over.}
 
@@ -180,7 +180,7 @@ data <- make_mixture_data(species_data = simulated_data$species_data,
 fm1 <- species_mix(sam_form, sp_form, data, distribution = 'bernoulli',
  n_mixtures=3)
 \dontrun{
-fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli', nstarts = 10, n_mixtures=3)
+fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli', nstart = 10, n_mixtures=3)
 }
 \dontrun{
 archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
