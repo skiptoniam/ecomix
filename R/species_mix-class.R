@@ -737,7 +737,7 @@
 #'print(fm1)}
 
 "print.species_mix" <-  function (x,...){
-  cat(fm1$titbits$distribution, "species_mix model\n")
+  cat(x$titbits$distribution, "species_mix model\n")
   cat("\nMixing probabilities\n")
   print(x$pi)
   cat("\nCoefficents\n")
@@ -907,9 +907,7 @@
 
 #' @rdname species_mix-class
 #' @export
-"summary.species_mix" <-
-  function (object, ...)
-  {
+"summary.species_mix" <-function (object, ...){
     if (is.null(object$vcov)) {
       object$vcov <- matrix(NA, nrow = length(unlist(object$coef)),
                             ncol = length(unlist(object$coef)))
