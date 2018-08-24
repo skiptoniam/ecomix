@@ -210,6 +210,9 @@ testthat::test_that('species mix ippm', {
   testthat::expect_error(  fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'ippm',weights = 1,
                                               n_mixtures=4))
 
-
-
+  # test if species weight have different names.
+  colnames(site_spp_weights) <- NULL#paste0('blah',seq_len(S))
+  testthat::expect_error(fm2 <- species_mix(sam_form, sp_form, model_data, distribution = 'ippm',
+                     weights = as.matrix(site_spp_weights),
+                     n_mixtures=4))
 })
