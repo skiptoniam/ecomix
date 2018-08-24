@@ -669,6 +669,8 @@
       tmp <- rep(1e+05, dim(X)[1])
       while (max(tmp, na.rm = TRUE) > 50000 | sum(tmp) < 100) {
         theta[g, 1] <- stats::runif(1, 1, 500)
+        sp.int[s] <- theta[g, 1]
+        # theta[g, 1] <- stats::runif(1, 1, 500)
         lgtp <- X %*% theta[g, ]
         p <- (lgtp)
         tmp <- stats::rnorm(dim(X)[1], mean = p, sd = 1)
@@ -1086,6 +1088,7 @@
     disp <- log( 1/tmp)
   }
   if( disty == 6){
+    locat.s <- lambda.seq[max(which(as.matrix(glmnet::coef.glmnet(ft_sp))==my_coefs,arr.ind = TRUE)[,2])]
     preds <-as.numeric(predict(ft_sp, s=locat.s,
                                type="response",
                                newx=X[ids_i,-1],
@@ -1281,7 +1284,7 @@
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
-        logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=lp,sd=fits$disp[ss],log=TRUE))
+        logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=lp,sd=exp(fits$disp[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -1394,7 +1397,7 @@
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
-        logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=lp,sd=fits$disp[ss],log=TRUE))
+        logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=lp,sd=exp(fits$disp[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
