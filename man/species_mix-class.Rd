@@ -28,15 +28,13 @@ species_mix.multifit(archetype_formula = NULL,
   inits = NULL, standardise = TRUE, titbits = TRUE)
 
 species_mix.control(maxit = 1000, quiet = FALSE, trace = 1, cores = 1,
-  residuals = FALSE, init_method = "kmeans", init_sd = 1,
-  em_prefit = TRUE, em_steps = 3, em_refit = 3, em_maxit = 3,
-  em_abstol = sqrt(.Machine$double.eps), em_reltol = reltol_fun,
-  em_maxtau = 0.8, em_calculate_hessian = FALSE, em_full_model = FALSE,
-  r1 = 1, maxit_cpp = 1000, trace_cpp = 0, nreport_cpp = 1,
-  abstol_cpp = sqrt(.Machine$double.eps),
+  init_method = "kmeans", init_sd = 1, em_prefit = TRUE, em_steps = 3,
+  em_refit = 3, em_maxit = 3, em_abstol = sqrt(.Machine$double.eps),
+  em_reltol = reltol_fun, em_maxtau = 0.8, maxit_cpp = 1000,
+  trace_cpp = 0, nreport_cpp = 1, abstol_cpp = sqrt(.Machine$double.eps),
   reltol_cpp = sqrt(.Machine$double.eps), conv_cpp = 1,
   printparams_cpp = 0, optimise_cpp = 1, loglOnly_cpp = 0,
-  derivOnly_cpp = 0, getscores_cpp = 0, calculate_hessian_cpp = TRUE, ...)
+  derivOnly_cpp = 0, getscores_cpp = 0, ...)
 
 simulate_species_mix_data(archetype_formula, species_formula, dat, theta,
   distribution = "bernoulli")
@@ -58,6 +56,16 @@ species_mix_estimate_groups(archetype_formula = NULL, species_formula = ~1,
 \method{summary}{species_mix}(object, ...)
 }
 \arguments{
+\item{archetype_formula}{an object of class "formula" (or an object that can be
+coerced to that class). The response variable (left hand side of the
+formula) needs to be either 'presence', 'occurrence', 'abundance',
+'biomass' or 'quantity' data. The type of reponse data will help specify
+the type of error distribution to be used. The dependent variables
+(the right hind side) of this formula specifies the dependence of the
+species archetype probabilities on covariates. For all model the basic
+formula structure follows something like this:
+cbind(spp1,spp2,spp3)~1+temperature+rainfall}
+
 \item{species_formula}{an object of class "formula" (or an object that can be
 coerced to that class). The right hand side of this formula specifies the
 dependence of the species"'" data on covariates (typically different covariates
@@ -105,6 +113,10 @@ for species_mix coefficents. These are distribution specific, but at a
 minimum you will need pis (additive_logitic transformed), alpha
 (intercepts) and beta (mixing coefs).}
 
+\item{standardise}{Booliean. If TRUE, standarise the covariate data.}
+
+\item{titbits}{either a boolean or a vector of characters. If TRUE (default for species_mix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regimix(qv) and predict.regimix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for species_mix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "offset" for the offset in the model, "site_spp_weights" for the model weights, "archetype_formula" for the formula for the SAMs, "species_formula" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "dist" for the conditional distribution of the species data. Care needs to be taken when using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory.}
+
 \item{nstart}{for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
 \item{mc.cores}{for species_mix.multifit only. The number of cores to spread the re-fitting over.}
@@ -114,8 +126,6 @@ minimum you will need pis (additive_logitic transformed), alpha
 \item{trace}{int 1=model will report parameter estimates and loglikelihood at each iteration. 0=quite.}
 
 \item{cores}{The number of cores to use in fitting of species mix models. These will be largely used to model the species-specific parameteres.}
-
-\item{residuals}{logical if TRUE model will estimate residuals.}
 
 \item{em_prefit}{Logical if TRUE the model will run a slower EM algorithim fit to find starting values.}
 
@@ -127,21 +137,9 @@ minimum you will need pis (additive_logitic transformed), alpha
 
 \item{theta}{coefficents for each species archetype. Matrix of G x number of parameters. Each row is a different species archetype.}
 
-\item{archetype_fromula}{an object of class "formula" (or an object that can be
-coerced to that class). The response variable (left hand side of the
-formula) needs to be either 'presence', 'occurrence', 'abundance',
-'biomass' or 'quantity' data. The type of reponse data will help specify
-the type of error distribution to be used. The dependent variables
-(the right hind side) of this formula specifies the dependence of the
-species archetype probabilities on covariates. For all model the basic
-formula structure follows something like this:
-cbind(spp1,spp2,spp3)~1+temperature+rainfall}
-
 \item{quite}{Should any reporting be performed? Default is FALSE, for reporting.}
 
 \item{reltol}{function that determines the relative tolernace for model convergence. Default is quite strict.}
-
-\item{calculate_hessian}{logical if TRUE model will numerically estimate the variance covariance matrix.}
 
 \item{archtype_formula}{formula to simulate species_mix data, needs to have the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
 

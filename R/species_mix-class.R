@@ -13,7 +13,7 @@
 #' in fitmix.cpp. Minima is found using vmmin (BFGS). Currently 'bernoulli',
 #' 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative_binomial'
 #'  and 'tweedie' distributions can be fitted using the species_mix function.
-#' @param archetype_fromula an object of class "formula" (or an object that can be
+#' @param archetype_formula an object of class "formula" (or an object that can be
 #' coerced to that class). The response variable (left hand side of the
 #' formula) needs to be either 'presence', 'occurrence', 'abundance',
 #' 'biomass' or 'quantity' data. The type of reponse data will help specify
@@ -60,6 +60,8 @@
 #' for species_mix coefficents. These are distribution specific, but at a
 #' minimum you will need pis (additive_logitic transformed), alpha
 #' (intercepts) and beta (mixing coefs).
+#' @param standardise Booliean. If TRUE, standarise the covariate data.
+#' @param titbits either a boolean or a vector of characters. If TRUE (default for species_mix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regimix(qv) and predict.regimix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for species_mix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "offset" for the offset in the model, "site_spp_weights" for the model weights, "archetype_formula" for the formula for the SAMs, "species_formula" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "dist" for the conditional distribution of the species data. Care needs to be taken when using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory.
 #' @importFrom graphics abline hist legend lines matplot par plot points polygon rect
 #' @importFrom stats as.formula binomial cooks.distance cov cutree dbinom dist dnbinom dnorm dpois
 #' fitted gaussian glm hclust lm logLik model.matrix model.offset model.response
@@ -454,14 +456,12 @@
 #'@param em_prefit Logical if TRUE the model will run a slower EM algorithim fit to find starting values.
 #'@param em_steps int Default is 3, the number of EM iterations to get to starting values.
 #'@param em_refit int Default is 1, number of times to refit using EM.
-#'@param calculate_hessian logical if TRUE model will numerically estimate the variance covariance matrix.
-#'@param residuals logical if TRUE model will estimate residuals.
+
 #'@export
 "species_mix.control" <- function(maxit = 1000,
                                   quiet = FALSE,
                                   trace = 1,
                                   cores = 1,
-                                  residuals = FALSE,
                                   ## intialisation controls
                                   init_method = 'kmeans',
                                   init_sd = 1,
@@ -473,9 +473,6 @@
                                   em_abstol = sqrt(.Machine$double.eps),
                                   em_reltol = reltol_fun,
                                   em_maxtau = 0.8,
-                                  em_calculate_hessian = FALSE,
-                                  em_full_model = FALSE,
-                                  r1=1,
                                   ## c++ controls
                                   maxit_cpp = 1000,
                                   trace_cpp = 0,
@@ -487,25 +484,21 @@
                                   optimise_cpp = 1,
                                   loglOnly_cpp = 0,
                                   derivOnly_cpp = 0,
-                                  getscores_cpp = 0,
-                                  calculate_hessian_cpp = TRUE,
-  ...){
+                                  getscores_cpp = 0, ...){
                #general controls
   rval <- list(maxit = maxit, quiet = quiet, trace = trace,
-               cores = cores,  residuals = residuals,
+               cores = cores,
                #initialisation controls
                init_method = init_method, init_sd = init_sd,
                #em controls
                em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps, em_maxit = em_maxit,
-               em_abstol = em_abstol,
-               em_reltol = em_reltol, em_maxtau = em_maxtau, em_calculate_hessian = em_calculate_hessian,
-               em_full_model = em_full_model, r1 = r1,
+               em_abstol = em_abstol, em_reltol = em_reltol, em_maxtau = em_maxtau,
                #cpp controls
                maxit_cpp = maxit_cpp, trace_cpp = trace_cpp, nreport_cpp = nreport_cpp,
                abstol_cpp = abstol_cpp, reltol_cpp = reltol_cpp, conv_cpp = conv_cpp,
                printparams_cpp = printparams_cpp, optimise_cpp = optimise_cpp,
                loglOnly_cpp = loglOnly_cpp, derivOnly_cpp = derivOnly_cpp,
-               getscores_cpp = getscores_cpp, calculate_hessian_cpp = calculate_hessian_cpp)
+               getscores_cpp = getscores_cpp)
   rval <- c(rval, list(...))
   if (is.null(rval$em_reltol))
     rval$em_reltol <- sqrt(.Machine$double.eps)
