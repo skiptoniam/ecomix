@@ -6,4 +6,11 @@
 RCPmod/
 SpeciesMix/
 developing_functions/
+developing_sams_src/
+developing_src/
+cpp_compile_scripts/
 binary_builds/
+src/*.o
+src/*.so
+src/*.dll
+
