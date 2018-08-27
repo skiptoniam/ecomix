@@ -8,6 +8,7 @@
 \alias{species_mix.control}
 \alias{simulate_species_mix_data}
 \alias{species_mix_estimate_groups}
+\alias{coef.species_mix}
 \alias{print.species_mix}
 \alias{vcov.species_mix}
 \alias{AIC.species_mix}
@@ -43,6 +44,8 @@ species_mix_estimate_groups(archetype_formula = NULL, species_formula = ~1,
   data, n_mixtures = 1:10, distribution = "bernoulli", offset = NULL,
   weights = NULL, control = species_mix.control(cores = 1), inits = NULL,
   standardise = TRUE, titbits = FALSE)
+
+\method{coef}{species_mix}(object, ...)
 
 \method{print}{species_mix}(x, ...)
 

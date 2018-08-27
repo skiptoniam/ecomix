@@ -273,9 +273,7 @@
 }
 
 
-"calcPostProbs" <-
-function( pis, logCondDens)
-{
+"calcPostProbs" <- function( pis, logCondDens){
   logPostProbs <- log( pis) + logCondDens #would be better to be working with log(pis) previously but c'est la vie
   mset <- apply( logPostProbs, 1, max)
   logSums <- mset + log( rowSums( exp( logPostProbs-mset)))
@@ -287,9 +285,7 @@ function( pis, logCondDens)
 }
 
 
-"check.outcomes1" <-
-function( outs)
-{
+"check.outcomes1" <- function( outs){
   nam <- colnames( outs)
   if( length( nam) == length( unique( nam)))
     return( length( nam))
@@ -299,8 +295,7 @@ function( outs)
 }
 
 
-"clean_data_rcp" <-
-function( data, form1, form2){
+"clean_data_rcp" <- function( data, form1, form2){
     mf.X <- stats::model.frame(form1, data = data, na.action = stats::na.exclude)
     if( !is.null( form2)){
       mf.W <- stats::model.frame(form2, data = data, na.action = stats::na.exclude)
@@ -318,8 +313,7 @@ function( data, form1, form2){
 }
 
 
-"coef.regional_mix" <-
-function (object, ...)
+"coef.regional_mix" <- function (object, ...)
 {
     res <- list()
     res$alpha <- object$coefs$alpha

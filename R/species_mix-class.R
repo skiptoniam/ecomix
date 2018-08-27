@@ -721,6 +721,23 @@
   return(list(aic=aic,bic=bic,fm=fm))
 }
 
+#' @rdname species_mix-class
+#' @export
+"coef.species_mix" <- function (object, ...){
+  res <- list()
+  res$alpha <- object$coefs$alpha
+  # names( res$alpha) <- object$names$spp
+  if( !is.null( object$coef$beta)){
+    res$beta <- matrix(object$coefs$beta, nrow = object$G, ncol = object$np)
+    # colnames( res$tau) <- object$names$spp # need to keep the spp names
+  }
+  if(!is.null( object$coef$disp)){
+    res$logDisp <- object$coef$disp
+    # names( res$logDisp) <- object$names$spp
+  }
+  return(res)
+}
+
 #'@rdname species_mix-class
 #'
 #'@export
