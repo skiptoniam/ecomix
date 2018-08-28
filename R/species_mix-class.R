@@ -768,9 +768,7 @@
 #' @name residuals
 #' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep).
 
-"residuals.regional_mix" <-
-  function( object, ..., type="RQR", quiet=FALSE)
-  {
+"residuals.species_mix" <- function( object, ..., type="RQR", quiet=FALSE) {
     if( ! type %in% c("deviance","RQR"))
       stop( "Unknown type of residual requested. Only deviance and RQR (for randomised quantile residuals) are implemented\n")
 
@@ -788,7 +786,6 @@
               bernoulli = { fn <- function(y,mu,logdisp,power) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
               poisson = { fn <- function(y,mu,logdisp,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
               negative_binomial = { fn <- function(y,mu,logdisp,power) pnbinom( q=y, mu=mu, size=1/exp( logdisp), lower.tail=TRUE)},
-              # tweedie = { fn <- function(y,mu,logdisp,power) fishMod::pTweedie( q=y, mu=mu, phi=exp( logdisp), p=power)},#CHECK!!!
               gaussian = { fn <- function(y,mu,logdisp,power) pnorm( q=y, mean=mu, sd=exp( logdisp), lower.tail=TRUE)})
 
       for( ss in 1:object$S){
@@ -1014,7 +1011,6 @@
       stop("No variance matrix has been supplied")
 
     }
-    message("Standard errors for alpha, tau and (probably) gamma parameters may be (are likely to be) misleading")
     res <- cbind(unlist(object$coefs), sqrt(diag(object$vcov)))
     res <- cbind(res, res[, 1]/res[, 2])
     res <- cbind(res, 2 * (1 - pnorm(abs(res[, 3]))))

@@ -231,9 +231,10 @@ testthat::test_that('testing species mix S3 class functions', {
   print(fm1)
   testthat::expect_error(summary(fm1))
   fm1$vcov <- vcov(fm1)
-  summary(fm1)
-  AIC(fm1)
-  BIC(fm1)
+  testthat::expect_is(summary(fm1),'matrix')
+  testthat::expect_length(AIC(fm1),1)
+  testthat::expect_length(BIC(fm1),1)
+  testthat::expect_is(coef(fm1),'list')
 
 })
 

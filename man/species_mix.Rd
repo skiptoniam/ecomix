@@ -10,6 +10,8 @@
 \alias{species_mix_estimate_groups}
 \alias{coef.species_mix}
 \alias{print.species_mix}
+\alias{residuals}
+\alias{residuals.species_mix}
 \alias{vcov.species_mix}
 \alias{AIC.species_mix}
 \alias{BIC.species_mix}
@@ -48,6 +50,8 @@ species_mix_estimate_groups(archetype_formula = NULL, species_formula = ~1,
 \method{coef}{species_mix}(object, ...)
 
 \method{print}{species_mix}(x, ...)
+
+\method{residuals}{species_mix}(object, ..., type = "RQR", quiet = FALSE)
 
 \method{vcov}{species_mix}(object, ..., object2 = NULL,
   method = "FiniteDifference", nboot = 10, mc.cores = 1, D.accuracy = 2)
@@ -155,6 +159,8 @@ Fits a finite mixture model to identify species archetype
 models (SAMs).
 
 This function runs the 'species_mix' function but it iterates through groups (1 to 10) by default.
+
+The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep).
 }
 \details{
 species_mix is used to fit mixtures of glms to multivariate

@@ -1598,16 +1598,14 @@ function( fm, mf, nboot)
 
 #' @rdname regional_mix
 #' @name residuals
+#' @export
 #' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep). The result is one residual per species per site and they all should be standard
 #' normal variates. Within a site they are likely to be correlated (as they share a common latent factor), but across sampling locations they will be independent.
 
 #'  The deviance residuals (as used here), are actually just square root of minus two times the log-likelihood contribution for each sampling location. We do #' not subtract the log-likelihood of the saturated model as, at the time of writing, we are unsure what this log-likelihood should be (latent factors confuse #' things here). This implies that the residuals will not have mean zero and their variance might also be heteroskedastic. This was not realised when writing #' the original RCP paper (Foster et al, 2013), obviously. We still believe that these residuals have some utility, but we are unsure where that utility stops. #' For general useage, the "RQR" residuals should probably be preferred.
-"residuals.regional_mix" <-
-function( object, ..., type="RQR", quiet=FALSE)
-{
+"residuals.regional_mix" <- function( object, ..., type="RQR", quiet=FALSE){
   if( ! type %in% c("deviance","RQR"))
     stop( "Unknown type of residual requested. Only deviance and RQR (for randomised quantile residuals) are implemented\n")
-
   if( type=="deviance"){
     resids <- sqrt( -2*object$logl.sites)
     if( !quiet){
