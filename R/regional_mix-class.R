@@ -312,6 +312,10 @@
     return( res)
 }
 
+#' @rdname regional_mix
+#'
+#' @export
+#'
 
 "coef.regional_mix" <- function (object, ...)
 {

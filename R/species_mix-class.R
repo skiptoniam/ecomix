@@ -1,7 +1,7 @@
 ##### Species mix functions to export ####
 
 #' @title species_mix objects
-#' @rdname species_mix-class
+#' @rdname species_mix
 #' @name species_mix
 #' @description Fits a finite mixture model to identify species archetype
 #' models (SAMs).
@@ -228,7 +228,7 @@
   return(tmp)
 }
 
-# @rdname species_mix-class
+# @rdname species_mix
 # @name species_mix.fit
 # @param y is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.
 # @param X is a design matrix for the archetype_formula dimension n_sites * n_covariates.
@@ -284,7 +284,7 @@
   return(tmp)
 }
 
-#'@rdname species_mix-class
+#'@rdname species_mix
 #'@name species_mix.fit
 #'@param nstart for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.
 #'@param mc.cores for species_mix.multifit only. The number of cores to spread the re-fitting over.
@@ -446,7 +446,7 @@
 }
 
 
-#'@rdname species_mix-class
+#'@rdname species_mix
 #'@name control
 #'@param quite Should any reporting be performed? Default is FALSE, for reporting.
 #'@param trace int 1=model will report parameter estimates and loglikelihood at each iteration. 0=quite.
@@ -505,7 +505,7 @@
   rval
 }
 
-#' @rdname species_mix-class
+#' @rdname species_mix
 #' @name simulate_species_mix_data
 #' @param archtype_formula formula to simulate species_mix data, needs to have the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2
 #' @param species_formula formula to simulate species_mix species-specific responses, e.g: ~1
@@ -680,7 +680,7 @@
   }
 }
 
-#'@rdname species_mix-class
+#'@rdname species_mix
 #'
 #'@name species_mix_estimate_groups
 #'
@@ -721,8 +721,10 @@
   return(list(aic=aic,bic=bic,fm=fm))
 }
 
-#' @rdname species_mix-class
+#' @rdname species_mix
+#'
 #' @export
+#'
 "coef.species_mix" <- function (object, ...){
   res <- list()
   res$alpha <- object$coefs$alpha
@@ -738,7 +740,7 @@
   return(res)
 }
 
-#'@rdname species_mix-class
+#'@rdname species_mix
 #'
 #'@export
 #'
@@ -762,7 +764,7 @@
   print(x$post_probs)
 }
 
-#'@rdname species_mix-class
+#'@rdname species_mix
 #'
 #'@export
 #'
@@ -898,7 +900,7 @@
     return(vcov.mat)
   }
 
-#' @rdname species_mix-class
+#' @rdname species_mix
 #' @export
 "AIC.species_mix" <- function (object, ..., k = 2){
   p <- length(unlist(object$coefs))
@@ -908,7 +910,7 @@
   return(star.ic)
 }
 
-#' @rdname species_mix-class
+#' @rdname species_mix
 #' @export
 "BIC.species_mix" <-  function (object, ...){
     p <- length(unlist(object$coefs))
@@ -917,7 +919,7 @@
     return(star.ic)
   }
 
-#' @rdname species_mix-class
+#' @rdname species_mix
 #' @export
 "summary.species_mix" <-function (object, ...){
     if (is.null(object$vcov)) {
@@ -934,7 +936,7 @@
     return(res)
   }
 
-# #'@rdname species_mix-class
+# #'@rdname species_mix
 # #'@name species_mix.predict
 # #'@param object is a matrix model returned from the species_mix model.
 # #'@param new_obs a matrix of new observations for prediction.
