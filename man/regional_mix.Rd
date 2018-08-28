@@ -5,6 +5,7 @@
 \alias{regional_mix.multifit}
 \alias{AIC.regional_mix}
 \alias{BIC.regional_mix}
+\alias{coef.regional_mix}
 \alias{print.regional_mix}
 \alias{residuals}
 \alias{residuals.regional_mix}
@@ -25,6 +26,8 @@ regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
 \method{AIC}{regional_mix}(object, ..., k = 2)
 
 \method{BIC}{regional_mix}(object, ...)
+
+\method{coef}{regional_mix}(object, ...)
 
 \method{print}{regional_mix}(x, ...)
 
