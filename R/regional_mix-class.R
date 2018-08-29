@@ -145,7 +145,7 @@
 #' @export
 
 "regional_mix.multifit" <-
-  function (rcp_formula = NULL, species_formula = NULL, data, nRCP = 3, dist="bernoulli", offset=NULL, weights=NULL, control = list(), inits = "random2", titbits = FALSE, power=1.6, nstart=10, mc.cores=1)
+  function (rcp_formula = NULL, species_formula = NULL, data, nRCP = 3, distribution="bernoulli", offset=NULL, weights=NULL, control = list(), inits = "random2", titbits = FALSE, power=1.6, nstart=10, mc.cores=1)
   {
     #the control parameters
     control <- set.control( control)
@@ -198,7 +198,7 @@
     wts <- get_wts_rcp( mf)
     #get distribution
     disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie","gaussian")
-    disty <- get_dist_rcp( disty.cases, dist)
+    disty <- get_dist_rcp( disty.cases, distribution)
     # #get power params for Tweedie
     # power <- get_power_rcp( disty, power)
     #summarising data to console
@@ -221,7 +221,7 @@
       #Information criteria
       tmp <- calcInfoCrit( tmp)
       #titbits object, if wanted/needed.
-      tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts, rcp_formula, species_formula, control, dist, p.w=p.w, power)
+      tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts, rcp_formula, species_formula, control, distribution, p.w=p.w, power)
       tmp$titbits$disty <- disty
       #the last bit of the regional_mix object puzzle
       tmp$call <- call
@@ -1118,6 +1118,8 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
 	return( new.fm)
 }
 
+#' @rdname regional_mix
+#' @export
 
 "plot.regional_mix" <-
 function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet=FALSE, species="AllSpecies", fitted.scale="response")

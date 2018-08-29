@@ -6,6 +6,7 @@
 \alias{AIC.regional_mix}
 \alias{BIC.regional_mix}
 \alias{coef.regional_mix}
+\alias{plot.regional_mix}
 \alias{print.regional_mix}
 \alias{residuals}
 \alias{residuals.regional_mix}
@@ -19,7 +20,7 @@ regional_mix(rcp_formula = NULL, species_formula = NULL, data, nRCP = 3,
   control = list(), inits = "random2", titbits = TRUE, power = 1.6)
 
 regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
-  nRCP = 3, dist = "bernoulli", offset = NULL, weights = NULL,
+  nRCP = 3, distribution = "bernoulli", offset = NULL, weights = NULL,
   control = list(), inits = "random2", titbits = FALSE, power = 1.6,
   nstart = 10, mc.cores = 1)
 
@@ -28,6 +29,10 @@ regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
 \method{BIC}{regional_mix}(object, ...)
 
 \method{coef}{regional_mix}(object, ...)
+
+\method{plot}{regional_mix}(x, ..., type = "RQR", nsim = 100,
+  alpha.conf = c(0.9, 0.95, 0.99), quiet = FALSE, species = "AllSpecies",
+  fitted.scale = "response")
 
 \method{print}{regional_mix}(x, ...)
 
@@ -68,8 +73,6 @@ The response variable (left hand side of the formula) needs to be either 'presen
 
 \item{power}{a numeric vector (length either 1 or the number of species) defining the power parameter to use in the Tweedie models. If length(power)==1, then the same power parameter is used for all species. If length(power)==No_species, then each species gets its own power parameter. Power values must be between 1 and 2, for computational reasons they should be well away from the boundary. The default is 1.6 as this has proved to be a good ball-park value for the fisheries data that the developer has previously analysed.}
 
-\item{dist}{Text string. Specifies the distribution of the species data. Current options are "bernoulli" (default), "poisson", "negative_binomial", "tweedie" and "gaussian.}
-
 \item{nstart}{for regional_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
 \item{mc.cores}{for regional_mix.multifit only. The number of cores to spread the re-fitting over.}
@@ -97,6 +100,8 @@ The response variable (left hand side of the formula) needs to be either 'presen
 \item{X}{Numeric matrix of dimension c(n,p.x). Specifies the covariates for the RCP model. Must include the intercept, if one is wanted. Default is random numbers in a matrix of the right size.}
 
 \item{W}{Numeric matrix of dimension c(n,p.w). Specifies the covariates for the species model. Must not include the intercept. Unless you want it included twice. Default is to give random levels of a two-level factor.}
+
+\item{dist}{Text string. Specifies the distribution of the species data. Current options are "bernoulli" (default), "poisson", "negative_binomial", "tweedie" and "gaussian.}
 
 \item{nRCP}{Integer giving the number of RCPs}
 
