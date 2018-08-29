@@ -1212,7 +1212,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
     diff <- sweep(envel[, -1], 1, empQuant, "-")
     realMeans <- (sort.resid + empQuant)/2
     realDiff <- sort.resid - empQuant
-    par(mfrow = c(1, 2))
+    # par(mfrow = c(1, 2))
     plot(rep(realMeans, 1 + 2 * length(alpha.conf)), c(diff,
         realDiff), sub = "Pointwise Confidence",
         ylab = "Observed - Expected", xlab = "(Observed+Expected)/2",
@@ -1290,7 +1290,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
 #' @export
 
 "plot.regional_mix_stab" <-function(x, y, minWidth=1, ncuts=111, ylimmo=NULL, ...){
-    par(mfrow = c(1, 2))
+    # par(mfrow = c(1, 2))
     matplot(c(0, x$oosSizeRange), rbind(0, x$disty), type = "b",
         ylab = "Distance from Full Model Predictions", xlab = "Number of Obs Removed",
         main = "Stability of Group Predictions", col = 1:x$nRCP,
