@@ -7,10 +7,15 @@
 \alias{BIC.regional_mix}
 \alias{coef.regional_mix}
 \alias{plot.regional_mix}
+\alias{plot.regional_mix_stab}
+\alias{predict.regional_mix}
 \alias{print.regional_mix}
+\alias{regional_mix_boot}
+\alias{regional_mix_bootParametric}
 \alias{residuals}
 \alias{residuals.regional_mix}
 \alias{simulate_regional_mix_data}
+\alias{stability.regional_mix}
 \alias{summary.regional_mix}
 \alias{vcov.regional_mix}
 \title{regional_mix objects}
@@ -34,7 +39,18 @@ regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
   alpha.conf = c(0.9, 0.95, 0.99), quiet = FALSE, species = "AllSpecies",
   fitted.scale = "response")
 
+\method{plot}{regional_mix_stab}(x, y, minWidth = 1, ncuts = 111,
+  ylimmo = NULL, ...)
+
+\method{predict}{regional_mix}(object, object2 = NULL, ..., newdata = NULL,
+  nboot = 0, alpha = 0.95, mc.cores = 1)
+
 \method{print}{regional_mix}(x, ...)
+
+regional_mix_boot(object, nboot = 1000, type = "BayesBoot", mc.cores = 1,
+  quiet = FALSE, orderSamps = FALSE, MLstart = TRUE)
+
+regional_mix_bootParametric(fm, mf, nboot)
 
 \method{residuals}{regional_mix}(object, ..., type = "RQR", quiet = FALSE)
 
@@ -42,6 +58,9 @@ simulate_regional_mix_data(nRCP = 3, S = 20, n = 200, p.x = 3,
   p.w = 0, alpha = NULL, tau = NULL, beta = NULL, gamma = NULL,
   logDisps = NULL, powers = NULL, X = NULL, W = NULL, offset = NULL,
   dist = "bernoulli")
+
+stability.regional_mix(model, oosSizeRange = NULL, times = model$n,
+  mc.cores = 1, quiet = FALSE, doPlot = TRUE)
 
 \method{summary}{regional_mix}(object, ...)
 
@@ -77,6 +96,8 @@ The response variable (left hand side of the formula) needs to be either 'presen
 
 \item{mc.cores}{for regional_mix.multifit only. The number of cores to spread the re-fitting over.}
 
+\item{alpha}{Numeric vector of length S. Specifies the mean prevalence for each species, on the logit scale}
+
 \item{S}{Integer giving the number of species}
 
 \item{n}{Integer giving the number of observations (sites)}
@@ -84,8 +105,6 @@ The response variable (left hand side of the formula) needs to be either 'presen
 \item{p.x}{Integer giving the number of covariates (including the intercept) for the model for the latent RCP types}
 
 \item{p.w}{Integer giving the number of covariates (excluding the intercept) for the model for the species data}
-
-\item{alpha}{Numeric vector of length S. Specifies the mean prevalence for each species, on the logit scale}
 
 \item{tau}{Numeric matrix of dimension c(nRCP-1,S). Specifies each species difference from the mean to each RCPs mean for the first nRCP-1 RCPs. The last RCP means are calculated using the sum-to-zero constraints}
 

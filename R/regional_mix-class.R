@@ -455,7 +455,7 @@ function( model, ..., oosSize=1, times=model$n, mc.cores=1, quiet=FALSE)
 
 
 "get_long_names_rcp" <- function( object){
-#function to get the names of columns for the vcov matrix or the regiboot matrix
+#function to get the names of columns for the vcov matrix or the regional_mix_boot matrix
 
   #defining the column names...  Trickier than you might expect
   coef.obj <- stats::coef( object)
@@ -1286,6 +1286,8 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
   }
 }
 
+#' @rdname regional_mix
+#' @export
 
 "plot.regional_mix_stab" <-function(x, y, minWidth=1, ncuts=111, ylimmo=NULL, ...){
     par(mfrow = c(1, 2))
@@ -1318,6 +1320,8 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
     invisible(TRUE)
 }
 
+#' @rdname regional_mix
+#' @export
 
 "predict.regional_mix" <- function (object, object2 = NULL, ..., newdata = NULL, nboot = 0, alpha = 0.95, mc.cores = 1){
     if (is.null(newdata)) {
@@ -1363,12 +1367,12 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
         }
         else
             my.nboot <- 0
-        allCoBoot <- regibootParametric(fm = object, mf = mf,
+        allCoBoot <- regional_mix_bootParametric(fm = object, mf = mf,
             nboot = my.nboot)
     }
     else {
         if( !object$titbits$control$quiet)
-          message("Using supplied regiboot object (non-parametric bootstrap)")
+          message("Using supplied regional_mix_boot object (non-parametric bootstrap)")
         allCoBoot <- as.matrix(object2)
         nboot <- nrow(object2)
     }
@@ -1509,8 +1513,10 @@ function (x, ...)
     invisible(ret)
 }
 
+#' @rdname regional_mix
+#' @export
 
-"regiboot" <-function (object, nboot=1000, type="BayesBoot", mc.cores=1, quiet=FALSE, orderSamps=FALSE, MLstart=TRUE){
+"regional_mix_boot" <-function (object, nboot=1000, type="BayesBoot", mc.cores=1, quiet=FALSE, orderSamps=FALSE, MLstart=TRUE){
   if (nboot < 1)
     stop( "No Boostrap samples requested.  Please set nboot to something > 1.")
   if( ! type %in% c("BayesBoot","SimpleBoot"))
@@ -1574,12 +1580,14 @@ function (x, ...)
   if( !quiet)
     message( "")
   colnames( boot.estis) <- get_long_names_rcp( object)
-  class( boot.estis) <- "regiboot"
+  class( boot.estis) <- "regional_mix_boot"
   return( boot.estis)
 }
 
+#' @rdname regional_mix
+#' @export
 
-"regibootParametric" <-
+"regional_mix_bootParametric" <-
 function( fm, mf, nboot)
 {
 	if( nboot > 0){
@@ -1935,10 +1943,10 @@ function(control)
     return(res)
 }
 
-
-"stability.regional_mix" <-
-function( model, oosSizeRange=NULL, times=model$n, mc.cores=1, quiet=FALSE, doPlot=TRUE)
-{
+#'@rdname regional_mix
+#'@export
+#'
+"stability.regional_mix" <- function( model, oosSizeRange=NULL, times=model$n, mc.cores=1, quiet=FALSE, doPlot=TRUE){
   if( is.null( oosSizeRange))
     oosSizeRange <- round( seq( from=1, to=model$n%/%5, length=10))
   if( any( oosSizeRange < 1))
@@ -1952,7 +1960,7 @@ function( model, oosSizeRange=NULL, times=model$n, mc.cores=1, quiet=FALSE, doPl
     #predlogls[oosSizeRange==ii,] <- colMeans( tmp$predLogL, na.rm=TRUE)
   }
   ret <- list( oosSizeRange=oosSizeRange, disty=disty, nRCP=model$nRCP,n=model$n, predlogls=predlogls, logl.sites=model$logl.sites)
-  class( ret) <- "registab"
+  class( ret) <- "regional_mix_stab"
 
   if( doPlot)
     plot( ret)
@@ -2104,9 +2112,10 @@ function (object, ...)
 
 #'@rdname regional_mix
 #'@export
-"vcov.regional_mix" <-
-function (object, ..., object2=NULL, method = "FiniteDifference", nboot = 1000, mc.cores=1, D.accuracy=2)
-{
+"vcov.regional_mix" <- function (object, ..., object2=NULL,
+                                 method = "FiniteDifference",
+                                 nboot = 1000, mc.cores=1, D.accuracy=2){
+
   if( method %in% c("simple","Richardson"))
     method <- "FiniteDifference"
   if (!method %in% c("FiniteDifference", "BayesBoot", "SimpleBoot", "EmpiricalInfo")) {
@@ -2204,7 +2213,7 @@ function (object, ..., object2=NULL, method = "FiniteDifference", nboot = 1000, 
   if( method %in% c( "BayesBoot","SimpleBoot")){
     object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
     if( is.null( object2))
-      coefMat <- regiboot( object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE, orderSamps=FALSE)
+      coefMat <- regional_mix_boot( object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE, orderSamps=FALSE)
     else
       coefMat <- object2
     vcov.mat <- cov( coefMat)
