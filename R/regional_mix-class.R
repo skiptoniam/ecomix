@@ -1607,7 +1607,6 @@ function( fm, mf, nboot)
 
 
 #' @rdname regional_mix
-#' @name residuals
 #' @export
 #' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep). The result is one residual per species per site and they all should be standard
 #' normal variates. Within a site they are likely to be correlated (as they share a common latent factor), but across sampling locations they will be independent.

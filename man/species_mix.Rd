@@ -10,12 +10,12 @@
 \alias{species_mix_estimate_groups}
 \alias{coef.species_mix}
 \alias{print.species_mix}
-\alias{residuals}
 \alias{residuals.species_mix}
 \alias{vcov.species_mix}
 \alias{AIC.species_mix}
 \alias{BIC.species_mix}
 \alias{summary.species_mix}
+\alias{predict.species_mix}
 \title{species_mix objects}
 \usage{
 species_mix(archetype_formula = NULL,
@@ -61,6 +61,8 @@ species_mix_estimate_groups(archetype_formula = NULL, species_formula = ~1,
 \method{BIC}{species_mix}(object, ...)
 
 \method{summary}{species_mix}(object, ...)
+
+\method{predict}{species_mix}(object, new_obs, ...)
 }
 \arguments{
 \item{archetype_formula}{an object of class "formula" (or an object that can be
@@ -144,6 +146,10 @@ minimum you will need pis (additive_logitic transformed), alpha
 
 \item{theta}{coefficents for each species archetype. Matrix of G x number of parameters. Each row is a different species archetype.}
 
+\item{object}{is a matrix model returned from the species_mix model.}
+
+\item{new_obs}{a matrix of new observations for prediction.}
+
 \item{quite}{Should any reporting be performed? Default is FALSE, for reporting.}
 
 \item{reltol}{function that determines the relative tolernace for model convergence. Default is quite strict.}
@@ -208,4 +214,7 @@ print(fm1)}
 # This will provide estimates of uncertainty for model parameters.
 \dontrun{
 vcov(fm1)}
+\dontrun{
+fm1 <- species_mix(form,data)
+preds_fm1 <- predict(fm1,newdata)}
 }

@@ -12,7 +12,6 @@
 \alias{print.regional_mix}
 \alias{regional_mix_boot}
 \alias{regional_mix_bootParametric}
-\alias{residuals}
 \alias{residuals.regional_mix}
 \alias{simulate_regional_mix_data}
 \alias{stability.regional_mix}

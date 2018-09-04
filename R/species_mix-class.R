@@ -85,12 +85,12 @@
 #' fm1 <- species_mix(sam_form, sp_form, data, distribution = 'bernoulli',
 #'  n_mixtures=3)
 
-
 "species_mix" <- function(archetype_formula = NULL, species_formula = stats::as.formula(~1), data,
                           n_mixtures = 3, distribution="bernoulli", offset=NULL,
                           weights=NULL, bb_weights=NULL, control=NULL, inits=NULL,
                           standardise = TRUE, titbits = TRUE){
 
+  data <- as.data.frame(data)
   #the control parameters
   control <- set_control_sam(control)
   if(!control$quiet)
@@ -261,18 +261,18 @@
 
   if(is.null(inits)){
 
-    starting_values  <-  get_starting_values_sam(y=y, X=X,
-                                               spp_weights = spp_weights,
-                                               site_spp_weights = site_spp_weights,
-                                               offset=offset,
-                                               y_is_na = y_is_na,
-                                               G=G, S=S,
-                                               disty=distribution_numeric,
-                                               control=control)
+    starting_values  <-  get_starting_values_sam(y = y, X = X,
+                                                 spp_weights = spp_weights,
+                                                 site_spp_weights = site_spp_weights,
+                                                 offset = offset,
+                                                 y_is_na = y_is_na,
+                                                 G = G, S = S,
+                                                 disty = distribution_numeric,
+                                                 control = control)
 
   } else {
     if(!control$quiet)message('Be careful! You are using your own initial starting values to optimise the species_mix model.')
-    inits <- setup_inits_sam(inits, S=S, G=G, np=ncol(y),distribution_numeric, return_list = TRUE)
+    inits <- setup_inits_sam(inits, S=S, G=G, np=ncol(X[,-1]), distribution_numeric, return_list = TRUE)
     print(inits)
     starting_values <- inits
   }
@@ -765,7 +765,6 @@
 }
 
 #' @rdname species_mix
-#' @name residuals
 #' @export
 #' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep).
 
@@ -1020,120 +1019,118 @@
     return(res)
   }
 
-# #'@rdname species_mix
-# #'@name species_mix.predict
-# #'@param object is a matrix model returned from the species_mix model.
-# #'@param new_obs a matrix of new observations for prediction.
-# #'@description Predicts SAM probabilities at a series of sites. Confidence intervals can be calculated if variance-covariance matrix is estimated during species_mix model fit.
-# #'@examples
-# #'\dontrun{
-# #'fm1 <- species_mix(form,data)
-# #'preds_fm1 <- predict(fm1,newdata)}
-# "species_mix.predict" <-function (object, new_obs, ...){
-#   mixture.model <- object
-#   if (class(mixture.model)[2] == "bernoulli") {
-#     G <- length(mixture.model$pi)
-#     covar <- mixture.model$covar[-(1:(G - 1)), -(1:(G -
-#         1))]
-#     coef <- mixture.model$coef
-#     model.fm <- stats::as.formula(mixture.model$formula)
-#     model.fm[[2]] <- NULL
-#     X <- stats::model.matrix(model.fm, new_obs)
-#     link.fun <- stats::make.link("logit")
-#     outvar <- matrix(NA, dim(X)[1], G)
-#     outpred <- matrix(NA, dim(X)[1], G)
-#     colnames(outvar) <- colnames(outpred) <- paste("G",
-#       1:G, sep = ".")
-#     for (g in 1:G) {
-#       lp <- as.numeric(X %*% coef[g, ])
-#       outpred[, g] <- link.fun$linkinv(lp)
-#       dhdB <- (exp(lp)/(1 + exp(lp))) * X - exp(lp)^2/((1 +
-#           exp(lp))^2) * X
-#       c2 <- covar[seq(g, dim(covar)[1], G), seq(g, dim(covar)[1],
-#         G)]
-#       for (k in 1:dim(X)[1]) {
-#         outvar[k, g] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
-#       }
-#     }
-#   }
-#   if (class(mixture.model)[2] == "negative_binomial" | class(mixture.model)[2] ==
-#       "tweedie") {
-#     G <- length(mixture.model$pi)
-#     covar <- mixture.model$covar[-1 * c(1:(G - 1), (dim(mixture.model$covar)[1] -
-#         length(mixture.model$sp.intercept) + 1):dim(mixture.model$covar)[1]),
-#       -1 * c(1:(G - 1), (dim(mixture.model$covar)[1] -
-#           length(mixture.model$sp.intercept) + 1):dim(mixture.model$covar)[1])]
-#     sp.int <- mixture.model$sp.intercept
-#     coef <- mixture.model$coef
-#     model.fm <- stats::as.formula(mixture.model$formula)
-#     model.fm[[2]] <- NULL
-#     X <- cbind(stats::model.matrix(model.fm, new_obs), 1)
-#     offset <- stats::model.frame(model.fm, data = new_obs)
-#     offset <- stats::model.offset(offset)
-#     if (is.null(offset))
-#       offset <- rep(0, nrow(X))
-#     outvar <- matrix(NA, dim(X)[1], G)
-#     outpred <- matrix(NA, dim(X)[1], G)
-#     colnames(outvar) <- colnames(outpred) <- paste("G",
-#       1:G, sep = ".")
-#     for (g in 1:G) {
-#       s.outvar <- matrix(NA, dim(X)[1], length(sp.int))
-#       s.outpred <- matrix(NA, dim(X)[1], length(sp.int))
-#       for (s in seq_along(sp.int)) {
-#         lp <- as.numeric(X %*% c(coef[g, ], sp.int[s]) +
-#             offset)
-#         s.outpred[, s] <- exp(lp)
-#         dhdB <- exp(lp) * X
-#         c2 <- covar[c(seq(g, G * (dim(X)[2] - 1), G),
-#           G * (dim(X)[2] - 1) + s), c(seq(g, G * (dim(X)[2] -
-#               1), G), G * (dim(X)[2] - 1) + s)]
-#         for (k in 1:dim(X)[1]) {
-#           s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k,
-#             ])
-#         }
-#       }
-#       outpred[, g] <- apply(s.outpred * rep(mixture.model$tau[,
-#         g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[,
-#           g])
-#       outvar[, g] <- apply(s.outvar * rep(mixture.model$tau[,
-#         g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[,
-#           g])
-#     }
-#   }
-#   if (class(mixture.model)[2] == "ippm" | class(mixture.model)[2] == "poisson") {
-#     G <- length(mixture.model$pi)
-#     covar <- mixture.model$covar[-1 * c(1:(G - 1)), -1 * c(1:(G - 1))]
-#     sp.int <- mixture.model$sp_intercept
-#     coef <- mixture.model$coef
-#     model.fm <- stats::as.formula(mixture.model$formula)
-#     model.fm[[2]] <- NULL
-#     X <- cbind(stats::model.matrix(model.fm, new_obs))
-#     offset <- stats::model.frame(model.fm, data = new_obs)
-#     offset <- stats::model.offset(offset)
-#     if (is.null(offset))
-#       offset <- rep(0, nrow(X))
-#     outvar <- matrix(NA, dim(X)[1], G)
-#     outpred <- matrix(NA, dim(X)[1], G)
-#     colnames(outvar) <- colnames(outpred) <- paste("G", 1:G, sep = ".")
-#     for (g in 1:G) {
-#       s.outvar <- matrix(NA, dim(X)[1], length(sp.int))
-#       s.outpred <- matrix(NA, dim(X)[1], length(sp.int))
-#       for (s in seq_along(sp.int)) {
-#         lp <- as.numeric(X %*% c(sp.int[s],coef[g, ]) + offset)
-#         s.outpred[, s] <- exp(lp)
-#         dhdB <- exp(lp) * X
-#         ## pull out the sp intercept and mixing component covariates.
-#         c2 <- covar[c(G * (dim(X)[2] - 1) + s,seq(g, G * (dim(X)[2] - 1), G)), c((G * (dim(X)[2] - 1) + s),seq(g, G * (dim(X)[2] - 1), G))]
-#         for (k in 1:dim(X)[1]) {
-#           s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
-#         }
-#       }
-#       outpred[, g] <- apply(s.outpred * rep(mixture.model$tau[, g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[, g])
-#       outvar[, g] <- apply(s.outvar * rep(mixture.model$tau[, g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[, g])
-#     }
-#   }
-#   list(fit = outpred, se.fit = sqrt(outvar))
-# }
+#'@rdname species_mix
+# #' @name species_mix.predict
+#'@param object is a matrix model returned from the species_mix model.
+#'@param new_obs a matrix of new observations for prediction.
+#'@examples
+#'\dontrun{
+#'fm1 <- species_mix(form,data)
+#'preds_fm1 <- predict(fm1,newdata)}
+"predict.species_mix" <-function (object, new_obs, ...){
+  mixture.model <- object
+  if (class(mixture.model)[2] == "bernoulli") {
+    G <- length(mixture.model$pi)
+    covar <- mixture.model$covar[-(1:(G - 1)), -(1:(G -
+        1))]
+    coef <- mixture.model$coef
+    model.fm <- stats::as.formula(mixture.model$formula)
+    model.fm[[2]] <- NULL
+    X <- stats::model.matrix(model.fm, new_obs)
+    link.fun <- stats::make.link("logit")
+    outvar <- matrix(NA, dim(X)[1], G)
+    outpred <- matrix(NA, dim(X)[1], G)
+    colnames(outvar) <- colnames(outpred) <- paste("G", 1:G, sep = ".")
+    for (g in 1:G) {
+      lp <- as.numeric(X %*% coef[g, ])
+      outpred[, g] <- link.fun$linkinv(lp)
+      dhdB <- (exp(lp)/(1 + exp(lp))) * X - exp(lp)^2/((1 +
+          exp(lp))^2) * X
+      c2 <- covar[seq(g, dim(covar)[1], G), seq(g, dim(covar)[1],
+        G)]
+      for (k in 1:dim(X)[1]) {
+        outvar[k, g] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
+      }
+    }
+  }
+  if (class(mixture.model)[2] == "negative_binomial" | class(mixture.model)[2] ==
+      "tweedie") {
+    G <- length(mixture.model$pi)
+    covar <- mixture.model$covar[-1 * c(1:(G - 1), (dim(mixture.model$covar)[1] -
+        length(mixture.model$sp.intercept) + 1):dim(mixture.model$covar)[1]),
+      -1 * c(1:(G - 1), (dim(mixture.model$covar)[1] -
+          length(mixture.model$sp.intercept) + 1):dim(mixture.model$covar)[1])]
+    sp.int <- mixture.model$sp.intercept
+    coef <- mixture.model$coef
+    model.fm <- stats::as.formula(mixture.model$formula)
+    model.fm[[2]] <- NULL
+    X <- cbind(stats::model.matrix(model.fm, new_obs), 1)
+    offset <- stats::model.frame(model.fm, data = new_obs)
+    offset <- stats::model.offset(offset)
+    if (is.null(offset))
+      offset <- rep(0, nrow(X))
+    outvar <- matrix(NA, dim(X)[1], G)
+    outpred <- matrix(NA, dim(X)[1], G)
+    colnames(outvar) <- colnames(outpred) <- paste("G",
+      1:G, sep = ".")
+    for (g in 1:G) {
+      s.outvar <- matrix(NA, dim(X)[1], length(sp.int))
+      s.outpred <- matrix(NA, dim(X)[1], length(sp.int))
+      for (s in seq_along(sp.int)) {
+        lp <- as.numeric(X %*% c(coef[g, ], sp.int[s]) +
+            offset)
+        s.outpred[, s] <- exp(lp)
+        dhdB <- exp(lp) * X
+        c2 <- covar[c(seq(g, G * (dim(X)[2] - 1), G),
+          G * (dim(X)[2] - 1) + s), c(seq(g, G * (dim(X)[2] -
+              1), G), G * (dim(X)[2] - 1) + s)]
+        for (k in 1:dim(X)[1]) {
+          s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k,
+            ])
+        }
+      }
+      outpred[, g] <- apply(s.outpred * rep(mixture.model$tau[,
+        g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[,
+          g])
+      outvar[, g] <- apply(s.outvar * rep(mixture.model$tau[,
+        g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[,
+          g])
+    }
+  }
+  if (class(mixture.model)[2] == "ippm" | class(mixture.model)[2] == "poisson") {
+    G <- length(mixture.model$pi)
+    covar <- mixture.model$covar[-1 * c(1:(G - 1)), -1 * c(1:(G - 1))]
+    sp.int <- mixture.model$sp_intercept
+    coef <- mixture.model$coef
+    model.fm <- stats::as.formula(mixture.model$formula)
+    model.fm[[2]] <- NULL
+    X <- cbind(stats::model.matrix(model.fm, new_obs))
+    offset <- stats::model.frame(model.fm, data = new_obs)
+    offset <- stats::model.offset(offset)
+    if (is.null(offset))
+      offset <- rep(0, nrow(X))
+    outvar <- matrix(NA, dim(X)[1], G)
+    outpred <- matrix(NA, dim(X)[1], G)
+    colnames(outvar) <- colnames(outpred) <- paste("G", 1:G, sep = ".")
+    for (g in 1:G) {
+      s.outvar <- matrix(NA, dim(X)[1], length(sp.int))
+      s.outpred <- matrix(NA, dim(X)[1], length(sp.int))
+      for (s in seq_along(sp.int)) {
+        lp <- as.numeric(X %*% c(sp.int[s],coef[g, ]) + offset)
+        s.outpred[, s] <- exp(lp)
+        dhdB <- exp(lp) * X
+        ## pull out the sp intercept and mixing component covariates.
+        c2 <- covar[c(G * (dim(X)[2] - 1) + s,seq(g, G * (dim(X)[2] - 1), G)), c((G * (dim(X)[2] - 1) + s),seq(g, G * (dim(X)[2] - 1), G))]
+        for (k in 1:dim(X)[1]) {
+          s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
+        }
+      }
+      outpred[, g] <- apply(s.outpred * rep(mixture.model$tau[, g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[, g])
+      outvar[, g] <- apply(s.outvar * rep(mixture.model$tau[, g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[, g])
+    }
+  }
+  list(fit = outpred, se.fit = sqrt(outvar))
+}
 
 ###### SAM internal functions for fitting ######
 
