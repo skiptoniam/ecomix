@@ -468,14 +468,14 @@
                                   ## EM algorithim controls
                                   em_prefit = TRUE,
                                   em_steps = 3,
-                                  em_refit = 3,
-                                  em_maxit = 3,
+                                  em_refit = 1,
+                                  # em_maxit = 3,
                                   em_abstol = sqrt(.Machine$double.eps),
                                   em_reltol = reltol_fun,
                                   em_maxtau = 0.8,
                                   ## c++ controls
                                   maxit_cpp = 1000,
-                                  trace_cpp = 0,
+                                  trace_cpp = 1,
                                   nreport_cpp = 1,
                                   abstol_cpp = sqrt(.Machine$double.eps),
                                   reltol_cpp = sqrt(.Machine$double.eps),
@@ -491,7 +491,7 @@
                #initialisation controls
                init_method = init_method, init_sd = init_sd,
                #em controls
-               em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps, em_maxit = em_maxit,
+               em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps,# em_maxit = em_maxit,
                em_abstol = em_abstol, em_reltol = em_reltol, em_maxtau = em_maxtau,
                #cpp controls
                maxit_cpp = maxit_cpp, trace_cpp = trace_cpp, nreport_cpp = nreport_cpp,
@@ -1412,7 +1412,7 @@
                                       disty,
                                       taus,
                                       .parallel = control$cores,
-                                      .verbose = !control$quiet)
+                                      .verbose = FALSE)#!control$quiet)
 
   #update the mix coefs.
   fmix_coefs <- t(do.call(cbind,fmix_coefs)[-1,])
@@ -1550,7 +1550,7 @@
                          disty = disty)
     fits$beta <- update_mix_coefs(fits$beta, tmp$par)
 
-    fm_sp_int <- surveillance::plapply(1:S, apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet) #check weights in this.
+    fm_sp_int <- surveillance::plapply(1:S, apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = FALSE)#!control$quiet) #check weights in this.
     alpha <- unlist(lapply(fm_sp_int, `[[`, 1))
     fits$alpha <- update_sp_coefs(fits$alpha,alpha)
 
@@ -1588,7 +1588,7 @@
 
 "initiate_fit_sam" <- function(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control){
   fm_sp_mods <- surveillance::plapply(seq_len(S), apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty,
-                                      .parallel = control$cores, .verbose = !control$quiet)
+                                      .parallel = control$cores, .verbose = FALSE)# !control$quiet)
 
   alpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
   beta <- do.call(rbind,lapply(fm_sp_mods, `[[`, 2))
