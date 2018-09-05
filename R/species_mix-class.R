@@ -465,6 +465,7 @@
                                   ## intialisation controls
                                   init_method = 'kmeans',
                                   init_sd = 1,
+                                  rare_species_tolerance = 0.1,
                                   ## EM algorithim controls
                                   em_prefit = TRUE,
                                   em_steps = 3,
@@ -489,7 +490,7 @@
   rval <- list(maxit = maxit, quiet = quiet, trace = trace,
                cores = cores,
                #initialisation controls
-               init_method = init_method, init_sd = init_sd,
+               init_method = init_method, init_sd = init_sd, rare_species_tolerance = rare_species_tolerance,
                #em controls
                em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps,# em_maxit = em_maxit,
                em_abstol = em_abstol, em_reltol = em_reltol, em_maxtau = em_maxtau,
@@ -1594,11 +1595,17 @@
   beta <- do.call(rbind,lapply(fm_sp_mods, `[[`, 2))
   disp <- unlist(lapply(fm_sp_mods, `[[`, 3))
 
+  #This is from Francis' code
+  n <- nrow(y)
+  s <- ncol(y)
+  prev_min <- floor(n*control$rare_species_tolerance);
+  sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min)
+
   if(control$init_method=='kmeans'){
     if(!control$quiet)message( "Initial groups by K-means clustering\n")
-    tmp1 <- stats::kmeans(beta, centers=G, nstart=100)
+    tmp1 <- stats::kmeans(beta[-sel.omit.spp,], centers=G, nstart=100)
     tmp_grp <- tmp1$cluster
-    grp_coefs <- apply(beta, 2, function(x) tapply(x, tmp_grp, mean))
+    grp_coefs <- apply(beta[-sel.omit.spp,], 2, function(x) tapply(x, tmp_grp, mean))
   }
 
   if(control$init_method=='random' | is.null(tmp_grp)){
