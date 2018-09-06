@@ -1134,6 +1134,81 @@
 }
 
 ###### SAM internal functions for fitting ######
+# replace this function with one that include eta (linear predictor) as an offset in when estimating the species-specific intercepts.
+## update the dispersion parameters if needed.
+## my own little function to predict from a glm.fit object.
+## glmfit object
+## newmatrix is a set of new observations or the original obs.
+## offset is an offset
+## disty is the distribution
+
+"predict.glm.fit" <- function(glmfit, newmatrix, offset, disty){
+
+  if(disty == 1)
+    fam <- binomial()
+  if(disty == 2 | disty == 3 | disty == 4)
+    fam <- poisson()
+  if(disty == 6)
+    fam <- gaussian()
+
+  coefs <- as.matrix(glmfit$coef)
+  eta <- as.numeric(as.matrix(newmatrix) %*% as.numeric(coefs)) + offset
+  preds <- fam$linkinv(eta)
+  return(preds)
+}
+
+## this will give the species intercepts with respect to the mixture linear predictor.
+"apply_glm_sam_sp_params" <- function(ss, y, X, site_spp_weights, offset,
+                                      y_is_na, disty, fits){
+
+  if( disty == 1)
+    fam <- binomial()
+  if( disty == 2 | disty == 3 | disty == 4)
+    fam <- poisson()
+  if( disty == 6)
+    fam <- gaussian()
+
+  ids_i <- !y_is_na[,ss]
+
+  if (disty==3){
+    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+  } else {
+    outcomes <- as.numeric(y[ids_i,ss])
+  }
+  out1 <- kronecker(rep( 1, G), outcomes)
+  X1 <- kronecker(rep( 1, G), X[ids_i,])
+  wts1 <- kronecker(rep( 1, G),as.numeric(site_spp_weights[ids_i,ss]))
+  offy1 <- kronecker(rep( 1, G), offset[ids_i])
+  offy2 <- X[ids_i,-1] %*% t(fits$beta)
+  offy2 <- as.numeric(offy2)
+  offy <- offy1 + offy2
+
+  if( disty != 5){ #don't use for tweedie
+    ft_sp <- stats::glm.fit(x=as.data.frame(X1),
+                            y=as.numeric(out1),
+                            weights=as.numeric(wts1),
+                            offset=as.numeric(offy),
+                            family=fam)
+    my_coefs <- coef(ft_sp)
+  }
+  disp <- NA
+  if( disty == 4){
+    preds <- predict.glm.fit(ft_sp, X1, offy, disty)
+    tmp <- MASS::theta.mm(out1, preds,
+                          weights=c(wts1),
+                          dfr=length(out1),
+                          eps=1e-4)
+    if(tmp>2) tmp <- 2
+    disp <- log(1/tmp)
+  }
+  if( disty == 6){
+    preds <- predict.glm.fit(ft_sp, X1, offy, disty)
+    disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
+  }
+
+  return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
+
+}
 
 
 "apply_glmnet_sam" <- function(ss, y, X, site_spp_weights, offset, y_is_na, disty){
@@ -1152,6 +1227,7 @@
   if (disty==3){ outcomes <- as.matrix(y[ids_i,ss]/site_spp_weights[ids_i,ss])
   } else { outcomes <- as.matrix(y[ids_i,ss])
   }
+
 
   #lambdas for penalised glm
   lambda.seq <- sort( unique( c( seq( from=1/0.1, to=1, length=10), seq( from=1/0.1, to=1, length=10),seq(from=0.9, to=10^-2, length=10))), decreasing=TRUE)
@@ -1194,7 +1270,12 @@
 
 }
 
-"apply_glm_group_tau_sam" <- function (gg, y, X, site_spp_weights, offset, y_is_na, disty, tau){
+
+# do I need to include the dispersion parameters into the tau weights?
+# do I need to include the species intercepts in the offsets?
+
+"apply_glm_group_tau_sam" <- function (gg, y, X, site_spp_weights, offset, y_is_na, disty,
+                                       tau, fits, mus){
 
   ### setup the data stucture for this model.
   Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
@@ -1204,66 +1285,41 @@
   }
   X_tau <- do.call(rbind, X_no_NA)
   n_ys <- sapply(X_no_NA,nrow)
-  wts_tau <- rep(tau[,gg],c(n_ys))
 
+  wts_tau <- rep(tau[,gg],c(n_ys))
+  if(disty==4)
+    wts_tau <- rep(tau[,gg],c(n_ys))/(1+rep(exp(-fits$disp),each=n_ys)*as.vector(mus[k,,]))
 
   ippm_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
-  Z_tau <- as.matrix(Y_tau/ippm_weights)
   wts_tauXippm_weights <- wts_tau*ippm_weights
   offy_mat <- replicate(ncol(y),offset)
-  offy <- unlist(as.data.frame(offy_mat[!y_is_na]))
+  offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
+  offy2 <- fits$alpha[rep(1:length(fits$alpha),n_ys)]
+  offy <- as.numeric(offy1 + offy2)
 
   options(warn = -1)
   # which family to use?
   if( disty == 1)
-    fam <- "binomial"
+    fam <- binomial()
   if( disty == 2 | disty == 3 | disty == 4)
-    fam <- "poisson"
+    fam <- poisson()
   if( disty == 6)
-    fam <- "gaussian"
-
-  if (disty==3){ Y_tau <- as.matrix(Y_tau/ippm_weights)
-  } else { Y_tau <- as.matrix(Y_tau)
+    fam <- gaussian()
+  if (disty==3){
+    Y_tau <- as.matrix(Y_tau/ippm_weights)
+  } else {
+    Y_tau <- as.matrix(Y_tau)
   }
 
-  #lambdas for penalised glm
-  lambda.seq <- sort( unique( c( seq( from=1/0.1, to=1, length=10), seq( from=1/0.1, to=1, length=10),seq(from=0.9, to=10^-2, length=10))), decreasing=TRUE)
-  if( disty != 5){ #don't use for tweedie
-    ft_mix <- glmnet::glmnet(x=as.matrix(X_tau[,-1]),
-                             y=as.matrix(Y_tau),
-                             weights=c(wts_tauXippm_weights),
-                             offset = offy,
-                             family=fam,
-                             alpha=0,
-                             lambda = lambda.seq,
-                             standardize = FALSE,
-                             intercept = TRUE)
-    my_coefs <- apply(glmnet::coef.glmnet(ft_mix), 1, lambda_penalisation_fun, lambda.seq)
+  if(disty!=5){ #don't use for tweedie
+    ft_mix <- glm.fit(x = as.data.frame(X_tau[,-1]),
+                      y = as.numeric(Y_tau),
+                      weights = c(wts_tauXippm_weights),
+                      offset = offy,
+                      family = fam)
   }
-  # disp <- NA
-  # if( disty == 4){
-  #   locat.s <- lambda.seq[max(which(as.matrix(glmnet::coef.glmnet(ft_mix))==my_coefs,arr.ind = TRUE)[,2])]
-  #   preds <-as.numeric(predict(ft_mix, s=locat.s,
-  #                              type="response",
-  #                              newx=X_tau[,-1],
-  #                              offset=offy))
-  #   tmp <- MASS::theta.mm(Y_tau, preds,
-  #                         weights=wts_tauXippm_weights,
-  #                         dfr=nrow(Y_tau),
-  #                         eps=1e-4)
-  #   if(tmp>2)
-  #     tmp <- 2
-  #   disp <- log( 1/tmp)
-  # }
-  # if( disty == 6){
-  #   preds <-as.numeric(predict(ft_mix, s=locat.s,
-  #                              type="response",
-  #                              newx=X_tau[,-1],
-  #                              offset=offu))
-  #   disp <- log(sqrt(sum((Y_tau - preds)^2)/length(Y_tau)))  #should be something like the resid standard Deviation.
-  # }
-
-  return(as.matrix(my_coefs))
+    mix_coefs <- coef(ft_mix)
+    return(as.matrix(mix_coefs))
 }
 
 "get_starting_values_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
@@ -1427,8 +1483,11 @@
   return(res)
 }
 
-"get_logls_sam" <- function(first_fit, fits, spp_weights, G, S, disty){
 
+
+"get_logls_sam" <- function(first_fit, fits, spp_weights, G, S, disty, get_fitted=TRUE){
+
+  if(get_fitted) fitted_values <- array(0,dim=c(K,n,s))
   if(is.null(spp_weights))spp_weights <- rep(1,S) #for bayesian boostrap.
 
   #bernoulli
@@ -1438,11 +1497,13 @@
     for(ss in 1:S){
       for(gg in 1:G){
         lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
+        if(get_fitted) fitted_values[gg,,ss] <- link$linkinv(lp)
         logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, link$linkinv(lp),log = TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
   }
+
   #poisson
   if(disty==2){
     logl_sp <- matrix(NA, nrow=S, ncol=G)
@@ -1450,11 +1511,13 @@
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
+        if(get_fitted) fitted_values[gg,,ss] <- exp(lp)
         logl_sp[ss,gg] <- sum(dpois(first_fit$y[,ss],exp(lp),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
   }
+
   #ippm
   if(disty==3){
     logl_sp <- matrix(NA, nrow=S, ncol=G)
@@ -1463,10 +1526,12 @@
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[sp_idx,1] * fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
+        if(get_fitted) fitted_values[gg,,ss] <- exp(lp)
         logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$site_spp_weights[sp_idx,ss] %*% exp(lp)
       }
     }
   }
+
   #negative binomial
   if(disty==4){
     logl_sp <- matrix(NA, nrow=S, ncol=G)
@@ -1474,16 +1539,18 @@
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
+        if(get_fitted) fitted_values[gg,,ss] <- exp(lp)
         logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=exp(-fits$disp[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
   }
+
   #tweedie
   if(disty==5){
     stop('no tweedie')
-
   }
+
   # gaussian
   if(disty==6){
     logl_sp <- matrix(NA, nrow=S, ncol=G)
@@ -1491,12 +1558,15 @@
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
+        if(get_fitted) fitted_values[gg,,ss] <- lp
         logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=lp,sd=exp(fits$disp[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
   }
-  return(logl_sp)
+  out.list <- list(logl_sp=logl_sp)
+  if(get_fitted) out.list$fitted = fitted_values
+  return(out.list)
 }
 
 "fitmix_EM_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
@@ -1541,7 +1611,40 @@
       ite <- 1
     }
 
+    set_obs_wts_for_mix_coefs <- function(taus, phis, mus, y, X, y_is_na, disty){
+
+      Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
+      X_no_NA <- list()
+      for (jj in 1:ncol(y)){
+        X_no_NA[[jj]] <- X[!y_is_na[,jj],]
+      }
+      X_tau <- do.call(rbind, X_no_NA)
+      n_ys <- sapply(X_no_NA,nrow)
+
+      obs_weights<- rep(taus[,k],n_ys)
+        if(disty==4){
+          obs.weights <- rep(taus[,k],n_ys)/(1+rep(phis,n_ys)*as.vector(mus[k,,]))
+        }
+      return(obs_weights)
+    }
+
+    # if(disty==4){
+      # taus <- rep(taus[,k],each=n)/(1+rep(new.sp.phis,each=n)*as.vector(get.mus[k,,]))
+    # }
+
     # m-step
+    # replace this with a glm.fit version that can deal with the
+
+    # need to include species intercepts and dispersion parameters as an offset in this estimation.
+    fmix_coefs <- surveillance::plapply(1:G, apply_glm_group_tau_sam,
+                                        y, X, site_spp_weights,
+                                        offset, y_is_na, disty, taus,
+                                        .parallel = control$cores,
+                                        .verbose = FALSE)#!control$quiet)
+
+    # fit1 <- glmnet(x = X[rep(1:nrow(X),s),], y = as.vector(unlist(y)), family = 'binomial', weights = obs.weights+1e-6, offset = alpha[rep(1:length(alpha),each=n)], nlambda = nlambda, intercept = FALSE)
+
+
     tmp <- stats::nlminb(start=fits$beta, objective=incom_logl_mix_coefs, gradient=NULL, hessian=NULL,
                          eta=additive_logistic(pis,inv = TRUE)[-G],
                          first_fit = first_fit,
