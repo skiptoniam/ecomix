@@ -1210,6 +1210,47 @@
 
 }
 
+## function for starting values.
+"apply_glm_sam_inits" <- function(ss, y, X, site_spp_weights, offset, y_is_na, disty){
+
+  # which family to use?
+  if( disty == 1)
+    fam <- binomial()#"binomial"
+  if( disty == 2 | disty == 3 | disty == 4)
+    fam <- poisson()#"poisson"
+  if( disty == 6)
+    fam <- gaussian()#"gaussian"
+
+  ids_i <- !y_is_na[,ss]
+
+  if (disty==3){ outcomes <- as.matrix(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+  } else { outcomes <- as.matrix(y[ids_i,ss])
+  }
+
+  if( disty != 5){
+    ft_sp <- stats::glm.fit(x=as.data.frame(X[ids_i,]),
+                            y=as.numeric(outcomes),
+                            weights=as.numeric(site_spp_weights[ids_i,ss]),
+                            offset=offset[ids_i],
+                            family=fam)
+    my_coefs <- coef(ft_sp)
+  }
+  disp <- NA
+  if(disty == 4){
+    preds <- predict.glm.fit(ft_sp, X[ids_i,], offset[ids_i], disty)
+    tmp <- MASS::theta.mm(outcomes, preds,
+                          weights=c(site_spp_weights[ids_i,ss]),
+                          dfr=length(outcomes),
+                          eps=1e-4)
+    if(tmp>2) tmp <- 2
+    disp <- log(1/tmp)
+  }
+  if( disty == 6){
+    preds <- predict.glm.fit(ft_sp, X1, offy, disty)
+    disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
+  }
+   return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
+}
 
 "apply_glmnet_sam" <- function(ss, y, X, site_spp_weights, offset, y_is_na, disty){
 
@@ -1611,34 +1652,13 @@
       ite <- 1
     }
 
-    set_obs_wts_for_mix_coefs <- function(taus, phis, mus, y, X, y_is_na, disty){
-
-      Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
-      X_no_NA <- list()
-      for (jj in 1:ncol(y)){
-        X_no_NA[[jj]] <- X[!y_is_na[,jj],]
-      }
-      X_tau <- do.call(rbind, X_no_NA)
-      n_ys <- sapply(X_no_NA,nrow)
-
-      obs_weights<- rep(taus[,k],n_ys)
-        if(disty==4){
-          obs.weights <- rep(taus[,k],n_ys)/(1+rep(phis,n_ys)*as.vector(mus[k,,]))
-        }
-      return(obs_weights)
-    }
-
-    # if(disty==4){
-      # taus <- rep(taus[,k],each=n)/(1+rep(new.sp.phis,each=n)*as.vector(get.mus[k,,]))
-    # }
-
     # m-step
     # replace this with a glm.fit version that can deal with the
-
     # need to include species intercepts and dispersion parameters as an offset in this estimation.
     fmix_coefs <- surveillance::plapply(1:G, apply_glm_group_tau_sam,
                                         y, X, site_spp_weights,
                                         offset, y_is_na, disty, taus,
+                                        fits, mus,
                                         .parallel = control$cores,
                                         .verbose = FALSE)#!control$quiet)
 
@@ -1691,14 +1711,14 @@
 }
 
 "initiate_fit_sam" <- function(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control){
-  fm_sp_mods <- surveillance::plapply(seq_len(S), apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty,
+  fm_sp_mods <- surveillance::plapply(seq_len(S), apply_glm_sam_inits, y, X, site_spp_weights, offset, y_is_na, disty,
                                       .parallel = control$cores, .verbose = FALSE)# !control$quiet)
 
   alpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
   beta <- do.call(rbind,lapply(fm_sp_mods, `[[`, 2))
   disp <- unlist(lapply(fm_sp_mods, `[[`, 3))
 
-  #This is from Francis' code
+  #This is from Francis' code and should remove coefs which are based on rare species (and are dodgy)
   n <- nrow(y)
   s <- ncol(y)
   prev_min <- floor(n*control$rare_species_tolerance);
@@ -1706,9 +1726,9 @@
 
   if(control$init_method=='kmeans'){
     if(!control$quiet)message( "Initial groups by K-means clustering\n")
-    tmp1 <- stats::kmeans(beta[-sel.omit.spp,], centers=G, nstart=100)
+    tmp1 <- stats::kmeans(beta[-sel_omit_spp,], centers=G, nstart=100)
     tmp_grp <- tmp1$cluster
-    grp_coefs <- apply(beta[-sel.omit.spp,], 2, function(x) tapply(x, tmp_grp, mean))
+    grp_coefs <- apply(beta[-sel_omit_spp,], 2, function(x) tapply(x, tmp_grp, mean))
   }
 
   if(control$init_method=='random' | is.null(tmp_grp)){
