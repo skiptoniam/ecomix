@@ -75,7 +75,7 @@
 #' set.seed(42)
 #' sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
 #' sp_form <- ~ 1
-#' theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,7.9),3,3,byrow=TRUE)
+#' theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,1.9),3,3,byrow=TRUE)
 #' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
 #' dat[,-1] <- scale(dat[,-1])
 #' simulated_data <- simulate_species_mix_data(archetype_formula=sam_form, species_formula=sp_form,
@@ -203,7 +203,7 @@
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
   tmp <- species_mix.fit(y=y, X=X, G=n_mixtures, S=S, spp_weights=spp_weights,
                          site_spp_weights=site_spp_weights,
-                         offset=offset, distribution_numeric=disty, y_is_na=y_is_na,
+                         offset=offset, disty=disty, y_is_na=y_is_na,
                          control=control, inits=inits)
 
   tmp$dist <- disty.cases[disty]
@@ -239,16 +239,16 @@
 # @param site_spp_weights These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.
 # @param offset this is a vector of site specific offsets, this might be something like area sampled at sites.
 # @param y_is_na This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!
-# @param distribution_numeric the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are avaliable - internal conversion of distribution to a integer.
+# @param disty the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are avaliable - internal conversion of distribution to a integer.
 # @param control this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.
 # @param inits This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).
 # @export
 
-"species_mix.fit" <- function(y, X, G, S, spp_weights, site_spp_weights, offset, y_is_na=NULL, distribution_numeric, control, inits=NULL){
+"species_mix.fit" <- function(y, X, G, S, spp_weights, site_spp_weights, offset, y_is_na=NULL, disty, control, inits=NULL){
 
   disty.cases <- c("bernoulli","poisson","ippm",
                    "negative_binomial","tweedie","gaussian")
-  distribution <- disty.cases[distribution_numeric]
+  distribution <- disty.cases[disty]
   if(!any(distribution==c("bernoulli","poisson","ippm",
                           "negative_binomial","tweedie","gaussian")))
     stop('current only please check the distribution you are fitting')
@@ -267,19 +267,19 @@
                                                  offset = offset,
                                                  y_is_na = y_is_na,
                                                  G = G, S = S,
-                                                 disty = distribution_numeric,
+                                                 disty = disty,
                                                  control = control)
 
   } else {
     if(!control$quiet)message('Be careful! You are using your own initial starting values to optimise the species_mix model.')
-    inits <- setup_inits_sam(inits, S=S, G=G, np=ncol(X[,-1]), distribution_numeric, return_list = TRUE)
+    inits <- setup_inits_sam(inits, S=S, G=G, np=ncol(X[,-1]), disty, return_list = TRUE)
     print(inits)
     starting_values <- inits
   }
 
   tmp <- sam_optimise(y, X, offset, spp_weights, site_spp_weights,
                       y_is_na, S, G, nrow(y),
-                      distribution_numeric, starting_values, control)
+                      disty, starting_values, control)
 
   return(tmp)
 }
@@ -411,7 +411,7 @@
       control$quiet <- TRUE
       tmp <- species_mix.fit(y=y, X=X, G=n_mixtures, S=S, spp_weights=spp_weights,
                              site_spp_weights=site_spp_weights,
-                             offset=offset, distribution_numeric=disty, y_is_na=y_is_na,
+                             offset=offset, disty=disty, y_is_na=y_is_na,
                              control=control, inits=inits)
 
       tmp$dist <- disty.cases[disty]
@@ -1158,7 +1158,7 @@
 }
 
 ## this will give the species intercepts with respect to the mixture linear predictor.
-"apply_glm_sam_sp_params" <- function(ss, y, X, site_spp_weights, offset,
+"apply_glm_sam_sp_params" <- function(ss, y, X, G, site_spp_weights, offset,
                                       y_is_na, disty, fits){
 
   if( disty == 1)
@@ -1177,7 +1177,7 @@
   }
   out1 <- kronecker(rep( 1, G), outcomes)
   X1 <- kronecker(rep( 1, G), X[ids_i,])
-  wts1 <- kronecker(rep( 1, G),as.numeric(site_spp_weights[ids_i,ss]))
+  wts1 <- kronecker(rep( 1, G), as.numeric(site_spp_weights[ids_i,ss]))
   offy1 <- kronecker(rep( 1, G), offset[ids_i])
   offy2 <- X[ids_i,-1] %*% t(fits$beta)
   offy2 <- as.numeric(offy2)
@@ -1329,10 +1329,10 @@
 
   wts_tau <- rep(tau[,gg],c(n_ys))
   if(disty==4)
-    wts_tau <- rep(tau[,gg],c(n_ys))/(1+rep(exp(-fits$disp),each=n_ys)*as.vector(mus[k,,]))
+    wts_tau <- rep(tau[,gg],c(n_ys))/(1+rep(exp(-fits$disp),each=n_ys)*as.vector(mus[gg,,]))
 
-  ippm_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
-  wts_tauXippm_weights <- wts_tau*ippm_weights
+  site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
+  wts_tauXsite_weights <- wts_tau*site_weights
   offy_mat <- replicate(ncol(y),offset)
   offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
   offy2 <- fits$alpha[rep(1:length(fits$alpha),n_ys)]
@@ -1347,7 +1347,7 @@
   if( disty == 6)
     fam <- gaussian()
   if (disty==3){
-    Y_tau <- as.matrix(Y_tau/ippm_weights)
+    Y_tau <- as.matrix(Y_tau/site_weights)
   } else {
     Y_tau <- as.matrix(Y_tau)
   }
@@ -1355,7 +1355,7 @@
   if(disty!=5){ #don't use for tweedie
     ft_mix <- glm.fit(x = as.data.frame(X_tau[,-1]),
                       y = as.numeric(Y_tau),
-                      weights = c(wts_tauXippm_weights),
+                      weights = c(wts_tauXsite_weights),
                       offset = offy,
                       family = fam)
   }
@@ -1495,12 +1495,12 @@
   starting_values <- initiate_fit_sam(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control)
   fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,disp=starting_values$disp)
   first_fit <- list(x = X, y = y, site_spp_weights = site_spp_weights, offset = offset, y_is_na = y_is_na)
-  logls <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
+  logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
   pis <- rep(1/G, G)
-  taus <- get_taus(pis, logls, G, S)
+  taus <- get_taus(pis, logls_mus$logl_sp, G, S)
   if(disty!=3) taus <- skrink_taus(taus,max_tau=0.9, G) #max_tau=1/G + 0.1
 
-  #use glm for the step.
+  # if(disty==3){ #this will be instead of the EM step.
   fmix_coefs <- surveillance::plapply(1:G, apply_glm_group_tau_sam,
                                       first_fit$y,
                                       first_fit$x,
@@ -1509,12 +1509,15 @@
                                       first_fit$y_is_na,
                                       disty,
                                       taus,
+                                      fits,
+                                      logls_mus$fitted,
                                       .parallel = control$cores,
                                       .verbose = FALSE)#!control$quiet)
 
   #update the mix coefs.
-  fmix_coefs <- t(do.call(cbind,fmix_coefs)[-1,])
+  fmix_coefs <- t(do.call(cbind,fmix_coefs))
   fits$beta <- update_mix_coefs(fits$beta,fmix_coefs)
+  # }
 
   res <- list()
   res$fits <- fits
@@ -1528,7 +1531,7 @@
 
 "get_logls_sam" <- function(first_fit, fits, spp_weights, G, S, disty, get_fitted=TRUE){
 
-  if(get_fitted) fitted_values <- array(0,dim=c(K,n,s))
+  if(get_fitted) fitted_values <- array(0,dim=c(G,nrow(first_fit$y),S))
   if(is.null(spp_weights))spp_weights <- rep(1,S) #for bayesian boostrap.
 
   #bernoulli
@@ -1627,10 +1630,10 @@
                                             control = control)
 
   # first e-step
-  pis <- starting_values$pis
   fits <- starting_values$fits
   taus <- starting_values$taus
   first_fit <- starting_values$first_fit
+  logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
 
   while(control$em_reltol(logl_new,logl_old) & ite <= control$em_steps){
 
@@ -1658,23 +1661,19 @@
     fmix_coefs <- surveillance::plapply(1:G, apply_glm_group_tau_sam,
                                         y, X, site_spp_weights,
                                         offset, y_is_na, disty, taus,
-                                        fits, mus,
+                                        fits, logls_mus$fitted,
                                         .parallel = control$cores,
                                         .verbose = FALSE)#!control$quiet)
 
-    # fit1 <- glmnet(x = X[rep(1:nrow(X),s),], y = as.vector(unlist(y)), family = 'binomial', weights = obs.weights+1e-6, offset = alpha[rep(1:length(alpha),each=n)], nlambda = nlambda, intercept = FALSE)
+    # update the coefs.
+    fmix_coefs_mat <- t(do.call(cbind,fmix_coefs))
+    fits$beta <- update_mix_coefs(fits$beta, fmix_coefs_mat)
 
-
-    tmp <- stats::nlminb(start=fits$beta, objective=incom_logl_mix_coefs, gradient=NULL, hessian=NULL,
-                         eta=additive_logistic(pis,inv = TRUE)[-G],
-                         first_fit = first_fit,
-                         fits = fits,
-                         spp_weights = spp_weights,
-                         G=G, S=S,
-                         disty = disty)
-    fits$beta <- update_mix_coefs(fits$beta, tmp$par)
-
-    fm_sp_int <- surveillance::plapply(1:S, apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = FALSE)#!control$quiet) #check weights in this.
+    fm_sp_int <- surveillance::plapply(1:S, apply_glm_sam_sp_params,
+                                       y, X, G, site_spp_weights, offset,
+                                       y_is_na, disty, fits,
+                                       .parallel = control$cores, .verbose = FALSE)
+    #check weights in this.
     alpha <- unlist(lapply(fm_sp_int, `[[`, 1))
     fits$alpha <- update_sp_coefs(fits$alpha,alpha)
 
@@ -1685,14 +1684,14 @@
 
     # e-step
     # get the log-likes and taus
-    logls <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
+    logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
     pis <- rep(1/G, G)
-    taus <- get_taus(pis, logls, G, S)
+    taus <- get_taus(pis, logls_mus$logl_sp, G, S)
 
     #update the likelihood
     logl_old <- logl_new
     logl_new <- get_incomplete_logl_sam(eta = additive_logistic(pis,inv = TRUE)[-G], first_fit, fits, spp_weights, G, S, disty)
-    ite <- ite + 1
+    ite <- ite + 1#;print(ite)
   }
 
   taus <- data.frame(taus)
@@ -1723,12 +1722,14 @@
   s <- ncol(y)
   prev_min <- floor(n*control$rare_species_tolerance);
   sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min)
+  if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,]
+
 
   if(control$init_method=='kmeans'){
     if(!control$quiet)message( "Initial groups by K-means clustering\n")
-    tmp1 <- stats::kmeans(beta[-sel_omit_spp,], centers=G, nstart=100)
+    tmp1 <- stats::kmeans(beta, centers=G, nstart=100)
     tmp_grp <- tmp1$cluster
-    grp_coefs <- apply(beta[-sel_omit_spp,], 2, function(x) tapply(x, tmp_grp, mean))
+    grp_coefs <- apply(beta, 2, function(x) tapply(x, tmp_grp, mean))
   }
 
   if(control$init_method=='random' | is.null(tmp_grp)){
@@ -1884,7 +1885,7 @@
                                      G = object$G,
                                      S = object$S,
                                      y_is_na = object$titbits$y_is_na,
-                                     distribution_numeric = disty,
+                                     disty = disty,
                                      control = object$titbits$control,
                                      inits = my.inits))
     # pb$tick()
