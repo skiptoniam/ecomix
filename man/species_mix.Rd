@@ -32,10 +32,10 @@ species_mix.multifit(archetype_formula = NULL,
 
 species_mix.control(maxit = 1000, quiet = FALSE, trace = 1, cores = 1,
   init_method = "kmeans", init_sd = 1, rare_species_tolerance = 0.1,
-  em_prefit = TRUE, em_steps = 3, em_refit = 1,
-  em_abstol = sqrt(.Machine$double.eps), em_reltol = reltol_fun,
-  em_maxtau = 0.8, maxit_cpp = 1000, trace_cpp = 1, nreport_cpp = 1,
-  abstol_cpp = sqrt(.Machine$double.eps),
+  rare_species_tolerance_ippm = 10, em_prefit = TRUE, em_steps = 3,
+  em_refit = 1, em_abstol = sqrt(.Machine$double.eps),
+  em_reltol = reltol_fun, em_maxtau = 0.8, maxit_cpp = 1000,
+  trace_cpp = 1, nreport_cpp = 1, abstol_cpp = sqrt(.Machine$double.eps),
   reltol_cpp = sqrt(.Machine$double.eps), conv_cpp = 1,
   printparams_cpp = 0, optimise_cpp = 1, loglOnly_cpp = 0,
   derivOnly_cpp = 0, getscores_cpp = 0, ...)
@@ -63,7 +63,7 @@ species_mix_estimate_groups(archetype_formula = NULL, species_formula = ~1,
 
 \method{summary}{species_mix}(object, ...)
 
-\method{predict}{species_mix}(object, new_obs, ...)
+\method{predict}{species_mix}(object, newobs = NULL, ...)
 }
 \arguments{
 \item{archetype_formula}{an object of class "formula" (or an object that can be
@@ -149,7 +149,7 @@ minimum you will need pis (additive_logitic transformed), alpha
 
 \item{object}{is a matrix model returned from the species_mix model.}
 
-\item{new_obs}{a matrix of new observations for prediction.}
+\item{newobs}{a matrix of new observations for prediction.}
 
 \item{quite}{Should any reporting be performed? Default is FALSE, for reporting.}
 

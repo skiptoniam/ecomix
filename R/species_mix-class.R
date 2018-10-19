@@ -213,9 +213,9 @@
 
   #calc posterior porbs and pis.
   if(n_mixtures>1)
-    tmp$post_probs <- calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
+    tmp$taus <- calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
 
-  tmp$pis <- colSums(tmp$post_probs)/S
+  tmp$pis <- colSums(tmp$taus)/S
 
   #Information criteria
   tmp <- calc_info_crit_sam(tmp)
@@ -224,7 +224,7 @@
   tmp$titbits <- get_titbits_sam(titbits, y, X, spp_weights, site_spp_weights, offset,
                                  y_is_na , archetype_formula, species_formula,
                                  control, disty.cases[disty])
-  class(tmp) <- c("species_mix", disty.cases[disty])
+  class(tmp) <- c("species_mix")
   return(tmp)
 }
 
@@ -421,9 +421,9 @@
 
       #calc posterior porbs and pis.
       if(n_mixtures>1)
-        tmp$post_probs <- calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
+        tmp$taus <- calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
 
-      tmp$pis <- colSums(tmp$post_probs)/S
+      tmp$pis <- colSums(tmp$taus)/S
 
       #Information criteria
       tmp <- calc_info_crit_sam(tmp)
@@ -466,6 +466,7 @@
                                   init_method = 'kmeans',
                                   init_sd = 1,
                                   rare_species_tolerance = 0.1,
+                                  rare_species_tolerance_ippm = 10,
                                   ## EM algorithim controls
                                   em_prefit = TRUE,
                                   em_steps = 3,
@@ -490,7 +491,7 @@
   rval <- list(maxit = maxit, quiet = quiet, trace = trace,
                cores = cores,
                #initialisation controls
-               init_method = init_method, init_sd = init_sd, rare_species_tolerance = rare_species_tolerance,
+               init_method = init_method, init_sd = init_sd, rare_species_tolerance = rare_species_tolerance, rare_species_tolerance_ippm = rare_species_tolerance_ippm,
                #em controls
                em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps,# em_maxit = em_maxit,
                em_abstol = em_abstol, em_reltol = em_reltol, em_maxtau = em_maxtau,
@@ -717,7 +718,7 @@
     if(!is.atomic(out[[i]])){
       aic[i] <- out[[i]]$aic
       bic[i] <- out[[i]]$bic
-      fm[[i]] <- list(logl=out[[i]]$logl,coef=out[[i]]$coef,tau=out[[i]]$post_probs,pi=out[[i]]$pi)#,covar=out[[i]]$covar)
+      fm[[i]] <- list(logl=out[[i]]$logl,coef=out[[i]]$coef,tau=out[[i]]$taus,pi=out[[i]]$pi)#,covar=out[[i]]$covar)
     }
   return(list(aic=aic,bic=bic,fm=fm))
 }
@@ -762,7 +763,7 @@
   #   print(x$se)
   # }
   cat("\nPosterior Probabilities\n")
-  print(x$post_probs)
+  print(x$taus)
 }
 
 #' @rdname species_mix
@@ -1021,117 +1022,157 @@
   }
 
 #'@rdname species_mix
-# #' @name species_mix.predict
 #'@param object is a matrix model returned from the species_mix model.
-#'@param new_obs a matrix of new observations for prediction.
+#'@param newobs a matrix of new observations for prediction.
+#'@export
 #'@examples
 #'\dontrun{
 #'fm1 <- species_mix(form,data)
 #'preds_fm1 <- predict(fm1,newdata)}
-"predict.species_mix" <-function (object, new_obs, ...){
-  mixture.model <- object
-  if (class(mixture.model)[2] == "bernoulli") {
-    G <- length(mixture.model$pi)
-    covar <- mixture.model$covar[-(1:(G - 1)), -(1:(G -
-        1))]
-    coef <- mixture.model$coef
-    model.fm <- stats::as.formula(mixture.model$formula)
-    model.fm[[2]] <- NULL
-    X <- stats::model.matrix(model.fm, new_obs)
-    link.fun <- stats::make.link("logit")
-    outvar <- matrix(NA, dim(X)[1], G)
-    outpred <- matrix(NA, dim(X)[1], G)
-    colnames(outvar) <- colnames(outpred) <- paste("G", 1:G, sep = ".")
-    for (g in 1:G) {
-      lp <- as.numeric(X %*% coef[g, ])
-      outpred[, g] <- link.fun$linkinv(lp)
-      dhdB <- (exp(lp)/(1 + exp(lp))) * X - exp(lp)^2/((1 +
-          exp(lp))^2) * X
-      c2 <- covar[seq(g, dim(covar)[1], G), seq(g, dim(covar)[1],
-        G)]
-      for (k in 1:dim(X)[1]) {
-        outvar[k, g] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
-      }
-    }
+
+"predict.species_mix" <- function(object, newobs=NULL, ...) {
+
+   family <- object$dist
+
+  if(is.null(newobs)) newobs <- object$titbits$X[,-1]
+  if(ncol(newobs) != ncol(object$coefs$beta)) stop("Number of coefficients does not match the number of predictors in the new observations - double check you're not including an intercept.")
+
+  G <- object$G
+  S <- object$S
+  n <- object$n
+
+  ## To calculate fitted values, take a linear combination of the fitted mus from each component
+  predict_mus <- predict_y <- predict_etas <- matrix(0,nrow(newobs),S)
+  for(gg in seq_len(G)) {
+    etas.K <- matrix(object$coefs$alpha,nrow(newobs),S,byrow=TRUE) + matrix(as.matrix(newobs)%*%object$coef$beta[gg,],nrow(newobs),S,byrow=FALSE)
+    if(family == "gaussian") mus.K <- etas.K
+    if(family == "bernoulli") mus.K <- exp(etas.K)/(1+exp(etas.K))
+    if(family %in% c("poisson","ippm","negative_binomial")) mus.K <- exp(etas.K)
+    predict_mus <- predict_mus + matrix(object$taus[,gg],nrow(newobs),S,byrow=T)*mus.K
   }
-  if (class(mixture.model)[2] == "negative_binomial" | class(mixture.model)[2] ==
-      "tweedie") {
-    G <- length(mixture.model$pi)
-    covar <- mixture.model$covar[-1 * c(1:(G - 1), (dim(mixture.model$covar)[1] -
-        length(mixture.model$sp.intercept) + 1):dim(mixture.model$covar)[1]),
-      -1 * c(1:(G - 1), (dim(mixture.model$covar)[1] -
-          length(mixture.model$sp.intercept) + 1):dim(mixture.model$covar)[1])]
-    sp.int <- mixture.model$sp.intercept
-    coef <- mixture.model$coef
-    model.fm <- stats::as.formula(mixture.model$formula)
-    model.fm[[2]] <- NULL
-    X <- cbind(stats::model.matrix(model.fm, new_obs), 1)
-    offset <- stats::model.frame(model.fm, data = new_obs)
-    offset <- stats::model.offset(offset)
-    if (is.null(offset))
-      offset <- rep(0, nrow(X))
-    outvar <- matrix(NA, dim(X)[1], G)
-    outpred <- matrix(NA, dim(X)[1], G)
-    colnames(outvar) <- colnames(outpred) <- paste("G",
-      1:G, sep = ".")
-    for (g in 1:G) {
-      s.outvar <- matrix(NA, dim(X)[1], length(sp.int))
-      s.outpred <- matrix(NA, dim(X)[1], length(sp.int))
-      for (s in seq_along(sp.int)) {
-        lp <- as.numeric(X %*% c(coef[g, ], sp.int[s]) +
-            offset)
-        s.outpred[, s] <- exp(lp)
-        dhdB <- exp(lp) * X
-        c2 <- covar[c(seq(g, G * (dim(X)[2] - 1), G),
-          G * (dim(X)[2] - 1) + s), c(seq(g, G * (dim(X)[2] -
-              1), G), G * (dim(X)[2] - 1) + s)]
-        for (k in 1:dim(X)[1]) {
-          s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k,
-            ])
-        }
-      }
-      outpred[, g] <- apply(s.outpred * rep(mixture.model$tau[,
-        g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[,
-          g])
-      outvar[, g] <- apply(s.outvar * rep(mixture.model$tau[,
-        g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[,
-          g])
-    }
+
+  ## To generate an actual response matrix; simulate component-label then simulated response conditional
+  for(ss in seq_len(S)) {
+    get.z <- sample(seq_len(G), 1, prob = object$taus[ss,])
+    etas.K <- object$alpha[ss] + as.matrix(newobs)%*%object$coefs$beta[get.z,]
+    if(family == "bernoulli")
+      predict_y[,ss] <- rbinom(n, 1, p=exp(etas.K)/(1+exp(etas.K)))
+    if(family == "poisson")
+      predict_y[,ss] <- rpois(n, lambda = exp(etas.K))
+    if(family == "negative.binomial")
+      predict_y[,ss] <- rnbinom(n, mu = exp(etas.K), size = exp(-object$disp[ss]))
   }
-  if (class(mixture.model)[2] == "ippm" | class(mixture.model)[2] == "poisson") {
-    G <- length(mixture.model$pi)
-    covar <- mixture.model$covar[-1 * c(1:(G - 1)), -1 * c(1:(G - 1))]
-    sp.int <- mixture.model$sp_intercept
-    coef <- mixture.model$coef
-    model.fm <- stats::as.formula(mixture.model$formula)
-    model.fm[[2]] <- NULL
-    X <- cbind(stats::model.matrix(model.fm, new_obs))
-    offset <- stats::model.frame(model.fm, data = new_obs)
-    offset <- stats::model.offset(offset)
-    if (is.null(offset))
-      offset <- rep(0, nrow(X))
-    outvar <- matrix(NA, dim(X)[1], G)
-    outpred <- matrix(NA, dim(X)[1], G)
-    colnames(outvar) <- colnames(outpred) <- paste("G", 1:G, sep = ".")
-    for (g in 1:G) {
-      s.outvar <- matrix(NA, dim(X)[1], length(sp.int))
-      s.outpred <- matrix(NA, dim(X)[1], length(sp.int))
-      for (s in seq_along(sp.int)) {
-        lp <- as.numeric(X %*% c(sp.int[s],coef[g, ]) + offset)
-        s.outpred[, s] <- exp(lp)
-        dhdB <- exp(lp) * X
-        ## pull out the sp intercept and mixing component covariates.
-        c2 <- covar[c(G * (dim(X)[2] - 1) + s,seq(g, G * (dim(X)[2] - 1), G)), c((G * (dim(X)[2] - 1) + s),seq(g, G * (dim(X)[2] - 1), G))]
-        for (k in 1:dim(X)[1]) {
-          s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
-        }
-      }
-      outpred[, g] <- apply(s.outpred * rep(mixture.model$tau[, g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[, g])
-      outvar[, g] <- apply(s.outvar * rep(mixture.model$tau[, g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[, g])
-    }
-  }
-  list(fit = outpred, se.fit = sqrt(outvar))
+
+  rownames(predict_mus) <- rownames(predict_y) <- 1:nrow(newobs);
+  colnames(predict_mus) <- colnames(predict_y) <- names(object$alpha)
+
+  return(list(predict_mus = round(predict_mus,5), predict_y = predict_y))
 }
+
+# "predict.species_mix" <-function (object, new_obs, ...){
+#   mixture.model <- object
+#   if (class(mixture.model)[2] == "bernoulli") {
+#     G <- length(mixture.model$pi)
+#     covar <- mixture.model$covar[-(1:(G - 1)), -(1:(G -
+#         1))]
+#     coef <- mixture.model$coef
+#     model.fm <- stats::as.formula(mixture.model$formula)
+#     model.fm[[2]] <- NULL
+#     X <- stats::model.matrix(model.fm, new_obs)
+#     link.fun <- stats::make.link("logit")
+#     outvar <- matrix(NA, dim(X)[1], G)
+#     outpred <- matrix(NA, dim(X)[1], G)
+#     colnames(outvar) <- colnames(outpred) <- paste("G", 1:G, sep = ".")
+#     for (g in 1:G) {
+#       lp <- as.numeric(X %*% coef[g, ])
+#       outpred[, g] <- link.fun$linkinv(lp)
+#       dhdB <- (exp(lp)/(1 + exp(lp))) * X - exp(lp)^2/((1 +
+#           exp(lp))^2) * X
+#       c2 <- covar[seq(g, dim(covar)[1], G), seq(g, dim(covar)[1],
+#         G)]
+#       for (k in 1:dim(X)[1]) {
+#         outvar[k, g] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
+#       }
+#     }
+#   }
+#   if (class(mixture.model)[2] == "negative_binomial" | class(mixture.model)[2] ==
+#       "tweedie") {
+#     G <- length(mixture.model$pi)
+#     covar <- mixture.model$covar[-1 * c(1:(G - 1), (dim(mixture.model$covar)[1] -
+#         length(mixture.model$sp.intercept) + 1):dim(mixture.model$covar)[1]),
+#       -1 * c(1:(G - 1), (dim(mixture.model$covar)[1] -
+#           length(mixture.model$sp.intercept) + 1):dim(mixture.model$covar)[1])]
+#     sp.int <- mixture.model$sp.intercept
+#     coef <- mixture.model$coef
+#     model.fm <- stats::as.formula(mixture.model$formula)
+#     model.fm[[2]] <- NULL
+#     X <- cbind(stats::model.matrix(model.fm, new_obs), 1)
+#     offset <- stats::model.frame(model.fm, data = new_obs)
+#     offset <- stats::model.offset(offset)
+#     if (is.null(offset))
+#       offset <- rep(0, nrow(X))
+#     outvar <- matrix(NA, dim(X)[1], G)
+#     outpred <- matrix(NA, dim(X)[1], G)
+#     colnames(outvar) <- colnames(outpred) <- paste("G",
+#       1:G, sep = ".")
+#     for (g in 1:G) {
+#       s.outvar <- matrix(NA, dim(X)[1], length(sp.int))
+#       s.outpred <- matrix(NA, dim(X)[1], length(sp.int))
+#       for (s in seq_along(sp.int)) {
+#         lp <- as.numeric(X %*% c(coef[g, ], sp.int[s]) +
+#             offset)
+#         s.outpred[, s] <- exp(lp)
+#         dhdB <- exp(lp) * X
+#         c2 <- covar[c(seq(g, G * (dim(X)[2] - 1), G),
+#           G * (dim(X)[2] - 1) + s), c(seq(g, G * (dim(X)[2] -
+#               1), G), G * (dim(X)[2] - 1) + s)]
+#         for (k in 1:dim(X)[1]) {
+#           s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k,
+#             ])
+#         }
+#       }
+#       outpred[, g] <- apply(s.outpred * rep(mixture.model$tau[,
+#         g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[,
+#           g])
+#       outvar[, g] <- apply(s.outvar * rep(mixture.model$tau[,
+#         g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[,
+#           g])
+#     }
+#   }
+#   if (class(mixture.model)[2] == "ippm" | class(mixture.model)[2] == "poisson") {
+#     G <- length(mixture.model$pi)
+#     covar <- mixture.model$covar[-1 * c(1:(G - 1)), -1 * c(1:(G - 1))]
+#     sp.int <- mixture.model$sp_intercept
+#     coef <- mixture.model$coef
+#     model.fm <- stats::as.formula(mixture.model$formula)
+#     model.fm[[2]] <- NULL
+#     X <- cbind(stats::model.matrix(model.fm, new_obs))
+#     offset <- stats::model.frame(model.fm, data = new_obs)
+#     offset <- stats::model.offset(offset)
+#     if (is.null(offset))
+#       offset <- rep(0, nrow(X))
+#     outvar <- matrix(NA, dim(X)[1], G)
+#     outpred <- matrix(NA, dim(X)[1], G)
+#     colnames(outvar) <- colnames(outpred) <- paste("G", 1:G, sep = ".")
+#     for (g in 1:G) {
+#       s.outvar <- matrix(NA, dim(X)[1], length(sp.int))
+#       s.outpred <- matrix(NA, dim(X)[1], length(sp.int))
+#       for (s in seq_along(sp.int)) {
+#         lp <- as.numeric(X %*% c(sp.int[s],coef[g, ]) + offset)
+#         s.outpred[, s] <- exp(lp)
+#         dhdB <- exp(lp) * X
+#         ## pull out the sp intercept and mixing component covariates.
+#         c2 <- covar[c(G * (dim(X)[2] - 1) + s,seq(g, G * (dim(X)[2] - 1), G)), c((G * (dim(X)[2] - 1) + s),seq(g, G * (dim(X)[2] - 1), G))]
+#         for (k in 1:dim(X)[1]) {
+#           s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
+#         }
+#       }
+#       outpred[, g] <- apply(s.outpred * rep(mixture.model$tau[, g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[, g])
+#       outvar[, g] <- apply(s.outvar * rep(mixture.model$tau[, g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[, g])
+#     }
+#   }
+#   list(fit = outpred, se.fit = sqrt(outvar))
+# }
 
 ###### SAM internal functions for fitting ######
 # replace this function with one that include eta (linear predictor) as an offset in when estimating the species-specific intercepts.
@@ -1570,7 +1611,7 @@
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[sp_idx,1] * fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
-        if(get_fitted) fitted_values[gg,,ss] <- exp(lp)
+        if(get_fitted) fitted_values[gg,sp_idx,ss] <- exp(lp)
         logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$site_spp_weights[sp_idx,ss] %*% exp(lp)
       }
     }
@@ -1720,7 +1761,8 @@
   #This is from Francis' code and should remove coefs which are based on rare species (and are dodgy)
   n <- nrow(y)
   s <- ncol(y)
-  prev_min <- floor(n*control$rare_species_tolerance);
+  if(disty==3) prev_min <- control$rare_species_tolerance_ippm
+  else prev_min <- floor(n*control$rare_species_tolerance);
   sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min)
   if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,]
 
@@ -1821,10 +1863,15 @@
   ret$logl <- ret$logl * -1
   ret$mus <- array(mus, dim=c(Obs, S, G))
 
+  # beta <- matrix(ret$beta,G,np)
+  # colnames(beta) <-
+
   if(!disty%in%c(4,6))
-    ret$coefs <- list(alpha = ret$alpha, beta = ret$beta, eta = ret$eta)
+    ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,np), eta = ret$eta)
   else
     ret$coefs <- list(alpha = ret$alpha, beta = ret$beta, eta = ret$eta, disp = ret$disp)
+
+  ret$names <- list(spp=colnames(y), RCPs=paste("SAM", 1:G, sep=""), Xvars=colnames(X[,-1]))
 
   if(!disty%in%c(4,6))
     ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score)

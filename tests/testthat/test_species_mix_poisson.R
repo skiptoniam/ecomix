@@ -43,7 +43,7 @@ testthat::test_that('species mix poisson', {
   # get the loglikelihood based on these values
   logls <- ecomix:::get_logls_sam(first_fit, fits, spp_wts, G, S, disty)
   pis <- rep(1/G, G)
-  taus <- ecomix:::get_taus(pis, logls, G, S)
+  taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
   taus <- ecomix:::skrink_taus(taus, max_tau=1/G + 0.1, G)
 
   ## get to this in a bit
