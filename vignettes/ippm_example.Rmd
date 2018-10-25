@@ -1,0 +1,187 @@
+---
+title: "ippm_sam_myrtaceae"
+author: "Skipton Woolley"
+date: "August 22, 2017"
+output: html_document
+---
+
+## Models and testing of Imhomogenous Point Process Species Archetype Models.
+
+Here I'm going to try and fit and test the validity and robustness of ipp-sams using some trees. 
+```{r load functions}
+library(qrbp)
+library(ecomix)
+```
+
+Let's have a look at the euc and physical data.
+```{r load euc}
+load('~/Dropbox/ecomix/data/AtlasMyrtaceae2012.RData')
+load('~/Dropbox/ecomix/data/Quad1000.RData')
+load('~/Dropbox/ecomix/data/Substrate1km.RData')
+envdat <- cbind(quad,subs.quad)
+```
+
+Let's plot the environmental data.
+```{r}
+library(raster)
+b <- rasterFromXYZ(envdat)
+plot(b)
+```
+
+let's remove any coordinates which sit outside our study area.
+```{r}
+checkNA <- extract(b,big.myrt[,c("X","Y")],method='bilinear')
+na_sites <-which(is.na(checkNA[,1]))
+myrt<-big.myrt[-na_sites,]
+```
+
+now let's look at the myrtaceae distributions.
+
+325 species.
+127 species > 49 occurrences
+177 species > 19 occurrences
+217 species > 9 occurrences
+257 species > 4 occurrences
+
+```{r}
+tot_occur <- table(myrt$ScientificName)
+sum(tot_occur>49)
+sum(tot_occur>19)
+sum(tot_occur>9)
+sum(tot_occur>4)
+```
+
+Let's start with > 50 as a gentle warm in.
+```{r}
+spps <- names(which(table(myrt$ScientificName)>49))
+myrt50occ <- myrt[myrt$ScientificName%in%spps,]
+#works but slow and takes lots of
+# myrt50occ$ScientificName <- factor(myrt50occ$ScientificName)
+# d <- transform(myrt50occ, site_id = as.numeric(interaction(X, Y, drop=TRUE)))
+library(data.table)
+dt <- data.table(myrt50occ, key="X,Y")
+dt[, site_id:=.GRP, by=key(dt)]
+df <- as.data.frame(dt)
+df$ScientificName<- factor(df$ScientificName)
+po_matrix <- bbgdm::table2pam(df,site.id='site_id',sp.id='ScientificName')
+
+po_matrix[po_matrix==0]<-NA
+
+d <- df[order(df$site_id),]
+d_no_site_dups <- d[!duplicated(d$site_id),]
+
+pres_coords <- d_no_site_dups[c("site_id","X","Y")]
+colnames(pres_coords)[-1]<-c('x','y')
+po_matrix_coords <- cbind(pres_coords[,-1],po_matrix)
+```
+
+```{r}
+library(qrbp)
+n_bk_pts <- 10000
+covar <- stack(b[[c(7:9,13)]])
+covar2 <- (covar)^2
+names(covar)<-c('min_temp','max_temp','annual_rainfall','soil_type')
+names(covar2) <- paste0(c('min_temp','max_temp','annual_rainfall','soil_type'),2)
+covars <- stack(covar,covar2)
+po_bkgrd_data <- generate_background_points(n_bk_pts,
+  known_sites = pres_coords[,-1],
+  study_area = covar[[1]],
+  model_covariates = covars,
+  multispecies_presences = po_matrix_coords,
+  method = 'multispecies',
+  interpolation_method = 'bilinear')
+
+dat <- po_bkgrd_data$model_matrix
+wts <- po_bkgrd_data$species_weights
+```
+Now let's try a fit a ippsam with these data. Fingers crossed.
+```{r}
+# library(mgcv)
+sp_names <- colnames(dat)[1:127]
+form <- as.formula(paste0("cbind(",paste(sp_names[1:127],collapse = ','),")~1+min_temp+min_temp2+max_temp+max_temp2+annual_rainfall+annual_rainfall2+soil_type+soil_type2"))
+
+colnames(wts)<-sp_names
+
+fm4_myrt_var <- species_mix(archetype_formula = form, data = dat, weights = wts,
+                            n_mixtures = 4, distribution = 'ippm', standardise = TRUE,
+                            control = species_mix.control(cores = 1))
+
+
+```
+
+running through some diagnostics
+```{r}
+X <- (dat[,-1:-127])
+X[,-1] <- scale(X[,-1]) 
+y <- dat[,1:127]
+colSums(y, na.rm = TRUE)
+disty <- 3
+site_spp_weights <- wts
+site_spp_weights <-ifelse(site_spp_weights<1,1,site_spp_weights)
+
+offset <- rep(0,nrow(y))
+y_is_na <- is.na(y)
+G <- 4
+S <- ncol(y)
+control <- species_mix.control()
+gg <- 1
+ss <- 1
+
+
+for (i in 1:S){
+  print(i)
+  fm_sp_mods <- ecomix:::apply_glm_sam_inits(i, y, X, site_spp_weights, offset, y_is_na, disty)
+                                      # .parallel = control$cores, .verbose = FALSE)# !control$quiet)
+}
+
+starting_values <- ecomix:::initiate_fit_sam(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control)
+fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,disp=starting_values$disp)
+first_fit <- list(x = X, y = y, site_spp_weights = site_spp_weights, offset = offset, y_is_na = y_is_na)
+spp_weights <- rep(1,S)
+logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
+pis <- rep(1/G, G)
+taus <- ecomix:::get_taus(pis, logls_mus$logl_sp, G, S)
+
+Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
+X_no_NA <- list()
+for (jj in 1:ncol(y)){
+    X_no_NA[[jj]] <- X[!y_is_na[,jj],-1]
+}
+
+X_tau <- do.call(rbind, X_no_NA)
+n_ys <- sapply(X_no_NA,nrow)
+wts_tau <- rep(tau[,gg],c(n_ys))
+
+site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
+wts_tauXsite_weights <- wts_tau*site_weights
+offy_mat <- replicate(ncol(y),offset)
+offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
+offy2 <- fits$alpha[rep(1:length(fits$alpha),n_ys)]
+offy <- as.numeric(offy1 + offy2)
+
+  options(warn = -1)
+  # which family to use?
+  if( disty == 1)
+    fam <- binomial()
+  if( disty == 2 | disty == 4)
+    fam <- poisson()
+  if( disty == 3)
+    fam <- poisson()
+  if( disty == 6)
+    fam <- gaussian()
+  if (disty==3){
+    Y_tau <- as.matrix(Y_tau/site_weights)
+  } else {
+    Y_tau <- as.matrix(Y_tau)
+  }
+
+  if(disty!=5){ #don't use for tweedie
+    ft_mix <- glm.fit(x = as.data.frame(X_tau[,-1]),
+                      y = as.numeric(Y_tau),
+                      weights = c(wts_tauXsite_weights),
+                      offset = offy,
+                      family = fam)
+  }
+    mix_coefs <- coef(ft_mix)
+
+```

@@ -880,7 +880,7 @@
     y_is_na <- object$titbits$y_is_na
     distribution <- object$titbits$distribution
     disty.cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
-    disty <- ecomix:::get_distribution_sam(disty.cases, distribution)
+    disty <- get_distribution_sam(disty.cases, distribution)
     S <- object$S
     G <- object$G
     n <- object$n
@@ -890,7 +890,7 @@
     inits <- object$coefs
     np <- as.integer(ncol(X[,-1]))
     n <- Obs <- as.integer(nrow(X))
-    start_vals <- ecomix:::setup_inits_sam(inits,S,G,np,disty,return_list = TRUE)
+    start_vals <- setup_inits_sam(inits,S,G,np,disty,return_list = TRUE)
 
     # parameters to optimise
     alpha <- as.numeric(start_vals$alpha)
@@ -1192,6 +1192,7 @@
   if(disty == 6)
     fam <- gaussian()
 
+
   coefs <- as.matrix(glmfit$coef)
   eta <- as.numeric(as.matrix(newmatrix) %*% as.numeric(coefs)) + offset
   preds <- fam$linkinv(eta)
@@ -1202,12 +1203,13 @@
 "apply_glm_sam_sp_params" <- function(ss, y, X, G, site_spp_weights, offset,
                                       y_is_na, disty, fits){
 
-  if( disty == 1)
+  if(disty == 1)
     fam <- binomial()
-  if( disty == 2 | disty == 3 | disty == 4)
+  if(disty == 2 | disty == 3 | disty == 4)
     fam <- poisson()
-  if( disty == 6)
+  if(disty == 6)
     fam <- gaussian()
+
 
   ids_i <- !y_is_na[,ss]
 
@@ -1225,11 +1227,12 @@
   offy <- offy1 + offy2
 
   if( disty != 5){ #don't use for tweedie
-    ft_sp <- stats::glm.fit(x=as.data.frame(X1),
+  options(warn = -1)
+  ft_sp <- suppressWarnings(stats::glm.fit(x=as.data.frame(X1),
                             y=as.numeric(out1),
                             weights=as.numeric(wts1),
                             offset=as.numeric(offy),
-                            family=fam)
+                            family=fam))
     my_coefs <- coef(ft_sp)
   }
   disp <- NA
@@ -1255,25 +1258,27 @@
 "apply_glm_sam_inits" <- function(ss, y, X, site_spp_weights, offset, y_is_na, disty){
 
   # which family to use?
-  if( disty == 1)
-    fam <- binomial()#"binomial"
-  if( disty == 2 | disty == 3 | disty == 4)
-    fam <- poisson()#"poisson"
-  if( disty == 6)
-    fam <- gaussian()#"gaussian"
+  if(disty == 1)
+    fam <- binomial()
+  if(disty == 2 | disty == 3 | disty == 4)
+    fam <- poisson()
+  if(disty == 6)
+    fam <- gaussian()
 
   ids_i <- !y_is_na[,ss]
 
-  if (disty==3){ outcomes <- as.matrix(y[ids_i,ss]/site_spp_weights[ids_i,ss])
-  } else { outcomes <- as.matrix(y[ids_i,ss])
+  if (disty==3){
+    outcomes <- as.matrix(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+  } else {
+    outcomes <- as.matrix(y[ids_i,ss])
   }
 
   if( disty != 5){
-    ft_sp <- stats::glm.fit(x=as.data.frame(X[ids_i,]),
+    ft_sp <- suppressWarnings(stats::glm.fit(x=as.data.frame(X[ids_i,]),
                             y=as.numeric(outcomes),
                             weights=as.numeric(site_spp_weights[ids_i,ss]),
                             offset=offset[ids_i],
-                            family=fam)
+                            family=fam))
     my_coefs <- coef(ft_sp)
   }
   disp <- NA
@@ -1293,64 +1298,64 @@
    return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
 }
 
-"apply_glmnet_sam" <- function(ss, y, X, site_spp_weights, offset, y_is_na, disty){
-
-  options(warn = -1)
-  # which family to use?
-  if( disty == 1)
-    fam <- "binomial"
-  if( disty == 2 | disty == 3 | disty == 4)
-    fam <- "poisson"
-  if( disty == 6)
-    fam <- "gaussian"
-
-  ids_i <- !y_is_na[,ss]
-
-  if (disty==3){ outcomes <- as.matrix(y[ids_i,ss]/site_spp_weights[ids_i,ss])
-  } else { outcomes <- as.matrix(y[ids_i,ss])
-  }
-
-
-  #lambdas for penalised glm
-  lambda.seq <- sort( unique( c( seq( from=1/0.1, to=1, length=10), seq( from=1/0.1, to=1, length=10),seq(from=0.9, to=10^-2, length=10))), decreasing=TRUE)
-  if( disty != 5){ #don't use for tweedie
-    ft_sp <- glmnet::glmnet(x=as.matrix(X[ids_i,-1]),
-                            y=outcomes,
-                            weights=c(site_spp_weights[ids_i,ss]),
-                            offset=offset[ids_i],
-                            family=fam,
-                            alpha=0,
-                            lambda = lambda.seq,
-                            standardize = FALSE,
-                            intercept = TRUE)
-    my_coefs <- apply(glmnet::coef.glmnet(ft_sp), 1, lambda_penalisation_fun, lambda.seq)
-  }
-  disp <- NA
-  if( disty == 4){
-    locat.s <- lambda.seq[max(which(as.matrix(glmnet::coef.glmnet(ft_sp))==my_coefs,arr.ind = TRUE)[,2])]
-    preds <-as.numeric(predict(ft_sp, s=locat.s,
-                               type="response",
-                               newx=X[ids_i,-1],
-                               newoffset=offset[ids_i]))
-    tmp <- MASS::theta.mm(outcomes, preds,
-                          weights=c(site_spp_weights[ids_i,ss]),
-                          dfr=length(y[ids_i,ss]),
-                          eps=1e-4)
-    if(tmp>2) tmp <- 2
-    disp <- log( 1/tmp)
-  }
-  if( disty == 6){
-    locat.s <- lambda.seq[max(which(as.matrix(glmnet::coef.glmnet(ft_sp))==my_coefs,arr.ind = TRUE)[,2])]
-    preds <-as.numeric(predict(ft_sp, s=locat.s,
-                               type="response",
-                               newx=X[ids_i,-1],
-                               newoffset=offset[ids_i]))
-    disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
-  }
-
-  return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
-
-}
+# "apply_glmnet_sam" <- function(ss, y, X, site_spp_weights, offset, y_is_na, disty){
+#
+#   options(warn = -1)
+#   # which family to use?
+#   if( disty == 1)
+#     fam <- "binomial"
+#   if( disty == 2 | disty == 3 | disty == 4)
+#     fam <- "poisson"
+#   if( disty == 6)
+#     fam <- "gaussian"
+#
+#   ids_i <- !y_is_na[,ss]
+#
+#   if (disty==3){ outcomes <- as.matrix(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+#   } else { outcomes <- as.matrix(y[ids_i,ss])
+#   }
+#
+#
+#   #lambdas for penalised glm
+#   lambda.seq <- sort( unique( c( seq( from=1/0.1, to=1, length=10), seq( from=1/0.1, to=1, length=10),seq(from=0.9, to=10^-2, length=10))), decreasing=TRUE)
+#   if( disty != 5){ #don't use for tweedie
+#     ft_sp <- glmnet::glmnet(x=as.matrix(X[ids_i,-1]),
+#                             y=outcomes,
+#                             weights=c(site_spp_weights[ids_i,ss]),
+#                             offset=offset[ids_i],
+#                             family=fam,
+#                             alpha=0,
+#                             lambda = lambda.seq,
+#                             standardize = FALSE,
+#                             intercept = TRUE)
+#     my_coefs <- apply(glmnet::coef.glmnet(ft_sp), 1, lambda_penalisation_fun, lambda.seq)
+#   }
+#   disp <- NA
+#   if( disty == 4){
+#     locat.s <- lambda.seq[max(which(as.matrix(glmnet::coef.glmnet(ft_sp))==my_coefs,arr.ind = TRUE)[,2])]
+#     preds <-as.numeric(predict(ft_sp, s=locat.s,
+#                                type="response",
+#                                newx=X[ids_i,-1],
+#                                newoffset=offset[ids_i]))
+#     tmp <- MASS::theta.mm(outcomes, preds,
+#                           weights=c(site_spp_weights[ids_i,ss]),
+#                           dfr=length(y[ids_i,ss]),
+#                           eps=1e-4)
+#     if(tmp>2) tmp <- 2
+#     disp <- log( 1/tmp)
+#   }
+#   if( disty == 6){
+#     locat.s <- lambda.seq[max(which(as.matrix(glmnet::coef.glmnet(ft_sp))==my_coefs,arr.ind = TRUE)[,2])]
+#     preds <-as.numeric(predict(ft_sp, s=locat.s,
+#                                type="response",
+#                                newx=X[ids_i,-1],
+#                                newoffset=offset[ids_i]))
+#     disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
+#   }
+#
+#   return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
+#
+# }
 
 
 # do I need to include the dispersion parameters into the tau weights?
@@ -1383,8 +1388,10 @@
   # which family to use?
   if( disty == 1)
     fam <- binomial()
-  if( disty == 2 | disty == 3 | disty == 4)
+  if( disty == 2 | disty == 4)
     fam <- poisson()
+  if( disty == 3)
+    fam <- quasipoisson()
   if( disty == 6)
     fam <- gaussian()
   if (disty==3){
@@ -1394,7 +1401,7 @@
   }
 
   if(disty!=5){ #don't use for tweedie
-    ft_mix <- glm.fit(x = as.data.frame(X_tau[,-1]),
+    ft_mix <- glm.fit(x = as.data.frame(X_tau),
                       y = as.numeric(Y_tau),
                       weights = c(wts_tauXsite_weights),
                       offset = offy,
@@ -1539,7 +1546,7 @@
   logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
   pis <- rep(1/G, G)
   taus <- get_taus(pis, logls_mus$logl_sp, G, S)
-  if(disty!=3) taus <- skrink_taus(taus,max_tau=0.9, G) #max_tau=1/G + 0.1
+  taus <- skrink_taus(taus,max_tau=1/G + 0.1, G) #max_tau=1/G + 0.1
 
   # if(disty==3){ #this will be instead of the EM step.
   fmix_coefs <- surveillance::plapply(1:G, apply_glm_group_tau_sam,
@@ -1556,7 +1563,7 @@
                                       .verbose = FALSE)#!control$quiet)
 
   #update the mix coefs.
-  fmix_coefs <- t(do.call(cbind,fmix_coefs))
+  fmix_coefs <- t(do.call(cbind,fmix_coefs))[,-1]
   fits$beta <- update_mix_coefs(fits$beta,fmix_coefs)
   # }
 
@@ -1610,9 +1617,11 @@
       sp_idx<-!first_fit$y_is_na[,ss]
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
-        lp <- first_fit$x[sp_idx,1] * fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
-        if(get_fitted) fitted_values[gg,sp_idx,ss] <- exp(lp)
-        logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$site_spp_weights[sp_idx,ss] %*% exp(lp)
+        eta <- first_fit$x[sp_idx,1] * fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
+        mu <- eta_to_mu(eta,poisson())
+        if(get_fitted) fitted_values[gg,sp_idx,ss] <- mu
+        logl_sp[ss,gg] <- sum(first_fit$site_spp_weights[sp_idx,ss] * (first_fit$y[sp_idx,ss] * log(mu) - mu))
+        # logl_sp[ss,gg] <- (first_fit$y[sp_idx,ss] %*% eta - first_fit$site_spp_weights[sp_idx,ss] %*% exp(eta))
       }
     }
   }
@@ -1653,6 +1662,14 @@
   if(get_fitted) out.list$fitted = fitted_values
   return(out.list)
 }
+
+eta_to_mu <- function (eta, family, mu.min = 1e-16, mu.max = 1/mu.min){
+  mu <- family$linkinv(eta)
+  mu[mu < mu.min] = mu.min
+  mu[mu > mu.max] = mu.max
+  mu
+}
+
 
 "fitmix_EM_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
 

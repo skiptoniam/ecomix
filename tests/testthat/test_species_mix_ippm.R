@@ -19,7 +19,7 @@ testthat::test_that('species mix ippm', {
   thetas <- matrix(c( 1.6, 4.0, -3.0,
                       -0.8, 1.8,    0,
                       1.4,-1.2, -0.1,
-                      1.2,-8.2, -6.8),4,3,byrow=TRUE)
+                      1.2,-4.2, -4.8),4,3,byrow=TRUE)
 
   set.seed(42)
   x <- y <- 1:100 / 100
