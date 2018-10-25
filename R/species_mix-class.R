@@ -15,7 +15,7 @@
 #'  and 'tweedie' distributions can be fitted using the species_mix function.
 #' @param archetype_formula an object of class "formula" (or an object that can be
 #' coerced to that class). The response variable (left hand side of the
-#' formula) needs to be either 'presence', 'occurrence', 'abundance',
+#' formula) needs to be either 'occurrence', 'abundance',
 #' 'biomass' or 'quantity' data. The type of reponse data will help specify
 #' the type of error distribution to be used. The dependent variables
 #' (the right hind side) of this formula specifies the dependence of the
@@ -36,8 +36,7 @@
 #' nsites*(nspecies+const+covariates).
 #' @param n_mixtures The number of mixing components (groups) to fit.
 #' @param distribution The family of statistical distribution to use within
-#' the ecomix models. a  choice between "bernoulli", "poisson",
-#' "ippm" (inhomogeneous Poisson point process model), "negative_binomial", "tweedie"
+#' the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial", "tweedie"
 #' and "gaussian" distributions are possible and applicable to specific types
 #' of data.
 #' @param offset a numeric vector of length nrow(data) (n sites) that is included into
@@ -47,10 +46,7 @@
 #' in the log-likelihood calculations. If NULL (default) then all weights are
 #' assumed to be identically 1. Because we are estimating the log-likelihood
 #' over species (rather than sites), the weights should be a vector n species
-#' long. The exception is under the use of the 'ippm' distribution where
-#' weights must be a nrow(data)*n_species matrix, which provides a
-#' species-specific background weights used to estimate the species-specific
-#' marginal likelihoods.
+#' long.
 #' @param bb_weights a numeric vector of n species long. This is used for undertaking
 #' a Bayesian Bootstrap. See 'vcov.species_mix' for more details.
 #' @param control a list of control parameters for optimisation and calculation.
@@ -108,34 +104,20 @@
 
   # Create model matrix
   mf <- match.call(expand.dots = FALSE)
-  if(distribution=="ippm"){
-    m <- match(c("data","offset"), names(mf), 0L)
-  } else {
-    m <- match(c("data","offset","weights"), names(mf), 0L)
-  }
-  # m <- match(c("data","offset","weights"), names(mf), 0L)
-  mf <- mf[c(1L, m)]
+  m <- match(c("data","offset","weights"), names(mf), 0L)
+
+    mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
-  if(distribution=="ippm"){
-    mf$na.action <- "na.pass"
-  } else {
-    mf$na.action <- "na.exclude"
-  }
+  mf$na.action <- "na.exclude"
   mf[[1L]] <- quote(stats::model.frame)
   mf <- eval(mf, parent.frame())
 
   # need this for the na.omit step
   rownames(mf)<-seq_len(nrow(mf))
 
-  # get the model matrix and find the fitting formula.
-  # dist_dat <- check_distribution_clean_data_sam(archetype_formula, species_formula, mf, distribution)
-  # fit_distribution <- dist_dat[[1]]
-  # dat <- dist_dat[[2]]
-  # print(fit_distribution)
-
   dat <- clean_data_sam(mf, archetype_formula, NULL, distribution)
 
-    # get responses
+  # get responses
   y <- stats::model.response(dat$mf.X)
 
   # logical matirx needed for removing NAs from response and weights.
@@ -155,13 +137,8 @@
   # get archetype model matrix
   X <- get_X_sam(archetype_formula, dat$mf.X)
 
-  # get species model matrix
-  # W <- get_W_sam(species_formula, dat$mf.W) # don't need yet. but will be important for partial sams.
-
   #get distribution
-  # disty.cases <- c("bernoulli","bernoulli_sp","poisson","ippm",
-  #                  "negative_binomial","tweedie","gaussian")
-  disty.cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
+  disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie","gaussian")
   disty <- get_distribution_sam(disty.cases, distribution)
 
   # get offsets
@@ -171,19 +148,6 @@
   species_names <- colnames(y)
   site_spp_weights <- get_site_spp_weights_sam(mf,weights,species_names,distribution)
   spp_weights <- check_spp_weights(bb_weights,S)
-
-  # cat(colnames(site_spp_weights),"\n")
-
-  if(distribution=='ippm'){
-    if(!all(colnames(y)==colnames(site_spp_weights))){
-      stop(cat('When modelling a inhomogenous poisson point process model,\n species data colnames must match weights colnames.\n\nSpecies data colnames from "data" are:\n',colnames(y),'.\n\nWhile the colnames of the weights are:\n', colnames(site_spp_weights),'\n'))
-    }
-    if(any(dim(y)!=dim(site_spp_weights))){
-      stop('When modelling a inhomogenous poisson point process model,
-           weights needs to have the same dimensions at the
-           species data - n_sites x n_species')
-    }
-  }
 
   s.means <- NULL
   s.sds <- NULL
@@ -196,9 +160,6 @@
 
   # summarising data to console
   print_input_sam(y, X, S, archetype_formula, species_formula, distribution, quiet=control$quiet)
-
-  # getting the inits right
-  # inits <- setup_inits_sam(inits,S,G,disty)
 
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
   tmp <- species_mix.fit(y=y, X=X, G=n_mixtures, S=S, spp_weights=spp_weights,
