@@ -3,7 +3,7 @@
 ecomix
 ------
 
-ecomix is a package to implement statisitical models on multivariate species community data. Two main type of finite mixture models are avaliable which either model at species level (Species Archetype Models) or site level (Region of Common Profile).
+ecomix is a package to implement statisitical models on multivariate species community data. Two main type of finite mixture models are avaliable which either model at species level (Species Archetype Models) or site level (Regions of Common Profile).
 
 #### Installation
 
