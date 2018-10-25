@@ -28,8 +28,8 @@ testthat::test_that('species mix poisson', {
 
   # test a single poisson model
   i <- 1
-  testthat::expect_length(ecomix:::apply_glmnet_sam(i, y, X, site_spp_wts, offset, y_is_na, disty),3)
-  fm_poissonint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam,  y, X, site_spp_wts, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  testthat::expect_length(ecomix:::apply_glm_sam_inits(i, y, X, site_spp_wts, offset, y_is_na, disty),3)
+  fm_poissonint <- surveillance::plapply(1:S, ecomix:::apply_glm_sam_inits,  y, X, site_spp_wts, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
   testthat::expect_length(do.call(cbind,fm_poissonint)[1,],S)
 
   # test that the starting values work.

@@ -26,11 +26,11 @@ testthat::test_that('species mix generic', {
   # test a new glmnet function bernoulli
   ss <- 1
   disty <- 1
-  fm1 <- ecomix:::apply_glmnet_sam(ss, y, X, site_spp_weights, offset, y_is_na, disty)
+  fm1 <- ecomix:::apply_glm_sam_inits(ss, y, X, site_spp_weights, offset, y_is_na, disty)
   testthat::expect_is(fm1,'list')
   testthat::expect_length(fm1,3)
 
-  fm_bern <- surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  fm_bern <- surveillance::plapply(seq_len(S), ecomix:::apply_glm_sam_inits, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
 
   alphas <- lapply(fm_bern, `[[`, 1)
   testthat::expect_length(unlist(alphas),S)
@@ -58,11 +58,11 @@ testthat::test_that('species mix generic', {
 
   ss <- 1
   disty <- 2
-  fm1 <- ecomix:::apply_glmnet_sam(ss, y, X, site_spp_weights, offset, y_is_na, disty)
+  fm1 <- ecomix:::apply_glm_sam_inits(ss, y, X, site_spp_weights, offset, y_is_na, disty)
   testthat::expect_is(fm1,'list')
   testthat::expect_length(fm1,3)
 
-  fm_pois <- surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  fm_pois <- surveillance::plapply(seq_len(S), ecomix:::apply_glm_sam_inits, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
 
   alphas <- lapply(fm_pois, `[[`, 1)
   testthat::expect_length(unlist(alphas),S)
@@ -90,11 +90,11 @@ testthat::test_that('species mix generic', {
 
   ss <- 1
   disty <- 4
-  fm1 <- ecomix:::apply_glmnet_sam(ss, y, X, site_spp_weights, offset, y_is_na, disty)
+  fm1 <- ecomix:::apply_glm_sam_inits(ss, y, X, site_spp_weights, offset, y_is_na, disty)
   testthat::expect_is(fm1,'list')
   testthat::expect_length(fm1,3)
   #
-  fm_nb <- surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  fm_nb <- surveillance::plapply(seq_len(S), ecomix:::apply_glm_sam_inits, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
   #
   alpha <- lapply(fm_nb, `[[`, 1)
   testthat::expect_length(unlist(alpha),S)
