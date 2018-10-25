@@ -586,10 +586,6 @@
   print(x$pi)
   cat("\nCoefficents\n")
   print(x$coef)
-  # if(!is.na(x$se[1])){
-  #   cat("\nStandard Errors of coefficents\n")
-  #   print(x$se)
-  # }
   cat("\nPosterior Probabilities\n")
   print(x$taus)
 }
@@ -707,7 +703,7 @@
     Y <- object$titbits$Y
     y_is_na <- object$titbits$y_is_na
     distribution <- object$titbits$distribution
-    disty.cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
+    disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie","gaussian")
     disty <- ecomix:::get_distribution_sam(disty.cases, distribution)
     S <- object$S
     G <- object$G
@@ -875,7 +871,7 @@
     etas.K <- matrix(object$coefs$alpha,nrow(newobs),S,byrow=TRUE) + matrix(as.matrix(newobs)%*%object$coef$beta[gg,],nrow(newobs),S,byrow=FALSE)
     if(family == "gaussian") mus.K <- etas.K
     if(family == "bernoulli") mus.K <- exp(etas.K)/(1+exp(etas.K))
-    if(family %in% c("poisson","ippm","negative_binomial")) mus.K <- exp(etas.K)
+    if(family %in% c("poisson","negative_binomial")) mus.K <- exp(etas.K)
     predict_mus <- predict_mus + matrix(object$taus[,gg],nrow(newobs),S,byrow=T)*mus.K
   }
 
@@ -897,110 +893,6 @@
   return(list(predict_mus = round(predict_mus,5), predict_y = predict_y))
 }
 
-# "predict.species_mix" <-function (object, new_obs, ...){
-#   mixture.model <- object
-#   if (class(mixture.model)[2] == "bernoulli") {
-#     G <- length(mixture.model$pi)
-#     covar <- mixture.model$covar[-(1:(G - 1)), -(1:(G -
-#         1))]
-#     coef <- mixture.model$coef
-#     model.fm <- stats::as.formula(mixture.model$formula)
-#     model.fm[[2]] <- NULL
-#     X <- stats::model.matrix(model.fm, new_obs)
-#     link.fun <- stats::make.link("logit")
-#     outvar <- matrix(NA, dim(X)[1], G)
-#     outpred <- matrix(NA, dim(X)[1], G)
-#     colnames(outvar) <- colnames(outpred) <- paste("G", 1:G, sep = ".")
-#     for (g in 1:G) {
-#       lp <- as.numeric(X %*% coef[g, ])
-#       outpred[, g] <- link.fun$linkinv(lp)
-#       dhdB <- (exp(lp)/(1 + exp(lp))) * X - exp(lp)^2/((1 +
-#           exp(lp))^2) * X
-#       c2 <- covar[seq(g, dim(covar)[1], G), seq(g, dim(covar)[1],
-#         G)]
-#       for (k in 1:dim(X)[1]) {
-#         outvar[k, g] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
-#       }
-#     }
-#   }
-#   if (class(mixture.model)[2] == "negative_binomial" | class(mixture.model)[2] ==
-#       "tweedie") {
-#     G <- length(mixture.model$pi)
-#     covar <- mixture.model$covar[-1 * c(1:(G - 1), (dim(mixture.model$covar)[1] -
-#         length(mixture.model$sp.intercept) + 1):dim(mixture.model$covar)[1]),
-#       -1 * c(1:(G - 1), (dim(mixture.model$covar)[1] -
-#           length(mixture.model$sp.intercept) + 1):dim(mixture.model$covar)[1])]
-#     sp.int <- mixture.model$sp.intercept
-#     coef <- mixture.model$coef
-#     model.fm <- stats::as.formula(mixture.model$formula)
-#     model.fm[[2]] <- NULL
-#     X <- cbind(stats::model.matrix(model.fm, new_obs), 1)
-#     offset <- stats::model.frame(model.fm, data = new_obs)
-#     offset <- stats::model.offset(offset)
-#     if (is.null(offset))
-#       offset <- rep(0, nrow(X))
-#     outvar <- matrix(NA, dim(X)[1], G)
-#     outpred <- matrix(NA, dim(X)[1], G)
-#     colnames(outvar) <- colnames(outpred) <- paste("G",
-#       1:G, sep = ".")
-#     for (g in 1:G) {
-#       s.outvar <- matrix(NA, dim(X)[1], length(sp.int))
-#       s.outpred <- matrix(NA, dim(X)[1], length(sp.int))
-#       for (s in seq_along(sp.int)) {
-#         lp <- as.numeric(X %*% c(coef[g, ], sp.int[s]) +
-#             offset)
-#         s.outpred[, s] <- exp(lp)
-#         dhdB <- exp(lp) * X
-#         c2 <- covar[c(seq(g, G * (dim(X)[2] - 1), G),
-#           G * (dim(X)[2] - 1) + s), c(seq(g, G * (dim(X)[2] -
-#               1), G), G * (dim(X)[2] - 1) + s)]
-#         for (k in 1:dim(X)[1]) {
-#           s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k,
-#             ])
-#         }
-#       }
-#       outpred[, g] <- apply(s.outpred * rep(mixture.model$tau[,
-#         g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[,
-#           g])
-#       outvar[, g] <- apply(s.outvar * rep(mixture.model$tau[,
-#         g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[,
-#           g])
-#     }
-#   }
-#   if (class(mixture.model)[2] == "ippm" | class(mixture.model)[2] == "poisson") {
-#     G <- length(mixture.model$pi)
-#     covar <- mixture.model$covar[-1 * c(1:(G - 1)), -1 * c(1:(G - 1))]
-#     sp.int <- mixture.model$sp_intercept
-#     coef <- mixture.model$coef
-#     model.fm <- stats::as.formula(mixture.model$formula)
-#     model.fm[[2]] <- NULL
-#     X <- cbind(stats::model.matrix(model.fm, new_obs))
-#     offset <- stats::model.frame(model.fm, data = new_obs)
-#     offset <- stats::model.offset(offset)
-#     if (is.null(offset))
-#       offset <- rep(0, nrow(X))
-#     outvar <- matrix(NA, dim(X)[1], G)
-#     outpred <- matrix(NA, dim(X)[1], G)
-#     colnames(outvar) <- colnames(outpred) <- paste("G", 1:G, sep = ".")
-#     for (g in 1:G) {
-#       s.outvar <- matrix(NA, dim(X)[1], length(sp.int))
-#       s.outpred <- matrix(NA, dim(X)[1], length(sp.int))
-#       for (s in seq_along(sp.int)) {
-#         lp <- as.numeric(X %*% c(sp.int[s],coef[g, ]) + offset)
-#         s.outpred[, s] <- exp(lp)
-#         dhdB <- exp(lp) * X
-#         ## pull out the sp intercept and mixing component covariates.
-#         c2 <- covar[c(G * (dim(X)[2] - 1) + s,seq(g, G * (dim(X)[2] - 1), G)), c((G * (dim(X)[2] - 1) + s),seq(g, G * (dim(X)[2] - 1), G))]
-#         for (k in 1:dim(X)[1]) {
-#           s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
-#         }
-#       }
-#       outpred[, g] <- apply(s.outpred * rep(mixture.model$tau[, g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[, g])
-#       outvar[, g] <- apply(s.outvar * rep(mixture.model$tau[, g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[, g])
-#     }
-#   }
-#   list(fit = outpred, se.fit = sqrt(outvar))
-# }
 
 ###### SAM internal functions for fitting ######
 # replace this function with one that include eta (linear predictor) as an offset in when estimating the species-specific intercepts.
@@ -1121,66 +1013,6 @@
    return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
 }
 
-"apply_glmnet_sam" <- function(ss, y, X, site_spp_weights, offset, y_is_na, disty){
-
-  options(warn = -1)
-  # which family to use?
-  if( disty == 1)
-    fam <- "binomial"
-  if( disty == 2 | disty == 3 | disty == 4)
-    fam <- "poisson"
-  if( disty == 6)
-    fam <- "gaussian"
-
-  ids_i <- !y_is_na[,ss]
-
-  if (disty==3){ outcomes <- as.matrix(y[ids_i,ss]/site_spp_weights[ids_i,ss])
-  } else { outcomes <- as.matrix(y[ids_i,ss])
-  }
-
-
-  #lambdas for penalised glm
-  lambda.seq <- sort( unique( c( seq( from=1/0.1, to=1, length=10), seq( from=1/0.1, to=1, length=10),seq(from=0.9, to=10^-2, length=10))), decreasing=TRUE)
-  if( disty != 5){ #don't use for tweedie
-    ft_sp <- glmnet::glmnet(x=as.matrix(X[ids_i,-1]),
-                            y=outcomes,
-                            weights=c(site_spp_weights[ids_i,ss]),
-                            offset=offset[ids_i],
-                            family=fam,
-                            alpha=0,
-                            lambda = lambda.seq,
-                            standardize = FALSE,
-                            intercept = TRUE)
-    my_coefs <- apply(glmnet::coef.glmnet(ft_sp), 1, lambda_penalisation_fun, lambda.seq)
-  }
-  disp <- NA
-  if( disty == 4){
-    locat.s <- lambda.seq[max(which(as.matrix(glmnet::coef.glmnet(ft_sp))==my_coefs,arr.ind = TRUE)[,2])]
-    preds <-as.numeric(predict(ft_sp, s=locat.s,
-                               type="response",
-                               newx=X[ids_i,-1],
-                               newoffset=offset[ids_i]))
-    tmp <- MASS::theta.mm(outcomes, preds,
-                          weights=c(site_spp_weights[ids_i,ss]),
-                          dfr=length(y[ids_i,ss]),
-                          eps=1e-4)
-    if(tmp>2) tmp <- 2
-    disp <- log( 1/tmp)
-  }
-  if( disty == 6){
-    locat.s <- lambda.seq[max(which(as.matrix(glmnet::coef.glmnet(ft_sp))==my_coefs,arr.ind = TRUE)[,2])]
-    preds <-as.numeric(predict(ft_sp, s=locat.s,
-                               type="response",
-                               newx=X[ids_i,-1],
-                               newoffset=offset[ids_i]))
-    disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
-  }
-
-  return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
-
-}
-
-
 # do I need to include the dispersion parameters into the tau weights?
 # do I need to include the species intercepts in the offsets?
 
@@ -1238,8 +1070,6 @@
   options( warn=-1)
 
   #if emfit is in the control do an EM fit to get good starting values for c++
-  if(disty==3)control$em_prefit<-FALSE
-
   if(isTRUE(control$em_prefit)){
 
     if(!control$quiet)message('Using EM algorithm to find starting values; using',
@@ -1308,18 +1138,6 @@
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
   }
-  #ippm
-  if(disty==3){
-    logl_sp <- matrix(NA, nrow=S, ncol=G)
-    for(ss in 1:S){
-      sp_idx<-!first_fit$y_is_na[,ss]
-      for(gg in 1:G){
-        #lp is the same as log_lambda (linear predictor)
-        lp <- first_fit$x[sp_idx,1] * fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
-        logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$site_spp_weights[sp_idx,ss] %*% exp(lp)
-      }
-    }
-  }
   #negative binomial
   if(disty==4){
     logl_sp <- matrix(NA, nrow=S, ncol=G)
@@ -1331,11 +1149,6 @@
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
-  }
-  #tweedie
-  if(disty==5){
-    stop('no tweedie')
-
   }
   # gaussian
   if(disty==6){
@@ -1431,20 +1244,6 @@
     }
   }
 
-  #ippm
-  if(disty==3){
-    logl_sp <- matrix(NA, nrow=S, ncol=G)
-    for(ss in 1:S){
-      sp_idx<-!first_fit$y_is_na[,ss]
-      for(gg in 1:G){
-        #lp is the same as log_lambda (linear predictor)
-        lp <- first_fit$x[sp_idx,1] * fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
-        if(get_fitted) fitted_values[gg,sp_idx,ss] <- exp(lp)
-        logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$site_spp_weights[sp_idx,ss] %*% exp(lp)
-      }
-    }
-  }
-
   #negative binomial
   if(disty==4){
     logl_sp <- matrix(NA, nrow=S, ncol=G)
@@ -1457,11 +1256,6 @@
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
-  }
-
-  #tweedie
-  if(disty==5){
-    stop('no tweedie')
   }
 
   # gaussian
@@ -1589,8 +1383,7 @@
   #This is from Francis' code and should remove coefs which are based on rare species (and are dodgy)
   n <- nrow(y)
   s <- ncol(y)
-  if(disty==3) prev_min <- control$rare_species_tolerance_ippm
-  else prev_min <- floor(n*control$rare_species_tolerance);
+  prev_min <- floor(n*control$rare_species_tolerance);
   sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min)
   if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,]
 
@@ -1623,15 +1416,6 @@
   fits$beta <- matrix(x,nrow=nrow(fits$beta),ncol=ncol(fits$beta))
   tmp <- get_incomplete_logl_sam(eta, first_fit, fits, spp_weights, G, S, disty)
   return(-tmp)
-}
-
-"lambda_penalisation_fun" <- function(x,lambda,kappa=0.1){ #assumes that x spans to pretty-well the unpenalised estiamtes
-  min.effective.penalty <- min( which( abs( x-tail( x, 1)) < 0.01 * abs( tail( x, 1))))    #the first that lambda that gives a coef close to the last lambda's corresponding coef
-  min.effective.penalty <- lambda[min.effective.penalty]
-  target.penalty <- kappa * min.effective.penalty
-  res.pos <- which.min( (lambda-target.penalty)^2)
-  res <- x[res.pos]
-  return( res)
 }
 
 "sam_optimise" <- function(y, X, offset, spp_weights, site_spp_weights, y_is_na, S, G, Obs, disty, start_vals, control){
@@ -1699,7 +1483,7 @@
   else
     ret$coefs <- list(alpha = ret$alpha, beta = ret$beta, eta = ret$eta, disp = ret$disp)
 
-  ret$names <- list(spp=colnames(y), RCPs=paste("SAM", 1:G, sep=""), Xvars=colnames(X[,-1]))
+  ret$names <- list(spp=colnames(y), SAMs=paste("SAM", 1:G, sep=""), Xvars=colnames(X[,-1]))
 
   if(!disty%in%c(4,6))
     ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score)
@@ -1721,8 +1505,6 @@
     stop( "Unknown boostrap type, choices are BayesBoot and SimpleBoot.")
   n.reorder <- 0
   object$titbits$control$optimise <- TRUE #just in case it was turned off
-  if(object$titbits$distribution=='ippm')
-    stop('IPPM vcov matrix needs to estimated using FiniteDifference method.\n')
 
   if( type == "SimpleBoot"){
     all.wts <- matrix( sample( 1:object$S, nboot*object$S, replace=TRUE), nrow=nboot, ncol=object$S)
@@ -1744,13 +1526,8 @@
   object$titbits$control$quiet <- TRUE
 
   my.fun <- function(dummy){
-    disty.cases <- c("bernoulli", "poisson", "ippm", "negative_binomial", "tweedie", "gaussian")
+    disty.cases <- c("bernoulli", "poisson", "negative_binomial", "tweedie", "gaussian")
     disty <- get_distribution_sam(disty.cases, object$dist)
-    # if( !object$titbits$control$quiet){
-    # pb <- progress::progress_bar$new(
-    #   format = " Running Bayesian bootstrap [:bar] :percent eta: :eta",
-    #   total = nboot, clear = FALSE, width= 60)
-      # }
     dumbOut <- capture.output(
       samp.object <- species_mix.fit(y=object$titbits$Y,
                                      X=object$titbits$X,
@@ -1763,7 +1540,6 @@
                                      disty = disty,
                                      control = object$titbits$control,
                                      inits = my.inits))
-    # pb$tick()
     if( orderSamps)
       samp.object <- orderPost( samp.object, object)
     return( unlist( samp.object$coef))
@@ -1772,9 +1548,6 @@
   tmp <- surveillance::plapply(seq_len(nboot), my.fun, .parallel = mc.cores)
   boot.estis <- do.call( "rbind", tmp)
   object$titbits$control$quiet <- tmpOldQuiet
-  # if( !quiet)
-    # message( "")
-  # colnames( boot.estis) <- get_long_names_rcp( object)
   class( boot.estis) <- "sam_bootstrap"
   return( boot.estis)
 }
@@ -1799,27 +1572,11 @@
   return(tau_star)
 }
 
-"lambda_penalisation_fun" <- function(x,lambda,kappa=0.1){ #assumes that x spans to pretty-well the unpenalised estiamtes
-  min.effective.penalty <- min( which( abs( x-tail( x, 1)) < 0.01 * abs( tail( x, 1))))    #the first that lambda that gives a coef close to the last lambda's corresponding coef
-  min.effective.penalty <- lambda[min.effective.penalty]
-  target.penalty <- kappa * min.effective.penalty
-  res.pos <- which.min( (lambda-target.penalty)^2)
-  res <- x[res.pos]
-  return( res)
-}
-
 "print_input_sam" <- function(y, X, S, archetype_formula, species_formula, distribution, quiet=FALSE){
   if( quiet)
     return( NULL)
   n.tot <- nrow(y)
-  if(distribution=='ippm'){
-    n_pres <- sum(unlist(y)==1,na.rm=TRUE)
-    n_bkgrd <- sum(unlist(y[,1])==0,na.rm=TRUE)
-    message("There are ", n_pres, " presence observations for ", S," species")
-    message("There are ", n_bkgrd, " background (integration) points for each of the ", S," species")
-  } else {
-    message("There are ", nrow(X), " site observations for ", S," species")
-  }
+  message("There are ", nrow(X), " site observations for ", S," species")
   archetype_formula[[2]] <- NULL
   message("The model for the SAM is ", Reduce( "paste", deparse(archetype_formula)))
   if(!is.null(species_formula))
@@ -1845,22 +1602,6 @@
   X <- stats::model.matrix(form.X, mf.X)
   return( X)
 }
-
-"get_W_sam" <- function( species_formula, mf.W){
-  form.W <- species_formula
-  if( !is.null( species_formula)){
-    if( length( form.W)>2)
-      form.W[[2]] <- NULL #get rid of outcomes
-    W <- stats::model.matrix( form.W, mf.W)
-    tmp.fun <- function(x){ all( x==1)}
-    intercepts <- apply( W, 2, tmp.fun)
-    W <- W[,!intercepts,drop=FALSE]
-  }
-  else
-    W <- -999999
-  return( W)
-}
-
 
 "species_data_check" <- function(x){
   stopifnot(is.matrix(x)|is.data.frame(x))
@@ -1897,8 +1638,6 @@
         titbits$Y <- y
       if( "X" %in% titbits)
         titbits$X <- X
-      # if( "W" %in% titbits)
-        # titbits$W <- W
       if( "spp_weights" %in% titbits)
         titbits$spp_weights <- spp_weights
       if( "site_spp_weights" %in% titbits)
@@ -1924,20 +1663,12 @@
   # site_spp_wts <- model.weights(mf)
   if(is.null(site_spp_weights))site_spp_weights <- model.weights(mf)
 
-  if(distribution=='ippm'){
-    if(!is.null(site_spp_weights)){
-      site_spp_weights <- subset(site_spp_weights, select = colnames(site_spp_weights)%in%sp_names)
-    } else {
-      site_spp_weights <- matrix(1,nrow(mf),length(sp_names))
-    }
-  } else {
-
-    if(!is.null(site_spp_weights)){
+  if(!is.null(site_spp_weights)){
       site_spp_weights <- replicate(length(sp_names),site_spp_weights)
     } else {
       site_spp_weights <- matrix(1,nrow(mf),length(sp_names))
     }
-  }
+
   return(site_spp_weights)
 }
 
@@ -2066,61 +1797,6 @@
 
 }
 
-# "check_distribution_clean_data_sam" <- function(arch_form, sp_form, dat, distribution){
-#
-#   # returns numeric 0, 1 or 2. if zero no species intercepts, if 1 speices intercepts, if 2 species model.
-#   species_int_coefs <- check_species_formula(sp_form)
-#   print(species_int_coefs)
-#   if(species_int_coefs!=2){
-#     mod_dat <- clean_data_sam(dat, arch_form, NULL, distribution)
-#   } else {
-#     mod_dat <- clean_data_sam(dat, arch_form, sp_form, distribution)
-#   }
-#
-#   if(all(distribution=="bernoulli", species_int_coefs==0))fit_disty <- "bernoulli"
-#   stop('Bernoulli distribution now requires species specific intercepts - look at "SpeciesMix" package for joint intercept estimation approach')
-#   if(all(distribution=="bernoulli", species_int_coefs==1))fit_disty <- "bernoulli"
-#   if(all(distribution=="bernoulli", species_int_coefs==2)){
-#     fit_disty <- "bernoulli_partial"
-#     stop('partial SAMs for a Bernoulli distribution has not been implemented yet - watch this space')
-#   }
-#
-#   if(all(distribution=="poisson", species_int_coefs==0))
-#     stop('Poisson distribution requires independent species intercepts')
-#   if(all(distribution=="poisson", species_int_coefs==1))fit_disty <- "poisson"
-#   if(all(distribution=="poisson", species_int_coefs==2)){
-#     fit_disty <- "poisson_partial"
-#     stop('partial SAMs for a Poisson distribution has not been implemented yet - watch this space')
-#   }
-#
-#   if(all(distribution=="ippm", species_int_coefs==0))
-#     stop('IPPM distribution requires independent species intercepts')
-#   if(all(distribution=="ippm", species_int_coefs==1)) fit_disty <- "ippm"
-#   if(all(distribution=="ippm", species_int_coefs==2)){
-#     fit_disty <- "ippm_partial"
-#     stop('partial SAMs for a IPPM distribution has not been implemented yet - watch this space')
-#   }
-#
-#   if(all(distribution=="negative_binomial", species_int_coefs==0))
-#     stop('Negative binomial distribution requires independent species intercepts')
-#   if(all(distribution=="negative_binomial", species_int_coefs==1)) fit_disty <- "negative_binomial"
-#   if(all(distribution=="negative_binomial", species_int_coefs==2)){
-#     fit_disty <- "negative_binomial_partial"
-#     stop('partial SAMs for a Negative Binomial distribution has not been implemented yet - watch this space')
-# }
-#
-#   if(all(distribution=="tweedie", species_int_coefs==0))
-#     stop('Tweedie distribution requires independent species intercepts')
-#   if(all(distribution=="tweedie", species_int_coefs==1)) fit_disty <- "tweedie"
-#   if(all(distribution=="tweedie", species_int_coefs==2)){
-#     fit_disty <- "tweedie_partial"
-#     stop('partial SAMs for a Tweedie distribution has not been implemented yet - watch this space')
-#   }
-#
-#   return(list(fit_disty=fit_disty,mod_dat=mod_dat))
-#
-# }
-
 "check_reponse_sam" <-function(outs) {
   nam <- colnames( outs)
   if( length( nam) == length( unique( nam)))
@@ -2143,8 +1819,7 @@
   }
 
 "clean_data_sam" <- function(data, form1, form2, distribution){
-    if(distribution=='ippm') na_rule <- "na.pass"
-    else na_rule <- "na.exclude"
+    na_rule <- "na.exclude"
     mf.X <- stats::model.frame(form1, data = data, na.action = na_rule)
     if( !is.null( form2)){
       mf.W <- stats::model.frame(form2, data = data, na.action = na_rule)

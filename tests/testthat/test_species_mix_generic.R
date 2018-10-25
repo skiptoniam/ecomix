@@ -73,38 +73,6 @@ testthat::test_that('species mix generic', {
   disp <- unlist(lapply(fm_pois, `[[`, 3))
   testthat::expect_true(all(is.na(disp)))
 
-  ##ippm test
-  simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="ippm")
-  y <- simulated_data$species_data
-  X <- simulated_data$covariate_data
-  offset <- simulated_data$offset
-  site_spp_weights <- simulated_data$background_weights
-  y_is_na <- simulated_data$y_is_na
-
-  # dim(y)
-  # dim(X)
-  # dim(y_is_na)
-  # dim(site_spp_weights)
-  # length(offset)
-
-  ss <- 1
-  disty <- 3
-  fm1 <- ecomix:::apply_glmnet_sam(ss, y, X, site_spp_weights, offset, y_is_na, disty)
-  testthat::expect_is(fm1,'list')
-  testthat::expect_length(fm1,3)
-
-  fm_ippm <- surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
-
-  alphas <- lapply(fm_ippm, `[[`, 1)
-  testthat::expect_length(unlist(alphas),S)
-
-  betas <- lapply(fm_ippm, `[[`, 2)
-  testthat::expect_length(do.call(rbind, betas),S*nP)
-
-  disp <- unlist(lapply(fm_ippm, `[[`, 3))
-  testthat::expect_true(all(is.na(disp)))
-
-
   ## negative binomial
   simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="negative_binomial")
 
