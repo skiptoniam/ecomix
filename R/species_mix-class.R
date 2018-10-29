@@ -1,4 +1,4 @@
-##### Species mix functions to export ####
+##### Species mix functions to export #####
 
 #' @title species_mix objects
 #' @rdname species_mix
@@ -989,11 +989,11 @@
   }
 
   if( disty != 5){
-    ft_sp <- stats::glm.fit(x=as.data.frame(X[ids_i,]),
+    ft_sp <- suppressWarnings(stats::glm.fit(x=as.data.frame(X[ids_i,]),
                             y=as.numeric(outcomes),
                             weights=as.numeric(site_spp_weights[ids_i,ss]),
                             offset=offset[ids_i],
-                            family=fam)
+                            family=fam))
     my_coefs <- coef(ft_sp)
   }
   disp <- NA

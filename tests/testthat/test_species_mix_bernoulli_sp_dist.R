@@ -43,37 +43,36 @@ testthat::test_that('species mix bernoulli', {
   # get the loglikelihood based on these values
   logls <- ecomix:::get_logls_sam(first_fit, fits, spp_wts, G, S, disty)
   pis <- rep(1/G, G)
-  taus <- ecomix:::get_taus(pis, logls, G, S)
+  taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
   taus <- ecomix:::skrink_taus(taus, max_tau=1/G + 0.1, G)
 
   ## get to this in a bit
   gg <- 1
-  testthat::expect_length(ecomix:::apply_glm_group_tau_sam(gg, y, X, site_spp_wts, offset, y_is_na, disty, taus),3)
+  testthat::expect_length(ecomix:::apply_glm_group_tau_sam(gg, y, X, site_spp_wts, offset, y_is_na, disty, taus, fits, logls$fitted),2)
 
   # ## now let's try and fit the optimisation
   sv <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control)
   tmp <- ecomix:::sam_optimise(y,X,offset,spp_wts,site_spp_wts, y_is_na, S, G, nrow(y), disty, start_vals = sv, control)
-  testthat::expect_length(tmp,15)
+  testthat::expect_length(tmp,16)
 
 
   set.seed(42)
   sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
   sp_form <- ~ 1
-  theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,7.9),3,3,byrow=TRUE)
+  theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,1.9),3,3,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
   simulated_data <- simulate_species_mix_data(archetype_formula=sam_form, species_formula=sp_form,
                                               dat,theta,dist="bernoulli")
   model_data <- make_mixture_data(species_data = simulated_data$species_data,
                                   covariate_data = simulated_data$covariate_data[,-1])
-  fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli',
-   n_mixtures=3)
-  testthat::expect_s3_class(fm1,'bernoulli')
+  fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli', n_mixtures=3)
+  # testthat::expect_s3_class(fm1,'bernoulli')
   testthat::expect_s3_class(fm1,'species_mix')
 
   fm2 <- species_mix(sam_form, sp_form, model_data, distribution = 'bernoulli',
                      n_mixtures=3,control=species_mix.control(em_prefit = FALSE))
-  testthat::expect_s3_class(fm2,'bernoulli')
+  # testthat::expect_s3_class(fm2,'bernoulli')
   testthat::expect_s3_class(fm2,'species_mix')
 
 
