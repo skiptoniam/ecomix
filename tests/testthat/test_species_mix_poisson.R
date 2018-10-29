@@ -33,7 +33,7 @@ testthat::test_that('species mix poisson', {
   testthat::expect_length(do.call(cbind,fm_poissonint)[1,],S)
 
   # test that the starting values work.
-  # testthat::expect_length(tmp <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control),10)
+  testthat::expect_length(tmp <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control),8)
 
   #get the taus
   starting_values <- ecomix:::initiate_fit_sam(y, X, site_spp_wts, offset, y_is_na, G, S, disty, control)
@@ -48,14 +48,12 @@ testthat::test_that('species mix poisson', {
 
   ## get to this in a bit
   gg <- 1
-  testthat::expect_length(ecomix:::apply_glm_group_tau_sam(gg, y, X, site_spp_wts, offset, y_is_na, disty, taus),3)
+  testthat::expect_length(ecomix:::apply_glm_group_tau_sam(gg, y, X, site_spp_wts, offset, y_is_na, disty, taus,fits,logls$fitted),2)
 
   # ## now let's try and fit the optimisation
   sv <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control)
   tmp <- ecomix:::sam_optimise(y,X,offset,spp_wts,site_spp_wts, y_is_na, S, G, nrow(y), disty, start_vals = sv, control)
-  testthat::expect_length(tmp,15)
-
-
+  testthat::expect_length(tmp,16)
 
 
   set.seed(42)
@@ -69,12 +67,10 @@ testthat::test_that('species mix poisson', {
                                   covariate_data = simulated_data$covariate_data[,-1])
   fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'poisson',
                      n_mixtures=3)
-  testthat::expect_s3_class(fm1,'poisson')
   testthat::expect_s3_class(fm1,'species_mix')
 
   fm2 <- species_mix(sam_form, sp_form, model_data, distribution = 'poisson',
                      n_mixtures=3,control=species_mix.control(em_prefit = FALSE))
-  testthat::expect_s3_class(fm2,'poisson')
   testthat::expect_s3_class(fm2,'species_mix')
 
 })

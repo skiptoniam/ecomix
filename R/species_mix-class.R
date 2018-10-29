@@ -138,7 +138,7 @@
   X <- get_X_sam(archetype_formula, dat$mf.X)
 
   #get distribution
-  disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie","gaussian")
+  disty.cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
   disty <- get_distribution_sam(disty.cases, distribution)
 
   # get offsets
@@ -783,7 +783,7 @@
         tmp1 <- c(alpha.score, beta.score, eta.score)
         # if( p.w > 0)#class( object$titbits$species_formula) == "formula")
           # tmp1 <- c( tmp1, gamma.score)
-        if(any(!is.na(object$coef$disp)|!is.null(object$coef$disp)))
+        if(any(!is.null(object$coef$disp)))
           tmp1 <- c( tmp1, disp.score)
         return(tmp1)
       }
@@ -1007,7 +1007,7 @@
     disp <- log(1/tmp)
   }
   if( disty == 6){
-    preds <- predict.glm.fit(ft_sp, X1, offy, disty)
+    preds <- predict.glm.fit(ft_sp, X[ids_i,], offset[ids_i], disty)
     disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
   }
    return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))

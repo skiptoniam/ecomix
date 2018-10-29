@@ -44,17 +44,17 @@ testthat::test_that('species mix gaussian', {
   # get the loglikelihood based on these values
   logls <- ecomix:::get_logls_sam(first_fit, fits, spp_wts, G, S, disty)
   pis <- rep(1/G, G)
-  taus <- ecomix:::get_taus(pis, logls, G, S)
+  taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
   taus <- ecomix:::skrink_taus(taus, max_tau=1/G + 0.1, G)
 
   ## get to this in a bit
   gg <- 1
-  testthat::expect_length(ecomix:::apply_glm_group_tau_sam(gg, y, X, site_spp_wts, offset, y_is_na, disty, taus),3)
+  testthat::expect_length(ecomix:::apply_glm_group_tau_sam(gg, y, X, site_spp_wts, offset, y_is_na, disty, taus, fits, logls$fitted),2)
 
   # ## now let's try and fit the optimisation
   sv <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control)
   tmp <- ecomix:::sam_optimise(y,X,offset,spp_wts,site_spp_wts, y_is_na, S, G, nrow(y), disty, start_vals = sv, control)
-  testthat::expect_length(tmp,15)
+  testthat::expect_length(tmp,16)
 
   set.seed(42)
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~1+x1+x2"))
@@ -67,12 +67,11 @@ testthat::test_that('species mix gaussian', {
                                   covariate_data = simulated_data$covariate_data[,-1])
   fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'gaussian',
                      n_mixtures=3)
-  testthat::expect_s3_class(fm1,'gaussian')
   testthat::expect_s3_class(fm1,'species_mix')
 
   fm2 <- species_mix(sam_form, sp_form, model_data, distribution = 'gaussian',
                      n_mixtures=3,control=species_mix.control(em_prefit = FALSE))
-  testthat::expect_s3_class(fm2,'gaussian')
+  # testthat::expect_s3_class(fm2,'gaussian')
   testthat::expect_s3_class(fm2,'species_mix')
 
 })
