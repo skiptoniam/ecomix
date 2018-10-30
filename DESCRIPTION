@@ -23,7 +23,8 @@ Imports:
     scales,
     numDeriv,
     surveillance,
-    progress
+    progress,
+    kmed
 Suggests:
     knitr,
     rmarkdown,

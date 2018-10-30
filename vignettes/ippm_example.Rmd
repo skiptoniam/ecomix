@@ -102,9 +102,9 @@ form <- as.formula(paste0("cbind(",paste(sp_names[1:127],collapse = ','),")~1+mi
 
 colnames(wts)<-sp_names
 
-fm4_myrt_var <- species_mix(archetype_formula = form, data = dat, weights = wts,
-                            n_mixtures = 4, distribution = 'ippm', standardise = TRUE,
-                            control = species_mix.control(cores = 1))
+# fm4_myrt_var <- species_mix(archetype_formula = form, data = dat, weights = wts,
+#                             n_mixtures = 4, distribution = 'ippm', standardise = TRUE,
+#                             control = species_mix.control(cores = 1))
 
 
 ```
@@ -114,25 +114,35 @@ running through some diagnostics
 X <- (dat[,-1:-127])
 X[,-1] <- scale(X[,-1]) 
 y <- dat[,1:127]
-colSums(y, na.rm = TRUE)
+
+which((colSums(y, na.rm = TRUE)/10000)>=0.025)
+colSums(y<1, na.rm = TRUE)
+which(colSums(y>0, na.rm = TRUE)>100)
 disty <- 3
 site_spp_weights <- wts
-site_spp_weights <-ifelse(site_spp_weights<1,1,site_spp_weights)
+# site_spp_weights <-ifelse(site_spp_weights<1,1,site_spp_weights)
 
 offset <- rep(0,nrow(y))
 y_is_na <- is.na(y)
 G <- 4
 S <- ncol(y)
-control <- species_mix.control()
+control <- species_mix.control(minimum_sites_prevelance = 0.025, minimum_occurrence_tolerance_ippm = 100)
 gg <- 1
 ss <- 1
 
-
+fm_sp_mods <- list()
 for (i in 1:S){
   print(i)
-  fm_sp_mods <- ecomix:::apply_glm_sam_inits(i, y, X, site_spp_weights, offset, y_is_na, disty)
+  fm_sp_mods[[i]] <- try(ecomix:::apply_glm_sam_inits(i, y, X, site_spp_weights, offset, y_is_na, disty))
                                       # .parallel = control$cores, .verbose = FALSE)# !control$quiet)
 }
+
+fm_sp_mods2 <-  surveillance::plapply(seq_len(S), try(ecomix:::apply_glm_sam_inits), y, X, site_spp_weights, offset, y_is_na, disty,
+                                      .parallel = control$cores, .verbose = FALSE)
+fmalpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
+beta <- do.call(rbind,lapply(fm_sp_mods, `[[`, 2))
+  disp <- unlist(lapply(fm_sp_mods, `[[`, 3))
+
 
 starting_values <- ecomix:::initiate_fit_sam(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control)
 fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,disp=starting_values$disp)

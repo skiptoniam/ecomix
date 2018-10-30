@@ -159,8 +159,6 @@
   # W <- get_W_sam(species_formula, dat$mf.W) # don't need yet. but will be important for partial sams.
 
   #get distribution
-  # disty.cases <- c("bernoulli","bernoulli_sp","poisson","ippm",
-  #                  "negative_binomial","tweedie","gaussian")
   disty.cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
   disty <- get_distribution_sam(disty.cases, distribution)
 
@@ -196,9 +194,6 @@
 
   # summarising data to console
   print_input_sam(y, X, S, archetype_formula, species_formula, distribution, quiet=control$quiet)
-
-  # getting the inits right
-  # inits <- setup_inits_sam(inits,S,G,disty)
 
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
   tmp <- species_mix.fit(y=y, X=X, G=n_mixtures, S=S, spp_weights=spp_weights,
@@ -334,12 +329,7 @@
     # need this for the na.omit step
     rownames(mf)<-seq_len(nrow(mf))
 
-    # get the model matrix and find the fitting formula. # could re implement this once species model is working.
-    # dist_dat <- check_distribution_clean_data_sam(archetype_formula, species_formula, mf, distribution)
-    # fit_distribution <- dist_dat[[1]]
-    # dat <- dist_dat[[2]]
-    # print(fit_distribution)
-
+    # clean the data
     dat <- clean_data_sam(mf, archetype_formula, NULL, distribution)
 
     # get responses
@@ -392,6 +382,7 @@
       }
     }
 
+    # standardise the data
     s.means <- NULL
     s.sds <- NULL
     if (standardise == TRUE) {
@@ -465,8 +456,8 @@
                                   ## intialisation controls
                                   init_method = 'kmeans',
                                   init_sd = 1,
-                                  rare_species_tolerance = 0.1,
-                                  rare_species_tolerance_ippm = 10,
+                                  minimum_sites_prevelance = 0.05,
+                                  # minimum_occurrence_tolerance_ippm = 20,
                                   ## EM algorithim controls
                                   em_prefit = TRUE,
                                   em_steps = 3,
@@ -491,7 +482,8 @@
   rval <- list(maxit = maxit, quiet = quiet, trace = trace,
                cores = cores,
                #initialisation controls
-               init_method = init_method, init_sd = init_sd, rare_species_tolerance = rare_species_tolerance, rare_species_tolerance_ippm = rare_species_tolerance_ippm,
+               init_method = init_method, init_sd = init_sd, minimum_sites_prevelance = minimum_sites_prevelance,
+               # minimum_occurrence_tolerance_ippm = minimum_occurrence_tolerance_ippm,
                #em controls
                em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps,# em_maxit = em_maxit,
                em_abstol = em_abstol, em_reltol = em_reltol, em_maxtau = em_maxtau,
@@ -1274,7 +1266,7 @@
   }
 
   if( disty != 5){
-    ft_sp <- suppressWarnings(stats::glm.fit(x=as.data.frame(X[ids_i,]),
+    ft_sp <- try(stats::glm.fit(x=as.data.frame(X[ids_i,]),
                             y=as.numeric(outcomes),
                             weights=as.numeric(site_spp_weights[ids_i,ss]),
                             offset=offset[ids_i],
@@ -1548,8 +1540,7 @@
   taus <- get_taus(pis, logls_mus$logl_sp, G, S)
   taus <- skrink_taus(taus,max_tau=1/G + 0.1, G) #max_tau=1/G + 0.1
 
-  # if(disty==3){ #this will be instead of the EM step.
-  fmix_coefs <- surveillance::plapply(1:G, apply_glm_group_tau_sam,
+    fmix_coefs <- surveillance::plapply(1:G, apply_glm_group_tau_sam,
                                       first_fit$y,
                                       first_fit$x,
                                       first_fit$site_spp_weights,
@@ -1768,28 +1759,55 @@ eta_to_mu <- function (eta, family, mu.min = 1e-16, mu.max = 1/mu.min){
 }
 
 "initiate_fit_sam" <- function(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control){
-  fm_sp_mods <- surveillance::plapply(seq_len(S), apply_glm_sam_inits, y, X, site_spp_weights, offset, y_is_na, disty,
-                                      .parallel = control$cores, .verbose = FALSE)# !control$quiet)
+
+  if(disty==3){
+    # prev_min_occurrence <- control$minimum_occurrence_tolerance_ippm
+    n <- max(colSums(y<1,na.rm = TRUE))
+    prev_min_sites <- floor(n*control$minimum_sites_prevelance)
+    sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
+  } else {
+    n <- nrow(y)
+    prev_min <- floor(n*control$minimum_sites_prevelance);
+    sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
+  }
+  # if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,]
+
+  fm_sp_mods <-  surveillance::plapply(seq_len(S), ecomix:::apply_glm_sam_inits, y, X,
+                                       site_spp_weights, offset, y_is_na, disty,
+                                      .parallel = control$cores, .verbose = FALSE)
 
   alpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
   beta <- do.call(rbind,lapply(fm_sp_mods, `[[`, 2))
   disp <- unlist(lapply(fm_sp_mods, `[[`, 3))
 
   #This is from Francis' code and should remove coefs which are based on rare species (and are dodgy)
-  n <- nrow(y)
-  s <- ncol(y)
-  if(disty==3) prev_min <- control$rare_species_tolerance_ippm
-  else prev_min <- floor(n*control$rare_species_tolerance);
-  sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min)
-  if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,]
-
+  # n <- nrow(y)
+  # s <- ncol(y)
+  # if(disty==3){
+  #   # prev_min_occurrence <- control$minimum_occurrence_tolerance_ippm
+  #   prev_min_sites <- floor(n*control$minimum_sites_prevelance)
+  #   sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
+  # } else {
+  #   prev_min <- floor(n*control$minimum_sites_prevelance);
+  #   sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
+  # }
+  # if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,]
 
   if(control$init_method=='kmeans'){
+    if(disty==3){
+      message( "Initial groups parameter estimates by K-medoids\n")
+      mrwdist <- kmed::distNumeric(beta, beta, method = "mrw")
+      fmmvnorm <- kmed::fastkmed(mrwdist, ncluster = G, iterate = 100)
+      tmp_grp <- fmmvnorm$cluster
+      grp_coefs <- beta[fmmvnorm$medoid,]
+    } else {
     if(!control$quiet)message( "Initial groups by K-means clustering\n")
-    tmp1 <- stats::kmeans(beta, centers=G, nstart=100)
-    tmp_grp <- tmp1$cluster
-    grp_coefs <- apply(beta, 2, function(x) tapply(x, tmp_grp, mean))
+      tmp1 <- stats::kmeans(beta, centers=G, nstart=100)
+      tmp_grp <- tmp1$cluster
+      grp_coefs <- apply(beta, 2, function(x) tapply(x, tmp_grp, mean))
+    }
   }
+
 
   if(control$init_method=='random' | is.null(tmp_grp)){
     if(!control$quiet)message( "Initial groups by random allocation and means from random numbers\n")
@@ -1988,14 +2006,14 @@ eta_to_mu <- function (eta, family, mu.min = 1e-16, mu.max = 1/mu.min){
   return(tau_star)
 }
 
-"lambda_penalisation_fun" <- function(x,lambda,kappa=0.1){ #assumes that x spans to pretty-well the unpenalised estiamtes
-  min.effective.penalty <- min( which( abs( x-tail( x, 1)) < 0.01 * abs( tail( x, 1))))    #the first that lambda that gives a coef close to the last lambda's corresponding coef
-  min.effective.penalty <- lambda[min.effective.penalty]
-  target.penalty <- kappa * min.effective.penalty
-  res.pos <- which.min( (lambda-target.penalty)^2)
-  res <- x[res.pos]
-  return( res)
-}
+# "lambda_penalisation_fun" <- function(x,lambda,kappa=0.1){ #assumes that x spans to pretty-well the unpenalised estiamtes
+#   min.effective.penalty <- min( which( abs( x-tail( x, 1)) < 0.01 * abs( tail( x, 1))))    #the first that lambda that gives a coef close to the last lambda's corresponding coef
+#   min.effective.penalty <- lambda[min.effective.penalty]
+#   target.penalty <- kappa * min.effective.penalty
+#   res.pos <- which.min( (lambda-target.penalty)^2)
+#   res <- x[res.pos]
+#   return( res)
+# }
 
 "print_input_sam" <- function(y, X, S, archetype_formula, species_formula, distribution, quiet=FALSE){
   if( quiet)
