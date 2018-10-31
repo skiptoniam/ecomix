@@ -232,3 +232,67 @@ testthat::test_that('species mix generic vcov functions', {
   testthat::expect_true(all(is.finite(sqrt(diag(vcv_mat_bb)))))
 
 })
+
+testthat::test_that('species mix predict functions', {
+
+  # build and test a single model.
+  library(ecomix)
+  set.seed(42)
+  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:100),collapse = ','),")~1+x1+x2"))
+  theta <- matrix(c(-2.9,1.6,0.5,1,-0.9,1,.9,2.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
+  dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
+  dat[,-1] <- scale(dat[,-1])
+  simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="bernoulli")
+  model_data <- make_mixture_data(species_data = simulated_data$species_data,
+                                  covariate_data = simulated_data$covariate_data[,-1])
+  fm1 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'bernoulli', n_mixtures=4)
+
+  preds <- predict(fm1)
+  testthat::expect_length(preds,2)
+  testthat::expect_is(preds,'list')
+
+  dat2 <- data.frame(x1=runif(100,-2.5,2.5),x2=rnorm(100,-2.5,2.5))
+  preds2 <- predict(fm1, newobs = dat2)
+  testthat::expect_is(preds2,'list')
+
+  # poisson
+  simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="poisson")
+  model_data <- make_mixture_data(species_data = simulated_data$species_data,
+                                  covariate_data = simulated_data$covariate_data[,-1])
+  fm2 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'poisson', n_mixtures=4)
+
+  preds3 <- predict(fm2)
+  testthat::expect_length(preds3,2)
+  testthat::expect_is(preds3,'list')
+
+  preds4 <- predict(fm2, newobs = dat2)
+  testthat::expect_is(preds4,'list')
+
+  # negative binomial
+  simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="negative_binomial")
+  model_data <- make_mixture_data(species_data = simulated_data$species_data,
+                                  covariate_data = simulated_data$covariate_data[,-1])
+  fm3 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'negative_binomial', n_mixtures=4)
+
+  preds5 <- predict(fm3)
+  testthat::expect_length(preds3,2)
+  testthat::expect_is(preds5,'list')
+
+  preds6 <- predict(fm2, newobs = dat2)
+  testthat::expect_is(preds6,'list')
+
+  #gaussian
+  simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="gaussian")
+  model_data <- make_mixture_data(species_data = simulated_data$species_data,
+                                  covariate_data = simulated_data$covariate_data[,-1])
+  fm4 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'gaussian', n_mixtures=4)
+
+  preds7 <- predict(fm4)
+  testthat::expect_length(preds7,2)
+  testthat::expect_is(preds7,'list')
+
+  preds8 <- predict(fm4, newobs = dat2)
+  testthat::expect_is(preds8,'list')
+
+})
+

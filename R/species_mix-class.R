@@ -859,7 +859,7 @@
    family <- object$dist
 
   if(is.null(newobs)) newobs <- object$titbits$X[,-1]
-  if(ncol(newobs) != ncol(object$coefs$beta)) stop("Number of coefficients does not match the number of predictors in the new observations - double check you're not including an intercept.")
+  if(ncol(newobs) != ncol(coefficients(object)$beta)) stop("Number of coefficients does not match the number of predictors in the new observations - double check you're not including an intercept.")
 
   G <- object$G
   S <- object$S
@@ -868,7 +868,7 @@
   ## To calculate fitted values, take a linear combination of the fitted mus from each component
   predict_mus <- predict_y <- predict_etas <- matrix(0,nrow(newobs),S)
   for(gg in seq_len(G)) {
-    etas.K <- matrix(object$coefs$alpha,nrow(newobs),S,byrow=TRUE) + matrix(as.matrix(newobs)%*%object$coef$beta[gg,],nrow(newobs),S,byrow=FALSE)
+    etas.K <- matrix(object$coefs$alpha,nrow(newobs),S,byrow=TRUE) + matrix(as.matrix(newobs)%*%coefficients(object)$beta[gg,],nrow(newobs),S,byrow=FALSE)
     if(family == "gaussian") mus.K <- etas.K
     if(family == "bernoulli") mus.K <- exp(etas.K)/(1+exp(etas.K))
     if(family %in% c("poisson","negative_binomial")) mus.K <- exp(etas.K)
@@ -878,19 +878,22 @@
   ## To generate an actual response matrix; simulate component-label then simulated response conditional
   for(ss in seq_len(S)) {
     get.z <- sample(seq_len(G), 1, prob = object$taus[ss,])
-    etas.K <- object$alpha[ss] + as.matrix(newobs)%*%object$coefs$beta[get.z,]
+    etas.K <- object$alpha[ss] + as.matrix(newobs)%*%coefficients(object)$beta[get.z,]
     if(family == "bernoulli")
       predict_y[,ss] <- rbinom(n, 1, p=exp(etas.K)/(1+exp(etas.K)))
     if(family == "poisson")
       predict_y[,ss] <- rpois(n, lambda = exp(etas.K))
-    if(family == "negative.binomial")
+    if(family == "negative_binomial")
       predict_y[,ss] <- rnbinom(n, mu = exp(etas.K), size = exp(-object$disp[ss]))
+    if(family == "gaussian")
+      predict_y[,ss] <- rnorm(n, mean = etas.K, sd = exp(object$disp[ss]))
   }
 
   rownames(predict_mus) <- rownames(predict_y) <- 1:nrow(newobs);
   colnames(predict_mus) <- colnames(predict_y) <- names(object$alpha)
 
-  return(list(predict_mus = round(predict_mus,5), predict_y = predict_y))
+  return(list(predict_mus = round(predict_mus,5),
+              predict_y = predict_y))
 }
 
 
