@@ -256,7 +256,7 @@
 
   if(is.null(inits)){
 
-    starting_values  <-  get_starting_values_sam(y = y, X = X,
+    starting_values  <-  ecomix:::get_starting_values_sam(y = y, X = X,
                                                  spp_weights = spp_weights,
                                                  site_spp_weights = site_spp_weights,
                                                  offset = offset,
@@ -1266,12 +1266,16 @@
   }
 
   if( disty != 5){
-    ft_sp <- try(stats::glm.fit(x=as.data.frame(X[ids_i,]),
+    ft_sp <- try(suppressWarnings(stats::glm.fit(x=as.data.frame(X[ids_i,]),
                             y=as.numeric(outcomes),
                             weights=as.numeric(site_spp_weights[ids_i,ss]),
                             offset=offset[ids_i],
-                            family=fam))
-    my_coefs <- coef(ft_sp)
+                            family=fam)), silent=TRUE)
+    if (class(ft_sp) %in% 'try-error'){
+      my_coefs <- rep(NA, ncol(X[ids_i,]))
+    } else {
+      my_coefs <- coef(ft_sp)
+    }
   }
   disp <- NA
   if(disty == 4){
@@ -1532,15 +1536,26 @@
 
 "get_initial_values_sam" <- function(y, X, spp_weights = NULL, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
+  # get intial model fits
   starting_values <- initiate_fit_sam(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control)
+
+  #if any are errors then remove them from the models for ever.
+  updated_y <- update_species_data_structure(y, y_is_na, site_spp_weights, starting_values$species_to_remove)
+  y <- updated_y[[1]]
+  y_is_na <- updated_y[[2]]
+  site_spp_weights <- updated_y[[3]]
+
   fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,disp=starting_values$disp)
-  first_fit <- list(x = X, y = y, site_spp_weights = site_spp_weights, offset = offset, y_is_na = y_is_na)
+  first_fit <- list(x = X, y = y, site_spp_weights = site_spp_weights, offset = offset,
+                    y_is_na = y_is_na, removed_species = starting_values$species_to_remove)
   logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
   pis <- rep(1/G, G)
   taus <- get_taus(pis, logls_mus$logl_sp, G, S)
-  taus <- skrink_taus(taus,max_tau=1/G + 0.1, G) #max_tau=1/G + 0.1
+  taus <- skrink_taus(taus, max_tau = 1/G + 0.1, G) #max_tau=1/G + 0.1
+  # else taus <- skrink_taus(taus, G=G)
 
-    fmix_coefs <- surveillance::plapply(1:G, apply_glm_group_tau_sam,
+  #now fit the mix model once
+  fmix_coefs <- surveillance::plapply(1:G, apply_glm_group_tau_sam,
                                       first_fit$y,
                                       first_fit$x,
                                       first_fit$site_spp_weights,
@@ -1555,13 +1570,12 @@
 
   #update the mix coefs.
   fmix_coefs <- t(do.call(cbind,fmix_coefs))[,-1]
-  fits$beta <- update_mix_coefs(fits$beta,fmix_coefs)
-  # }
+  fits$beta <- ecomix:::update_mix_coefs(fits$beta,fmix_coefs)
 
   res <- list()
   res$fits <- fits
   res$first_fit <- first_fit
-  res$pis <- pis
+  res$pis <- colMeans(taus)
   res$taus <- taus
   return(res)
 }
@@ -1654,7 +1668,7 @@
   return(out.list)
 }
 
-eta_to_mu <- function (eta, family, mu.min = 1e-16, mu.max = 1/mu.min){
+"eta_to_mu" <- function (eta, family, mu.min = 1e-16, mu.max = 1/mu.min){
   mu <- family$linkinv(eta)
   mu[mu < mu.min] = mu.min
   mu[mu > mu.max] = mu.max
@@ -1760,18 +1774,6 @@ eta_to_mu <- function (eta, family, mu.min = 1e-16, mu.max = 1/mu.min){
 
 "initiate_fit_sam" <- function(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
-  if(disty==3){
-    # prev_min_occurrence <- control$minimum_occurrence_tolerance_ippm
-    n <- max(colSums(y<1,na.rm = TRUE))
-    prev_min_sites <- floor(n*control$minimum_sites_prevelance)
-    sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
-  } else {
-    n <- nrow(y)
-    prev_min <- floor(n*control$minimum_sites_prevelance);
-    sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
-  }
-  # if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,]
-
   fm_sp_mods <-  surveillance::plapply(seq_len(S), ecomix:::apply_glm_sam_inits, y, X,
                                        site_spp_weights, offset, y_is_na, disty,
                                       .parallel = control$cores, .verbose = FALSE)
@@ -1780,18 +1782,34 @@ eta_to_mu <- function (eta, family, mu.min = 1e-16, mu.max = 1/mu.min){
   beta <- do.call(rbind,lapply(fm_sp_mods, `[[`, 2))
   disp <- unlist(lapply(fm_sp_mods, `[[`, 3))
 
-  #This is from Francis' code and should remove coefs which are based on rare species (and are dodgy)
-  # n <- nrow(y)
-  # s <- ncol(y)
-  # if(disty==3){
-  #   # prev_min_occurrence <- control$minimum_occurrence_tolerance_ippm
-  #   prev_min_sites <- floor(n*control$minimum_sites_prevelance)
-  #   sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
-  # } else {
-  #   prev_min <- floor(n*control$minimum_sites_prevelance);
-  #   sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
-  # }
-  # if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,]
+  species_to_remove <- which(apply(beta, 1, function(x) all(is.na(x))))
+  if(length(species_to_remove)>0){
+    #update fits
+    alpha <- alpha[-species_to_remove]
+    beta <- beta[-species_to_remove,]
+    disp <- disp[-species_to_remove]
+
+    # update y, y_is_na and weights
+    updated_y <- update_species_data_structure(y, y_is_na, site_spp_weights, species_to_remove)
+    y <- update_y[[1]]
+    y_is_na <- update_y[[2]]
+    site_spp_weights <- update_y[[3]]
+  } else {
+    species_to_remove <- NA
+  }
+
+
+  if(disty==3){
+    n <- max(colSums(y<1,na.rm = TRUE))
+    prev_min_sites <- floor(n*control$minimum_sites_prevelance)
+    sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
+  } else {
+    n <- nrow(y)
+    prev_min_sites <- floor(n*control$minimum_sites_prevelance);
+    sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
+  }
+
+  if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,]
 
   if(control$init_method=='kmeans'){
     if(disty==3){
@@ -1821,6 +1839,7 @@ eta_to_mu <- function (eta, family, mu.min = 1e-16, mu.max = 1/mu.min){
   results$alpha <- alpha
   results$beta <- grp_coefs
   results$disp <- disp
+  results$species_to_remove <- species_to_remove
 
   return(results)
 }
@@ -1854,32 +1873,34 @@ eta_to_mu <- function (eta, family, mu.min = 1e-16, mu.max = 1/mu.min){
   disp <- as.numeric(start_vals$disp)
 
   #scores
-  alpha.score <- as.numeric(rep(NA, length(alpha)))
-  beta.score <- as.numeric(rep(NA, length(beta)))
-  eta.score <- as.numeric(rep(NA, length(eta)))
-  disp.score <- as.numeric(rep(NA, length(disp)))
+  alpha.score <- as.numeric(rep(-99999, length(alpha)))
+  beta.score <- as.numeric(rep(-99999, length(beta)))
+  eta.score <- as.numeric(rep(-99999, length(eta)))
+  disp.score <- as.numeric(rep(-99999, length(disp)))
   getscores <- 1
-  scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,disp))))
+  scores <- as.numeric(rep(-99999,length(c(alpha,beta,eta,disp))))
 
 
   if(disty%in%c(4,6)){
     control$optiDisp <- as.integer(1)
+    disp <- -99999
   }else{
     control$optiDisp <- as.integer(0)
   }
 
   #model quantities
-  pis_out <- as.numeric(rep(NA, G))  #container for the fitted RCP model
-  mus <- as.numeric(array( NA, dim=c( Obs, S, G)))  #container for the fitted spp model
-  loglikeS <- as.numeric(rep(NA, S))
-  loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
+  pis_out <- as.numeric(rep(-99999, G))  #container for the fitted RCP model
+  mus <- as.numeric(array(-99999, dim=c(Obs, S, G)))  #container for the fitted spp model
+  loglikeS <- as.numeric(rep(-99999, S))
+  loglikeSG  <- as.numeric(matrix(-99999, nrow = S, ncol = G))
 
   #c++ call to optimise the model (needs pretty good starting values)
   tmp <- .Call("species_mix_cpp",
                as.numeric(as.matrix(y)), as.numeric(as.matrix(X[,-1])), as.numeric(offset), as.numeric(spp_weights),
                as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
                # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
-               as.integer(S), as.integer(G), as.integer(np), as.integer(Obs), as.integer(disty),as.integer(control$optiDisp),
+               as.integer(S), as.integer(G), as.integer(np), as.integer(Obs), as.integer(disty),
+               as.integer(control$optiDisp),
                # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
                as.double(alpha), as.double(beta), as.double(eta), as.double(disp),
                # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
@@ -1888,9 +1909,11 @@ eta_to_mu <- function (eta, family, mu.min = 1e-16, mu.max = 1/mu.min){
                pis_out, mus, loglikeS, loglikeSG,
                # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
                as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
-               as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp), as.integer(control$printparams_cpp),
+               as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp),
+               as.integer(control$printparams_cpp),
                # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
-               as.integer( control$optimise_cpp), as.integer(control$loglOnly_cpp), as.integer( control$derivOnly_cpp),
+               as.integer( control$optimise_cpp), as.integer(control$loglOnly_cpp),
+               as.integer( control$derivOnly_cpp),
                # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
                PACKAGE = "ecomix")
 
@@ -2099,7 +2122,8 @@ eta_to_mu <- function (eta, family, mu.min = 1e-16, mu.max = 1/mu.min){
                        archetype_formula =  archetype_formula,
                        species_formula = species_formula,
                        control = control,
-                       distribution = distribution)
+                       distribution = distribution,
+                       removed_species = removed_species)
     else{
       titbits <- list()
       if( "Y" %in% titbits)
@@ -2124,6 +2148,8 @@ eta_to_mu <- function (eta, family, mu.min = 1e-16, mu.max = 1/mu.min){
         titbits$control <- control
       if( "distribution" %in% titbits)
         titbits$distribution <- distribution
+      if( "removed_species" %in% titbits)
+        titbits$removed_species <- removed_species
     }
     return( titbits)
 }
@@ -2187,6 +2213,11 @@ eta_to_mu <- function (eta, family, mu.min = 1e-16, mu.max = 1/mu.min){
   else
     tmp <- old + kappa*(new-old)
   return( tmp)
+}
+
+"update_species_data_structure" <- function(y, y_is_na, site_spp_weights, species_to_remove){
+  if(is.na(species_to_remove)) return(list(y, y_is_na, site_spp_weights))
+  else return(list(y[,-species_to_remove], y_is_na[,-species_to_remove], site_spp_weights[,-species_to_remove]))
 }
 
 "reltol_fun" <- function(logl_n1, logl_n){
