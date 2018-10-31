@@ -294,5 +294,7 @@ testthat::test_that('species mix predict functions', {
   preds8 <- predict(fm4, newobs = dat2)
   testthat::expect_is(preds8,'list')
 
+  testthat::expect_error(preds8 <- predict(fm4, newobs = data.frame(1,dat2)))
+
 })
 
