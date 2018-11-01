@@ -590,88 +590,88 @@
   print(x$taus)
 }
 
-#' @rdname species_mix
-#' @export
-#' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep).
-
-"residuals.species_mix" <- function( object, ..., type="RQR", quiet=FALSE) {
-    if( ! type %in% c("deviance","RQR"))
-      stop( "Unknown type of residual requested. Only deviance and RQR (for randomised quantile residuals) are implemented\n")
-
-    if( type=="deviance"){
-      resids <- sqrt( -2*object$logl.sites)
-      if( !quiet){
-        message( "The sign of the deviance residuals is unknown -- what does sign mean for multiple species? Their mean is also unknown -- what is a saturated model in a mixture model?")
-        message( "This is not a problem if you are just looking for an over-all fit diagnostic using simulation envelopes (cf normal and half normal plots).")
-        message( "It is a problem however, when you try to see how residuals vary with covariates etc.. but the meaning of these plots needs to be considered carefully as the residuals are for multiple species anyway.")
-      }
-    }
-    if( type=="RQR"){
-      resids <- matrix( NA, nrow=object$n, ncol=object$S)
-      switch( object$dist,
-              bernoulli = { fn <- function(y,mu,logdisp,power) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
-              poisson = { fn <- function(y,mu,logdisp,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
-              ippm = { fn <- function(y,mu,logdisp,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
-              negative_binomial = { fn <- function(y,mu,logdisp,power) pnbinom( q=y, mu=mu, size=1/exp( logdisp), lower.tail=TRUE)},
-              gaussian = { fn <- function(y,mu,logdisp,power) pnorm( q=y, mean=mu, sd=exp( logdisp), lower.tail=TRUE)})
-
-      for( ss in 1:object$S){
-        if( all( object$titbits$power==-999999))  tmpPow <- NULL else tmpPow <- object$titbits$power[ss]
-        if( object$dist %in% c("bernoulli","poisson","negative_binomial")){
-          tmpLower <- fn( object$titbits$Y[,ss]-1, object$mus[,ss,], object$coef$disp[ss], tmpPow)
-          tmpUpper <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$disp[ss], tmpPow)
-          tmpLower <- rowSums( tmpLower * object$pis)
-          tmpLower <- ifelse( tmpLower<0, 0, tmpLower) #get rid of numerical errors for really small negative values
-          tmpLower <- ifelse( tmpLower>1, 1, tmpLower) #get rid of numerical errors for 1+epsilon.
-          tmpUpper <- rowSums( tmpUpper * object$pis)
-          tmpUpper <- ifelse( tmpUpper<0, 0, tmpUpper) #get rid of numerical errors for really small negative values
-          tmpUpper <- ifelse( tmpUpper>1, 1, tmpUpper) #get rid of numerical errors for 1+epsilon.
-          resids[,ss] <- runif( object$n, min=tmpLower, max=tmpUpper)
-          resids[,ss] <- qnorm( resids[,ss])
-        }
-        if( object$dist == "gaussian"){
-          tmp <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$disp[ss], object$titbits$power[ss])
-          tmp <- rowSums( tmp * object$pis)
-          resids[,ss] <- qnorm( tmp)
-        }
-      }
-      if( !quiet & sum( resids==Inf | resids==-Inf)>0)
-        message( "Some residuals, well",sum( resids==Inf | resids==-Inf), "to be precise, are very large (infinite actually).\nThese observations lie right on the edge of the realistic range of the model for the data (maybe even over the edge).")
-
-    }
-    if( type=="RQR.sim"){
-      nsim <- 1000
-      if( is.null( mc.cores))
-        mc.cores <- getOption("mc.cores", 4)
-      resids <- matrix( NA, nrow=object$n, ncol=object$S)
-      RQR.fun <- function(ii){
-        if( !quiet)
-          setTxtProgressBar(pb, ii)
-        X1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$X[ii,,drop=FALSE])
-        W1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$W[ii,,drop=FALSE])
-        sims <- simRCPdata( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, logDisps=object$coef$disp, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,dist=object$dist)
-        sims <- sims[,1:object$S]
-        yi <- object$titbits$Y[ii,,drop=FALSE]
-        many_yi <- matrix( rep( yi, each=nsim), ncol=object$S)
-        F_i <- colMeans( sims <= many_yi)
-        F_i_minus <- colMeans( sims < many_yi)
-        r_i <- runif( object$S, min=F_i_minus, max=F_i)
-        return( qnorm( r_i))
-      }
-      if( !quiet)
-        pb <- txtProgressBar(min = 1, max = object$n, style = 3, char = "><(('> ")
-      if( Sys.info()['sysname'] == "Windows" | mc.cores==1)
-        resids <- lapply( 1:object$n, RQR.fun)
-      else
-        resids <- parallel::mclapply( 1:object$n, RQR.fun, mc.cores=mc.cores)
-      if( !quiet)
-        message("")
-      resids <- matrix( unlist( resids), nrow=object$n, ncol=object$S, byrow=TRUE)
-      if( !quiet & sum( resids==Inf | resids==-Inf)>0)
-        message( "Some residuals, well",sum( resids==Inf | resids==-Inf), "to be precise, are very large (infinite actually).\nThese observations lie right on the edge of the Monte Carlo approximation to the distribution function.\nThis may be remedied by getting a better approximation (increasing nsim).")
-    }
-    return( resids)
-  }
+#' #' @rdname species_mix
+#' #' @export
+#' #' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep).
+#'
+#' "residuals.species_mix" <- function( object, ..., type="RQR", quiet=FALSE) {
+#'     if( ! type %in% c("deviance","RQR"))
+#'       stop( "Unknown type of residual requested. Only deviance and RQR (for randomised quantile residuals) are implemented\n")
+#'
+#'     if( type=="deviance"){
+#'       resids <- sqrt( -2*object$logl.sites)
+#'       if( !quiet){
+#'         message( "The sign of the deviance residuals is unknown -- what does sign mean for multiple species? Their mean is also unknown -- what is a saturated model in a mixture model?")
+#'         message( "This is not a problem if you are just looking for an over-all fit diagnostic using simulation envelopes (cf normal and half normal plots).")
+#'         message( "It is a problem however, when you try to see how residuals vary with covariates etc.. but the meaning of these plots needs to be considered carefully as the residuals are for multiple species anyway.")
+#'       }
+#'     }
+#'     if( type=="RQR"){
+#'       resids <- matrix( NA, nrow=object$n, ncol=object$S)
+#'       switch( object$dist,
+#'               bernoulli = { fn <- function(y,mu,logdisp,power) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
+#'               poisson = { fn <- function(y,mu,logdisp,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
+#'               ippm = { fn <- function(y,mu,logdisp,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
+#'               negative_binomial = { fn <- function(y,mu,logdisp,power) pnbinom( q=y, mu=mu, size=1/exp( logdisp), lower.tail=TRUE)},
+#'               gaussian = { fn <- function(y,mu,logdisp,power) pnorm( q=y, mean=mu, sd=exp( logdisp), lower.tail=TRUE)})
+#'
+#'       for( ss in 1:object$S){
+#'         if( all( object$titbits$power==-999999))  tmpPow <- NULL else tmpPow <- object$titbits$power[ss]
+#'         if( object$dist %in% c("bernoulli","poisson","negative_binomial")){
+#'           tmpLower <- fn( object$titbits$Y[,ss]-1, object$mus[,ss,], object$coef$disp[ss], tmpPow)
+#'           tmpUpper <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$disp[ss], tmpPow)
+#'           tmpLower <- rowSums( tmpLower * object$pis)
+#'           tmpLower <- ifelse( tmpLower<0, 0, tmpLower) #get rid of numerical errors for really small negative values
+#'           tmpLower <- ifelse( tmpLower>1, 1, tmpLower) #get rid of numerical errors for 1+epsilon.
+#'           tmpUpper <- rowSums( tmpUpper * object$pis)
+#'           tmpUpper <- ifelse( tmpUpper<0, 0, tmpUpper) #get rid of numerical errors for really small negative values
+#'           tmpUpper <- ifelse( tmpUpper>1, 1, tmpUpper) #get rid of numerical errors for 1+epsilon.
+#'           resids[,ss] <- runif( object$n, min=tmpLower, max=tmpUpper)
+#'           resids[,ss] <- qnorm( resids[,ss])
+#'         }
+#'         if( object$dist == "gaussian"){
+#'           tmp <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$disp[ss], object$titbits$power[ss])
+#'           tmp <- rowSums( tmp * object$pis)
+#'           resids[,ss] <- qnorm( tmp)
+#'         }
+#'       }
+#'       if( !quiet & sum( resids==Inf | resids==-Inf)>0)
+#'         message( "Some residuals, well",sum( resids==Inf | resids==-Inf), "to be precise, are very large (infinite actually).\nThese observations lie right on the edge of the realistic range of the model for the data (maybe even over the edge).")
+#'
+#'     }
+#'     if( type=="RQR.sim"){
+#'       nsim <- 1000
+#'       if( is.null( mc.cores))
+#'         mc.cores <- getOption("mc.cores", 4)
+#'       resids <- matrix( NA, nrow=object$n, ncol=object$S)
+#'       RQR.fun <- function(ii){
+#'         if( !quiet)
+#'           setTxtProgressBar(pb, ii)
+#'         X1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$X[ii,,drop=FALSE])
+#'         W1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$W[ii,,drop=FALSE])
+#'         sims <- simRCPdata( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, logDisps=object$coef$disp, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,dist=object$dist)
+#'         sims <- sims[,1:object$S]
+#'         yi <- object$titbits$Y[ii,,drop=FALSE]
+#'         many_yi <- matrix( rep( yi, each=nsim), ncol=object$S)
+#'         F_i <- colMeans( sims <= many_yi)
+#'         F_i_minus <- colMeans( sims < many_yi)
+#'         r_i <- runif( object$S, min=F_i_minus, max=F_i)
+#'         return( qnorm( r_i))
+#'       }
+#'       if( !quiet)
+#'         pb <- txtProgressBar(min = 1, max = object$n, style = 3, char = "><(('> ")
+#'       if( Sys.info()['sysname'] == "Windows" | mc.cores==1)
+#'         resids <- lapply( 1:object$n, RQR.fun)
+#'       else
+#'         resids <- parallel::mclapply( 1:object$n, RQR.fun, mc.cores=mc.cores)
+#'       if( !quiet)
+#'         message("")
+#'       resids <- matrix( unlist( resids), nrow=object$n, ncol=object$S, byrow=TRUE)
+#'       if( !quiet & sum( resids==Inf | resids==-Inf)>0)
+#'         message( "Some residuals, well",sum( resids==Inf | resids==-Inf), "to be precise, are very large (infinite actually).\nThese observations lie right on the edge of the Monte Carlo approximation to the distribution function.\nThis may be remedied by getting a better approximation (increasing nsim).")
+#'     }
+#'     return( resids)
+#'   }
 
 
 #'@rdname species_mix
