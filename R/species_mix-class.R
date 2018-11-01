@@ -267,7 +267,7 @@
     starting_values <- inits
   }
 
-  tmp <- sam_optimise(y=starting_values$first_fit$y,
+  tmp <- ecomix:::sam_optimise(y=starting_values$first_fit$y,
                       X=starting_values$first_fit$x,
                       offset = starting_values$first_fit$offset,
                       spp_weights = starting_values$first_fit$spp_weights,
@@ -1733,7 +1733,7 @@
   if(length(species_to_remove)>0){
     #update fits
     alpha <- alpha[-species_to_remove]
-    beta <- beta[-species_to_remove,]
+    beta <- beta[-species_to_remove,,drop=FALSE]
     disp <- disp[-species_to_remove]
 
     # update y, y_is_na and weights
@@ -1755,23 +1755,22 @@
     sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
   }
 
-  if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,]
+  if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,,drop=FALSE]
 
   if(control$init_method=='kmeans'){
-    if(disty==3){
-      message( "Initial groups parameter estimates by K-medoids\n")
+    if(!control$quiet)message( "Initial groups by K-means clustering\n")
+    tmp1 <- stats::kmeans(beta, centers=G, nstart=100)
+    tmp_grp <- tmp1$cluster
+    grp_coefs <- apply(beta, 2, function(x) tapply(x, tmp_grp, mean))
+  }
+
+  if(control$init_method=='kmed'){
+  message( "Initial groups parameter estimates by K-medoids\n")
       mrwdist <- kmed::distNumeric(beta, beta, method = "mrw")
       fmmvnorm <- kmed::fastkmed(mrwdist, ncluster = G, iterate = 100)
       tmp_grp <- fmmvnorm$cluster
-      grp_coefs <- beta[fmmvnorm$medoid,]
-    } else {
-    if(!control$quiet)message( "Initial groups by K-means clustering\n")
-      tmp1 <- stats::kmeans(beta, centers=G, nstart=100)
-      tmp_grp <- tmp1$cluster
-      grp_coefs <- apply(beta, 2, function(x) tapply(x, tmp_grp, mean))
-    }
+      grp_coefs <- beta[fmmvnorm$medoid,,drop=FALSE]
   }
-
 
   if(control$init_method=='random' | is.null(tmp_grp)){
     if(!control$quiet)message( "Initial groups by random allocation and means from random numbers\n")
@@ -1822,7 +1821,7 @@
     control$optiDisp <- as.integer(1)
   }else{
     control$optiDisp <- as.integer(0)
-    # disp <- -99999
+    disp <- -99999
   }
 
   #model quantities

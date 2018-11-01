@@ -98,27 +98,30 @@ Now let's try a fit a ippsam with these data. Fingers crossed.
 ```{r}
 # library(mgcv)
 sp_names <- colnames(dat)[1:127]
-form <- as.formula(paste0("cbind(",paste(sp_names[1:127],collapse = ','),")~1+min_temp+min_temp2+max_temp+max_temp2+annual_rainfall+annual_rainfall2+soil_type+soil_type2"))
+form <- as.formula(paste0("cbind(",paste(sp_names[1:10],collapse = ','),")~1+min_temp"))
 
 colnames(wts)<-sp_names
 
 fm4_myrt_var <- species_mix(archetype_formula = form, data = dat, weights = wts,
                             n_mixtures = 4, distribution = 'ippm', standardise = TRUE,
-                            control = species_mix.control(cores = 1))
+                            control = species_mix.control(cores = 1,minimum_sites_prevelance = 0.025))
 
 
 ```
 
 running through some diagnostics
 ```{r}
-X <- (dat[,-1:-127])
+X <- (dat[,128:129])
 X[,-1] <- scale(X[,-1]) 
-y <- dat[,1:127]
+# X <- X[,1:2]
+y <- dat[,1:12]
 
 which((colSums(y, na.rm = TRUE)/10000)>=0.025)
 colSums(y<1, na.rm = TRUE)
 which(colSums(y>0, na.rm = TRUE)>100)
 disty <- 3
+S <- ncol(y)
+spp_weights <- rep(1,S)
 site_spp_weights <- wts
 # site_spp_weights <-ifelse(site_spp_weights<1,1,site_spp_weights)
 
