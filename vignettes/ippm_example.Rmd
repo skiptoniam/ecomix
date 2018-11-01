@@ -129,7 +129,10 @@ S <- ncol(y)
 control <- species_mix.control(minimum_sites_prevelance = 0.025, minimum_occurrence_tolerance_ippm = 100)
 gg <- 1
 ss <- 1
+```
 
+
+```{r}
 fm_sp_mods <- list()
 for (ss in seq_len(S)){
     fm_sp_mods[[ss]] <- try(suppressWarnings(ecomix:::apply_glm_sam_inits(ss, y, X, site_spp_weights, offset, y_is_na, disty)))
