@@ -7,10 +7,8 @@
 \alias{control}
 \alias{species_mix.control}
 \alias{simulate_species_mix_data}
-\alias{species_mix_estimate_groups}
 \alias{coef.species_mix}
 \alias{print.species_mix}
-\alias{residuals.species_mix}
 \alias{vcov.species_mix}
 \alias{AIC.species_mix}
 \alias{BIC.species_mix}
@@ -46,16 +44,9 @@ species_mix.control(maxit = 1000, quiet = FALSE, trace = 1, cores = 1,
 simulate_species_mix_data(archetype_formula, species_formula, dat, theta,
   distribution = "bernoulli")
 
-species_mix_estimate_groups(archetype_formula = NULL, species_formula = ~1,
-  data, n_mixtures = 1:10, distribution = "bernoulli", offset = NULL,
-  weights = NULL, control = species_mix.control(cores = 1), inits = NULL,
-  standardise = TRUE, titbits = FALSE)
-
 \method{coef}{species_mix}(object, ...)
 
 \method{print}{species_mix}(x, ...)
-
-\method{residuals}{species_mix}(object, ..., type = "RQR", quiet = FALSE)
 
 \method{vcov}{species_mix}(object, ..., object2 = NULL,
   method = "FiniteDifference", nboot = 10, mc.cores = 1, D.accuracy = 2)
@@ -187,10 +178,6 @@ minimum you will need pis (additive_logitic transformed), alpha
 \description{
 Fits a finite mixture model to identify species archetype
 models (SAMs).
-
-This function runs the 'species_mix' function but it iterates through groups (1 to 10) by default.
-
-The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep).
 }
 \details{
 species_mix is used to fit mixtures of glms to multivariate
@@ -224,10 +211,6 @@ archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
 theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
 simulated_data <- simulate_species_mix_data(archetype_formula,~1,dat,theta,dist="bernoulli")
-}
-
-\dontrun{
-fm_groups <- species_mix_estimate_groups(sam_form, sp_form, data, distribution = 'bernoulli', n_mixtures=1:10)
 }
 
 #Print information about a species_mix model

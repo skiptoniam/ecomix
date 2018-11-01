@@ -510,46 +510,41 @@
 
 }
 
-#'@rdname species_mix
+#' #'@rdname species_mix
+#' #'
+#' #'@name species_mix_estimate_groups
+#' #'
+#' #'@description This function runs the 'species_mix' function but it iterates through groups (1 to 10) by default.
+#' #'
+#' #'@export
+#' #'
+#' #'@examples
+#' #'
+#' #' \dontrun{
+#' #' fm_groups <- species_mix_estimate_groups(sam_form, sp_form, data, distribution = 'bernoulli', n_mixtures=1:10)
+#' #'}
+#' "species_mix_estimate_groups" <- function(archetype_formula = NULL, species_formula = ~1,
+#'                                           data, n_mixtures = 1:10, distribution="bernoulli",
+#'                                           offset=NULL, weights=NULL, bb_weights=NULL,
+#'                                           control=NULL, inits=NULL,
+#'                                           standardise = TRUE, titbits = TRUE, cores = 1){
 #'
-#'@name species_mix_estimate_groups
+#'   out <- surveillance::plapply(n_mixtures, apply_species_mix,
+#'                                archetype_formula, species_formula, data, distribution, offset,
+#'                                weights, bb_weights, control, inits, standardise, titbits,
+#'                                .parallel = cores, .verbose = FALSE)
+#'   aic <- rep(0,length(n_mixtures))
+#'   bic <- rep(0,length(n_mixtures))
+#'   fm <- list()
+#'   for(i in seq_along(n_mixtures))
+#'     if(!is.atomic(out[[i]])){
+#'       aic[i] <- out[[i]]$aic
+#'       bic[i] <- out[[i]]$bic
+#'       fm[[i]] <- list(logl=out[[i]]$logl,coef=out[[i]]$coef,tau=out[[i]]$taus,pi=out[[i]]$pi)#,covar=out[[i]]$covar)
+#'     }
+#'   return(list(aic=aic,bic=bic,fm=fm))
+#' }
 #'
-#'@description This function runs the 'species_mix' function but it iterates through groups (1 to 10) by default.
-#'
-#'@export
-#'
-#'@examples
-#'
-#' \dontrun{
-#' fm_groups <- species_mix_estimate_groups(sam_form, sp_form, data, distribution = 'bernoulli', n_mixtures=1:10)
-#'}
-"species_mix_estimate_groups" <- function(archetype_formula = NULL, species_formula = ~1,
-                                          data, n_mixtures = 1:10, distribution="bernoulli",
-                                          offset=NULL, weights=NULL, control= species_mix.control(cores = 1),
-                                          inits=NULL, standardise = TRUE, titbits=FALSE){
-  my.fun <- function(G, archetype_formula, species_formula, data, distribution, offset,
-                     weights, bb_weights, control, inits, standardise, titbits){
-
-    message("Fitting group",G,"\n")
-    tmp <- species_mix(archetype_formula, species_formula, data, G, distribution, offset,
-                        weights, bb_weights, control, inits, standardise, titbits)
-    return(tmp)
-    }
-
-  out <- surveillance::plapply(n_mixtures, my.fun, archetype_formula, species_formula, data, distribution, offset,
-                               weights, bb_weights, control, inits, standardise, titbits,
-                               .parallel = control$cores, .verbose = !control$quiet)
-  aic <- rep(0,length(n_mixtures))
-  bic <- rep(0,length(n_mixtures))
-  fm <- list()
-  for(i in seq_along(n_mixtures))
-    if(!is.atomic(out[[i]])){
-      aic[i] <- out[[i]]$aic
-      bic[i] <- out[[i]]$bic
-      fm[[i]] <- list(logl=out[[i]]$logl,coef=out[[i]]$coef,tau=out[[i]]$taus,pi=out[[i]]$pi)#,covar=out[[i]]$covar)
-    }
-  return(list(aic=aic,bic=bic,fm=fm))
-}
 
 #' @rdname species_mix
 #'
@@ -1066,6 +1061,15 @@
     mix_coefs <- coef(ft_mix)
     return(as.matrix(mix_coefs))
 }
+
+# "apply_species_mix" <- function(G, archetype_formula, species_formula, data, distribution, offset,
+#                               weights, bb_weights, control, inits, standardise, titbits){
+#
+#   tmp <- species_mix(archetype_formula, species_formula, data, G, distribution, offset,
+#                      weights, bb_weights, control, inits, standardise, titbits)
+#   return(tmp)
+# }
+
 
 "get_starting_values_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
