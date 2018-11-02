@@ -79,7 +79,7 @@ po_matrix_coords <- cbind(pres_coords[,-1],po_matrix)
 library(qrbp)
 n_bk_pts <- 10000
 covar <- stack(b[[c(7:9,13)]])
-covar2 <- poly(covar,degree = 2)
+covar2 <- (covar)^2
 names(covar)<-c('min_temp','max_temp','annual_rainfall','soil_type')
 names(covar2) <- paste0(c('min_temp','max_temp','annual_rainfall','soil_type'),2)
 covars <- stack(covar,covar2)
@@ -98,16 +98,19 @@ Now let's try a fit a ippsam with these data. Fingers crossed.
 ```{r}
 # library(mgcv)
 sp_names <- colnames(dat)[1:127]
-form <- as.formula(paste0("cbind(",paste(sp_names[1:127],collapse = ','),")~1+min_temp+max_temp"))
+form <- as.formula(paste0("cbind(",paste(sp_names[1:100],collapse = ','),")~1+poly(min_temp,degree=2)+poly(max_temp,degree=2)+poly(annual_rainfall,degree=2)"))
 
 colnames(wts)<-sp_names
 
-fm4_myrt_var <- species_mix(archetype_formula = form, data = dat, weights = wts,
+fm1 <- species_mix(archetype_formula = form, data = dat, weights = wts,
                             n_mixtures = 10, distribution = 'ippm', standardise = TRUE,
-                            control = species_mix.control(cores = 1,minimum_sites_prevelance = 0.01))
-
-fm4_myrt_var
-
+                            control = species_mix.control(init_method = 'kmed',cores = 1,
+                                                          minimum_sites_prevelance = 0.025))
+df <- as.data.frame(covar[[-4]])
+df_no_na <- na.omit(df)
+mf <- model.frame(~poly(min_temp,degree=2)+poly(max_temp,degree=2)+poly(annual_rainfall,degree=2),df_no_na)
+head(mf)
+preds <- predict(fm1,mf)
 ```
 
 running through some diagnostics

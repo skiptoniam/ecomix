@@ -1763,6 +1763,7 @@
   }
 
   colnames(grp_coefs) <- colnames(X[,-1])
+  cat(grp_coefs,"\n\n")
   results <- list()
   results$grps <- tmp_grp
   results$alpha <- alpha
