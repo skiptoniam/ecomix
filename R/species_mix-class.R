@@ -213,7 +213,7 @@
   #titbits object, if wanted/needed.
   tmp$titbits <- get_titbits_sam(titbits, y, X, spp_weights, site_spp_weights, offset,
                                  y_is_na , archetype_formula, species_formula,
-                                 control, disty.cases[disty])
+                                 control, disty.cases[disty], tmp$removed_species)
   class(tmp) <- c("species_mix")
   return(tmp)
 }
@@ -254,13 +254,13 @@
     starting_values <- inits
   }
 
-  y <- starting_values$first_fit$y
-  X <- starting_values$first_fit$x
-  spp_weights <- starting_values$first_fit$spp_weights
-  site_spp_weights <- starting_values$first_fit$site_spp_weights
-  y_is_na <- starting_values$first_fit$y_is_na
+  # y <- starting_values$first_fit$y
+  # X <- starting_values$first_fit$x
+  # spp_weights <- starting_values$first_fit$spp_weights
+  # site_spp_weights <- starting_values$first_fit$site_spp_weights
+  # y_is_na <- starting_values$first_fit$y_is_na
 
-  tmp <- ecomix:::sam_optimise(y, X, offset, spp_weights, site_spp_weights,
+  tmp <- sam_optimise(y, X, offset, spp_weights, site_spp_weights,
                       y_is_na, S, G, nrow(y),
                       disty, starting_values, control)
 
@@ -1783,7 +1783,7 @@
 "sam_optimise" <- function(y, X, offset, spp_weights, site_spp_weights, y_is_na, S, G, Obs, disty, start_vals, control){
 
   inits <- c(start_vals$alpha, start_vals$beta, start_vals$eta, start_vals$disp)
-  np <- as.integer(ncol(X[,-1]))
+  np <- as.integer(ncol(X[,-1,drop=FALSE]))
   n <- as.integer(nrow(X))
 
   # parameters to optimise
@@ -1805,22 +1805,20 @@
     control$optiDisp <- as.integer(1)
   }else{
     control$optiDisp <- as.integer(0)
-    disp <- -99999
   }
 
   #model quantities
   pis_out <- as.numeric(rep(NA, G))  #container for the fitted RCP model
-  mus <- as.numeric(array(NA, dim=c(n, S, G)))  #container for the fitted spp model
+  mus <- as.numeric(array( NA, dim=c( Obs, S, G)))  #container for the fitted spp model
   loglikeS <- as.numeric(rep(NA, S))
   loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
 
   #c++ call to optimise the model (needs pretty good starting values)
   tmp <- .Call("species_mix_cpp",
-               as.numeric(as.matrix(y)), as.numeric(as.matrix(X[,-1])), as.numeric(offset), as.numeric(spp_weights),
+               as.numeric(as.matrix(y)), as.numeric(as.matrix(X[,-1,drop=FALSE])), as.numeric(offset), as.numeric(spp_weights),
                as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
                # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
-               as.integer(S), as.integer(G), as.integer(np), as.integer(n), as.integer(disty),
-               as.integer(control$optiDisp),
+               as.integer(S), as.integer(G), as.integer(np), as.integer(Obs), as.integer(disty),as.integer(control$optiDisp),
                # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
                as.double(alpha), as.double(beta), as.double(eta), as.double(disp),
                # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
@@ -1829,11 +1827,9 @@
                pis_out, mus, loglikeS, loglikeSG,
                # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
                as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
-               as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp),
-               as.integer(control$printparams_cpp),
+               as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp), as.integer(control$printparams_cpp),
                # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
-               as.integer( control$optimise_cpp), as.integer(control$loglOnly_cpp),
-               as.integer( control$derivOnly_cpp),
+               as.integer( control$optimise_cpp), as.integer(control$loglOnly_cpp), as.integer( control$derivOnly_cpp),
                # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
                PACKAGE = "ecomix")
 
@@ -1847,9 +1843,9 @@
   if(!disty%in%c(4,6))
     ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,np), eta = ret$eta)
   else
-    ret$coefs <- list(alpha = ret$alpha, beta = ret$beta, eta = ret$eta, disp = ret$disp)
+    ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,np), eta = ret$eta, disp = ret$disp)
 
-  ret$names <- list(spp=colnames(y), RCPs=paste("SAM", 1:G, sep=""), Xvars=colnames(X[,-1]))
+  ret$names <- list(spp=colnames(y), SAMs=paste("SAM", 1:G, sep=""), Xvars=colnames(X[,-1,drop=FALSE]))
 
   if(!disty%in%c(4,6))
     ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score)
@@ -1860,6 +1856,7 @@
   ret$start.vals <- inits
   ret$loglikeSG <- matrix(loglikeSG,  nrow = S, ncol = G)  #for residuals
   ret$loglikeS <- loglikeS  #for residuals
+  ret$removed_species <- start_vals$first_fit$removed_species
   return(ret)
 }
 
@@ -2034,7 +2031,7 @@
 
 "get_titbits_sam" <- function( titbits, y, X, spp_weights, site_spp_weights, offset,
                                y_is_na , archetype_formula, species_formula,
-                               control, distribution)  {
+                               control, distribution,removed_species)  {
     if( titbits==TRUE)
       titbits <- list( Y = y, X = X, spp_weights=spp_weights,
                        site_spp_weights=site_spp_weights, offset=offset,
