@@ -236,19 +236,6 @@
 
 "species_mix.fit" <- function(y, X, G, S, spp_weights, site_spp_weights, offset, y_is_na=NULL, disty, control, inits=NULL){
 
-  disty.cases <- c("bernoulli","poisson","ippm",
-                   "negative_binomial","tweedie","gaussian")
-  distribution <- disty.cases[disty]
-  if(!any(distribution==c("bernoulli","poisson","ippm",
-                          "negative_binomial","tweedie","gaussian")))
-    stop('current only please check the distribution you are fitting')
-  # sp.form <- update(archetype_formula,obs~1+.)
-
-  # need to insert two new calls:
-  # get_starting_values_sam() which will generate starting values based on EM or clustering of coefs.
-  # sam_optimise() which will fit the model in cpp
-  # S <- ncol(y) # how many species are there?
-
   if(is.null(inits)){
 
     starting_values  <-  ecomix:::get_starting_values_sam(y = y, X = X,
@@ -267,18 +254,15 @@
     starting_values <- inits
   }
 
-  tmp <- ecomix:::sam_optimise(y=starting_values$first_fit$y,
-                      X=starting_values$first_fit$x,
-                      offset = starting_values$first_fit$offset,
-                      spp_weights = starting_values$first_fit$spp_weights,
-                      site_spp_weights = starting_values$first_fit$site_spp_weights,
-                      y_is_na = starting_values$first_fit$y_is_na,
-                      S = ncol(starting_values$first_fit$y),
-                      G = G,
-                      Obs = nrow(y),
-                      disty = disty,
-                      start_vals = starting_values,
-                      control = control)
+  y <- starting_values$first_fit$y
+  X <- starting_values$first_fit$x
+  spp_weights <- starting_values$first_fit$spp_weights
+  site_spp_weights <- starting_values$first_fit$site_spp_weights
+  y_is_na <- starting_values$first_fit$y_is_na
+
+  tmp <- ecomix:::sam_optimise(y, X, offset, spp_weights, site_spp_weights,
+                      y_is_na, S, G, nrow(y),
+                      disty, starting_values, control)
 
   return(tmp)
 }

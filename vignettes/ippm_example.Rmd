@@ -102,9 +102,9 @@ form <- as.formula(paste0("cbind(",paste(sp_names[1:10],collapse = ','),")~1+min
 
 colnames(wts)<-sp_names
 
-fm4_myrt_var <- species_mix(archetype_formula = form, data = dat, weights = wts,
-                            n_mixtures = 4, distribution = 'ippm', standardise = TRUE,
-                            control = species_mix.control(cores = 1,minimum_sites_prevelance = 0.025))
+# fm4_myrt_var <- species_mix(archetype_formula = form, data = dat, weights = wts,
+                            # n_mixtures = 4, distribution = 'ippm', standardise = TRUE,
+                            # control = species_mix.control(cores = 1,minimum_sites_prevelance = 0.025))
 
 
 ```
