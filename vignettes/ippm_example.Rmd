@@ -78,15 +78,15 @@ po_matrix_coords <- cbind(pres_coords[,-1],po_matrix)
 ```{r}
 library(qrbp)
 n_bk_pts <- 10000
-covar <- stack(b[[c(7:9,13)]])
-covar2 <- (covar)^2
-names(covar)<-c('min_temp','max_temp','annual_rainfall','soil_type')
-names(covar2) <- paste0(c('min_temp','max_temp','annual_rainfall','soil_type'),2)
-covars <- stack(covar,covar2)
+covar <- stack(b)
+# covar2 <- (covar)^2
+# names(covar)<-c('min_temp','max_temp','annual_rainfall','soil_type')
+# names(covar2) <- paste0(c('min_temp','max_temp','annual_rainfall','soil_type'),2)
+# covars <- stack(covar,covar2)
 po_bkgrd_data <- generate_background_points(n_bk_pts,
   known_sites = pres_coords[,-1],
   study_area = covar[[1]],
-  model_covariates = covars,
+  model_covariates = covar,
   multispecies_presences = po_matrix_coords,
   method = 'multispecies',
   interpolation_method = 'bilinear')
@@ -98,115 +98,60 @@ Now let's try a fit a ippsam with these data. Fingers crossed.
 ```{r}
 # library(mgcv)
 sp_names <- colnames(dat)[1:127]
-form <- as.formula(paste0("cbind(",paste(sp_names[1:100],collapse = ','),")~1+poly(min_temp,degree=2)+poly(max_temp,degree=2)+poly(annual_rainfall,degree=2)"))
+colnames(dat)
+form <- as.formula(paste0("cbind(",paste(sp_names[1:60],collapse = ','),")~ 1 + poly(x,y,degree=2) + poly(AR,degree=2) + poly(D.Main,degree=2) + poly(MNT, degree=2) + poly(MXT, degree=2) + poly(Rain, degree=2)"))
 
 colnames(wts)<-sp_names
 
 fm1 <- species_mix(archetype_formula = form, data = dat, weights = wts,
-                            n_mixtures = 10, distribution = 'ippm', standardise = TRUE,
-                            control = species_mix.control(init_method = 'kmed',cores = 1,
+                   n_mixtures = 12, distribution = 'ippm',
+                   standardise = TRUE,
+                   control = species_mix.control(init_method = 'kmed',
+                                                          cores = 1,
                                                           minimum_sites_prevelance = 0.025))
-df <- as.data.frame(covar[[-4]])
+```
+
+Spatial prediction
+```{r}
+
+df <- as.data.frame(covar)
 df_no_na <- na.omit(df)
 mf <- model.frame(~poly(min_temp,degree=2)+poly(max_temp,degree=2)+poly(annual_rainfall,degree=2),df_no_na)
-head(mf)
+mf <- as.matrix(mf)
 preds <- predict(fm1,mf)
+
+crds <- rasterToPoints(covar)[,1:2]
+r <- rasterFromXYZ(cbind(crds,preds$predict_mus))
+# x11()
+par(mfrow=c(2,4),oma=c(.2,.2,.2,.2))
+for(i in 1:8){
+plot(r[[i]])
+points(dat[!is.na(dat[,i]) & dat[,i]>0,c("x","y")],pch=16,cex=.5)
+}
 ```
 
-running through some diagnostics
+covar responses
 ```{r}
-X <- (dat[,128:129])
-X[,-1] <- scale(X[,-1]) 
-# X <- X[,1:2]
-y <- dat[,1:12]
+newobs <- apply(fm1$titbits$X,2,function(x)seq(range(x)[1],range(x)[2],length.out = 100))
+object <- fm1
 
-which((colSums(y, na.rm = TRUE)/10000)>=0.025)
-colSums(y<1, na.rm = TRUE)
-which(colSums(y>0, na.rm = TRUE)>100)
-disty <- 3
-S <- ncol(y)
-spp_weights <- rep(1,S)
-site_spp_weights <- wts
-# site_spp_weights <-ifelse(site_spp_weights<1,1,site_spp_weights)
+G <- object$G
+S <- object$S
+n <- object$n
+np <- object$np
 
-offset <- rep(0,nrow(y))
-y_is_na <- is.na(y)
-G <- 4
-S <- ncol(y)
-control <- species_mix.control(minimum_sites_prevelance = 0.025, minimum_occurrence_tolerance_ippm = 100)
-gg <- 1
-ss <- 1
-```
-
-
-```{r}
-fm_sp_mods <- list()
-for (ss in seq_len(S)){
-    fm_sp_mods[[ss]] <- try(suppressWarnings(ecomix:::apply_glm_sam_inits(ss, y, X, site_spp_weights, offset, y_is_na, disty)))
-    kount1 <- 1
-    while( class(fm_sp_mods[[ss]]) %in% 'try-error' & kount1 < 10){
-      kount1 <- kount1 + 1
-      # theta <- 10 * fits$sppTheta[ss]
-      fm_sp_mods[[ss]] <- try(suppressWarnings(ecomix:::apply_glm_sam_inits(ss, y, X, site_spp_weights, offset, y_is_na, disty)))
-    }
-}
-
-fm_sp_mods <-  surveillance::plapply(seq_len(S), ecomix:::apply_glm_sam_inits, y, X, site_spp_weights, offset, y_is_na, disty,
-                                      .parallel = control$cores, .verbose = FALSE)
-alpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
-beta <- do.call(rbind,lapply(fm_sp_mods, `[[`, 2))
-disp <- unlist(lapply(fm_sp_mods, `[[`, 3))
-
-species_to_remove <- which(apply(beta, 1, function(x) all(is.na(x))))
-
-starting_values <- ecomix:::initiate_fit_sam(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control)
-fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,disp=starting_values$disp)
-first_fit <- list(x = X, y = y, site_spp_weights = site_spp_weights, offset = offset, y_is_na = y_is_na)
-spp_weights <- rep(1,S)
-logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-pis <- rep(1/G, G)
-taus <- ecomix:::get_taus(pis, logls_mus$logl_sp, G, S)
-
-Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
-X_no_NA <- list()
-for (jj in 1:ncol(y)){
-    X_no_NA[[jj]] <- X[!y_is_na[,jj],-1]
-}
-
-X_tau <- do.call(rbind, X_no_NA)
-n_ys <- sapply(X_no_NA,nrow)
-wts_tau <- rep(tau[,gg],c(n_ys))
-
-site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
-wts_tauXsite_weights <- wts_tau*site_weights
-offy_mat <- replicate(ncol(y),offset)
-offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
-offy2 <- fits$alpha[rep(1:length(fits$alpha),n_ys)]
-offy <- as.numeric(offy1 + offy2)
-
-  options(warn = -1)
-  # which family to use?
-  if( disty == 1)
-    fam <- binomial()
-  if( disty == 2 | disty == 4)
-    fam <- poisson()
-  if( disty == 3)
-    fam <- poisson()
-  if( disty == 6)
-    fam <- gaussian()
-  if (disty==3){
-    Y_tau <- as.matrix(Y_tau/site_weights)
-  } else {
-    Y_tau <- as.matrix(Y_tau)
+## To calculate fitted values, take a linear combination of the fitted mus from each component
+partial_predict <- array(0,c(nrow(newobs),S,np))
+for(ss in seq_len(S)){
+  for(gg in seq_len(G)) {
+    for(jj in seq_len(np)){
+          etas.K <- object$coefs$alpha[ss] + newobs[,jj]*object$coef$beta[gg,jj]
+    if(family == "gaussian") mus.K <- etas.K
+    if(family == "bernoulli") mus.K <- exp(etas.K)/(1+exp(etas.K))
+    if(family %in% c("poisson","ippm","negative_binomial")) partial_predict[,ss,jj] <- exp(etas.K)
+    predict_mus <- predict_mus + matrix(object$taus[,gg],nrow(newobs),S,byrow=T)*mus.K
   }
 
-  if(disty!=5){ #don't use for tweedie
-    ft_mix <- glm.fit(x = as.data.frame(X_tau[,-1]),
-                      y = as.numeric(Y_tau),
-                      weights = c(wts_tauXsite_weights),
-                      offset = offy,
-                      family = fam)
-  }
-    mix_coefs <- coef(ft_mix)
-
 ```
+
+

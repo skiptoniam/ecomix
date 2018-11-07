@@ -238,7 +238,7 @@
 
   if(is.null(inits)){
 
-    starting_values  <-  ecomix:::get_starting_values_sam(y = y, X = X,
+    starting_values  <-  get_starting_values_sam(y = y, X = X,
                                                  spp_weights = spp_weights,
                                                  site_spp_weights = site_spp_weights,
                                                  offset = offset,
@@ -1015,7 +1015,7 @@
    family <- object$dist
 
   if(is.null(newobs)) newobs <- object$titbits$X[,-1]
-  if(ncol(newobs) != ncol(object$coefs$beta)) stop("Number of coefficients does not match the number of predictors in the new observations - double check you're not including an intercept.")
+  if(ncol(newobs) != ncol(coef(object)$beta)) stop("Number of coefficients does not match the number of predictors in the new observations - double check you're not including an intercept.")
 
   G <- object$G
   S <- object$S
@@ -1025,9 +1025,9 @@
   predict_mus <- predict_y <- predict_etas <- matrix(0,nrow(newobs),S)
   for(gg in seq_len(G)) {
     etas.K <- matrix(object$coefs$alpha,nrow(newobs),S,byrow=TRUE) + matrix(as.matrix(newobs)%*%object$coef$beta[gg,],nrow(newobs),S,byrow=FALSE)
-    if(family == "gaussian") mus.K <- etas.K
-    if(family == "bernoulli") mus.K <- exp(etas.K)/(1+exp(etas.K))
-    if(family %in% c("poisson","ippm","negative_binomial")) mus.K <- exp(etas.K)
+    if(family == "gaussian") fam <- gaussian(); mus.K <- fam$linkinv(etas.K)
+    if(family == "bernoulli") fam <- binomial(); mus.K <- fam$linkinv(etas.K)
+    if(family %in% c("poisson","ippm","negative_binomial"))fam <- poisson(); mus.K <- fam$linkinv(etas.K)
     predict_mus <- predict_mus + matrix(object$taus[,gg],nrow(newobs),S,byrow=T)*mus.K
   }
 
@@ -1358,7 +1358,7 @@
   } else {
     if(!control$quiet)message('You are not using the EM algorith to find starting values; starting values are
                               generated using',control$init_method,'\n')
-    starting_values <- ecomix:::get_initial_values_sam(y = y, X = X,
+    starting_values <- get_initial_values_sam(y = y, X = X,
                                               spp_weights = spp_weights,
                                               site_spp_weights = site_spp_weights,
                                               offset = offset, y_is_na = y_is_na,
@@ -1464,7 +1464,7 @@
 "get_initial_values_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
   # get intial model fits
-  starting_values <- ecomix:::initiate_fit_sam(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control)
+  starting_values <- initiate_fit_sam(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
 
   #if any are errors then remove them from the models for ever.
   updated_y <- ecomix:::update_species_data_structure(y, y_is_na, spp_weights,
@@ -1485,6 +1485,9 @@
   taus <- ecomix:::skrink_taus(taus, max_tau = 1/G + 0.1, G) #max_tau=1/G + 0.1
 
   # #now fit the mix model once
+
+
+
   # fmix_coefs <- surveillance::plapply(seq_len(G), ecomix:::apply_glm_group_tau_sam,
   #                                     first_fit$y,
   #                                     first_fit$x,
@@ -1703,7 +1706,7 @@
 
 }
 
-"initiate_fit_sam" <- function(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control){
+"initiate_fit_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
   fm_sp_mods <-  surveillance::plapply(seq_len(S), ecomix:::apply_glm_sam_inits, y, X,
                                        site_spp_weights, offset, y_is_na, disty,
@@ -2136,7 +2139,7 @@
 "update_species_data_structure" <- function(y, y_is_na, spp_weights, site_spp_weights, species_to_remove){
   if(is.na(species_to_remove)) return(list(y, y_is_na, spp_weights, site_spp_weights))
   else return(list(y[,-species_to_remove], y_is_na[,-species_to_remove],
-                   spp_weights[,-species_to_remove], site_spp_weights[,-species_to_remove]))
+                   spp_weights[-species_to_remove], site_spp_weights[,-species_to_remove]))
 }
 
 "reltol_fun" <- function(logl_n1, logl_n){
