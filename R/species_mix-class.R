@@ -1746,8 +1746,8 @@
 
   if(control$init_method=='kmeans'){
     if(!control$quiet)message( "Initial groups by K-means clustering\n")
-    tmp1 <- stats::kmeans(beta, centers=G, nstart=100)
-    tmp_grp <- tmp1$cluster
+    fmmvnorm <- stats::kmeans(beta, centers=G, nstart=100)
+    tmp_grp <- fmmvnorm$cluster
     grp_coefs <- apply(beta, 2, function(x) tapply(x, tmp_grp, mean))
   }
 
