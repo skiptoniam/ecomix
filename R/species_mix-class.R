@@ -119,7 +119,7 @@
 
   # get responses
   y <- stats::model.response(dat$mf.X)
-
+  cat(head(y))
   # logical matirx needed for removing NAs from response and weights.
   y_is_na <- is.na(y)
 
