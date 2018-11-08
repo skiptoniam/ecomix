@@ -1441,16 +1441,20 @@
   alpha.score <- as.numeric(rep(NA, length(alpha)))
   beta.score <- as.numeric(rep(NA, length(beta)))
   eta.score <- as.numeric(rep(NA, length(eta)))
-  disp.score <- as.numeric(rep(NA, length(disp)))
+  # disp.score <- as.numeric(rep(NA, length(disp)))
   getscores <- 1
-  scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,disp))))
+
 
 
   if(disty%in%c(4,6)){
     control$optiDisp <- as.integer(1)
+    disp.score <- as.numeric(rep(NA, S))
   }else{
     control$optiDisp <- as.integer(0)
+    disp.score <- -999999
   }
+
+  scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,disp.score))))
 
   #model quantities
   pis_out <- as.numeric(rep(NA, G))  #container for the fitted RCP model
