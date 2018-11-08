@@ -1464,7 +1464,7 @@
 "get_initial_values_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
   # get intial model fits
-  starting_values <- initiate_fit_sam(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
+  starting_values <- ecomix:::initiate_fit_sam(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
 
   #if any are errors then remove them from the models for ever.
   updated_y <- ecomix:::update_species_data_structure(y, y_is_na, spp_weights,
@@ -1479,10 +1479,10 @@
   first_fit <- list(x = X, y = y, spp_weights = spp_weights,
                     site_spp_weights = site_spp_weights, offset = offset,
                     y_is_na = y_is_na, removed_species = starting_values$species_to_remove)
-  logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-  pis <- rep(1/G, G)
-  taus <- ecomix:::get_taus(pis, logls_mus$logl_sp, G, S)
-  taus <- ecomix:::skrink_taus(taus, max_tau = 1/G + 0.1, G) #max_tau=1/G + 0.1
+  # logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
+  # pis <- rep(1/G, G)
+  # taus <- ecomix:::get_taus(pis, logls_mus$logl_sp, G, S)
+  # taus <- ecomix:::skrink_taus(taus, max_tau = 1/G + 0.1, G) #max_tau=1/G + 0.1
 
   # #now fit the mix model once
 
@@ -1508,8 +1508,8 @@
   res <- list()
   res$fits <- fits
   res$first_fit <- first_fit
-  res$pis <- colMeans(taus)
-  res$taus <- taus
+  res$pis <- starting_values$pis
+  res$taus <- starting_values$
   return(res)
 }
 
@@ -1717,6 +1717,7 @@
   disp <- unlist(lapply(fm_sp_mods, `[[`, 3))
 
   species_to_remove <- which(apply(beta, 1, function(x) all(is.na(x))))
+
   if(length(species_to_remove)>0){
     #update fits
     alpha <- alpha[-species_to_remove]
@@ -1766,12 +1767,29 @@
   }
 
   colnames(grp_coefs) <- colnames(X[,-1])
-  cat(grp_coefs,"\n\n")
+
+  #get taus as starting values
+  taus <- matrix(0,ncol(y), G)
+  if(length(sel_omit_spp)>0){
+    for(j in 1:length((1:S)[-sel_omit_spp]))
+      taus[(1:S)[-sel_omit_spp][j],fmmvnorm$cluster[j]] <- 1
+      taus[sel_omit_spp,] <- matrix(runif(length(sel_omit_spp)*K),length(sel_omit_spp), K)
+  } else {
+    for(j in seq_len(S))
+      taus[j,fmmvnorm$cluster[j]] <- 1
+  }
+
+  taus <- taus/rowSums(taus)
+  taus <- shrink_taus(taus,G=G)
+  pis <- colMeans(taus)
+
   results <- list()
   results$grps <- tmp_grp
   results$alpha <- alpha
   results$beta <- grp_coefs
   results$disp <- disp
+  results$taus <- taus
+  results$pis <- pis
   results$species_to_remove <- species_to_remove
 
   return(results)
@@ -1942,7 +1960,7 @@
   return( exp( a_k - log_denom))
 }
 
-"skrink_taus" <- function( taus, max_tau=0.7, G){
+"skrink_taus" <- function( taus, max_tau=0.8, G){
   if( G==1)
     return( taus)
   alpha <- (1-max_tau*G) / ( max_tau*(2-G)-1)
