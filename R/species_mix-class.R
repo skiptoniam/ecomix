@@ -918,7 +918,7 @@
 }
 
 ## this will give the species intercepts with respect to the mixture linear predictor.
-"apply_glm_sam_sp_params" <- function(ss, y, X, G, site_spp_weights, offset,
+"apply_glm_sam_sp_params" <- function(ss, y, X, G, taus, site_spp_weights, offset,
                                       y_is_na, disty, fits){
 
   if( disty == 1)
@@ -937,7 +937,7 @@
   }
   out1 <- kronecker(rep( 1, G), outcomes)
   X1 <- kronecker(rep( 1, G), X[ids_i,])
-  wts1 <- kronecker(rep( 1, G), as.numeric(site_spp_weights[ids_i,ss]))
+  wts1 <- kronecker(rep( 1, G), as.numeric(site_spp_weights[ids_i,ss]*rep( taus[ss,], each=length(site_spp_weights[ids_i,ss]))))
   offy1 <- kronecker(rep( 1, G), offset[ids_i])
   offy2 <- X[ids_i,-1] %*% t(fits$beta)
   offy2 <- as.numeric(offy2)
@@ -951,22 +951,7 @@
                             family=fam)
     my_coefs <- coef(ft_sp)
   }
-  disp <- NA
-  if( disty == 4){
-    preds <- predict.glm.fit(ft_sp, X1, offy, disty)
-    tmp <- MASS::theta.mm(out1, preds,
-                          weights=c(wts1),
-                          dfr=length(out1),
-                          eps=1e-4)
-    if(tmp>2) tmp <- 2
-    disp <- log(1/tmp)
-  }
-  if( disty == 6){
-    preds <- predict.glm.fit(ft_sp, X1, offy, disty)
-    disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
-  }
-
-  return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
+  return(list(alpha = my_coefs[1]))
 
 }
 
