@@ -39,21 +39,21 @@ testthat::test_that('species_mix negative binomial', {
   # model_data <- make_mixture_data(species_data = simulated_data$species_data,
   #                                 covariate_data = simulated_data$covariate_data[,-1])
   #
-  # y <- simulated_data$species_data
-  # X <- simulated_data$covariate_data
-  # offset <- rep(0,nrow(y))
-  # weights <- rep(1,nrow(y))
-  # spp_weights <- rep(1,ncol(y))
-  # site_spp_weights <- matrix(1,nrow(y),ncol(y))
-  # y_is_na <- matrix(FALSE,nrow(y),ncol(y))
-  # G <- length(simulated_data$pi)
-  # S <- length(simulated_data$sp.int)
-  # control <- species_mix.control()
-  # disty <- 4
+  y <- simulated_data$species_data
+  X <- simulated_data$covariate_data
+  offset <- rep(0,nrow(y))
+  weights <- rep(1,nrow(y))
+  spp_weights <- rep(1,ncol(y))
+  site_spp_weights <- matrix(1,nrow(y),ncol(y))
+  y_is_na <- matrix(FALSE,nrow(y),ncol(y))
+  G <- length(simulated_data$pi)
+  S <- length(simulated_data$sp.int)
+  control <- species_mix.control()
+  disty <- 4
   #
   # # test a single negative_binomial model
-  # # i <- 1
-  # # testthat::expect_length(ecomix:::apply_glmnet_sam(i, y, X, site_spp_weights, offset, y_is_na, disty),3)
+  i <- 1
+  testthat::expect_length(apply_glmnet_sam(i, y, X, site_spp_weights, offset, y_is_na, disty),3)
   # # fm_negative_binomialint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam,  y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
   # # testthat::expect_length(do.call(cbind,fm_negative_binomialint)[1,],S)
   #

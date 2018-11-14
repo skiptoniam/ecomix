@@ -420,7 +420,9 @@
     pb <- txtProgressBar(min = 1, max = nstart, style = 3, char = "-^^,--,~ ")
 
    #Fit the model many times
-   many_starts <- surveillance::plapply(seq_len(nstart), tmp_fun, .parallel = mc.cores, .verbose = !control$quiet)
+   many_starts <- surveillance::plapply(seq_len(nstart), tmp_fun,
+                                        .parallel = mc.cores,
+                                        .verbose = !control$quiet)
    return(many_starts)
 }
 
@@ -470,14 +472,17 @@
   rval <- list(maxit = maxit, quiet = quiet, trace = trace,
                cores = cores,
                #initialisation controls
-               init_method = init_method, init_sd = init_sd, minimum_sites_prevelance = minimum_sites_prevelance,
-               # minimum_occurrence_tolerance_ippm = minimum_occurrence_tolerance_ippm,
+               init_method = init_method, init_sd = init_sd,
+               minimum_sites_prevelance = minimum_sites_prevelance,
                #em controls
-               em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps,# em_maxit = em_maxit,
-               em_abstol = em_abstol, em_reltol = em_reltol, em_maxtau = em_maxtau,
+               em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps,
+               em_abstol = em_abstol, em_reltol = em_reltol,
+               em_maxtau = em_maxtau,
                #cpp controls
-               maxit_cpp = maxit_cpp, trace_cpp = trace_cpp, nreport_cpp = nreport_cpp,
-               abstol_cpp = abstol_cpp, reltol_cpp = reltol_cpp, conv_cpp = conv_cpp,
+               maxit_cpp = maxit_cpp, trace_cpp = trace_cpp,
+               nreport_cpp = nreport_cpp,
+               abstol_cpp = abstol_cpp, reltol_cpp = reltol_cpp,
+               conv_cpp = conv_cpp,
                printparams_cpp = printparams_cpp, optimise_cpp = optimise_cpp,
                loglOnly_cpp = loglOnly_cpp, derivOnly_cpp = derivOnly_cpp,
                getscores_cpp = getscores_cpp)
@@ -498,15 +503,24 @@
 #' @examples
 #' \dontrun{
 #' archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
-#' theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
-#' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
-#' simulated_data <- simulate_species_mix_data(archetype_formula,~1,dat,theta,dist="bernoulli")
+#' theta <- matrix(c(-0.9,-0.6,0.5,
+#'                    1.0,-0.9,1.0,
+#'                    0.9,-0.9,2.9,
+#'                   -1.0,0.2,-0.4),
+#'                 4,3,byrow=TRUE)
+#' dat <- data.frame(y=rep(1,100),
+#'                   x1=stats::runif(100,0,2.5),
+#'                   x2=stats::rnorm(100,0,2.5))
+#' simulated_data <- simulate_species_mix_data(archetype_formula,~1,
+#'                                             dat,theta,dist="bernoulli")
 #' }
 ## need to update this to take the new formula framework and simulate ippm data.
-"simulate_species_mix_data" <-  function (archetype_formula, species_formula, dat, theta, distribution = "bernoulli"){
+"simulate_species_mix_data" <-  function (archetype_formula, species_formula,
+                                          dat, theta,
+                                          distribution = "bernoulli"){
 
-  if(distribution=='ippm'){#stop('simulation of ippm data has not been set up yet, watch this space')
-  message('simulating Inhomogenous Point Process Data on a regular 100x100 grid')
+  if(distribution=='ippm'){
+  message('Generating ippm data on a regular 100x100 grid')
 
     n_sp <- length(archetype_formula[[2]])-1
     n_g <- dim(theta)[1]
@@ -531,18 +545,21 @@
     }
 
     LAMBDAS <- apply(lambdas,2,function(x)sum(x*grid2D$cellArea))
-    Ns <- sapply(LAMBDAS,function(x)rpois(n=1, lambda= x))  #the observed number of presences
+    Ns <- sapply(LAMBDAS,function(x)rpois(n=1, lambda= x))
     preds_df <- data.frame(idx=1:nrow(X),X)
     presences <- list()
     for(i in seq_len(n_sp)){
-      presences[[i]] <- sample(x=preds_df$idx,size=Ns[i], replace=TRUE, prob=lambdas[,i]/LAMBDAS[i])# TRUE
+      presences[[i]] <- sample(x=preds_df$idx,size=Ns[i],
+                               replace=TRUE, prob=lambdas[,i]/LAMBDAS[i])# TRUE
     }
 
     presence_coords <- lapply(presences,function(x)grid2D[x,1:2])
     presences_sort <- lapply(presences,sort)
 
-    sp_dat_po_ul<- data.frame(sp=rep(sp_name,unlist(lapply(presences,length))),cell_num=unlist(presences_sort))
-    po_matrix <- table_to_species_data(sp_dat_po_ul,site_id = 'cell_num',species_id = 'sp')
+    sp_dat_po_ul<- data.frame(sp=rep(sp_name,unlist(lapply(presences,length))),
+                              cell_num=unlist(presences_sort))
+    po_matrix <- table_to_species_data(sp_dat_po_ul,
+                                       site_id = 'cell_num',species_id = 'sp')
     po_matrix[po_matrix==0]<-NA
     po_covariates <- X[as.numeric(rownames(po_matrix)),]
     presence_data <- data.frame(po_matrix,po_covariates)
@@ -627,18 +644,6 @@
       }
       out[, s] <- tmp
     }
-    # if (distribution == "tweedie") {
-    #   tmp <- rep(6e+05, dim(X)[1])
-    #   while (max(tmp, na.rm = TRUE) > 5e+05 | sum(tmp) < 100) {
-    #     theta[g, 1] <- stats::runif(1, -15, 5)
-    #     theta[g, 1] <- stats::runif(1, 1, 5)
-    #     sp.int[s] <- theta[g, 1]
-    #     lgtp <- X %*% theta[g, ]
-    #     p <- exp(lgtp)
-    #     tmp <- rTweedie(dim(X)[1], mu = p, phi = 2, p = 1.6)
-    #   }
-    #   out[, s] <- tmp
-    # }
     if (distribution == "gaussian") {
       sp.int <- NULL
       tmp <- rep(1e+05, dim(X)[1])
@@ -1180,8 +1185,8 @@
 }
 
 ## this will give the species intercepts with respect to the mixture linear predictor.
-"apply_glm_sam_sp_params" <- function(ss, y, X, G, site_spp_weights, offset,
-                                      y_is_na, disty, fits){
+"apply_glm_sam_sp_intercepts" <- function(ss, y, X, G, taus, site_spp_weights,
+                                      offset, y_is_na, disty, fits){
 
   if(disty == 1)
     fam <- binomial()
@@ -1200,37 +1205,48 @@
   }
   out1 <- kronecker(rep( 1, G), outcomes)
   X1 <- kronecker(rep( 1, G), X[ids_i,])
-  wts1 <- kronecker(rep( 1, G), as.numeric(site_spp_weights[ids_i,ss]))
+  wts1 <- kronecker(rep( 1, G),
+                    as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,], each=length(site_spp_weights[ids_i,ss]))
   offy1 <- kronecker(rep( 1, G), offset[ids_i])
   offy2 <- X[ids_i,-1] %*% t(fits$beta)
   offy2 <- as.numeric(offy2)
   offy <- offy1 + offy2
 
-  if( disty != 5){ #don't use for tweedie
   ft_sp <- suppressWarnings(stats::glm.fit(x=as.data.frame(X1),
                             y=as.numeric(out1),
                             weights=as.numeric(wts1),
                             offset=as.numeric(offy),
                             family=fam))
-    my_coefs <- coef(ft_sp)
-  }
-  disp <- NA
-  if( disty == 4){
-    preds <- predict.glm.fit(ft_sp, X1, offy, disty)
-    tmp <- MASS::theta.mm(out1, preds,
-                          weights=c(wts1),
-                          dfr=length(out1),
-                          eps=1e-4)
-    if(tmp>2) tmp <- 2
-    disp <- log(1/tmp)
-  }
-  if( disty == 6){
-    preds <- predict.glm.fit(ft_sp, X1, offy, disty)
-    disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
-  }
+  my_coefs <- coef(ft_sp)
+  return(list(alpha = my_coefs[1]))
+}
 
-  return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
 
+
+"apply_optimise_spp_theta" <- function(ss, y, X, G, taus, site_spp_weights,
+                                       offset, y_is_na, disty, fits,
+                                       theta.range = c(0.0001,10)){
+  thet <- optimise(f = theta.logl, interval = theta.range, ss = ss, y = y, X=X,
+                   G=G, site_spp_weights = site_spp_weights, offset = offset,
+                   y_is_na = y_is_na, taus=taus, disty=disty, fits=fits,
+                   theta.range = theta.range, maximum = TRUE)$maximum
+  disp <- update.coefs(fits$disp[ss], thet, kappa=update.kappa[2])
+  return(disp)
+}
+
+
+"theta.logl" <- function(x, ss, family) {
+  out <- 0
+  ids_i <- !y_is_na[,ss]
+  for(gg in seq_len(G)) {
+    cw.eta <- fits$alpha[ss] + X[ids_i,-1]%*%fits$beta[gg,]
+    if(disty == 4)
+      cw.out <- sum(taus[ss,gg]*dnbinom(y[ids_i,ss], mu = exp(cw.eta), size = 1/x, log = TRUE)*site_spp_weights[ids_i,ss])
+    if(disty == 6)
+      cw.out <- sum(taus[ss,gg]*dnorm(y[ids_i,j], mean = cw.eta, sd = exp(sqrt(x)), log = TRUE)*site_spp_weights[ids_i,ss])
+    out <- out + cw.out
+  }
+  return(out)
 }
 
 ## function for starting values.
@@ -1461,59 +1477,39 @@
   return(logl)
 }
 
-"get_initial_values_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
+"get_initial_values_sam" <- function(y, X, spp_weights, site_spp_weights,
+                                     offset, y_is_na, G, S, disty, control){
 
   # get intial model fits
-  starting_values <- ecomix:::initiate_fit_sam(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
+  starting_values <- initiate_fit_sam(y, X, spp_weights, site_spp_weights,
+                                      offset, y_is_na, G, S, disty, control)
 
   #if any are errors then remove them from the models for ever.
-  updated_y <- ecomix:::update_species_data_structure(y, y_is_na, spp_weights,
-                                                      site_spp_weights, starting_values$species_to_remove)
+  updated_y <- update_species_data_structure(y, y_is_na,
+                                             spp_weights,
+                                             site_spp_weights,
+                                             starting_values$species_to_remove)
   y <- updated_y[[1]]
   y_is_na <- updated_y[[2]]
   spp_weights <- updated_y[[3]]
   site_spp_weights <- updated_y[[4]]
   S <- ncol(y)
 
-  fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,disp=starting_values$disp)
+  fits <- list(alpha=starting_values$alpha,
+               beta=starting_values$beta,
+               disp=starting_values$disp)
   first_fit <- list(x = X, y = y, spp_weights = spp_weights,
                     site_spp_weights = site_spp_weights, offset = offset,
-                    y_is_na = y_is_na, removed_species = starting_values$species_to_remove)
-  # logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-  # pis <- rep(1/G, G)
-  # taus <- ecomix:::get_taus(pis, logls_mus$logl_sp, G, S)
-  # taus <- ecomix:::skrink_taus(taus, max_tau = 1/G + 0.1, G) #max_tau=1/G + 0.1
-
-  # #now fit the mix model once
-
-
-
-  # fmix_coefs <- surveillance::plapply(seq_len(G), ecomix:::apply_glm_group_tau_sam,
-  #                                     first_fit$y,
-  #                                     first_fit$x,
-  #                                     first_fit$site_spp_weights,
-  #                                     first_fit$offset,
-  #                                     first_fit$y_is_na,
-  #                                     disty,
-  #                                     taus,
-  #                                     fits,
-  #                                     logls_mus$fitted,
-  #                                     .parallel = control$cores,
-  #                                     .verbose = FALSE)#!control$quiet)
-  #
-  # #update the mix coefs.
-  # fmix_coefs <- t(do.call(cbind,fmix_coefs))
-  # fits$beta <- ecomix:::update_mix_coefs(fits$beta,fmix_coefs)
+                    y_is_na = y_is_na,
+                    removed_species = starting_values$species_to_remove)
 
   res <- list()
   res$fits <- fits
   res$first_fit <- first_fit
-  res$pis <- starting_values$pis
-  res$taus <- starting_values$
+  res$pis <- starting_values$taus
+  res$taus <- starting_values$taus
   return(res)
 }
-
-
 
 "get_logls_sam" <- function(first_fit, fits, spp_weights, G, S, disty, get_fitted=TRUE){
 
@@ -1623,7 +1619,7 @@
                                             site_spp_weights = site_spp_weights,
                                             offset = offset, y_is_na = y_is_na,
                                             G = G, S = S,
-                                            disty=disty,
+                                            disty = disty,
                                             control = control)
 
   # first e-step
@@ -1666,16 +1662,22 @@
     fmix_coefs_mat <- t(do.call(cbind,fmix_coefs))
     fits$beta <- update_mix_coefs(fits$beta, fmix_coefs_mat)
 
-    fm_sp_int <- surveillance::plapply(1:S, apply_glm_sam_sp_params,
-                                       y, X, G, site_spp_weights, offset,
+    fm_sp_int <- surveillance::plapply(1:S, ecomix:::apply_glm_sam_sp_intercepts,
+                                       y, X, G, taus, site_spp_weights, offset,
                                        y_is_na, disty, fits,
                                        .parallel = control$cores, .verbose = FALSE)
     #check weights in this.
     alpha <- unlist(lapply(fm_sp_int, `[[`, 1))
     fits$alpha <- update_sp_coefs(fits$alpha,alpha)
 
+    ## need a function here that updates the dispersion parameter.
     if(disty%in%c(4,6)){
-      disp <- unlist(lapply(fm_sp_int, `[[`, 3))
+      fm_disp <- surveillance::plapply(1:S, apply_optimise_spp_theta,
+                                       y, X, G, taus, site_spp_weights,
+                                       offset, y_is_na, disty, fits,
+                                       .parallel = control$cores,
+                                       .verbose = FALSE)
+      disp <- unlist(lapply(fm_disp, `[[`, 1))
       fits$disp <- update_sp_dispersion(fits$disp,disp)
     }
 
@@ -1708,7 +1710,7 @@
 
 "initiate_fit_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
-  fm_sp_mods <-  surveillance::plapply(seq_len(S), ecomix:::apply_glm_sam_inits, y, X,
+  fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glm_sam_inits, y, X,
                                        site_spp_weights, offset, y_is_na, disty,
                                       .parallel = control$cores, .verbose = FALSE)
 
@@ -1773,7 +1775,7 @@
   if(length(sel_omit_spp)>0){
     for(j in 1:length((1:S)[-sel_omit_spp]))
       taus[(1:S)[-sel_omit_spp][j],fmmvnorm$cluster[j]] <- 1
-      taus[sel_omit_spp,] <- matrix(runif(length(sel_omit_spp)*K),length(sel_omit_spp), K)
+      taus[sel_omit_spp,] <- matrix(runif(length(sel_omit_spp)*G),length(sel_omit_spp), G)
   } else {
     for(j in seq_len(S))
       taus[j,fmmvnorm$cluster[j]] <- 1
@@ -1960,7 +1962,7 @@
   return( exp( a_k - log_denom))
 }
 
-"skrink_taus" <- function( taus, max_tau=0.8, G){
+"shrink_taus" <- function( taus, max_tau=0.8, G){
   if( G==1)
     return( taus)
   alpha <- (1-max_tau*G) / ( max_tau*(2-G)-1)
