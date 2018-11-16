@@ -31,7 +31,7 @@ species_mix.multifit(archetype_formula = NULL,
   inits = NULL, standardise = TRUE, titbits = TRUE)
 
 species_mix.control(maxit = 1000, quiet = FALSE, trace = 1, cores = 1,
-  init_method = "kmeans", init_sd = 1, minimum_sites_prevelance = 0.05,
+  init_method = "kmed", init_sd = 1, minimum_sites_prevelance = 0.05,
   em_prefit = TRUE, em_steps = 3, em_refit = 1,
   em_abstol = sqrt(.Machine$double.eps), em_reltol = reltol_fun,
   em_maxtau = 0.8, maxit_cpp = 1000, trace_cpp = 1, nreport_cpp = 1,
@@ -198,9 +198,16 @@ fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli
 }
 \dontrun{
 archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
-theta <- matrix(c(-0.9,-0.6,0.5,1,-0.9,1,0.9,-0.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
-dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
-simulated_data <- simulate_species_mix_data(archetype_formula,~1,dat,theta,dist="bernoulli")
+theta <- matrix(c(-0.9,-0.6,0.5,
+                   1.0,-0.9,1.0,
+                   0.9,-0.9,2.9,
+                  -1.0,0.2,-0.4),
+                4,3,byrow=TRUE)
+dat <- data.frame(y=rep(1,100),
+                  x1=stats::runif(100,0,2.5),
+                  x2=stats::rnorm(100,0,2.5))
+simulated_data <- simulate_species_mix_data(archetype_formula,~1,
+                                            dat,theta,dist="bernoulli")
 }
 
 \dontrun{

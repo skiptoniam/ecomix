@@ -254,12 +254,6 @@
     starting_values <- inits
   }
 
-  # y <- starting_values$first_fit$y
-  # X <- starting_values$first_fit$x
-  # spp_weights <- starting_values$first_fit$spp_weights
-  # site_spp_weights <- starting_values$first_fit$site_spp_weights
-  # y_is_na <- starting_values$first_fit$y_is_na
-
   tmp <- sam_optimise(y, X, offset, spp_weights, site_spp_weights,
                       y_is_na, S, G, nrow(y),
                       disty, starting_values, control)
@@ -444,7 +438,7 @@
                                   trace = 1,
                                   cores = 1,
                                   ## intialisation controls
-                                  init_method = 'kmeans',
+                                  init_method = 'kmed',
                                   init_sd = 1,
                                   minimum_sites_prevelance = 0.05,
                                   # minimum_occurrence_tolerance_ippm = 20,
@@ -1054,111 +1048,6 @@
   return(list(predict_mus = round(predict_mus,5), predict_y = predict_y))
 }
 
-# "predict.species_mix" <-function (object, new_obs, ...){
-#   mixture.model <- object
-#   if (class(mixture.model)[2] == "bernoulli") {
-#     G <- length(mixture.model$pi)
-#     covar <- mixture.model$covar[-(1:(G - 1)), -(1:(G -
-#         1))]
-#     coef <- mixture.model$coef
-#     model.fm <- stats::as.formula(mixture.model$formula)
-#     model.fm[[2]] <- NULL
-#     X <- stats::model.matrix(model.fm, new_obs)
-#     link.fun <- stats::make.link("logit")
-#     outvar <- matrix(NA, dim(X)[1], G)
-#     outpred <- matrix(NA, dim(X)[1], G)
-#     colnames(outvar) <- colnames(outpred) <- paste("G", 1:G, sep = ".")
-#     for (g in 1:G) {
-#       lp <- as.numeric(X %*% coef[g, ])
-#       outpred[, g] <- link.fun$linkinv(lp)
-#       dhdB <- (exp(lp)/(1 + exp(lp))) * X - exp(lp)^2/((1 +
-#           exp(lp))^2) * X
-#       c2 <- covar[seq(g, dim(covar)[1], G), seq(g, dim(covar)[1],
-#         G)]
-#       for (k in 1:dim(X)[1]) {
-#         outvar[k, g] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
-#       }
-#     }
-#   }
-#   if (class(mixture.model)[2] == "negative_binomial" | class(mixture.model)[2] ==
-#       "tweedie") {
-#     G <- length(mixture.model$pi)
-#     covar <- mixture.model$covar[-1 * c(1:(G - 1), (dim(mixture.model$covar)[1] -
-#         length(mixture.model$sp.intercept) + 1):dim(mixture.model$covar)[1]),
-#       -1 * c(1:(G - 1), (dim(mixture.model$covar)[1] -
-#           length(mixture.model$sp.intercept) + 1):dim(mixture.model$covar)[1])]
-#     sp.int <- mixture.model$sp.intercept
-#     coef <- mixture.model$coef
-#     model.fm <- stats::as.formula(mixture.model$formula)
-#     model.fm[[2]] <- NULL
-#     X <- cbind(stats::model.matrix(model.fm, new_obs), 1)
-#     offset <- stats::model.frame(model.fm, data = new_obs)
-#     offset <- stats::model.offset(offset)
-#     if (is.null(offset))
-#       offset <- rep(0, nrow(X))
-#     outvar <- matrix(NA, dim(X)[1], G)
-#     outpred <- matrix(NA, dim(X)[1], G)
-#     colnames(outvar) <- colnames(outpred) <- paste("G",
-#       1:G, sep = ".")
-#     for (g in 1:G) {
-#       s.outvar <- matrix(NA, dim(X)[1], length(sp.int))
-#       s.outpred <- matrix(NA, dim(X)[1], length(sp.int))
-#       for (s in seq_along(sp.int)) {
-#         lp <- as.numeric(X %*% c(coef[g, ], sp.int[s]) +
-#             offset)
-#         s.outpred[, s] <- exp(lp)
-#         dhdB <- exp(lp) * X
-#         c2 <- covar[c(seq(g, G * (dim(X)[2] - 1), G),
-#           G * (dim(X)[2] - 1) + s), c(seq(g, G * (dim(X)[2] -
-#               1), G), G * (dim(X)[2] - 1) + s)]
-#         for (k in 1:dim(X)[1]) {
-#           s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k,
-#             ])
-#         }
-#       }
-#       outpred[, g] <- apply(s.outpred * rep(mixture.model$tau[,
-#         g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[,
-#           g])
-#       outvar[, g] <- apply(s.outvar * rep(mixture.model$tau[,
-#         g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[,
-#           g])
-#     }
-#   }
-#   if (class(mixture.model)[2] == "ippm" | class(mixture.model)[2] == "poisson") {
-#     G <- length(mixture.model$pi)
-#     covar <- mixture.model$covar[-1 * c(1:(G - 1)), -1 * c(1:(G - 1))]
-#     sp.int <- mixture.model$sp_intercept
-#     coef <- mixture.model$coef
-#     model.fm <- stats::as.formula(mixture.model$formula)
-#     model.fm[[2]] <- NULL
-#     X <- cbind(stats::model.matrix(model.fm, new_obs))
-#     offset <- stats::model.frame(model.fm, data = new_obs)
-#     offset <- stats::model.offset(offset)
-#     if (is.null(offset))
-#       offset <- rep(0, nrow(X))
-#     outvar <- matrix(NA, dim(X)[1], G)
-#     outpred <- matrix(NA, dim(X)[1], G)
-#     colnames(outvar) <- colnames(outpred) <- paste("G", 1:G, sep = ".")
-#     for (g in 1:G) {
-#       s.outvar <- matrix(NA, dim(X)[1], length(sp.int))
-#       s.outpred <- matrix(NA, dim(X)[1], length(sp.int))
-#       for (s in seq_along(sp.int)) {
-#         lp <- as.numeric(X %*% c(sp.int[s],coef[g, ]) + offset)
-#         s.outpred[, s] <- exp(lp)
-#         dhdB <- exp(lp) * X
-#         ## pull out the sp intercept and mixing component covariates.
-#         c2 <- covar[c(G * (dim(X)[2] - 1) + s,seq(g, G * (dim(X)[2] - 1), G)), c((G * (dim(X)[2] - 1) + s),seq(g, G * (dim(X)[2] - 1), G))]
-#         for (k in 1:dim(X)[1]) {
-#           s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
-#         }
-#       }
-#       outpred[, g] <- apply(s.outpred * rep(mixture.model$tau[, g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[, g])
-#       outvar[, g] <- apply(s.outvar * rep(mixture.model$tau[, g], each = dim(X)[1]), 1, mean)/sum(mixture.model$tau[, g])
-#     }
-#   }
-#   list(fit = outpred, se.fit = sqrt(outvar))
-# }
-
 ###### SAM internal functions for fitting ######
 # replace this function with one that include eta (linear predictor) as an offset in when estimating the species-specific intercepts.
 ## update the dispersion parameters if needed.
@@ -1299,8 +1188,8 @@
 
 
 # do I need to include the species intercepts in the offsets?
-
-"apply_glm_group_tau_sam" <- function (gg, y, X, site_spp_weights, offset, y_is_na, disty,
+"apply_glm_group_tau_sam" <- function (gg, y, X, site_spp_weights, offset,
+                                       y_is_na, disty,
                                        tau, fits, mus){
 
   ### setup the data stucture for this model.
@@ -1362,18 +1251,20 @@
 
     emfits <- list()
     for(ii in seq_len(control$em_refit)){
-      emfits[[ii]] <-  fitmix_EM_sam(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
+      emfits[[ii]] <-  fitmix_EM_sam(y, X, spp_weights, site_spp_weights,
+                                     offset, y_is_na, G, S, disty, control)
     }
     bf <- which.max(vapply(emfits,function(x)c(x$logl),c(logl=0)))
     emfit <- emfits[[bf]]
-    start_vals <- list(alpha=emfit$alpha,
-                       beta=emfit$beta,
-                       disp=emfit$disp,
-                       pis=emfit$pis,
-                       first_fit = starting_values$first_fit)
+    start_vals <- list(alpha = emfit$alpha,
+                       beta = emfit$beta,
+                       disp = emfit$disp,
+                       pis = emfit$pis,
+                       first_fit = emfit$first_fit)
   } else {
-    if(!control$quiet)message('You are not using the EM algorith to find starting values; starting values are
-                              generated using',control$init_method,'\n')
+    if(!control$quiet)message('You are not using the EM algorith to find
+starting values;\n starting values are generated using ',control$init_method,
+                              '.\n')
     starting_values <- get_initial_values_sam(y = y, X = X,
                                               spp_weights = spp_weights,
                                               site_spp_weights = site_spp_weights,
@@ -1393,11 +1284,11 @@
   start_vals$nS <- S
   start_vals$nG <- G
   start_vals$nObs <- nrow(y)
-
   return(start_vals)
 }
 
-"get_incomplete_logl_sam" <- function(eta, first_fit, fits, spp_weights, G, S, disty){
+"get_incomplete_logl_sam" <- function(eta, first_fit, fits,
+                                      spp_weights, G, S, disty){
 
   pis <- additive_logistic(eta)
   if(is.null(spp_weights))spp_weights <- rep(1,S) #for bayesian boostrap.
@@ -1506,8 +1397,8 @@
   res <- list()
   res$fits <- fits
   res$first_fit <- first_fit
-  res$pis <- starting_values$taus
   res$taus <- starting_values$taus
+  res$pis <- colSums(starting_values$taus)/S
   return(res)
 }
 
@@ -1598,18 +1489,11 @@
   return(out.list)
 }
 
-# "eta_to_mu" <- function (eta, family, mu.min = 1e-16, mu.max = 1/mu.min){
-#   mu <- family$linkinv(eta)
-#   mu[mu < mu.min] = mu.min
-#   mu[mu > mu.max] = mu.max
-#   mu
-# }
-
-
 "fitmix_EM_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
 
   ite <- 1
+  restart_ite <- 1
   logl_old <- -99999999
   logl_new <- -88888888
 
@@ -1625,47 +1509,51 @@
   # first e-step
   fits <- starting_values$fits
   taus <- starting_values$taus
+  pis <- starting_values$pis
+  cat('start pis', pis,'\n')
   first_fit <- starting_values$first_fit
   logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
 
   while(control$em_reltol(logl_new,logl_old) & ite <= control$em_steps){
 
-    # Estimate pis from tau.
-    pis <- colSums(taus)/S
+    pis <- colMeans(taus); cat(pis,"\n")
 
-    if (any(pis == 0)) {
-      starting_values <- get_initial_values_sam(y = y, X = X,
+
+    if (any(pis < 0.0005)) {
+      cat('Pis have gone to zero - restarting with new initialisation')
+      if(restart_ite==1){
+        starting_values <- get_initial_values_sam(y = y, X = X,
                                                 spp_weights = spp_weights,
                                                 site_spp_weights = site_spp_weights,
                                                 offset = offset, y_is_na = y_is_na,
                                                 G = G, S = S,
-                                                disty=disty,
+                                                disty = disty,
                                                 control = control)
       pis <- starting_values$pis
       fits <- starting_values$fits
       taus <- starting_values$taus
       first_fit <- starting_values$first_fit
+      } else {
+        cat('Pis have gone to zero - restarting with random inits')
+      taus <- matrix(runif(S*G),S); taus <- taus/rowSums(taus);
+      pis <- colSums(taus)/S;
+      fits$beta <- matrix(rnorm(G*(ncol(X)-1)),G,(ncol(X)-1))
+      fits$alpha <- rnorm(S)
+      if (disty%in%c(4,6)) fits$disp <- rep(0.05,S)
+      }
       ite <- 1
+      restart_ite <- restart_ite + 1
     }
 
     # m-step
     # replace this with a glm.fit version that can deal with the
     # need to include species intercepts and dispersion parameters as an offset in this estimation.
-    fmix_coefs <- surveillance::plapply(1:G, apply_glm_group_tau_sam,
-                                        y, X, site_spp_weights,
-                                        offset, y_is_na, disty, taus,
-                                        fits, logls_mus$fitted,
-                                        .parallel = control$cores,
-                                        .verbose = FALSE)#!control$quiet)
-
-    # update the coefs.
-    fmix_coefs_mat <- t(do.call(cbind,fmix_coefs))
-    fits$beta <- update_mix_coefs(fits$beta, fmix_coefs_mat)
-
-    fm_sp_int <- surveillance::plapply(1:S, ecomix:::apply_glm_sam_sp_intercepts,
+    fm_sp_int <- surveillance::plapply(seq_len(S),
+                                       ecomix:::apply_glm_sam_sp_intercepts,
                                        y, X, G, taus, site_spp_weights, offset,
                                        y_is_na, disty, fits,
-                                       .parallel = control$cores, .verbose = FALSE)
+                                       .parallel = control$cores,
+                                       .verbose = FALSE)
     #check weights in this.
     alpha <- unlist(lapply(fm_sp_int, `[[`, 1))
     fits$alpha <- update_sp_coefs(fits$alpha,alpha)
@@ -1681,16 +1569,30 @@
       fits$disp <- update_sp_dispersion(fits$disp,disp)
     }
 
+    fmix_coefs <- surveillance::plapply(seq_len(G), apply_glm_group_tau_sam,
+                                        y, X, site_spp_weights,
+                                        offset, y_is_na, disty, taus,
+                                        fits, logls_mus$fitted,
+                                        .parallel = control$cores,
+                                        .verbose = FALSE)
+
+    # update the coefs.
+    fmix_coefs_mat <- t(do.call(cbind,fmix_coefs))
+    fits$beta <- update_mix_coefs(fits$beta, fmix_coefs_mat)
+
     # e-step
     # get the log-likes and taus
     logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-    pis <- rep(1/G, G)
     taus <- get_taus(pis, logls_mus$logl_sp, G, S)
+
 
     #update the likelihood
     logl_old <- logl_new
-    logl_new <- get_incomplete_logl_sam(eta = additive_logistic(pis,inv = TRUE)[-G], first_fit, fits, spp_weights, G, S, disty)
-    ite <- ite + 1#;print(ite)
+    logl_new <- get_incomplete_logl_sam(eta = additive_logistic(pis,inv = TRUE)[-G],
+                                        first_fit, fits, spp_weights, G, S, disty)
+    cat(ite,"\n")
+    cat(logl_old," ->", logl_new,"\n")
+    ite <- ite + 1
   }
 
   taus <- data.frame(taus)
@@ -1748,14 +1650,14 @@
   if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,,drop=FALSE]
 
   if(control$init_method=='kmeans'){
-    if(!control$quiet)message( "Initial groups by K-means clustering\n")
+    # if(!control$quiet)message( "Initial groups by K-means clustering\n")
     fmmvnorm <- stats::kmeans(beta, centers=G, nstart=100)
     tmp_grp <- fmmvnorm$cluster
     grp_coefs <- apply(beta, 2, function(x) tapply(x, tmp_grp, mean))
   }
 
   if(control$init_method=='kmed'){
-  message( "Initial groups parameter estimates by K-medoids\n")
+  # message( "Initial groups parameter estimates by K-medoids\n")
       mrwdist <- kmed::distNumeric(beta, beta, method = "mrw")
       fmmvnorm <- kmed::fastkmed(mrwdist, ncluster = G, iterate = 100)
       tmp_grp <- fmmvnorm$cluster
@@ -1763,7 +1665,7 @@
   }
 
   if(control$init_method=='random' | is.null(tmp_grp)){
-    if(!control$quiet)message( "Initial groups by random allocation and means from random numbers\n")
+    # if(!control$quiet)message( "Initial groups by random allocation and means from random numbers\n")
     grp_coefs <- matrix( stats::rnorm(G*ncol(beta), sd=control$init_sd, mean=0), nrow=G, ncol=ncol(beta))
     tmp_grp <- sample(1:G, S, replace=TRUE)
   }
