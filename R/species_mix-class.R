@@ -1011,43 +1011,46 @@
 
 "predict.species_mix" <- function(object, newobs=NULL, ...) {
 
-   family <- object$dist
+
+  family <- object$dist
 
   if(is.null(newobs)) newobs <- object$titbits$X[,-1]
-  if(ncol(newobs) != ncol(coef(object)$beta)) stop("Number of coefficients does not match the number of predictors in the new observations - double check you're not including an intercept.")
+  if(ncol(newobs) != ncol(coefficients(object)$beta)) stop("Number of coefficients does not match the number of predictors in the new observations - double check you're not including an intercept.")
 
   G <- object$G
   S <- object$S
-  n <- object$n
+  n <- nrow(newobs)
 
   ## To calculate fitted values, take a linear combination of the fitted mus from each component
   predict_mus <- predict_y <- predict_etas <- matrix(0,nrow(newobs),S)
   for(gg in seq_len(G)) {
-    etas.K <- matrix(object$coefs$alpha,nrow(newobs),S,byrow=TRUE) + matrix(as.matrix(newobs)%*%object$coef$beta[gg,],nrow(newobs),S,byrow=FALSE)
-    if(family == "gaussian") fam <- gaussian(); mus.K <- fam$linkinv(etas.K)
-    if(family == "bernoulli") fam <- binomial(); mus.K <- fam$linkinv(etas.K)
-    if(family %in% c("poisson","ippm","negative_binomial"))fam <- poisson(); mus.K <- fam$linkinv(etas.K)
+    etas.K <- matrix(object$coefs$alpha,nrow(newobs),S,byrow=TRUE) + matrix(as.matrix(newobs)%*%coefficients(object)$beta[gg,],nrow(newobs),S,byrow=FALSE)
+    if(family == "gaussian") mus.K <- etas.K
+    if(family == "bernoulli") mus.K <- exp(etas.K)/(1+exp(etas.K))
+    if(family %in% c("poisson","negative_binomial")) mus.K <- exp(etas.K)
     predict_mus <- predict_mus + matrix(object$taus[,gg],nrow(newobs),S,byrow=T)*mus.K
   }
 
   ## To generate an actual response matrix; simulate component-label then simulated response conditional
   for(ss in seq_len(S)) {
     get.z <- sample(seq_len(G), 1, prob = object$taus[ss,])
-    etas.K <- object$alpha[ss] + as.matrix(newobs)%*%object$coefs$beta[get.z,]
+    etas.K <- object$alpha[ss] + as.matrix(newobs)%*%coefficients(object)$beta[get.z,]
     if(family == "bernoulli")
       predict_y[,ss] <- rbinom(n, 1, p=exp(etas.K)/(1+exp(etas.K)))
     if(family == "poisson")
       predict_y[,ss] <- rpois(n, lambda = exp(etas.K))
-    if(family == "negative.binomial")
+    if(family == "negative_binomial")
       predict_y[,ss] <- rnbinom(n, mu = exp(etas.K), size = exp(-object$disp[ss]))
+    if(family == "gaussian")
+      predict_y[,ss] <- rnorm(n, mean = etas.K, sd = exp(object$disp[ss]))
   }
 
   rownames(predict_mus) <- rownames(predict_y) <- 1:nrow(newobs);
   colnames(predict_mus) <- colnames(predict_y) <- names(object$alpha)
 
-  return(list(predict_mus = round(predict_mus,5), predict_y = predict_y))
+  return(list(predict_mus = round(predict_mus,5),
+              predict_y = predict_y))
 }
-
 ###### SAM internal functions for fitting ######
 # replace this function with one that include eta (linear predictor) as an offset in when estimating the species-specific intercepts.
 ## update the dispersion parameters if needed.
@@ -1510,19 +1513,22 @@ starting values;\n starting values are generated using ',control$init_method,
   fits <- starting_values$fits
   taus <- starting_values$taus
   pis <- starting_values$pis
-  cat('start pis', pis,'\n')
+  # cat('start pis', pis,'\n')
   first_fit <- starting_values$first_fit
   logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
 
   while(control$em_reltol(logl_new,logl_old) & ite <= control$em_steps){
+    if(restart_ite>10){
+      message('cannot find good starting values with initialisation and random starting values - please check the number of groups and coefs.')
+      break
+    }
 
-    pis <- colMeans(taus); cat(pis,"\n")
+    pis <- colMeans(taus)
 
-
-    if (any(pis < 0.0005)) {
-      cat('Pis have gone to zero - restarting with new initialisation')
-      if(restart_ite==1){
-        starting_values <- get_initial_values_sam(y = y, X = X,
+    if (any(pis < sqrt(.Machine$double.eps))) {
+       if(restart_ite==1){
+         cat('Pis have gone to zero - restarting with new initialisation \n')
+         starting_values <- get_initial_values_sam(y = y, X = X,
                                                 spp_weights = spp_weights,
                                                 site_spp_weights = site_spp_weights,
                                                 offset = offset, y_is_na = y_is_na,
@@ -1534,7 +1540,7 @@ starting values;\n starting values are generated using ',control$init_method,
       taus <- starting_values$taus
       first_fit <- starting_values$first_fit
       } else {
-        cat('Pis have gone to zero - restarting with random inits')
+        cat('Pis have gone to zero - restarting with random inits \n')
       taus <- matrix(runif(S*G),S); taus <- taus/rowSums(taus);
       pis <- colSums(taus)/S;
       fits$beta <- matrix(rnorm(G*(ncol(X)-1)),G,(ncol(X)-1))
@@ -1546,8 +1552,6 @@ starting values;\n starting values are generated using ',control$init_method,
     }
 
     # m-step
-    # replace this with a glm.fit version that can deal with the
-    # need to include species intercepts and dispersion parameters as an offset in this estimation.
     fm_sp_int <- surveillance::plapply(seq_len(S),
                                        ecomix:::apply_glm_sam_sp_intercepts,
                                        y, X, G, taus, site_spp_weights, offset,
@@ -1590,8 +1594,8 @@ starting values;\n starting values are generated using ',control$init_method,
     logl_old <- logl_new
     logl_new <- get_incomplete_logl_sam(eta = additive_logistic(pis,inv = TRUE)[-G],
                                         first_fit, fits, spp_weights, G, S, disty)
-    cat(ite,"\n")
-    cat(logl_old," ->", logl_new,"\n")
+    # cat(ite,"\n")
+    # cat(logl_old," ->", logl_new,"\n")
     ite <- ite + 1
   }
 
