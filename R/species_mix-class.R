@@ -1142,30 +1142,57 @@
 
 
 
-"apply_optimise_spp_theta" <- function(ss, y, X, G, taus, site_spp_weights,
-                                       offset, y_is_na, disty, fits,
+"apply_optimise_spp_theta" <- function(ss, first_fit, fits, spp_weights,
+                                       G, disty, pis,
                                        theta.range = c(0.0001,10)){
-  thet <- optimise(f = theta.logl, interval = theta.range, ss = ss, y = y, X=X,
-                   G=G, site_spp_weights = site_spp_weights, offset = offset,
-                   y_is_na = y_is_na, taus=taus, disty=disty, fits=fits,
-                   theta.range = theta.range, maximum = TRUE)$maximum
-  disp <- update.coefs(fits$disp[ss], thet, kappa=update.kappa[2])
-  return(disp)
+  thet <- optimise(f = theta.logl2, interval = theta.range,  ss, first_fit, fits, spp_weights, G, S, disty, pis, theta.range, maximum = TRUE)$maximum
+
+  return(thet)
 }
 
 
-"theta.logl" <- function(x, ss, family) {
-  out <- 0
-  ids_i <- !y_is_na[,ss]
-  for(gg in seq_len(G)) {
-    cw.eta <- fits$alpha[ss] + X[ids_i,-1]%*%fits$beta[gg,]
-    if(disty == 4)
-      cw.out <- sum(taus[ss,gg]*dnbinom(y[ids_i,ss], mu = exp(cw.eta), size = 1/x, log = TRUE)*site_spp_weights[ids_i,ss])
-    if(disty == 6)
-      cw.out <- sum(taus[ss,gg]*dnorm(y[ids_i,j], mean = cw.eta, sd = exp(sqrt(x)), log = TRUE)*site_spp_weights[ids_i,ss])
-    out <- out + cw.out
+# "theta.logl" <- function(x, ss, family) {
+#   out <- 0
+#   ids_i <- !y_is_na[,ss]
+#   for(gg in seq_len(G)) {
+#     eta <- fits$alpha[ss] + X[ids_i,-1]%*%fits$beta[gg,]
+#     if(disty == 4)
+#       out <- sum(taus[ss,gg]*dnbinom(y[ids_i,ss], mu = exp(eta), size = exp(-x), log = TRUE)*site_spp_weights[ids_i,ss])
+#     if(disty == 6)
+#       out <- sum(taus[ss,gg]*dnorm(y[ids_i,j], mean = eta, sd = exp(x), log = TRUE)*site_spp_weights[ids_i,ss])
+#     out <- out + cw.out
+#   }
+#   return(out)
+# }
+
+"theta.logl2" <- function( theta, ss, first_fit, fits, spp_weights, G,
+                           disty, pis, theta.range) {
+
+  # pis <- ecomix:::additive_logistic(eta)
+  ids_i <- !first_fit$y_is_na[,ss]
+  offy <- first_fit$offset
+  y <- first_fit$y[ids_i,ss]
+  logls <- rep( NA, G)
+  for(gg in seq_len(G)){
+    eta <- fits$alpha[ss] + X[ids_i,-1]%*%fits$beta[gg,] + offy
+    if(disty==4) logls[gg] <- sum(dnbinom( y, mu=exp(mus), size=exp(-theta), log=TRUE))
+    if(disty==6) logls[gg] <- sum(dnorm( y, mean = eta, sd = exp(theta), log=TRUE))
   }
-  return(out)
+  ak <- logls + log(pis)
+  am <- max(ak)
+  ak <- exp( ak-am)
+  sppLogls <- am + log( sum( ak))
+
+  pen.max <- theta.range[2]
+  pen.min <- theta.range[1]
+  shape1 <- shape2 <- 1.25
+
+  if(disty==4) db <- (exp(-theta)-pen.min) / (pen.max-pen.min)
+  if(disty==6) db <- (exp(theta)-pen.min) / (pen.max-pen.min)
+
+  sppLogls <- sppLogls + dbeta(db, shape1, shape2, log=TRUE)
+
+  return( sppLogls)
 }
 
 ## function for starting values.
@@ -1528,7 +1555,7 @@ starting values;\n starting values are generated using ',control$init_method,
   logl_new <- -88888888
 
   # get starting values
-  starting_values <- get_initial_values_sam(y = y, X = X,
+  starting_values <- ecomix:::get_initial_values_sam(y = y, X = X,
                                             spp_weights = spp_weights,
                                             site_spp_weights = site_spp_weights,
                                             offset = offset, y_is_na = y_is_na,
@@ -1540,9 +1567,9 @@ starting values;\n starting values are generated using ',control$init_method,
   fits <- starting_values$fits
   taus <- starting_values$taus
   pis <- starting_values$pis
-  # cat('start pis', pis,'\n')
+  cat('start pis', pis,'\n')
   first_fit <- starting_values$first_fit
-  logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
+  logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
 
   while(control$em_reltol(logl_new,logl_old) & ite <= control$em_steps){
     if(restart_ite>10){
@@ -1591,7 +1618,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
     ## need a function here that updates the dispersion parameter.
     if(disty%in%c(4,6)){
-      fm_disp <- surveillance::plapply(1:S, apply_optimise_spp_theta,
+      fm_disp <- surveillance::plapply(1:S, ecomix:::apply_optimise_spp_theta,
                                        y, X, G, taus, site_spp_weights,
                                        offset, y_is_na, disty, fits,
                                        .parallel = control$cores,

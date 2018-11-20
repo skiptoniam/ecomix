@@ -53,13 +53,14 @@ testthat::test_that('species_mix negative binomial', {
   #
   # # test a single negative_binomial model
   i <- 1
-  testthat::expect_length(apply_glmnet_sam(i, y, X, site_spp_weights, offset, y_is_na, disty),3)
-  # # fm_negative_binomialint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam,  y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
-  # # testthat::expect_length(do.call(cbind,fm_negative_binomialint)[1,],S)
-  #
-  # # test that the starting values work.
-  # # testthat::expect_length(tmp <- ecomix:::get_starting_values_sam(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control),10)
-  #
+  testthat::expect_length(ecomix:::apply_glm_sam_inits(i, y, X, site_spp_weights, offset, y_is_na, disty),3)
+  fm_negative_binomialint <- surveillance::plapply(1:S, ecomix:::apply_glm_sam_inits,  y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  testthat::expect_length(do.call(cbind,fm_negative_binomialint)[1,],S)
+
+  # test that the starting values work.
+  testthat::expect_length(tmp <- ecomix:::fitmix_EM_sam(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control),10)
+
+
   # #get the taus
   # starting_values <- ecomix:::initiate_fit_sam(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control)
   # fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,disp=starting_values$disp)
