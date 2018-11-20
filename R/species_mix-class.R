@@ -1003,7 +1003,6 @@
 #'@rdname species_mix
 #'@param object is a matrix model returned from the species_mix model.
 #'@param newobs a matrix of new observations for prediction.
-#'@param method 'species' or 'archetype' level predictions
 #'@export
 #'@examples
 #'\dontrun{
