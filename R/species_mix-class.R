@@ -1145,7 +1145,9 @@
 "apply_optimise_spp_theta" <- function(ss, first_fit, fits, spp_weights,
                                        G, disty, pis,
                                        theta.range = c(0.0001,10)){
-  thet <- optimise(f = theta.logl2, interval = theta.range,  ss, first_fit, fits, spp_weights, G, S, disty, pis, theta.range, maximum = TRUE)$maximum
+  thet <- optimise(f = theta.logl2, interval = theta.range,  ss, first_fit,
+                   fits, spp_weights, G, disty, pis, theta.range,
+                   maximum = TRUE)$maximum
 
   return(thet)
 }
@@ -1618,13 +1620,13 @@ starting values;\n starting values are generated using ',control$init_method,
 
     ## need a function here that updates the dispersion parameter.
     if(disty%in%c(4,6)){
-      fm_disp <- surveillance::plapply(1:S, ecomix:::apply_optimise_spp_theta,
-                                       y, X, G, taus, site_spp_weights,
-                                       offset, y_is_na, disty, fits,
+      fm_disp <- surveillance::plapply(1:S, apply_optimise_spp_theta,
+                                       first_fit, fits, spp_weights,
+                                       G, disty, pis,
                                        .parallel = control$cores,
                                        .verbose = FALSE)
       disp <- unlist(lapply(fm_disp, `[[`, 1))
-      fits$disp <- update_sp_dispersion(fits$disp,disp)
+      fits$disp <- update_sp_dispersion(fits$disp,disp,0.5)
     }
 
     fmix_coefs <- surveillance::plapply(seq_len(G), apply_glm_group_tau_sam,
