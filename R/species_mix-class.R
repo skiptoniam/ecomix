@@ -438,14 +438,14 @@
                                   trace = 1,
                                   cores = 1,
                                   ## intialisation controls
-                                  init_method = 'kmed',
+                                  init_method = 'kmeans',
                                   init_sd = 1,
-                                  minimum_sites_prevelance = 0.05,
+                                  minimum_sites_prevelance = 0.1,
                                   # minimum_occurrence_tolerance_ippm = 20,
                                   ## EM algorithim controls
                                   em_prefit = TRUE,
-                                  em_steps = 3,
-                                  em_refit = 1,
+                                  em_steps = 5,
+                                  em_refit = 2,
                                   # em_maxit = 3,
                                   em_abstol = sqrt(.Machine$double.eps),
                                   em_reltol = reltol_fun,
