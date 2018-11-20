@@ -1003,54 +1003,82 @@
 #'@rdname species_mix
 #'@param object is a matrix model returned from the species_mix model.
 #'@param newobs a matrix of new observations for prediction.
+#'@param method 'species' or 'archetype' level predictions
 #'@export
 #'@examples
 #'\dontrun{
-#'fm1 <- species_mix(form,data)
-#'preds_fm1 <- predict(fm1,newdata)}
+#'preds_fm1 <- predict(fm1, newdata)
+#'}
 
-"predict.species_mix" <- function(object, newobs=NULL, ...) {
-
+"predict.species_mix" <- function (object, newobs=NULL, ...){
 
   family <- object$dist
+  estimate_variance <- TRUE
+  mixture.model <- object
 
-  if(is.null(newobs)) newobs <- object$titbits$X[,-1]
+  if (family == "bernoulli") link.fun <- make.link("logit")
+  if (family %in% c("negative_binomial","poisson","ippm")) link.fun <- make.link("log")
+  if (family == "gaussian")link.fun <- make.link("identity")
+  if(is.null(newobs)) newobs <- as.data.frame(object$titbits$X[,-1])
   if(ncol(newobs) != ncol(coefficients(object)$beta)) stop("Number of coefficients does not match the number of predictors in the new observations - double check you're not including an intercept.")
 
-  G <- object$G
-  S <- object$S
-  n <- nrow(newobs)
+    G <- mixture.model$G
+    S <- mixture.model$S
+    covar <- mixture.model$vcov
+    if(is.null(covar)){
+      estimate_variance <- FALSE
+      message(' please estimate vcov matrix and \n append to model with "mod$vcov <- vcov(mod)"\n to get an estimate of uncertainty in predictions.\n')
+    }
+    alphas <- mixture.model$coefs$alpha
+    betas <- mixture.model$coefs$beta
+    model.fm <- as.formula(mixture.model$titbits$archetype_formula)
+    model.fm[[2]] <- NULL
+    X <- model.matrix(model.fm, newobs)
+    offset <- model.frame(model.fm, data = newobs)
+    offset <- model.offset(offset)
+    if (is.null(offset))
+      offset <- rep(0, nrow(X))
+    outvar_arch <- matrix(NA, dim(X)[1], G)
+    outpred_arch <- matrix(NA, dim(X)[1], G)
+    outvar_spp <- matrix(0, dim(X)[1], S)
+    outpred_spp <- matrix(0, dim(X)[1], S)
+    colnames(outpred_arch) <- colnames(outvar_arch) <- paste("G", 1:G, sep = ".")
+    colnames(outpred_spp) <- colnames(outvar_spp) <- paste("spp", 1:S, sep = ".")
 
-  ## To calculate fitted values, take a linear combination of the fitted mus from each component
-  predict_mus <- predict_y <- predict_etas <- matrix(0,nrow(newobs),S)
-  for(gg in seq_len(G)) {
-    etas.K <- matrix(object$coefs$alpha,nrow(newobs),S,byrow=TRUE) + matrix(as.matrix(newobs)%*%coefficients(object)$beta[gg,],nrow(newobs),S,byrow=FALSE)
-    if(family == "gaussian") mus.K <- etas.K
-    if(family == "bernoulli") mus.K <- exp(etas.K)/(1+exp(etas.K))
-    if(family %in% c("poisson","negative_binomial")) mus.K <- exp(etas.K)
-    predict_mus <- predict_mus + matrix(object$taus[,gg],nrow(newobs),S,byrow=T)*mus.K
-  }
+    for (g in seq_len(G)) {
+      s.outvar <- matrix(NA, dim(X)[1], length(alphas))
+      s.outpred <- matrix(NA, dim(X)[1], length(alphas))
+      for (s in seq_len(S)) {
+        lp <- as.numeric(alphas[s] +  X[,-1]%*%betas[g, ] + offset)
+        s.outpred[, s] <- link.fun$linkinv(lp)
+        if(estimate_variance){
+          if (family == "bernoulli") dhdB <- (exp(lp)/(1 + exp(lp))) * X - exp(lp)^2/((1 + exp(lp))^2) * X
+          if (family %in% c("negative_binomial","poisson","ippm")) dhdB <- exp(lp) * X
+          if (family == "gaussian") dhdB <- lp * X
+          c2 <- covar[c(seq(g + S, G * (dim(X)[2] - 1) + S, G), s),
+                      c(seq(g + S, G * (dim(X)[2] - 1) + S, G), s)]
+          for (k in 1:dim(X)[1]) {
+              s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
+          }
+        }
+      }
 
-  ## To generate an actual response matrix; simulate component-label then simulated response conditional
-  for(ss in seq_len(S)) {
-    get.z <- sample(seq_len(G), 1, prob = object$taus[ss,])
-    etas.K <- object$alpha[ss] + as.matrix(newobs)%*%coefficients(object)$beta[get.z,]
-    if(family == "bernoulli")
-      predict_y[,ss] <- rbinom(n, 1, p=exp(etas.K)/(1+exp(etas.K)))
-    if(family == "poisson")
-      predict_y[,ss] <- rpois(n, lambda = exp(etas.K))
-    if(family == "negative_binomial")
-      predict_y[,ss] <- rnbinom(n, mu = exp(etas.K), size = exp(-object$disp[ss]))
-    if(family == "gaussian")
-      predict_y[,ss] <- rnorm(n, mean = etas.K, sd = exp(object$disp[ss]))
-  }
-
-  rownames(predict_mus) <- rownames(predict_y) <- 1:nrow(newobs);
-  colnames(predict_mus) <- colnames(predict_y) <- names(object$alpha)
-
-  return(list(predict_mus = round(predict_mus,5),
-              predict_y = predict_y))
+      # predict the species specific responses
+      outpred_spp <- outpred_spp + matrix(mixture.model$taus[,g],
+                                          nrow(newobs),S,byrow=T)*s.outpred
+      outvar_spp <- outvar_spp + matrix(mixture.model$taus[,g],
+                                        nrow(newobs),S,byrow=T)*s.outvar
+      # predict the archetype species responses
+      outpred_arch[, g] <- apply(s.outpred * rep(mixture.model$taus[, g], each = dim(X)[1]),
+                            1, sum)/sum(mixture.model$taus[, g])
+      outvar_arch[, g] <- apply(s.outvar * rep(mixture.model$taus[, g], each = dim(X)[1]),
+                                1, sum)/sum(mixture.model$taus[, g])
+      }
+  return(list(fit = outpred_arch, se.fit = sqrt(outvar_arch),
+              fit_spp = outpred_spp, se.fit_spp = sqrt(outvar_spp)))
 }
+
+
 ###### SAM internal functions for fitting ######
 # replace this function with one that include eta (linear predictor) as an offset in when estimating the species-specific intercepts.
 ## update the dispersion parameters if needed.

@@ -149,6 +149,8 @@ minimum you will need pis (additive_logitic transformed), alpha
 
 \item{object}{is a matrix model returned from the species_mix model.}
 
+\item{method}{'species' or 'archetype' level predictions}
+
 \item{newobs}{a matrix of new observations for prediction.}
 
 \item{quite}{Should any reporting be performed? Default is FALSE, for reporting.}
@@ -223,6 +225,6 @@ print(fm1)}
 \dontrun{
 vcov(fm1)}
 \dontrun{
-fm1 <- species_mix(form,data)
-preds_fm1 <- predict(fm1,newdata)}
+preds_fm1 <- predict(fm1, newdata)
+}
 }
