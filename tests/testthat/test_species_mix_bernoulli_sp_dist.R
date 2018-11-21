@@ -65,7 +65,8 @@ testthat::test_that('species mix bernoulli', {
   # ## now let's try and fit the optimisation
   sv <- ecomix:::get_starting_values_sam(y, X, spp_weights, site_spp_weights,
                                          offset, y_is_na, G, S, disty, control)
-  tmp <- ecomix:::sam_optimise(y,X,offset,spp_weights,site_spp_weights, y_is_na, S, G, nrow(y), disty, start_vals = sv, control)
+  tmp <- ecomix:::sam_optimise(y,X,offset,spp_weights,site_spp_weights, y_is_na,
+                               S, G, nrow(y), disty, start_vals = sv, control)
   testthat::expect_length(tmp,17)
 
 

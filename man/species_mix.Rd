@@ -7,10 +7,8 @@
 \alias{control}
 \alias{species_mix.control}
 \alias{simulate_species_mix_data}
-\alias{species_mix_estimate_groups}
 \alias{coef.species_mix}
 \alias{print.species_mix}
-\alias{residuals.species_mix}
 \alias{vcov.species_mix}
 \alias{AIC.species_mix}
 \alias{BIC.species_mix}
@@ -23,6 +21,9 @@ species_mix(archetype_formula = NULL,
   distribution = "bernoulli", offset = NULL, weights = NULL,
   bb_weights = NULL, control = NULL, inits = NULL, standardise = TRUE,
   titbits = TRUE)
+
+species_mix.fit(y, X, G, S, spp_weights, site_spp_weights, offset,
+  y_is_na = NULL, disty, control, inits = NULL)
 
 species_mix.multifit(archetype_formula = NULL,
   species_formula = stats::as.formula(~1), data, n_mixtures = 3,
@@ -43,16 +44,9 @@ species_mix.control(maxit = 1000, quiet = FALSE, trace = 1, cores = 1,
 simulate_species_mix_data(archetype_formula, species_formula, dat, theta,
   distribution = "bernoulli")
 
-species_mix_estimate_groups(archetype_formula = NULL, species_formula = ~1,
-  data, n_mixtures = 1:10, distribution = "bernoulli", offset = NULL,
-  weights = NULL, control = species_mix.control(cores = 1), inits = NULL,
-  standardise = TRUE, titbits = FALSE)
-
 \method{coef}{species_mix}(object, ...)
 
 \method{print}{species_mix}(x, ...)
-
-\method{residuals}{species_mix}(object, ..., type = "RQR", quiet = FALSE)
 
 \method{vcov}{species_mix}(object, ..., object2 = NULL,
   method = "FiniteDifference", nboot = 10, mc.cores = 1, D.accuracy = 2)
@@ -68,7 +62,7 @@ species_mix_estimate_groups(archetype_formula = NULL, species_formula = ~1,
 \arguments{
 \item{archetype_formula}{an object of class "formula" (or an object that can be
 coerced to that class). The response variable (left hand side of the
-formula) needs to be either 'presence', 'occurrence', 'abundance',
+formula) needs to be either 'occurrence', 'abundance',
 'biomass' or 'quantity' data. The type of reponse data will help specify
 the type of error distribution to be used. The dependent variables
 (the right hind side) of this formula specifies the dependence of the
@@ -93,8 +87,7 @@ nsites*(nspecies+const+covariates).}
 \item{n_mixtures}{The number of mixing components (groups) to fit.}
 
 \item{distribution}{The family of statistical distribution to use within
-the ecomix models. a  choice between "bernoulli", "poisson",
-"ippm" (inhomogeneous Poisson point process model), "negative_binomial", "tweedie"
+the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial", "tweedie"
 and "gaussian" distributions are possible and applicable to specific types
 of data.}
 
@@ -106,10 +99,7 @@ where conditioning is performed on the SAM.}
 in the log-likelihood calculations. If NULL (default) then all weights are
 assumed to be identically 1. Because we are estimating the log-likelihood
 over species (rather than sites), the weights should be a vector n species
-long. The exception is under the use of the 'ippm' distribution where
-weights must be a nrow(data)*n_species matrix, which provides a
-species-specific background weights used to estimate the species-specific
-marginal likelihoods.}
+long.}
 
 \item{bb_weights}{a numeric vector of n species long. This is used for undertaking
 a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
@@ -126,6 +116,22 @@ minimum you will need pis (additive_logitic transformed), alpha
 \item{standardise}{Booliean. If TRUE, standarise the covariate data.}
 
 \item{titbits}{either a boolean or a vector of characters. If TRUE (default for species_mix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regimix(qv) and predict.regimix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for species_mix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "offset" for the offset in the model, "site_spp_weights" for the model weights, "archetype_formula" for the formula for the SAMs, "species_formula" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "dist" for the conditional distribution of the species data. Care needs to be taken when using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory.}
+
+\item{y}{is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.}
+
+\item{X}{is a design matrix for the archetype_formula dimension n_sites * n_covariates.}
+
+\item{G}{is the number of species archetypes that are being estimated.}
+
+\item{S}{is the number of species to be modelled (this will be calculated internally in species_mix())}
+
+\item{spp_weights}{These are weights on the species logls and are specifically used in the Bayesian Boostrap.}
+
+\item{site_spp_weights}{These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.}
+
+\item{y_is_na}{This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!}
+
+\item{disty}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are avaliable - internal conversion of distribution to a integer.}
 
 \item{nstart}{for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
@@ -151,6 +157,14 @@ minimum you will need pis (additive_logitic transformed), alpha
 
 \item{newobs}{a matrix of new observations for prediction.}
 
+\item{W}{is a design matrix for species_formula and will be implemented if species_formula has covariates.}
+
+\item{offset}{this is a vector of site specific offsets, this might be something like area sampled at sites.}
+
+\item{control}{this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.}
+
+\item{inits}{This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).}
+
 \item{quite}{Should any reporting be performed? Default is FALSE, for reporting.}
 
 \item{reltol}{function that determines the relative tolernace for model convergence. Default is quite strict.}
@@ -164,10 +178,6 @@ minimum you will need pis (additive_logitic transformed), alpha
 \description{
 Fits a finite mixture model to identify species archetype
 models (SAMs).
-
-This function runs the 'species_mix' function but it iterates through groups (1 to 10) by default.
-
-The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep).
 }
 \details{
 species_mix is used to fit mixtures of glms to multivariate
@@ -208,10 +218,6 @@ dat <- data.frame(y=rep(1,100),
                   x2=stats::rnorm(100,0,2.5))
 simulated_data <- simulate_species_mix_data(archetype_formula,~1,
                                             dat,theta,dist="bernoulli")
-}
-
-\dontrun{
-fm_groups <- species_mix_estimate_groups(sam_form, sp_form, data, distribution = 'bernoulli', n_mixtures=1:10)
 }
 
 #Print information about a species_mix model

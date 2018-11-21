@@ -1,4 +1,4 @@
-##### Species mix functions to export ####
+##### Species mix functions to export #####
 
 #' @title species_mix objects
 #' @rdname species_mix
@@ -15,7 +15,7 @@
 #'  and 'tweedie' distributions can be fitted using the species_mix function.
 #' @param archetype_formula an object of class "formula" (or an object that can be
 #' coerced to that class). The response variable (left hand side of the
-#' formula) needs to be either 'presence', 'occurrence', 'abundance',
+#' formula) needs to be either 'occurrence', 'abundance',
 #' 'biomass' or 'quantity' data. The type of reponse data will help specify
 #' the type of error distribution to be used. The dependent variables
 #' (the right hind side) of this formula specifies the dependence of the
@@ -36,8 +36,7 @@
 #' nsites*(nspecies+const+covariates).
 #' @param n_mixtures The number of mixing components (groups) to fit.
 #' @param distribution The family of statistical distribution to use within
-#' the ecomix models. a  choice between "bernoulli", "poisson",
-#' "ippm" (inhomogeneous Poisson point process model), "negative_binomial", "tweedie"
+#' the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial", "tweedie"
 #' and "gaussian" distributions are possible and applicable to specific types
 #' of data.
 #' @param offset a numeric vector of length nrow(data) (n sites) that is included into
@@ -47,10 +46,7 @@
 #' in the log-likelihood calculations. If NULL (default) then all weights are
 #' assumed to be identically 1. Because we are estimating the log-likelihood
 #' over species (rather than sites), the weights should be a vector n species
-#' long. The exception is under the use of the 'ippm' distribution where
-#' weights must be a nrow(data)*n_species matrix, which provides a
-#' species-specific background weights used to estimate the species-specific
-#' marginal likelihoods.
+#' long.
 #' @param bb_weights a numeric vector of n species long. This is used for undertaking
 #' a Bayesian Bootstrap. See 'vcov.species_mix' for more details.
 #' @param control a list of control parameters for optimisation and calculation.
@@ -108,31 +104,22 @@
 
   # Create model matrix
   mf <- match.call(expand.dots = FALSE)
-  if(distribution=="ippm"){
-    m <- match(c("data","offset"), names(mf), 0L)
-  } else {
-    m <- match(c("data","offset","weights"), names(mf), 0L)
-  }
-  # m <- match(c("data","offset","weights"), names(mf), 0L)
-  mf <- mf[c(1L, m)]
+  m <- match(c("data","offset","weights"), names(mf), 0L)
+
+    mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
-  if(distribution=="ippm"){
-    mf$na.action <- "na.pass"
-  } else {
-    mf$na.action <- "na.exclude"
-  }
+  mf$na.action <- "na.exclude"
   mf[[1L]] <- quote(stats::model.frame)
   mf <- eval(mf, parent.frame())
 
   # need this for the na.omit step
   rownames(mf)<-seq_len(nrow(mf))
 
-  # get the model matrix and find the fitting formula.
   dat <- clean_data_sam(mf, archetype_formula, NULL, distribution)
 
-    # get responses
+  # get responses
   y <- stats::model.response(dat$mf.X)
-
+  cat(head(y))
   # logical matirx needed for removing NAs from response and weights.
   y_is_na <- is.na(y)
 
@@ -150,9 +137,6 @@
   # get archetype model matrix
   X <- get_X_sam(archetype_formula, dat$mf.X)
 
-  # get species model matrix
-  # W <- get_W_sam(species_formula, dat$mf.W) # don't need yet. but will be important for partial sams.
-
   #get distribution
   disty.cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
   disty <- get_distribution_sam(disty.cases, distribution)
@@ -164,19 +148,6 @@
   species_names <- colnames(y)
   site_spp_weights <- get_site_spp_weights_sam(mf,weights,species_names,distribution)
   spp_weights <- check_spp_weights(bb_weights,S)
-
-  # cat(colnames(site_spp_weights),"\n")
-
-  if(distribution=='ippm'){
-    if(!all(colnames(y)==colnames(site_spp_weights))){
-      stop(cat('When modelling a inhomogenous poisson point process model,\n species data colnames must match weights colnames.\n\nSpecies data colnames from "data" are:\n',colnames(y),'.\n\nWhile the colnames of the weights are:\n', colnames(site_spp_weights),'\n'))
-    }
-    if(any(dim(y)!=dim(site_spp_weights))){
-      stop('When modelling a inhomogenous poisson point process model,
-           weights needs to have the same dimensions at the
-           species data - n_sites x n_species')
-    }
-  }
 
   s.means <- NULL
   s.sds <- NULL
@@ -218,26 +189,25 @@
   return(tmp)
 }
 
-# @rdname species_mix
-# @name species_mix.fit
-# @param y is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.
-# @param X is a design matrix for the archetype_formula dimension n_sites * n_covariates.
-# @param W is a design matrix for species_formula and will be implemented if species_formula has covariates.
-# @param G is the number of species archetypes that are being estimated.
-# @param S is the number of species to be modelled (this will be calculated internally in species_mix())
-# @param spp_weights These are weights on the species logls and are specifically used in the Bayesian Boostrap.
-# @param site_spp_weights These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.
-# @param offset this is a vector of site specific offsets, this might be something like area sampled at sites.
-# @param y_is_na This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!
-# @param disty the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are avaliable - internal conversion of distribution to a integer.
-# @param control this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.
-# @param inits This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).
-# @export
+#'@rdname species_mix
+#'@name species_mix.fit
+#'@param y is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.
+#'@param X is a design matrix for the archetype_formula dimension n_sites * n_covariates.
+#'@param W is a design matrix for species_formula and will be implemented if species_formula has covariates.
+#'@param G is the number of species archetypes that are being estimated.
+#'@param S is the number of species to be modelled (this will be calculated internally in species_mix())
+#'@param spp_weights These are weights on the species logls and are specifically used in the Bayesian Boostrap.
+#'@param site_spp_weights These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.
+#'@param offset this is a vector of site specific offsets, this might be something like area sampled at sites.
+#'@param y_is_na This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!
+#'@param disty the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are avaliable - internal conversion of distribution to a integer.
+#'@param control this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.
+#'@param inits This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).
+#'@export
 
 "species_mix.fit" <- function(y, X, G, S, spp_weights, site_spp_weights, offset, y_is_na=NULL, disty, control, inits=NULL){
 
   if(is.null(inits)){
-
     starting_values  <-  get_starting_values_sam(y = y, X = X,
                                                  spp_weights = spp_weights,
                                                  site_spp_weights = site_spp_weights,
@@ -254,6 +224,7 @@
     starting_values <- inits
   }
 
+  cat(starting_values$alpha,"\n\n",starting_values$beta,"\n\n", ecomix:::additive_logistic(starting_values$eta,FALSE))
   tmp <- sam_optimise(y, X, offset, spp_weights, site_spp_weights,
                       y_is_na, S, G, nrow(y),
                       disty, starting_values, control)
@@ -262,7 +233,7 @@
 }
 
 #'@rdname species_mix
-#'@name species_mix.fit
+#'@name species_mix.multifit
 #'@param nstart for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.
 #'@param mc.cores for species_mix.multifit only. The number of cores to spread the re-fitting over.
 #'@export
@@ -292,19 +263,10 @@
 
     # Create model matrix
     mf <- match.call(expand.dots = FALSE)
-    if(distribution=="ippm"){
-      m <- match(c("data","offset"), names(mf), 0L)
-    } else {
-      m <- match(c("data","offset","weights"), names(mf), 0L)
-    }
-    # m <- match(c("data","offset","weights"), names(mf), 0L)
+    m <- match(c("data","offset","weights"), names(mf), 0L)
     mf <- mf[c(1L, m)]
     mf$drop.unused.levels <- TRUE
-    if(distribution=="ippm"){
-      mf$na.action <- "na.pass"
-    } else {
-      mf$na.action <- "na.exclude"
-    }
+    mf$na.action <- "na.exclude"
     mf[[1L]] <- quote(stats::model.frame)
     mf <- eval(mf, parent.frame())
 
@@ -334,11 +296,8 @@
     # get archetype model matrix
     X <- get_X_sam(archetype_formula, dat$mf.X)
 
-    # get species model matrix
-    # W <- get_W_sam(species_formula, dat$mf.W) # don't need yet. but will be important for partial sams.
-
     #get distribution
-    disty.cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
+    disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie","gaussian")
     disty <- get_distribution_sam(disty.cases, distribution)
 
     # get offsets
@@ -658,49 +617,44 @@
   out <- as.matrix(out)
   dat <- as.matrix(dat)
   return(list(species_data = out, covariate_data = dat, group = group, pi = pi, sp.int = sp.int))
-  }
+
 }
 
-#'@rdname species_mix
+#' #'@rdname species_mix
+#' #'
+#' #'@name species_mix_estimate_groups
+#' #'
+#' #'@description This function runs the 'species_mix' function but it iterates through groups (1 to 10) by default.
+#' #'
+#' #'@export
+#' #'
+#' #'@examples
+#' #'
+#' #' \dontrun{
+#' #' fm_groups <- species_mix_estimate_groups(sam_form, sp_form, data, distribution = 'bernoulli', n_mixtures=1:10)
+#' #'}
+#' "species_mix_estimate_groups" <- function(archetype_formula = NULL, species_formula = ~1,
+#'                                           data, n_mixtures = 1:10, distribution="bernoulli",
+#'                                           offset=NULL, weights=NULL, bb_weights=NULL,
+#'                                           control=NULL, inits=NULL,
+#'                                           standardise = TRUE, titbits = TRUE, cores = 1){
 #'
-#'@name species_mix_estimate_groups
+#'   out <- surveillance::plapply(n_mixtures, apply_species_mix,
+#'                                archetype_formula, species_formula, data, distribution, offset,
+#'                                weights, bb_weights, control, inits, standardise, titbits,
+#'                                .parallel = cores, .verbose = FALSE)
+#'   aic <- rep(0,length(n_mixtures))
+#'   bic <- rep(0,length(n_mixtures))
+#'   fm <- list()
+#'   for(i in seq_along(n_mixtures))
+#'     if(!is.atomic(out[[i]])){
+#'       aic[i] <- out[[i]]$aic
+#'       bic[i] <- out[[i]]$bic
+#'       fm[[i]] <- list(logl=out[[i]]$logl,coef=out[[i]]$coef,tau=out[[i]]$taus,pi=out[[i]]$pi)#,covar=out[[i]]$covar)
+#'     }
+#'   return(list(aic=aic,bic=bic,fm=fm))
+#' }
 #'
-#'@description This function runs the 'species_mix' function but it iterates through groups (1 to 10) by default.
-#'
-#'@export
-#'
-#'@examples
-#'
-#' \dontrun{
-#' fm_groups <- species_mix_estimate_groups(sam_form, sp_form, data, distribution = 'bernoulli', n_mixtures=1:10)
-#'}
-"species_mix_estimate_groups" <- function(archetype_formula = NULL, species_formula = ~1,
-                                          data, n_mixtures = 1:10, distribution="bernoulli",
-                                          offset=NULL, weights=NULL, control= species_mix.control(cores = 1),
-                                          inits=NULL, standardise = TRUE, titbits=FALSE){
-  my.fun <- function(G, archetype_formula, species_formula, data, distribution, offset,
-                     weights, bb_weights, control, inits, standardise, titbits){
-
-    message("Fitting group",G,"\n")
-    tmp <- species_mix(archetype_formula, species_formula, data, G, distribution, offset,
-                        weights, bb_weights, control, inits, standardise, titbits)
-    return(tmp)
-    }
-
-  out <- surveillance::plapply(n_mixtures, my.fun, archetype_formula, species_formula, data, distribution, offset,
-                               weights, bb_weights, control, inits, standardise, titbits,
-                               .parallel = control$cores, .verbose = !control$quiet)
-  aic <- rep(0,length(n_mixtures))
-  bic <- rep(0,length(n_mixtures))
-  fm <- list()
-  for(i in seq_along(n_mixtures))
-    if(!is.atomic(out[[i]])){
-      aic[i] <- out[[i]]$aic
-      bic[i] <- out[[i]]$bic
-      fm[[i]] <- list(logl=out[[i]]$logl,coef=out[[i]]$coef,tau=out[[i]]$taus,pi=out[[i]]$pi)#,covar=out[[i]]$covar)
-    }
-  return(list(aic=aic,bic=bic,fm=fm))
-}
 
 #' @rdname species_mix
 #'
@@ -737,96 +691,92 @@
   print(x$pi)
   cat("\nCoefficents\n")
   print(x$coef)
-  # if(!is.na(x$se[1])){
-  #   cat("\nStandard Errors of coefficents\n")
-  #   print(x$se)
-  # }
   cat("\nPosterior Probabilities\n")
   print(x$taus)
 }
 
-#' @rdname species_mix
-#' @export
-#' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep).
-
-"residuals.species_mix" <- function( object, ..., type="RQR", quiet=FALSE) {
-    if( ! type %in% c("deviance","RQR"))
-      stop( "Unknown type of residual requested. Only deviance and RQR (for randomised quantile residuals) are implemented\n")
-
-    if( type=="deviance"){
-      resids <- sqrt( -2*object$logl.sites)
-      if( !quiet){
-        message( "The sign of the deviance residuals is unknown -- what does sign mean for multiple species? Their mean is also unknown -- what is a saturated model in a mixture model?")
-        message( "This is not a problem if you are just looking for an over-all fit diagnostic using simulation envelopes (cf normal and half normal plots).")
-        message( "It is a problem however, when you try to see how residuals vary with covariates etc.. but the meaning of these plots needs to be considered carefully as the residuals are for multiple species anyway.")
-      }
-    }
-    if( type=="RQR"){
-      resids <- matrix( NA, nrow=object$n, ncol=object$S)
-      switch( object$dist,
-              bernoulli = { fn <- function(y,mu,logdisp,power) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
-              poisson = { fn <- function(y,mu,logdisp,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
-              ippm = { fn <- function(y,mu,logdisp,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
-              negative_binomial = { fn <- function(y,mu,logdisp,power) pnbinom( q=y, mu=mu, size=1/exp( logdisp), lower.tail=TRUE)},
-              gaussian = { fn <- function(y,mu,logdisp,power) pnorm( q=y, mean=mu, sd=exp( logdisp), lower.tail=TRUE)})
-
-      for( ss in 1:object$S){
-        if( all( object$titbits$power==-999999))  tmpPow <- NULL else tmpPow <- object$titbits$power[ss]
-        if( object$dist %in% c("bernoulli","poisson","negative_binomial")){
-          tmpLower <- fn( object$titbits$Y[,ss]-1, object$mus[,ss,], object$coef$disp[ss], tmpPow)
-          tmpUpper <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$disp[ss], tmpPow)
-          tmpLower <- rowSums( tmpLower * object$pis)
-          tmpLower <- ifelse( tmpLower<0, 0, tmpLower) #get rid of numerical errors for really small negative values
-          tmpLower <- ifelse( tmpLower>1, 1, tmpLower) #get rid of numerical errors for 1+epsilon.
-          tmpUpper <- rowSums( tmpUpper * object$pis)
-          tmpUpper <- ifelse( tmpUpper<0, 0, tmpUpper) #get rid of numerical errors for really small negative values
-          tmpUpper <- ifelse( tmpUpper>1, 1, tmpUpper) #get rid of numerical errors for 1+epsilon.
-          resids[,ss] <- runif( object$n, min=tmpLower, max=tmpUpper)
-          resids[,ss] <- qnorm( resids[,ss])
-        }
-        if( object$dist == "gaussian"){
-          tmp <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$disp[ss], object$titbits$power[ss])
-          tmp <- rowSums( tmp * object$pis)
-          resids[,ss] <- qnorm( tmp)
-        }
-      }
-      if( !quiet & sum( resids==Inf | resids==-Inf)>0)
-        message( "Some residuals, well",sum( resids==Inf | resids==-Inf), "to be precise, are very large (infinite actually).\nThese observations lie right on the edge of the realistic range of the model for the data (maybe even over the edge).")
-
-    }
-    if( type=="RQR.sim"){
-      nsim <- 1000
-      if( is.null( mc.cores))
-        mc.cores <- getOption("mc.cores", 4)
-      resids <- matrix( NA, nrow=object$n, ncol=object$S)
-      RQR.fun <- function(ii){
-        if( !quiet)
-          setTxtProgressBar(pb, ii)
-        X1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$X[ii,,drop=FALSE])
-        W1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$W[ii,,drop=FALSE])
-        sims <- simRCPdata( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, logDisps=object$coef$disp, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,dist=object$dist)
-        sims <- sims[,1:object$S]
-        yi <- object$titbits$Y[ii,,drop=FALSE]
-        many_yi <- matrix( rep( yi, each=nsim), ncol=object$S)
-        F_i <- colMeans( sims <= many_yi)
-        F_i_minus <- colMeans( sims < many_yi)
-        r_i <- runif( object$S, min=F_i_minus, max=F_i)
-        return( qnorm( r_i))
-      }
-      if( !quiet)
-        pb <- txtProgressBar(min = 1, max = object$n, style = 3, char = "><(('> ")
-      if( Sys.info()['sysname'] == "Windows" | mc.cores==1)
-        resids <- lapply( 1:object$n, RQR.fun)
-      else
-        resids <- parallel::mclapply( 1:object$n, RQR.fun, mc.cores=mc.cores)
-      if( !quiet)
-        message("")
-      resids <- matrix( unlist( resids), nrow=object$n, ncol=object$S, byrow=TRUE)
-      if( !quiet & sum( resids==Inf | resids==-Inf)>0)
-        message( "Some residuals, well",sum( resids==Inf | resids==-Inf), "to be precise, are very large (infinite actually).\nThese observations lie right on the edge of the Monte Carlo approximation to the distribution function.\nThis may be remedied by getting a better approximation (increasing nsim).")
-    }
-    return( resids)
-  }
+#' #' @rdname species_mix
+#' #' @export
+#' #' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep).
+#'
+#' "residuals.species_mix" <- function( object, ..., type="RQR", quiet=FALSE) {
+#'     if( ! type %in% c("deviance","RQR"))
+#'       stop( "Unknown type of residual requested. Only deviance and RQR (for randomised quantile residuals) are implemented\n")
+#'
+#'     if( type=="deviance"){
+#'       resids <- sqrt( -2*object$logl.sites)
+#'       if( !quiet){
+#'         message( "The sign of the deviance residuals is unknown -- what does sign mean for multiple species? Their mean is also unknown -- what is a saturated model in a mixture model?")
+#'         message( "This is not a problem if you are just looking for an over-all fit diagnostic using simulation envelopes (cf normal and half normal plots).")
+#'         message( "It is a problem however, when you try to see how residuals vary with covariates etc.. but the meaning of these plots needs to be considered carefully as the residuals are for multiple species anyway.")
+#'       }
+#'     }
+#'     if( type=="RQR"){
+#'       resids <- matrix( NA, nrow=object$n, ncol=object$S)
+#'       switch( object$dist,
+#'               bernoulli = { fn <- function(y,mu,logdisp,power) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
+#'               poisson = { fn <- function(y,mu,logdisp,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
+#'               ippm = { fn <- function(y,mu,logdisp,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
+#'               negative_binomial = { fn <- function(y,mu,logdisp,power) pnbinom( q=y, mu=mu, size=1/exp( logdisp), lower.tail=TRUE)},
+#'               gaussian = { fn <- function(y,mu,logdisp,power) pnorm( q=y, mean=mu, sd=exp( logdisp), lower.tail=TRUE)})
+#'
+#'       for( ss in 1:object$S){
+#'         if( all( object$titbits$power==-999999))  tmpPow <- NULL else tmpPow <- object$titbits$power[ss]
+#'         if( object$dist %in% c("bernoulli","poisson","negative_binomial")){
+#'           tmpLower <- fn( object$titbits$Y[,ss]-1, object$mus[,ss,], object$coef$disp[ss], tmpPow)
+#'           tmpUpper <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$disp[ss], tmpPow)
+#'           tmpLower <- rowSums( tmpLower * object$pis)
+#'           tmpLower <- ifelse( tmpLower<0, 0, tmpLower) #get rid of numerical errors for really small negative values
+#'           tmpLower <- ifelse( tmpLower>1, 1, tmpLower) #get rid of numerical errors for 1+epsilon.
+#'           tmpUpper <- rowSums( tmpUpper * object$pis)
+#'           tmpUpper <- ifelse( tmpUpper<0, 0, tmpUpper) #get rid of numerical errors for really small negative values
+#'           tmpUpper <- ifelse( tmpUpper>1, 1, tmpUpper) #get rid of numerical errors for 1+epsilon.
+#'           resids[,ss] <- runif( object$n, min=tmpLower, max=tmpUpper)
+#'           resids[,ss] <- qnorm( resids[,ss])
+#'         }
+#'         if( object$dist == "gaussian"){
+#'           tmp <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$disp[ss], object$titbits$power[ss])
+#'           tmp <- rowSums( tmp * object$pis)
+#'           resids[,ss] <- qnorm( tmp)
+#'         }
+#'       }
+#'       if( !quiet & sum( resids==Inf | resids==-Inf)>0)
+#'         message( "Some residuals, well",sum( resids==Inf | resids==-Inf), "to be precise, are very large (infinite actually).\nThese observations lie right on the edge of the realistic range of the model for the data (maybe even over the edge).")
+#'
+#'     }
+#'     if( type=="RQR.sim"){
+#'       nsim <- 1000
+#'       if( is.null( mc.cores))
+#'         mc.cores <- getOption("mc.cores", 4)
+#'       resids <- matrix( NA, nrow=object$n, ncol=object$S)
+#'       RQR.fun <- function(ii){
+#'         if( !quiet)
+#'           setTxtProgressBar(pb, ii)
+#'         X1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$X[ii,,drop=FALSE])
+#'         W1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$W[ii,,drop=FALSE])
+#'         sims <- simRCPdata( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, logDisps=object$coef$disp, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,dist=object$dist)
+#'         sims <- sims[,1:object$S]
+#'         yi <- object$titbits$Y[ii,,drop=FALSE]
+#'         many_yi <- matrix( rep( yi, each=nsim), ncol=object$S)
+#'         F_i <- colMeans( sims <= many_yi)
+#'         F_i_minus <- colMeans( sims < many_yi)
+#'         r_i <- runif( object$S, min=F_i_minus, max=F_i)
+#'         return( qnorm( r_i))
+#'       }
+#'       if( !quiet)
+#'         pb <- txtProgressBar(min = 1, max = object$n, style = 3, char = "><(('> ")
+#'       if( Sys.info()['sysname'] == "Windows" | mc.cores==1)
+#'         resids <- lapply( 1:object$n, RQR.fun)
+#'       else
+#'         resids <- parallel::mclapply( 1:object$n, RQR.fun, mc.cores=mc.cores)
+#'       if( !quiet)
+#'         message("")
+#'       resids <- matrix( unlist( resids), nrow=object$n, ncol=object$S, byrow=TRUE)
+#'       if( !quiet & sum( resids==Inf | resids==-Inf)>0)
+#'         message( "Some residuals, well",sum( resids==Inf | resids==-Inf), "to be precise, are very large (infinite actually).\nThese observations lie right on the edge of the Monte Carlo approximation to the distribution function.\nThis may be remedied by getting a better approximation (increasing nsim).")
+#'     }
+#'     return( resids)
+#'   }
 
 
 #'@rdname species_mix
@@ -938,7 +888,7 @@
         tmp1 <- c(alpha.score, beta.score, eta.score)
         # if( p.w > 0)#class( object$titbits$species_formula) == "formula")
           # tmp1 <- c( tmp1, gamma.score)
-        if(any(!is.na(object$coef$disp)|!is.null(object$coef$disp)))
+        if(any(!is.null(object$coef$disp)))
           tmp1 <- c( tmp1, disp.score)
         return(tmp1)
       }
@@ -1267,7 +1217,7 @@
     disp <- log(1/tmp)
   }
   if( disty == 6){
-    preds <- predict.glm.fit(ft_sp, X1, offy, disty)
+    preds <- predict.glm.fit(ft_sp, X[ids_i,], offset[ids_i], disty)
     disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
   }
    return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
@@ -1337,8 +1287,6 @@
   options( warn=-1)
 
   #if emfit is in the control do an EM fit to get good starting values for c++
-  if(disty==3)control$em_prefit<-FALSE
-
   if(isTRUE(control$em_prefit)){
 
     if(!control$quiet)message('Using ECM algorithm to find starting values; using ',
@@ -1413,18 +1361,6 @@ starting values;\n starting values are generated using ',control$init_method,
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
   }
-  #ippm
-  if(disty==3){
-    logl_sp <- matrix(NA, nrow=S, ncol=G)
-    for(ss in 1:S){
-      sp_idx<-!first_fit$y_is_na[,ss]
-      for(gg in 1:G){
-        #lp is the same as log_lambda (linear predictor)
-        lp <- first_fit$x[sp_idx,1] * fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
-        logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$site_spp_weights[sp_idx,ss] %*% exp(lp)
-      }
-    }
-  }
   #negative binomial
   if(disty==4){
     logl_sp <- matrix(NA, nrow=S, ncol=G)
@@ -1436,11 +1372,6 @@ starting values;\n starting values are generated using ',control$init_method,
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
-  }
-  #tweedie
-  if(disty==5){
-    stop('no tweedie')
-
   }
   # gaussian
   if(disty==6){
@@ -1560,11 +1491,6 @@ starting values;\n starting values are generated using ',control$init_method,
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
-  }
-
-  #tweedie
-  if(disty==5){
-    stop('no tweedie')
   }
 
   # gaussian
@@ -1822,16 +1748,20 @@ starting values;\n starting values are generated using ',control$init_method,
   alpha.score <- as.numeric(rep(NA, length(alpha)))
   beta.score <- as.numeric(rep(NA, length(beta)))
   eta.score <- as.numeric(rep(NA, length(eta)))
-  disp.score <- as.numeric(rep(NA, length(disp)))
+  # disp.score <- as.numeric(rep(NA, length(disp)))
   getscores <- 1
-  scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,disp))))
+
 
 
   if(disty%in%c(4,6)){
     control$optiDisp <- as.integer(1)
+    disp.score <- as.numeric(rep(NA, S))
   }else{
     control$optiDisp <- as.integer(0)
+    disp.score <- -999999
   }
+
+  scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,disp.score))))
 
   #model quantities
   pis_out <- as.numeric(rep(NA, G))  #container for the fitted RCP model
@@ -1894,8 +1824,6 @@ starting values;\n starting values are generated using ',control$init_method,
     stop( "Unknown boostrap type, choices are BayesBoot and SimpleBoot.")
   n.reorder <- 0
   object$titbits$control$optimise <- TRUE #just in case it was turned off
-  if(object$titbits$distribution=='ippm')
-    stop('IPPM vcov matrix needs to estimated using FiniteDifference method.\n')
 
   if( type == "SimpleBoot"){
     all.wts <- matrix( sample( 1:object$S, nboot*object$S, replace=TRUE), nrow=nboot, ncol=object$S)
@@ -1917,13 +1845,8 @@ starting values;\n starting values are generated using ',control$init_method,
   object$titbits$control$quiet <- TRUE
 
   my.fun <- function(dummy){
-    disty.cases <- c("bernoulli", "poisson", "ippm", "negative_binomial", "tweedie", "gaussian")
+    disty.cases <- c("bernoulli", "poisson", "negative_binomial", "tweedie", "gaussian")
     disty <- get_distribution_sam(disty.cases, object$dist)
-    # if( !object$titbits$control$quiet){
-    # pb <- progress::progress_bar$new(
-    #   format = " Running Bayesian bootstrap [:bar] :percent eta: :eta",
-    #   total = nboot, clear = FALSE, width= 60)
-      # }
     dumbOut <- capture.output(
       samp.object <- species_mix.fit(y=object$titbits$Y,
                                      X=object$titbits$X,
@@ -1936,7 +1859,6 @@ starting values;\n starting values are generated using ',control$init_method,
                                      disty = disty,
                                      control = object$titbits$control,
                                      inits = my.inits))
-    # pb$tick()
     if( orderSamps)
       samp.object <- orderPost( samp.object, object)
     return( unlist( samp.object$coef))
@@ -1945,9 +1867,6 @@ starting values;\n starting values are generated using ',control$init_method,
   tmp <- surveillance::plapply(seq_len(nboot), my.fun, .parallel = mc.cores)
   boot.estis <- do.call( "rbind", tmp)
   object$titbits$control$quiet <- tmpOldQuiet
-  # if( !quiet)
-    # message( "")
-  # colnames( boot.estis) <- get_long_names_rcp( object)
   class( boot.estis) <- "sam_bootstrap"
   return( boot.estis)
 }
@@ -1972,27 +1891,11 @@ starting values;\n starting values are generated using ',control$init_method,
   return(tau_star)
 }
 
-# "lambda_penalisation_fun" <- function(x,lambda,kappa=0.1){ #assumes that x spans to pretty-well the unpenalised estiamtes
-#   min.effective.penalty <- min( which( abs( x-tail( x, 1)) < 0.01 * abs( tail( x, 1))))    #the first that lambda that gives a coef close to the last lambda's corresponding coef
-#   min.effective.penalty <- lambda[min.effective.penalty]
-#   target.penalty <- kappa * min.effective.penalty
-#   res.pos <- which.min( (lambda-target.penalty)^2)
-#   res <- x[res.pos]
-#   return( res)
-# }
-
 "print_input_sam" <- function(y, X, S, archetype_formula, species_formula, distribution, quiet=FALSE){
   if( quiet)
     return( NULL)
   n.tot <- nrow(y)
-  if(distribution=='ippm'){
-    n_pres <- sum(unlist(y)==1,na.rm=TRUE)
-    n_bkgrd <- sum(unlist(y[,1])==0,na.rm=TRUE)
-    message("There are ", n_pres, " presence observations for ", S," species")
-    message("There are ", n_bkgrd, " background (integration) points for each of the ", S," species")
-  } else {
-    message("There are ", nrow(X), " site observations for ", S," species")
-  }
+  message("There are ", nrow(X), " site observations for ", S," species")
   archetype_formula[[2]] <- NULL
   message("The model for the SAM is ", Reduce( "paste", deparse(archetype_formula)))
   if(!is.null(species_formula))
@@ -2003,11 +1906,9 @@ starting values;\n starting values are generated using ',control$init_method,
 "get_distribution_sam" <- function( disty.cases, dist1) {
   error.msg <- paste( c( "Distribution not implemented. Options are: ", disty.cases, "-- Exitting Now"), collapse=" ")
   disty <- switch( dist1,
-                   "bernoulli" = 1, #"bernoulli_sp" = 2, removing bernoulli sp for now as all bernoulli will be species specific ints
+                   "bernoulli" = 1,
                    "poisson" = 2,
-                   "ippm" = 3,
                    "negative_binomial" = 4,
-                   "tweedie" = 5,
                    "gaussian" = 6,
                    {stop( error.msg)} )
   return( disty)
@@ -2020,22 +1921,6 @@ starting values;\n starting values are generated using ',control$init_method,
   X <- stats::model.matrix(form.X, mf.X)
   return( X)
 }
-
-"get_W_sam" <- function( species_formula, mf.W){
-  form.W <- species_formula
-  if( !is.null( species_formula)){
-    if( length( form.W)>2)
-      form.W[[2]] <- NULL #get rid of outcomes
-    W <- stats::model.matrix( form.W, mf.W)
-    tmp.fun <- function(x){ all( x==1)}
-    intercepts <- apply( W, 2, tmp.fun)
-    W <- W[,!intercepts,drop=FALSE]
-  }
-  else
-    W <- -999999
-  return( W)
-}
-
 
 "species_data_check" <- function(x){
   stopifnot(is.matrix(x)|is.data.frame(x))
@@ -2073,8 +1958,6 @@ starting values;\n starting values are generated using ',control$init_method,
         titbits$Y <- y
       if( "X" %in% titbits)
         titbits$X <- X
-      # if( "W" %in% titbits)
-        # titbits$W <- W
       if( "spp_weights" %in% titbits)
         titbits$spp_weights <- spp_weights
       if( "site_spp_weights" %in% titbits)
@@ -2102,20 +1985,12 @@ starting values;\n starting values are generated using ',control$init_method,
   # site_spp_wts <- model.weights(mf)
   if(is.null(site_spp_weights))site_spp_weights <- model.weights(mf)
 
-  if(distribution=='ippm'){
-    if(!is.null(site_spp_weights)){
-      site_spp_weights <- subset(site_spp_weights, select = colnames(site_spp_weights)%in%sp_names)
-    } else {
-      site_spp_weights <- matrix(1,nrow(mf),length(sp_names))
-    }
-  } else {
-
-    if(!is.null(site_spp_weights)){
+  if(!is.null(site_spp_weights)){
       site_spp_weights <- replicate(length(sp_names),site_spp_weights)
     } else {
       site_spp_weights <- matrix(1,nrow(mf),length(sp_names))
     }
-  }
+
   return(site_spp_weights)
 }
 
@@ -2308,61 +2183,6 @@ starting values;\n starting values are generated using ',control$init_method,
 
 }
 
-# "check_distribution_clean_data_sam" <- function(arch_form, sp_form, dat, distribution){
-#
-#   # returns numeric 0, 1 or 2. if zero no species intercepts, if 1 speices intercepts, if 2 species model.
-#   species_int_coefs <- check_species_formula(sp_form)
-#   print(species_int_coefs)
-#   if(species_int_coefs!=2){
-#     mod_dat <- clean_data_sam(dat, arch_form, NULL, distribution)
-#   } else {
-#     mod_dat <- clean_data_sam(dat, arch_form, sp_form, distribution)
-#   }
-#
-#   if(all(distribution=="bernoulli", species_int_coefs==0))fit_disty <- "bernoulli"
-#   stop('Bernoulli distribution now requires species specific intercepts - look at "SpeciesMix" package for joint intercept estimation approach')
-#   if(all(distribution=="bernoulli", species_int_coefs==1))fit_disty <- "bernoulli"
-#   if(all(distribution=="bernoulli", species_int_coefs==2)){
-#     fit_disty <- "bernoulli_partial"
-#     stop('partial SAMs for a Bernoulli distribution has not been implemented yet - watch this space')
-#   }
-#
-#   if(all(distribution=="poisson", species_int_coefs==0))
-#     stop('Poisson distribution requires independent species intercepts')
-#   if(all(distribution=="poisson", species_int_coefs==1))fit_disty <- "poisson"
-#   if(all(distribution=="poisson", species_int_coefs==2)){
-#     fit_disty <- "poisson_partial"
-#     stop('partial SAMs for a Poisson distribution has not been implemented yet - watch this space')
-#   }
-#
-#   if(all(distribution=="ippm", species_int_coefs==0))
-#     stop('IPPM distribution requires independent species intercepts')
-#   if(all(distribution=="ippm", species_int_coefs==1)) fit_disty <- "ippm"
-#   if(all(distribution=="ippm", species_int_coefs==2)){
-#     fit_disty <- "ippm_partial"
-#     stop('partial SAMs for a IPPM distribution has not been implemented yet - watch this space')
-#   }
-#
-#   if(all(distribution=="negative_binomial", species_int_coefs==0))
-#     stop('Negative binomial distribution requires independent species intercepts')
-#   if(all(distribution=="negative_binomial", species_int_coefs==1)) fit_disty <- "negative_binomial"
-#   if(all(distribution=="negative_binomial", species_int_coefs==2)){
-#     fit_disty <- "negative_binomial_partial"
-#     stop('partial SAMs for a Negative Binomial distribution has not been implemented yet - watch this space')
-# }
-#
-#   if(all(distribution=="tweedie", species_int_coefs==0))
-#     stop('Tweedie distribution requires independent species intercepts')
-#   if(all(distribution=="tweedie", species_int_coefs==1)) fit_disty <- "tweedie"
-#   if(all(distribution=="tweedie", species_int_coefs==2)){
-#     fit_disty <- "tweedie_partial"
-#     stop('partial SAMs for a Tweedie distribution has not been implemented yet - watch this space')
-#   }
-#
-#   return(list(fit_disty=fit_disty,mod_dat=mod_dat))
-#
-# }
-
 "check_reponse_sam" <-function(outs) {
   nam <- colnames( outs)
   if( length( nam) == length( unique( nam)))
@@ -2385,8 +2205,7 @@ starting values;\n starting values are generated using ',control$init_method,
   }
 
 "clean_data_sam" <- function(data, form1, form2, distribution){
-    if(distribution=='ippm') na_rule <- "na.pass"
-    else na_rule <- "na.exclude"
+    na_rule <- "na.exclude"
     mf.X <- stats::model.frame(form1, data = data, na.action = na_rule)
     if( !is.null( form2)){
       mf.W <- stats::model.frame(form2, data = data, na.action = na_rule)
@@ -2402,8 +2221,3 @@ starting values;\n starting values are generated using ',control$init_method,
 
     return( res)
   }
-
-
-
-
-
