@@ -73,16 +73,16 @@ testthat::test_that('species_mix negative binomial', {
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~1+x1+x2"))
   sp_form <- ~1
   theta <- matrix(c(1,1.6,0.5,
-                    1,-0.9,1,
-                    1,12.9,2.9,
-                    1,0.2,-0.4),4,3,byrow=TRUE)
+                    1,-7.9,3.6,
+                    1,4.9,-2.9,
+                    1,-0.2,-0.4),4,3,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
   simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="negative_binomial")
   model_data <- make_mixture_data(species_data = simulated_data$species_data,
                                   covariate_data = simulated_data$covariate_data[,-1])
   fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'negative_binomial',
-                      n_mixtures=4,control=species_mix.control(em_refit = 5))
+                      n_mixtures=4,control=species_mix.control(em_refit = 5, em_steps = 10))
   testthat::expect_s3_class(fm1,'species_mix')
   #
   fm2 <- species_mix(sam_form, sp_form, model_data, distribution = 'negative_binomial',
