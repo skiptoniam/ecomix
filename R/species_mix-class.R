@@ -119,7 +119,7 @@
 
   # get responses
   y <- stats::model.response(dat$mf.X)
-  cat(head(y))
+  # cat(head(y))
   # logical matirx needed for removing NAs from response and weights.
   y_is_na <- is.na(y)
 
@@ -224,7 +224,7 @@
     starting_values <- inits
   }
 
-  cat(starting_values$alpha,"\n\n",starting_values$beta,"\n\n", ecomix:::additive_logistic(starting_values$eta,FALSE))
+  # cat(starting_values$alpha,"\n\n",starting_values$beta,"\n\n", ecomix:::additive_logistic(starting_values$eta,FALSE))
   tmp <- sam_optimise(y, X, offset, spp_weights, site_spp_weights,
                       y_is_na, S, G, nrow(y),
                       disty, starting_values, control)
@@ -1522,7 +1522,7 @@ starting values;\n starting values are generated using ',control$init_method,
   fits <- starting_values$fits
   taus <- starting_values$taus
   pis <- starting_values$pis
-  cat('start pis', pis,'\n')
+  # cat('start pis', pis,'\n')
   first_fit <- starting_values$first_fit
   logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
 
@@ -1608,7 +1608,7 @@ starting values;\n starting values are generated using ',control$init_method,
     logl_new <- ecomix:::get_incomplete_logl_sam(eta = ecomix:::additive_logistic(pis,inv = TRUE)[-G],
                                         first_fit, fits, spp_weights, G, S, disty)
     # cat(ite,"\n")
-    cat(logl_old," ->", logl_new,"\n")
+    # cat(logl_old," ->", logl_new,"\n")
     ite <- ite + 1
   }
 
