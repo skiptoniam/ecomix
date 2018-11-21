@@ -469,8 +469,7 @@
 #' }
 ## need to update this to take the new formula framework and simulate ippm data.
 "simulate_species_mix_data" <-  function (archetype_formula, species_formula,
-                                          dat, theta,
-                                          distribution = "bernoulli"){
+                                          dat,theta,distribution = "bernoulli"){
 
   if(distribution=='ippm'){
   message('Generating ippm data on a regular 100x100 grid')
@@ -578,8 +577,8 @@
     }
     if (distribution == "negative_binomial") {
       tmp <- rep(1e+05, dim(X)[1])
-      while (max(tmp, na.rm = TRUE) > 1000 | sum(tmp>0) < 9) {
-        theta[g, 1] <- stats::runif(1, -15, 15)
+      while (max(tmp, na.rm = TRUE) > 5000 | sum(tmp>0) < 9) {
+        theta[g, 1] <- stats::runif(1, -25, 15)
         sp.int[s] <- theta[g, 1]
         lgtp <- X %*% theta[g, ]
         p <- exp(lgtp)
@@ -617,7 +616,7 @@
   out <- as.matrix(out)
   dat <- as.matrix(dat)
   return(list(species_data = out, covariate_data = dat, group = group, pi = pi, sp.int = sp.int))
-
+  }
 }
 
 #' #'@rdname species_mix
@@ -1112,17 +1111,16 @@
 
 
 "apply_optimise_spp_theta" <- function(ss, first_fit, fits,
-                                       G, disty, pis,
+                                       G, disty, taus,
                                        theta.range = c(0.0001,100)){
-  thet <- optimise(f = theta.logl1, interval = theta.range,  ss, first_fit,
-                   fits, G, disty, pis, theta.range,
+  thet <- optimise(f = theta.logl1, interval = theta.range, ss, first_fit,
+                   fits, G, disty, taus, theta.range,
                    maximum = TRUE)$maximum
-
   return(thet)
 }
 
 "theta.logl1" <- function(x, ss, first_fit, fits, G,
-                          disty, pis, theta.range) {
+                          disty, taus, theta.range) {
   out <- 0
   for(gg in seq_len(G)) {
     cw.eta <- fits$alpha[ss] + first_fit$x[,-1]%*%fits$beta[gg,] + first_fit$offset
@@ -1269,13 +1267,6 @@
                       family = fam))
     mix_coefs <- ft_mix$coefficients
     }
-  # if(disty %in% c(4)){
-  #   ft_mix <- suppressWarnings(glm.fit.nbinom(x = as.matrix(X_tau),
-  #                                             y = as.numeric(Y_tau),
-  #                                             weights = c(wts_tauXsite_weights),
-  #                                             offset = offy))
-  #   mix_coefs <- ft_mix$coef
-  # }
 
     return(mix_coefs)
 }
@@ -1487,7 +1478,7 @@ starting values;\n starting values are generated using ',control$init_method,
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
         if(get_fitted) fitted_values[gg,,ss] <- exp(lp)
-        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=exp(-fits$disp[ss]),log=TRUE))
+        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=1/exp(-fits$disp[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -1598,7 +1589,7 @@ starting values;\n starting values are generated using ',control$init_method,
     if(disty%in%c(4,6)){
       fm_disp <- surveillance::plapply(1:S, ecomix:::apply_optimise_spp_theta,
                                        first_fit, fits,
-                                       G, disty, pis,
+                                       G, disty, taus,
                                        .parallel = control$cores,
                                        .verbose = FALSE)
       disp <- unlist(lapply(fm_disp, `[[`, 1))
@@ -1750,8 +1741,6 @@ starting values;\n starting values are generated using ',control$init_method,
   eta.score <- as.numeric(rep(NA, length(eta)))
   # disp.score <- as.numeric(rep(NA, length(disp)))
   getscores <- 1
-
-
 
   if(disty%in%c(4,6)){
     control$optiDisp <- as.integer(1)
