@@ -619,8 +619,8 @@
     }
     if (distribution == "negative_binomial") {
       tmp <- rep(1e+05, dim(X)[1])
-      while (max(tmp, na.rm = TRUE) > 5000 | sum(tmp) < 100) {
-        theta[g, 1] <- stats::runif(1, -15, 5)
+      while (max(tmp, na.rm = TRUE) > 1000 | sum(tmp>0) < 9) {
+        theta[g, 1] <- stats::runif(1, -15, 15)
         sp.int[s] <- theta[g, 1]
         lgtp <- X %*% theta[g, ]
         p <- exp(lgtp)
@@ -630,7 +630,7 @@
     }
     if (distribution == "poisson") {
       tmp <- rep(1e+05, dim(X)[1])
-      while (max(tmp, na.rm = TRUE) > 5000 | sum(tmp) < 100) {
+      while (max(tmp, na.rm = TRUE) > 500 | sum(tmp) < 100) {
         theta[g, 1] <- stats::runif(1, -5, 5)
         sp.int[s] <- theta[g, 1]
         lgtp <- X %*% theta[g, ]
@@ -1125,18 +1125,37 @@
   out1 <- kronecker(rep( 1, G), outcomes)
   X1 <- kronecker(rep( 1, G), X[ids_i,])
   wts1 <- kronecker(rep( 1, G),
-                    as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,], each=length(site_spp_weights[ids_i,ss]))
+                    as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,],
+                                                                each=length(site_spp_weights[ids_i,ss]))
   offy1 <- kronecker(rep( 1, G), offset[ids_i])
   offy2 <- X[ids_i,-1] %*% t(fits$beta)
   offy2 <- as.numeric(offy2)
   offy <- offy1 + offy2
 
+  if(disty %in% c(1,2,3,6)){
   ft_sp <- suppressWarnings(stats::glm.fit(x=as.data.frame(X1),
                             y=as.numeric(out1),
                             weights=as.numeric(wts1),
                             offset=as.numeric(offy),
                             family=fam))
   my_coefs <- coef(ft_sp)
+  }
+  if(disty %in% 4){
+    ft_sp <- glm.fit.nbinom(x=as.matrix(X1),
+                            y=as.numeric(out1),
+                            weights=as.numeric(wts1),
+                            offset=as.numeric(offy))
+    my_coefs <- ft_sp$coef
+  # dat <- data.frame(out1,as.data.frame(X1[,-1]),offy)
+  # tmpform <- as.formula(paste('out1~1+',paste0(colnames(as.data.frame(X1[,-1])),
+                                             # collapse = "+"),'+offset(offy)'))
+  # ft_sp <- glm.fit.nbinom(formula = tmpform,
+                          # data = dat,
+                          # weights = as.matrix(wts1),
+                          # init.theta = as.numeric(exp(-fits$disp[ss])))
+
+  }
+
   return(list(alpha = my_coefs[1]))
 }
 
@@ -1152,21 +1171,6 @@
   return(thet)
 }
 
-
-# "theta.logl" <- function(x, ss, family) {
-#   out <- 0
-#   ids_i <- !y_is_na[,ss]
-#   for(gg in seq_len(G)) {
-#     eta <- fits$alpha[ss] + X[ids_i,-1]%*%fits$beta[gg,]
-#     if(disty == 4)
-#       out <- sum(taus[ss,gg]*dnbinom(y[ids_i,ss], mu = exp(eta), size = exp(-x), log = TRUE)*site_spp_weights[ids_i,ss])
-#     if(disty == 6)
-#       out <- sum(taus[ss,gg]*dnorm(y[ids_i,j], mean = eta, sd = exp(x), log = TRUE)*site_spp_weights[ids_i,ss])
-#     out <- out + cw.out
-#   }
-#   return(out)
-# }
-
 "theta.logl2" <- function( theta, ss, first_fit, fits, spp_weights, G,
                            disty, pis, theta.range) {
 
@@ -1177,7 +1181,7 @@
   logls <- rep( NA, G)
   for(gg in seq_len(G)){
     eta <- fits$alpha[ss] + X[ids_i,-1]%*%fits$beta[gg,] + offy
-    if(disty==4) logls[gg] <- sum(dnbinom( y, mu=exp(mus), size=exp(-theta), log=TRUE))
+    if(disty==4) logls[gg] <- sum(dnbinom( y, mu=exp(eta), size=exp(-theta), log=TRUE))
     if(disty==6) logls[gg] <- sum(dnorm( y, mean = eta, sd = exp(theta), log=TRUE))
   }
   ak <- logls + log(pis)
@@ -1216,7 +1220,7 @@
     outcomes <- as.matrix(y[ids_i,ss])
   }
 
-  if( disty != 5){
+  if( disty %in% c(1,2,3)){
     ft_sp <- try(suppressWarnings(stats::glm.fit(x=as.data.frame(X[ids_i,]),
                             y=as.numeric(outcomes),
                             weights=as.numeric(site_spp_weights[ids_i,ss]),
@@ -1230,12 +1234,24 @@
   }
   disp <- NA
   if(disty == 4){
-    preds <- predict.glm.fit(ft_sp, X[ids_i,], offset[ids_i], disty)
-    tmp <- MASS::theta.mm(outcomes, preds,
-                          weights=c(site_spp_weights[ids_i,ss]),
-                          dfr=length(outcomes),
-                          eps=1e-4)
-    if(tmp>2) tmp <- 2
+    ft_sp <- try(glm.fit.nbinom(x=as.matrix(X[ids_i,]),
+                                y=as.numeric(outcomes),
+                                weights=as.numeric(site_spp_weights[ids_i,ss]),
+                                offset=offset[ids_i],est_var=FALSE))
+
+    # preds <- predict.glm.fit(ft_sp, X[ids_i,], offset[ids_i], disty)
+    # tmp <- MASS::theta.mm(outcomes, preds,
+    #                       weights=c(site_spp_weights[ids_i,ss]),
+    #                       dfr=length(outcomes),
+    #                       eps=1e-4)
+
+    if (class(ft_sp) %in% 'try-error'){
+      my_coefs <- rep(NA, ncol(X[ids_i,]))
+    } else {
+      my_coefs <- ft_sp$coef
+    }
+    tmp <- ft_sp$theta
+    # if(tmp>5) tmp <- 5
     disp <- log(1/tmp)
   }
   if( disty == 6){
@@ -1261,7 +1277,7 @@
   n_ys <- sapply(X_no_NA,nrow)
 
   wts_tau <- rep(tau[,gg],c(n_ys))
-  if(disty==4)wts_tau <- rep(tau[,gg],c(n_ys))/(1+rep(exp(-fits$disp),each=n_ys)*as.vector(mus[gg,,]))
+  if(disty==4)wts_tau <- rep(tau[,gg],c(n_ys))/(1+rep(exp(-fits$disp),n_ys)*as.vector(mus[gg,,]))
 
   site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
   wts_tauXsite_weights <- wts_tau*site_weights
@@ -1270,7 +1286,6 @@
   offy2 <- fits$alpha[rep(1:length(fits$alpha),n_ys)]
   offy <- as.numeric(offy1 + offy2)
 
-  options(warn = -1)
   # which family to use?
   if( disty == 1)
     fam <- binomial()
@@ -1284,18 +1299,27 @@
     Y_tau <- as.matrix(Y_tau)
   }
 
-  if(disty!=5){ #don't use for tweedie
+  if(disty %in% c(1,2,3,4,6)){ #don't use for tweedie
     ft_mix <- suppressWarnings(glm.fit(x = as.data.frame(X_tau),
                       y = as.numeric(Y_tau),
-                      weights = c(wts_tauXsite_weights),
+                      weights = c(wts_tauXsite_weights)+1e-6,
                       offset = offy,
                       family = fam))
-  }
-    mix_coefs <- coef(ft_mix)
-    return(as.matrix(mix_coefs))
+    mix_coefs <- ft_mix$coefficients
+    }
+  # if(disty %in% c(4)){
+  #   ft_mix <- suppressWarnings(glm.fit.nbinom(x = as.matrix(X_tau),
+  #                                             y = as.numeric(Y_tau),
+  #                                             weights = c(wts_tauXsite_weights),
+  #                                             offset = offy))
+  #   mix_coefs <- ft_mix$coef
+  # }
+
+    return(mix_coefs)
 }
 
-"get_starting_values_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
+"get_starting_values_sam" <- function(y, X, spp_weights, site_spp_weights,
+                                      offset, y_is_na, G, S, disty, control){
 
   temp.warn <- getOption( "warn")
   options( warn=-1)
@@ -1305,12 +1329,13 @@
 
   if(isTRUE(control$em_prefit)){
 
-    if(!control$quiet)message('Using EM algorithm to find starting values; using',
+    if(!control$quiet)message('Using ECM algorithm to find starting values; using ',
                               control$em_refit,'refits\n')
 
     emfits <- list()
     for(ii in seq_len(control$em_refit)){
-      emfits[[ii]] <-  fitmix_EM_sam(y, X, spp_weights, site_spp_weights,
+      if(!control$quiet)message('ECM fit: ',ii,'\n')
+      emfits[[ii]] <-  ecomix:::fitmix_EM_sam(y, X, spp_weights, site_spp_weights,
                                      offset, y_is_na, G, S, disty, control)
     }
     bf <- which.max(vapply(emfits,function(x)c(x$logl),c(logl=0)))
@@ -1550,7 +1575,6 @@ starting values;\n starting values are generated using ',control$init_method,
 
 "fitmix_EM_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
-
   ite <- 1
   restart_ite <- 1
   logl_old <- -99999999
@@ -1616,20 +1640,11 @@ starting values;\n starting values are generated using ',control$init_method,
                                        .verbose = FALSE)
     #check weights in this.
     alpha <- unlist(lapply(fm_sp_int, `[[`, 1))
-    fits$alpha <- update_sp_coefs(fits$alpha,alpha)
+    fits$alpha <- ecomix:::update_sp_coefs(fits$alpha,alpha)
 
-    ## need a function here that updates the dispersion parameter.
-    if(disty%in%c(4,6)){
-      fm_disp <- surveillance::plapply(1:S, apply_optimise_spp_theta,
-                                       first_fit, fits, spp_weights,
-                                       G, disty, pis,
-                                       .parallel = control$cores,
-                                       .verbose = FALSE)
-      disp <- unlist(lapply(fm_disp, `[[`, 1))
-      fits$disp <- update_sp_dispersion(fits$disp,disp,0.5)
-    }
-
-    fmix_coefs <- surveillance::plapply(seq_len(G), apply_glm_group_tau_sam,
+    ## update the betas
+    fmix_coefs <- surveillance::plapply(seq_len(G),
+                                        ecomix:::apply_glm_group_tau_sam,
                                         y, X, site_spp_weights,
                                         offset, y_is_na, disty, taus,
                                         fits, logls_mus$fitted,
@@ -1638,20 +1653,33 @@ starting values;\n starting values are generated using ',control$init_method,
 
     # update the coefs.
     fmix_coefs_mat <- t(do.call(cbind,fmix_coefs))
-    fits$beta <- update_mix_coefs(fits$beta, fmix_coefs_mat)
+    fits$beta <- ecomix:::update_mix_coefs(fits$beta, fmix_coefs_mat)
+
+
+    ## need a function here that updates the dispersion parameter.
+    if(disty%in%c(4,6)){
+      fm_disp <- surveillance::plapply(1:S, ecomix:::apply_optimise_spp_theta,
+                                       first_fit, fits, spp_weights,
+                                       G, disty, pis,
+                                       .parallel = control$cores,
+                                       .verbose = FALSE)
+      disp <- unlist(lapply(fm_disp, `[[`, 1))
+      disp <- log(1/disp)
+      fits$disp <- ecomix:::update_sp_dispersion(fits$disp,disp,0.5)
+    }
 
     # e-step
     # get the log-likes and taus
-    logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-    taus <- get_taus(pis, logls_mus$logl_sp, G, S)
-
+    logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
+    taus <- ecomix:::get_taus(pis, logls_mus$logl_sp, G, S)
+    # taus <- ecomix:::shrink_taus(taus,)
 
     #update the likelihood
     logl_old <- logl_new
-    logl_new <- get_incomplete_logl_sam(eta = additive_logistic(pis,inv = TRUE)[-G],
+    logl_new <- ecomix:::get_incomplete_logl_sam(eta = ecomix:::additive_logistic(pis,inv = TRUE)[-G],
                                         first_fit, fits, spp_weights, G, S, disty)
     # cat(ite,"\n")
-    # cat(logl_old," ->", logl_new,"\n")
+    cat(logl_old," ->", logl_new,"\n")
     ite <- ite + 1
   }
 
@@ -2078,6 +2106,64 @@ starting values;\n starting values are generated using ',control$init_method,
   }
   return(site_spp_weights)
 }
+
+"glm.nbinom" <- function(form, data, weights=NULL, offset=NULL, mustart=NULL, est_var=FALSE){
+  X <- stats::model.matrix(form, data)
+  t1 <- stats::model.frame(form, data)
+  y <- stats::model.response(t1)
+  if(is.null(offset)) offset <- stats::model.offset(t1)
+  if(is.null(offset)) offset <- rep(0,length(y))
+  if(is.null(weights)) weights <- stats::model.weights(t1)
+  if(is.null(weights)) weights <- rep(1,length(y))
+
+  fit <- glm.fit.nbinom(X, y, offset, weights, mustart, est_var)
+
+  return(fit)
+
+}
+
+#'@export
+
+"glm.fit.nbinom" <- function(x, y, offset = NULL, weights = NULL,
+                             mustart = NULL, est_var = FALSE){
+  X <- x
+  if (is.null(offset))
+    offset <- 0
+  if (is.null(weights))
+    weights <- rep(1, length(y))
+  gradient <- rep(0, ncol(X) + 1)
+  if (is.null(mustart)) {
+    pars <- gradient + 1
+  }
+  else {
+    pars <- mustart
+  }
+  fitted.values <- rep(0, length(y))
+  logl <- .Call("Neg_Bin", pars, X, y, weights, offset, gradient,
+                fitted.values, PACKAGE = "ecomix")
+  vcov <- 0
+  se <- rep(0, length(pars))
+  if (est_var) {
+    calc_deriv <- function(p) {
+      gradient <- rep(0, length(pars))
+      ll <- .Call("Neg_Bin_Gradient", p, X, y, weights,
+                  offset, gradient, PACKAGE = "ecomix")
+      return(gradient)
+    }
+    hes <- numDeriv::jacobian(calc_deriv,pars)
+    # hes <- nd2(pars, calc.deriv)
+    dim(hes) <- rep(length(pars), 2)
+    vcov <- try(solve(hes))
+    se <- try(sqrt(diag(vcov)))
+    colnames(vcov) <- rownames(vcov) <- c("theta", colnames(X))
+  }
+  names(pars) <- names(se) <- names(gradient) <- c("theta",
+                                                   colnames(X))
+  return(list(logl = logl, coef = pars[-1], theta = pars[1],
+              se = se[-1], se.theta = se[1], fitted = fitted.values,
+              gradient = gradient, vcov = vcov))
+}
+
 
 "check_spp_weights" <- function(bb_weights, nS){
 
