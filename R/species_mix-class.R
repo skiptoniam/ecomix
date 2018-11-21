@@ -1135,17 +1135,17 @@
 
 
 "theta.logl2" <- function( theta, ss, first_fit, fits, G,
-                           disty, pis, theta.range) {
+                           disty, taus, theta.range) {
 
-  # pis <- ecomix:::additive_logistic(eta)
+  pis <- colMeans(taus)
   ids_i <- !first_fit$y_is_na[,ss]
   offy <- first_fit$offset
   y <- first_fit$y[ids_i,ss]
   logls <- rep( NA, G)
   for(gg in seq_len(G)){
-    eta <- fits$alpha[ss] + X[ids_i,-1]%*%fits$beta[gg,] + offy
-    if(disty==4) logls[gg] <- sum(dnbinom( y, mu=exp(eta), size=exp(-theta), log=TRUE))
-    if(disty==6) logls[gg] <- sum(dnorm( y, mean = eta, sd = exp(theta), log=TRUE))
+    eta <- fits$alpha[ss] + first_fit$x[ids_i,-1]%*%fits$beta[gg,] + offy[ids_i]
+    if(disty==4) logls[gg] <- sum(dnbinom(y, mu=exp(eta), size=1/exp(-theta), log=TRUE))
+    if(disty==6) logls[gg] <- sum(dnorm(y, mean = eta, sd = exp(theta), log=TRUE))
   }
   ak <- logls + log(pis)
   am <- max(ak)
