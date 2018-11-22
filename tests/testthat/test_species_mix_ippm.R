@@ -189,6 +189,8 @@ testthat::test_that('species mix ippm', {
 
   testthat::expect_is(beta,'matrix')
 
+  tmp <- ecomix:::get_starting_values_sam(y,X,spp_weights,site_spp_weights,offset,y_is_na,G,S,disty,control)
+
   # does a ippm work?
   # wts <- rbind(presence_sites[,-1],background_sites[,-1])
   # colnames(wts) <- c(sp_name)#,"const","x1","x2")
@@ -196,7 +198,6 @@ testthat::test_that('species mix ippm', {
   offset <- rep(0,nrow(wts))
   sam_form <- as.formula(paste0('cbind(',paste(LETTERS702[1:(n_sp)],collapse = ','),")~1+x1+x2"))
   sp_form <- ~ 1
-
   model_data <- make_mixture_data(y,X[,-1])
 
   # print(head(site_spp_weights))

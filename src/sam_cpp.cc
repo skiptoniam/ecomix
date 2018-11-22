@@ -299,7 +299,7 @@ double log_poisson_deriv_sam( const double &y, const double &mu){
 
 // this should give the log-density for the ippm. fingers crossed...
 double log_ippm_sam(const double &y, const double &mu, const double &st_sp_wts){
-	double tmp = 0.0, z;
+	double tmp, z;
 	z = y/st_sp_wts;
 	tmp = z * log(mu);
 	tmp -= mu;
@@ -308,7 +308,7 @@ double log_ippm_sam(const double &y, const double &mu, const double &st_sp_wts){
 }
 
 double log_ippm_deriv_sam( const double &y, const double &mu, const double &st_sp_wts){
-	double tmp = 0.0, z;
+	double tmp, z;
 	z = y/st_sp_wts;
 	tmp = z/mu;
 	tmp -= 1;

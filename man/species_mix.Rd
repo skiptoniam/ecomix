@@ -22,8 +22,8 @@ species_mix(archetype_formula = NULL,
   bb_weights = NULL, control = NULL, inits = NULL, standardise = TRUE,
   titbits = TRUE)
 
-species_mix.fit(y, X, G, S, spp_weights, site_spp_weights, offset,
-  y_is_na = NULL, disty, control, inits = NULL)
+species_mix.fit(y, X, G, S, spp_weights, site_spp_weights, offset, y_is_na,
+  disty, control, inits = NULL)
 
 species_mix.multifit(archetype_formula = NULL,
   species_formula = stats::as.formula(~1), data, n_mixtures = 3,

@@ -112,6 +112,7 @@
 
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
+
   if(distribution=="ippm"){
     mf$na.action <- "na.pass"
   } else {
@@ -183,6 +184,8 @@
   print_input_sam(y, X, S, archetype_formula, species_formula, distribution, quiet=control$quiet)
 
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
+  cat(dim(site_spp_weights))
+  cat(site_spp_weights[!is.na(site_spp_weights[])][1:20])
   tmp <- species_mix.fit(y=y, X=X, G=n_mixtures, S=S, spp_weights=spp_weights,
                          site_spp_weights=site_spp_weights,
                          offset=offset, disty=disty, y_is_na=y_is_na,
@@ -226,7 +229,7 @@
 #'@param inits This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).
 #'@export
 
-"species_mix.fit" <- function(y, X, G, S, spp_weights, site_spp_weights, offset, y_is_na=NULL, disty, control, inits=NULL){
+"species_mix.fit" <- function(y, X, G, S, spp_weights, site_spp_weights, offset, y_is_na, disty, control, inits=NULL){
 
   if(is.null(inits)){
     starting_values  <-  ecomix:::get_starting_values_sam(y = y, X = X,
@@ -246,9 +249,8 @@
   }
 
   # cat(starting_values$alpha,"\n\n",starting_values$beta,"\n\n", ecomix:::additive_logistic(starting_values$eta,FALSE))
-  tmp <- ecomix:::sam_optimise(y, X, offset, spp_weights, site_spp_weights,
-                      y_is_na, S, G, nrow(y),
-                      disty, starting_values, control)
+  tmp <- sam_optimise(y, X, offset, spp_weights, site_spp_weights,
+                      y_is_na, S, G, disty, starting_values, control)
 
   return(tmp)
 }
@@ -505,7 +507,7 @@
     n_g <- dim(theta)[1]
     x <- y <- 1:100 / 100
     grid2D <- expand.grid( x, y)
-    grid2D$cellArea <- rep( 1/100, nrow( grid2D))  #all cells have same size here
+    grid2D$cellArea <- rep( 1, nrow( grid2D))  #all cells have same size here
     grid2D$x1 <- runif(nrow(grid2D))
     grid2D$x2 <- runif(rnorm(grid2D))
 
@@ -517,7 +519,7 @@
     group <- rep(0, n_sp)
     for (s in seq_len(n_sp)) {
       g <- sample(n_g,1)
-      sp_int[s] <- runif(1, -1, .5)
+      sp_int[s] <- runif(1, -6, -3)
       log_lambda <-  X%*%c(sp_int[s],theta[g,-1])
       lambdas[, s] <- exp(log_lambda)
       group[s] <- g
@@ -1314,7 +1316,7 @@
 
 
   #if emfit is in the control do an EM fit to get good starting values for c++
-  if(disty %in% 3) control$em_prefit <- FALSE
+  # if(disty %in% 3) control$em_prefit <- FALSE
   if(isTRUE(control$em_prefit)){
 
     if(!control$quiet)message('Using ECM algorithm to find starting values; using ',
@@ -1389,6 +1391,19 @@ starting values;\n starting values are generated using ',control$init_method,
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
   }
+  #ippm
+  if(disty==3){
+    logl_sp <- matrix(NA, nrow=S, ncol=G)
+    for(ss in 1:S){
+      sp_idx<-!first_fit$y_is_na[,ss]
+      for(gg in 1:G){
+        #lp is the same as log_lambda (linear predictor)
+        lp <- first_fit$x[sp_idx,1] * fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
+        logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$site_spp_weights[sp_idx,ss] %*% exp(lp)
+      }
+    }
+  }
+
   #negative binomial
   if(disty==4){
     logl_sp <- matrix(NA, nrow=S, ncol=G)
@@ -1770,9 +1785,21 @@ starting values;\n starting values are generated using ',control$init_method,
   alpha.score <- as.numeric(rep(NA, length(alpha)))
   beta.score <- as.numeric(rep(NA, length(beta)))
   eta.score <- as.numeric(rep(NA, length(eta)))
-  # disp.score <- as.numeric(rep(NA, length(disp)))
+  # disp.score <- as.numeric(rep(NA,length(disp)))
   # getscores <- 1
+  # scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,disp))))
+  #
+  # if(disty%in%c(4,6)){
+  #   control$optiDisp <- as.integer(1)
+  # }else{
+  #   control$optiDisp <- as.integer(0)
+  # }
 
+  # scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,disp.score))))
+
+  # disp.score <- as.numeric(rep(NA, length(disp)))
+  getscores <- 1
+  # scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,disp))))
   if(disty%in%c(4,6)){
     control$optiDisp <- as.integer(1)
     disp.score <- as.numeric(rep(NA, S))
@@ -1780,8 +1807,8 @@ starting values;\n starting values are generated using ',control$init_method,
     control$optiDisp <- as.integer(0)
     disp.score <- -999999
   }
-
   scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,disp.score))))
+
 
   #model quantities
   pis_out <- as.numeric(rep(NA, G))  #container for the fitted RCP model
@@ -1811,7 +1838,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
   ret <- tmp
   ret$logl <- ret$logl * -1
-  ret$mus <- array(mus, dim=c(Obs, S, G))
+  ret$mus <- array(mus, dim=c(n, S, G))
 
   # beta <- matrix(ret$beta,G,np)
   # colnames(beta) <-
@@ -1828,7 +1855,7 @@ starting values;\n starting values are generated using ',control$init_method,
   else
     ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score, disp.scores=disp.score)
 
-  ret$S <- S; ret$G <- G; ret$np <- np; ret$n <- Obs;
+  ret$S <- S; ret$G <- G; ret$np <- np; ret$n <- n;
   ret$start.vals <- inits
   ret$loglikeSG <- matrix(loglikeSG,  nrow = S, ncol = G)  #for residuals
   ret$loglikeS <- loglikeS  #for residuals
