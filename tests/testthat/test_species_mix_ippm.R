@@ -103,20 +103,21 @@ testthat::test_that('species mix ippm', {
   y <- dat[,1:n_sp]
   X <- dat[,c(n_sp+1):ncol(dat)]
   y_is_na <- is.na(y)
-  spp_weights <- rep(1,nrow(y))
+  spp_weights <- rep(1,ncol(y))
   site_spp_weights <- as.matrix(wts)
   G <- 4
   S <- n_sp
   ss <- 1
   disty <- 3
   nP <- dim(thetas)[2]-1
+  control <- species_mix.control(minimum_sites_occurrence = 50)
 
   # test if one species ippm working - expect matrix of coefs back
-  one_sp_ippm <- ecomix:::apply_glmnet_sam(ss = ss, y = y, X = X, site_spp_weights = site_spp_weights, offset = offset, y_is_na = y_is_na,disty = disty)
+  one_sp_ippm <- ecomix:::apply_glm_sam_inits(ss = ss, y = y, X = X, site_spp_weights = site_spp_weights, offset = offset, y_is_na = y_is_na,disty = disty)
   testthat::expect_is(one_sp_ippm,'list')
 
   # check that many species ippms work - expect back a list.
-  all_sp_ippm <-surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam, y, X, site_spp_weights, offset, y_is_na,disty)
+  all_sp_ippm <-surveillance::plapply(seq_len(S), ecomix:::apply_glm_sam_inits, y, X, site_spp_weights, offset, y_is_na,disty)
   testthat::expect_is(all_sp_ippm,'list')
 
   alpha <- lapply(all_sp_ippm, `[[`, 1)
@@ -138,7 +139,6 @@ testthat::test_that('species mix ippm', {
   #now we need to estimate the taus.
   S <- 50
   G <- 4
-  control <- species_mix.control()
 
   # expect error if wrong data is in the starting values
   testthat::expect_error(  starting_values <- ecomix:::initiate_fit_sam(NULL, X, weights, offset, y_is_na, G, S, control))
@@ -147,7 +147,7 @@ testthat::test_that('species mix ippm', {
   testthat::expect_error(  starting_values <- ecomix:::initiate_fit_sam(y, X, weights, offset, NULL, G, S, control))
 
   #expect list back
-  starting_values <- ecomix:::initiate_fit_sam(y, X, site_spp_weights, offset, y_is_na, G, S, disty, control)
+  starting_values <- ecomix:::initiate_fit_sam(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
   testthat::expect_is(starting_values,'list')
 
   fits <- list(beta=starting_values$beta, alpha=starting_values$alpha)
@@ -155,19 +155,19 @@ testthat::test_that('species mix ippm', {
 
   # get the loglikelihood based on these values
   logls <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-  testthat::expect_is(logls,'matrix')
-  testthat::expect_equal(ncol(logls), G)
-  testthat::expect_equal(nrow(logls), S)
+  testthat::expect_is(logls$logl_sp,'matrix')
+  testthat::expect_equal(ncol(logls$logl_sp), G)
+  testthat::expect_equal(nrow(logls$logl_sp), S)
 
   # estimate the posteriors for taus
   pis <- rep(1/G, G)
-  taus <- ecomix:::get_taus(pis, logls, G, S)
+  taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
   testthat::expect_is(taus,'matrix')
   testthat::expect_equal(ncol(taus), G)
   testthat::expect_equal(nrow(taus), S)
 
   # skrink the taus
-  taus <- ecomix:::skrink_taus(taus, max_tau=0.99, G)
+  taus <- ecomix:::shrink_taus(taus, max_tau=0.8, G)
 
   ## now test if the group_tau glm works
 
@@ -180,12 +180,12 @@ testthat::test_that('species mix ippm', {
   testthat::expect_error(fm_g1 <- ecomix:::apply_glm_group_tau_sam(gg = 1, y = y, X = X, weights = 'a', offset = offset,
                                                    y_is_na = y_is_na, tau = taus, return_all_coefs = FALSE))
   fm_g1 <- ecomix:::apply_glm_group_tau_sam(gg = 1, y = y, X = X, site_spp_weights = site_spp_weights, offset=offset, y_is_na = y_is_na,
-                                            disty = disty,  tau = taus)
+                                            disty = disty,  tau = taus, fits, logls_mus$fitted)
 
-  testthat::expect_is(fm_g1,'matrix')
+  testthat::expect_is(fm_g1,'numeric')
 
-  all_grp_ippm1 <- surveillance::plapply(seq_len(G), ecomix:::apply_glm_group_tau_sam, y, X, site_spp_weights, offset, y_is_na, disty, taus)
-  beta <- t(do.call(cbind,all_grp_ippm1)[-1,])
+  all_grp_ippm1 <- surveillance::plapply(seq_len(G), ecomix:::apply_glm_group_tau_sam, y, X, site_spp_weights, offset, y_is_na, disty, taus, fits, logls_mus$fitted)
+  beta <- t(do.call(cbind,all_grp_ippm1))
 
   testthat::expect_is(beta,'matrix')
 
@@ -202,7 +202,8 @@ testthat::test_that('species mix ippm', {
   # print(head(site_spp_weights))
   fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'ippm',
                      weights = as.matrix(site_spp_weights),
-                     n_mixtures=4)
+                     n_mixtures = 4,
+                     control = species_mix.control(minimum_sites_prevelance = 50,init_method = 'kmed'))
   testthat::expect_s3_class(fm1,'ippm')
   testthat::expect_s3_class(fm1,'species_mix')
 

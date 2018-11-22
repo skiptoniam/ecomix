@@ -11,6 +11,10 @@ testthat::test_that('species_mix negative binomial', {
   theta <- matrix(c(1,-2.1, 1.6,  0.5,-.1,
                     1,-0.9,  -1, -4.3, 2,
                     1, 1.9, 3.9,  0.3,-2),3,5,byrow=TRUE)
+  theta <- matrix(c(1,1.6,0.5, 0.5,-.1,
+                    1,-7.9,3.6, -4.3, 2,
+                    1,4.9,-2.9, 0.3,-2,
+                    1,-0.2,-0.4,1,-3),4,5,byrow=TRUE)
   x1<-runif(100,0,2.5)
   z1<-rnorm(100,0,2.5)
   dat <- data.frame(y=rep(1,100),x1,x2=x1^2,z1,z2=z1^2)
@@ -32,9 +36,26 @@ testthat::test_that('species_mix negative binomial', {
   S <- length(simulated_data$sp.int)
   control <- species_mix.control()
   disty <- 4
+  nP <- 4
 
   # test_nb <- nbglm::glm.fit.nbinom(X,y[,3],offset,weights,est_var = FALSE)
   # test_nb <- nbglm::glm.fit.nbinom(X,y[,1],offset,weights,est_var = TRUE)
+
+  ss <- 1
+  fm1 <- ecomix:::apply_glm_sam_inits(ss, y, X, site_spp_weights, offset, y_is_na, disty)
+  testthat::expect_is(fm1,'list')
+  testthat::expect_length(fm1,3)
+  #
+  fm_nb <- surveillance::plapply(seq_len(S), ecomix:::apply_glm_sam_inits, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  #
+  alpha <- lapply(fm_nb, `[[`, 1)
+  testthat::expect_length(unlist(alpha),S)
+
+  beta <- lapply(fm_nb, `[[`, 2)
+  testthat::expect_length(do.call(rbind, beta),S*nP)
+
+  disp <- unlist(lapply(fm_nb, `[[`, 3))
+  testthat::expect_length(disp,S)
 
 
   # # test a single negative_binomial model

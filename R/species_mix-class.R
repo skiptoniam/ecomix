@@ -92,9 +92,9 @@
   if(!control$quiet)
     message( "SAM modelling")
   call <- match.call()
-  if(!is.null(archetype_formula))
+  if(!is.null(archetype_formula)){
     archetype_formula <- stats::as.formula(archetype_formula)
-  else{
+  } else{
     if(!control$quiet)
       message("There is no SAM model! Please provide a model (intercept at least) -- exitting now")
     return(NULL)
@@ -104,11 +104,20 @@
 
   # Create model matrix
   mf <- match.call(expand.dots = FALSE)
-  m <- match(c("data","offset","weights"), names(mf), 0L)
+  if(distribution=="ippm"){
+    m <- match(c("data","offset"), names(mf), 0L)
+  } else {
+    m <- match(c("data","offset","weights"), names(mf), 0L)
+  }
 
-    mf <- mf[c(1L, m)]
+  mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
-  mf$na.action <- "na.exclude"
+  if(distribution=="ippm"){
+    mf$na.action <- "na.pass"
+  } else {
+    mf$na.action <- "na.exclude"
+  }
+
   mf[[1L]] <- quote(stats::model.frame)
   mf <- eval(mf, parent.frame())
 
@@ -119,7 +128,7 @@
 
   # get responses
   y <- stats::model.response(dat$mf.X)
-  # cat(head(y))
+
   # logical matirx needed for removing NAs from response and weights.
   y_is_na <- is.na(y)
 
@@ -138,8 +147,8 @@
   X <- get_X_sam(archetype_formula, dat$mf.X)
 
   #get distribution
-  disty.cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
-  disty <- get_distribution_sam(disty.cases, distribution)
+  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
+  disty <- ecomix:::get_distribution_sam(disty_cases, distribution)
 
   # get offsets
   offset <- get_offset_sam(dat$mf.X)
@@ -148,6 +157,18 @@
   species_names <- colnames(y)
   site_spp_weights <- get_site_spp_weights_sam(mf,weights,species_names,distribution)
   spp_weights <- check_spp_weights(bb_weights,S)
+
+  if(distribution=='ippm'){
+    if(!all(colnames(y)==colnames(site_spp_weights))){
+      stop(cat('When modelling a inhomogenous poisson point process model,\n species data colnames must match weights colnames.\n\nSpecies data colnames from "data" are:\n',colnames(y),'.\n\nWhile the colnames of the weights are:\n', colnames(site_spp_weights),'\n'))
+    }
+    if(any(dim(y)!=dim(site_spp_weights))){
+      stop('When modelling a inhomogenous poisson point process model,
+           weights needs to have the same dimensions at the
+           species data - n_sites x n_species')
+    }
+  }
+
 
   s.means <- NULL
   s.sds <- NULL
@@ -167,7 +188,7 @@
                          offset=offset, disty=disty, y_is_na=y_is_na,
                          control=control, inits=inits)
 
-  tmp$dist <- disty.cases[disty]
+  tmp$dist <- disty_cases[disty]
 
 
   tmp$pis <- additive_logistic(tmp$eta)
@@ -184,7 +205,7 @@
   #titbits object, if wanted/needed.
   tmp$titbits <- get_titbits_sam(titbits, y, X, spp_weights, site_spp_weights, offset,
                                  y_is_na , archetype_formula, species_formula,
-                                 control, disty.cases[disty], tmp$removed_species)
+                                 control, disty_cases[disty], tmp$removed_species)
   class(tmp) <- c("species_mix")
   return(tmp)
 }
@@ -208,7 +229,7 @@
 "species_mix.fit" <- function(y, X, G, S, spp_weights, site_spp_weights, offset, y_is_na=NULL, disty, control, inits=NULL){
 
   if(is.null(inits)){
-    starting_values  <-  get_starting_values_sam(y = y, X = X,
+    starting_values  <-  ecomix:::get_starting_values_sam(y = y, X = X,
                                                  spp_weights = spp_weights,
                                                  site_spp_weights = site_spp_weights,
                                                  offset = offset,
@@ -225,7 +246,7 @@
   }
 
   # cat(starting_values$alpha,"\n\n",starting_values$beta,"\n\n", ecomix:::additive_logistic(starting_values$eta,FALSE))
-  tmp <- sam_optimise(y, X, offset, spp_weights, site_spp_weights,
+  tmp <- ecomix:::sam_optimise(y, X, offset, spp_weights, site_spp_weights,
                       y_is_na, S, G, nrow(y),
                       disty, starting_values, control)
 
@@ -246,95 +267,101 @@
            weights=NULL, bb_weights=NULL, control=species_mix.control(), inits=NULL,
            standardise = TRUE, titbits = TRUE){
 
-    #the control parameters
-    control <- set_control_sam(control)
+  data <- as.data.frame(data)
+
+  #the control parameters
+  control <- set_control_sam(control)
+  if(!control$quiet)
+    message( "SAM modelling")
+  call <- match.call()
+  if(!is.null(archetype_formula)){
+    archetype_formula <- stats::as.formula(archetype_formula)
+  } else{
     if(!control$quiet)
-      message( "SAM modelling")
-    call <- match.call()
-    if(!is.null(archetype_formula))
-      archetype_formula <- stats::as.formula(archetype_formula)
-    else{
-      if(!control$quiet)
-        message("There is no SAM model! Please provide a model (intercept at least) -- exitting now")
-      return(NULL)
-    }
-    if(!is.null(species_formula))
-      species_formula <- stats::as.formula(species_formula)
+      message("There is no SAM model! Please provide a model (intercept at least) -- exitting now")
+    return(NULL)
+  }
+  if(!is.null(species_formula))
+    species_formula <- stats::as.formula(species_formula)
 
-    # Create model matrix
-    mf <- match.call(expand.dots = FALSE)
+  # Create model matrix
+  mf <- match.call(expand.dots = FALSE)
+  if(distribution=="ippm"){
+    m <- match(c("data","offset"), names(mf), 0L)
+  } else {
     m <- match(c("data","offset","weights"), names(mf), 0L)
-    mf <- mf[c(1L, m)]
-    mf$drop.unused.levels <- TRUE
+  }
+
+  mf <- mf[c(1L, m)]
+  mf$drop.unused.levels <- TRUE
+  if(distribution=="ippm"){
+    mf$na.action <- "na.pass"
+  } else {
     mf$na.action <- "na.exclude"
-    mf[[1L]] <- quote(stats::model.frame)
-    mf <- eval(mf, parent.frame())
+  }
 
-    # need this for the na.omit step
-    rownames(mf)<-seq_len(nrow(mf))
+  mf[[1L]] <- quote(stats::model.frame)
+  mf <- eval(mf, parent.frame())
 
-    # clean the data
-    dat <- clean_data_sam(mf, archetype_formula, NULL, distribution)
+  # need this for the na.omit step
+  rownames(mf)<-seq_len(nrow(mf))
 
-    # get responses
-    y <- stats::model.response(dat$mf.X)
+  dat <- clean_data_sam(mf, archetype_formula, NULL, distribution)
 
-    # logical matirx needed for removing NAs from response and weights.
-    y_is_na <- is.na(y)
+  # get responses
+  y <- stats::model.response(dat$mf.X)
 
-    # check names of reponses
-    S <- check_reponse_sam(y)
+  # logical matirx needed for removing NAs from response and weights.
+  y_is_na <- is.na(y)
 
-    if (!S){
-      if(!control$quiet)
-        message("Two species have the same name -- exitting now")
-      return(NULL)
+  # check names of reponses
+  S <- check_reponse_sam(y)
+
+  if (!S){
+    if(!control$quiet)
+      message("Two species have the same name -- exitting now")
+    return(NULL)
+  }
+  if( !control$quiet)
+    message( "There are ", n_mixtures, " archtypes to group the species into")
+
+  # get archetype model matrix
+  X <- get_X_sam(archetype_formula, dat$mf.X)
+
+  #get distribution
+  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
+  disty <- ecomix:::get_distribution_sam(disty_cases, distribution)
+
+  # get offsets
+  offset <- get_offset_sam(dat$mf.X)
+
+  # get the weights
+  species_names <- colnames(y)
+  site_spp_weights <- get_site_spp_weights_sam(mf,weights,species_names,distribution)
+  spp_weights <- check_spp_weights(bb_weights,S)
+
+  if(distribution=='ippm'){
+    if(!all(colnames(y)==colnames(site_spp_weights))){
+      stop(cat('When modelling a inhomogenous poisson point process model,\n species data colnames must match weights colnames.\n\nSpecies data colnames from "data" are:\n',colnames(y),'.\n\nWhile the colnames of the weights are:\n', colnames(site_spp_weights),'\n'))
     }
-    if( !control$quiet)
-      message( "There are ", n_mixtures, " archtypes to group the species into")
-
-    # get archetype model matrix
-    X <- get_X_sam(archetype_formula, dat$mf.X)
-
-    #get distribution
-    disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie","gaussian")
-    disty <- get_distribution_sam(disty.cases, distribution)
-
-    # get offsets
-    offset <- get_offset_sam(dat$mf.X)
-
-    # get the weights
-    species_names <- colnames(y)
-    site_spp_weights <- get_site_spp_weights_sam(mf,weights,species_names,distribution)
-    spp_weights <- check_spp_weights(bb_weights,S)
-
-    # cat(colnames(site_spp_weights),"\n")
-
-    if(distribution=='ippm'){
-      if(!all(colnames(y)==colnames(site_spp_weights))){
-        cat(colnames(y),"\n")
-        cat(colnames(site_spp_weights),"\n")
-        stop(cat('When modelling a inhomogenous poisson point process model,\n species data colnames must match weights colnames.\n\nSpecies data colnames from "data" are:\n',colnames(y),'.\n\nWhile the colnames of the weights are:\n', colnames(site_spp_weights),'\n'))
-      }
-      if(any(dim(y)!=dim(site_spp_weights))){
-        stop('When modelling a inhomogenous poisson point process model,
+    if(any(dim(y)!=dim(site_spp_weights))){
+      stop('When modelling a inhomogenous poisson point process model,
            weights needs to have the same dimensions at the
            species data - n_sites x n_species')
-      }
     }
+  }
 
-    # standardise the data
-    s.means <- NULL
-    s.sds <- NULL
-    if (standardise == TRUE) {
-      stand.X <- standardise.X(X[, -1])
-      X <- as.matrix(cbind(1, stand.X$X))
-      s.means <- stand.X$dat.means
-      s.sds <- stand.X$dat.sds
-    }
+   s.means <- NULL
+  s.sds <- NULL
+  if (standardise == TRUE) {
+    stand.X <- standardise.X(X[, -1])
+    X <- as.matrix(cbind(1, stand.X$X))
+    s.means <- stand.X$dat.means
+    s.sds <- stand.X$dat.sds
+  }
 
-    # summarising data to console
-    print_input_sam(y, X, S, archetype_formula, species_formula, distribution, quiet=control$quiet)
+  # summarising data to console
+  print_input_sam(y, X, S, archetype_formula, species_formula, distribution, quiet=control$quiet)
 
   tmp_fun <- function(x){
       if( !control$quiet & nstart>1)
@@ -346,8 +373,7 @@
                              offset=offset, disty=disty, y_is_na=y_is_na,
                              control=control, inits=inits)
 
-      tmp$dist <- disty.cases[disty]
-
+      tmp$dist <- disty_cases[disty]
 
       tmp$pis <- additive_logistic(tmp$eta)
 
@@ -363,7 +389,7 @@
       #titbits object, if wanted/needed.
       tmp$titbits <- get_titbits_sam(titbits, y, X, spp_weights, site_spp_weights, offset,
                                      y_is_na , archetype_formula, species_formula,
-                                     control, disty.cases[disty])
+                                     control, disty_cases[disty])
       class(tmp) <- c("species_mix", distribution)
       return( tmp)
    }
@@ -376,6 +402,7 @@
    many_starts <- surveillance::plapply(seq_len(nstart), tmp_fun,
                                         .parallel = mc.cores,
                                         .verbose = !control$quiet)
+
    return(many_starts)
 }
 
@@ -399,7 +426,7 @@
                                   ## intialisation controls
                                   init_method = 'kmeans',
                                   init_sd = 1,
-                                  minimum_sites_prevelance = 0.1,
+                                  minimum_sites_occurrence = 10,
                                   # minimum_occurrence_tolerance_ippm = 20,
                                   ## EM algorithim controls
                                   em_prefit = TRUE,
@@ -426,7 +453,7 @@
                cores = cores,
                #initialisation controls
                init_method = init_method, init_sd = init_sd,
-               minimum_sites_prevelance = minimum_sites_prevelance,
+               minimum_sites_occurrence = minimum_sites_occurrence,
                #em controls
                em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps,
                em_abstol = em_abstol, em_reltol = em_reltol,
@@ -588,8 +615,8 @@
     }
     if (distribution == "poisson") {
       tmp <- rep(1e+05, dim(X)[1])
-      while (max(tmp, na.rm = TRUE) > 500 | sum(tmp) < 100) {
-        theta[g, 1] <- stats::runif(1, -5, 5)
+      while (max(tmp, na.rm = TRUE) > 5000 | sum(tmp>0) < 9) {
+        theta[g, 1] <- stats::runif(1, -20, 20)
         sp.int[s] <- theta[g, 1]
         lgtp <- X %*% theta[g, ]
         tmp <- rpois(dim(X)[1], lambda = exp(lgtp))
@@ -690,8 +717,9 @@
   print(x$pi)
   cat("\nCoefficents\n")
   print(x$coef)
-  cat("\nPosterior Probabilities\n")
-  print(x$taus)
+  # if(x$dist %in% c('negative_binomial','gaussian'))
+  # cat("\n Probabilities\n")
+  # print(x$taus)
 }
 
 #' #' @rdname species_mix
@@ -807,8 +835,8 @@
     Y <- object$titbits$Y
     y_is_na <- object$titbits$y_is_na
     distribution <- object$titbits$distribution
-    disty.cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
-    disty <- get_distribution_sam(disty.cases, distribution)
+    disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
+    disty <- get_distribution_sam(disty_cases, distribution)
     S <- object$S
     G <- object$G
     n <- object$n
@@ -1175,17 +1203,17 @@
   ids_i <- !y_is_na[,ss]
 
   if (disty==3){
-    outcomes <- as.matrix(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
   } else {
     outcomes <- as.matrix(y[ids_i,ss])
   }
 
-  if( disty %in% c(1,2,3)){
-    ft_sp <- try(suppressWarnings(stats::glm.fit(x=as.data.frame(X[ids_i,]),
-                            y=as.numeric(outcomes),
-                            weights=as.numeric(site_spp_weights[ids_i,ss]),
-                            offset=offset[ids_i],
-                            family=fam)), silent=TRUE)
+  if( disty %in% c(1,2,3,6)){
+    ft_sp <- try(stats::glm.fit(x=as.data.frame(X[ids_i,,drop=FALSE]),
+                                y = outcomes,
+                                weights=as.numeric(site_spp_weights[ids_i,ss]),
+                                offset=offset[ids_i],
+                                family=fam), silent=FALSE)
     if (class(ft_sp) %in% 'try-error'){
       my_coefs <- rep(NA, ncol(X[ids_i,]))
     } else {
@@ -1194,10 +1222,10 @@
   }
   disp <- NA
   if(disty == 4){
-    ft_sp <- try(glm.fit.nbinom(x=as.matrix(X[ids_i,]),
+    ft_sp <- try(glm.fit.nbinom(x=as.matrix(X[ids_i,,drop=FALSE]),
                                 y=as.numeric(outcomes),
                                 weights=as.numeric(site_spp_weights[ids_i,ss]),
-                                offset=offset[ids_i],est_var=FALSE))
+                                offset=offset[ids_i],est_var=FALSE), silent = TRUE)
 
     # preds <- predict.glm.fit(ft_sp, X[ids_i,], offset[ids_i], disty)
     # tmp <- MASS::theta.mm(outcomes, preds,
@@ -1260,12 +1288,18 @@
   }
 
   if(disty %in% c(1,2,3,4,6)){ #don't use for tweedie
-    ft_mix <- suppressWarnings(glm.fit(x = as.data.frame(X_tau),
+    ft_mix <- try(glm.fit(x = as.data.frame(X_tau),
                       y = as.numeric(Y_tau),
                       weights = c(wts_tauXsite_weights)+1e-6,
                       offset = offy,
                       family = fam))
-    mix_coefs <- ft_mix$coefficients
+    if (class(ft_mix) %in% 'try-error'){
+      # mix_coefs <- rep(NA, ncol(X_tau)
+      mix_coefs <- fits$beta[gg,]
+    } else {
+      mix_coefs <- ft_mix$coefficients
+    }
+
     }
 
     return(mix_coefs)
@@ -1277,7 +1311,10 @@
   temp.warn <- getOption( "warn")
   options( warn=-1)
 
+
+
   #if emfit is in the control do an EM fit to get good starting values for c++
+  if(disty %in% 3) control$em_prefit <- FALSE
   if(isTRUE(control$em_prefit)){
 
     if(!control$quiet)message('Using ECM algorithm to find starting values; using ',
@@ -1359,7 +1396,7 @@ starting values;\n starting values are generated using ',control$init_method,
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
-        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=exp(-fits$disp[ss]),log=TRUE))
+        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=1/exp(-fits$disp[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -1605,7 +1642,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
     #update the likelihood
     logl_old <- logl_new
-    logl_new <- ecomix:::get_incomplete_logl_sam(eta = ecomix:::additive_logistic(pis,inv = TRUE)[-G],
+    logl_new <- get_incomplete_logl_sam(eta = ecomix:::additive_logistic(pis,inv = TRUE)[-G],
                                         first_fit, fits, spp_weights, G, S, disty)
     # cat(ite,"\n")
     # cat(logl_old," ->", logl_new,"\n")
@@ -1629,6 +1666,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
 "initiate_fit_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
+  # cat(dim(site_spp_weights))
   fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glm_sam_inits, y, X,
                                        site_spp_weights, offset, y_is_na, disty,
                                       .parallel = control$cores, .verbose = FALSE)
@@ -1654,16 +1692,8 @@ starting values;\n starting values are generated using ',control$init_method,
     species_to_remove <- NA
   }
 
-  if(disty==3){
-    n <- max(colSums(y<1,na.rm = TRUE))
-    prev_min_sites <- floor(n*control$minimum_sites_prevelance)
-    sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
-  } else {
-    n <- nrow(y)
-    prev_min_sites <- floor(n*control$minimum_sites_prevelance);
-    sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
-  }
-
+  prev_min_sites <- control$minimum_sites_occurrence
+  sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
   if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,,drop=FALSE]
 
   if(control$init_method=='kmeans'){
@@ -1723,7 +1753,8 @@ starting values;\n starting values are generated using ',control$init_method,
   return(-tmp)
 }
 
-"sam_optimise" <- function(y, X, offset, spp_weights, site_spp_weights, y_is_na, S, G, Obs, disty, start_vals, control){
+"sam_optimise" <- function(y, X, offset, spp_weights, site_spp_weights, y_is_na,
+                           S, G, disty, start_vals, control){
 
   inits <- c(start_vals$alpha, start_vals$beta, start_vals$eta, start_vals$disp)
   np <- as.integer(ncol(X[,-1,drop=FALSE]))
@@ -1740,7 +1771,7 @@ starting values;\n starting values are generated using ',control$init_method,
   beta.score <- as.numeric(rep(NA, length(beta)))
   eta.score <- as.numeric(rep(NA, length(eta)))
   # disp.score <- as.numeric(rep(NA, length(disp)))
-  getscores <- 1
+  # getscores <- 1
 
   if(disty%in%c(4,6)){
     control$optiDisp <- as.integer(1)
@@ -1754,7 +1785,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
   #model quantities
   pis_out <- as.numeric(rep(NA, G))  #container for the fitted RCP model
-  mus <- as.numeric(array( NA, dim=c( Obs, S, G)))  #container for the fitted spp model
+  mus <- as.numeric(array( NA, dim=c(n, S, G)))  #container for the fitted spp model
   loglikeS <- as.numeric(rep(NA, S))
   loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
 
@@ -1763,7 +1794,7 @@ starting values;\n starting values are generated using ',control$init_method,
                as.numeric(as.matrix(y)), as.numeric(as.matrix(X[,-1,drop=FALSE])), as.numeric(offset), as.numeric(spp_weights),
                as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
                # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
-               as.integer(S), as.integer(G), as.integer(np), as.integer(Obs), as.integer(disty),as.integer(control$optiDisp),
+               as.integer(S), as.integer(G), as.integer(np), as.integer(n), as.integer(disty),as.integer(control$optiDisp),
                # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
                as.double(alpha), as.double(beta), as.double(eta), as.double(disp),
                # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
@@ -1774,7 +1805,7 @@ starting values;\n starting values are generated using ',control$init_method,
                as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
                as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp), as.integer(control$printparams_cpp),
                # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
-               as.integer( control$optimise_cpp), as.integer(control$loglOnly_cpp), as.integer( control$derivOnly_cpp),
+               as.integer( 1), as.integer(0), as.integer(0),
                # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
                PACKAGE = "ecomix")
 
@@ -1813,6 +1844,8 @@ starting values;\n starting values are generated using ',control$init_method,
     stop( "Unknown boostrap type, choices are BayesBoot and SimpleBoot.")
   n.reorder <- 0
   object$titbits$control$optimise <- TRUE #just in case it was turned off
+  if(object$titbits$distribution=='ippm')
+    stop('IPPM vcov matrix needs to estimated using FiniteDifference method.\n')
 
   if( type == "SimpleBoot"){
     all.wts <- matrix( sample( 1:object$S, nboot*object$S, replace=TRUE), nrow=nboot, ncol=object$S)
@@ -1834,8 +1867,8 @@ starting values;\n starting values are generated using ',control$init_method,
   object$titbits$control$quiet <- TRUE
 
   my.fun <- function(dummy){
-    disty.cases <- c("bernoulli", "poisson", "negative_binomial", "tweedie", "gaussian")
-    disty <- get_distribution_sam(disty.cases, object$dist)
+    disty_cases <- c("bernoulli", "poisson", "ippm", "negative_binomial", "tweedie", "gaussian")
+    disty <- get_distribution_sam(disty_cases, object$dist)
     dumbOut <- capture.output(
       samp.object <- species_mix.fit(y=object$titbits$Y,
                                      X=object$titbits$X,
@@ -1884,7 +1917,15 @@ starting values;\n starting values are generated using ',control$init_method,
   if( quiet)
     return( NULL)
   n.tot <- nrow(y)
-  message("There are ", nrow(X), " site observations for ", S," species")
+  if(distribution=='ippm'){
+    n_pres <- sum(unlist(y)==1,na.rm=TRUE)
+    n_bkgrd <- sum(unlist(y[,1])==0,na.rm=TRUE)
+    message("There are ", n_pres, " presence observations for ", S," species")
+    message("There are ", n_bkgrd, " background (integration) points for each of the ", S," species")
+  } else {
+    message("There are ", nrow(X), " site observations for ", S," species")
+  }
+
   archetype_formula[[2]] <- NULL
   message("The model for the SAM is ", Reduce( "paste", deparse(archetype_formula)))
   if(!is.null(species_formula))
@@ -1892,12 +1933,14 @@ starting values;\n starting values are generated using ',control$init_method,
   message("You are implementing a ", distribution, " SAM.")
 }
 
-"get_distribution_sam" <- function( disty.cases, dist1) {
-  error.msg <- paste( c( "Distribution not implemented. Options are: ", disty.cases, "-- Exitting Now"), collapse=" ")
+"get_distribution_sam" <- function( disty_cases, dist1) {
+  error.msg <- paste( c( "Distribution not implemented. Options are: ", disty_cases, "-- Exitting Now"), collapse=" ")
   disty <- switch( dist1,
                    "bernoulli" = 1,
                    "poisson" = 2,
+                   "ippm" = 3,
                    "negative_binomial" = 4,
+                   "tweedie" = 5,
                    "gaussian" = 6,
                    {stop( error.msg)} )
   return( disty)
@@ -1913,6 +1956,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
 "species_data_check" <- function(x){
   stopifnot(is.matrix(x)|is.data.frame(x))
+
   # stopifnot(all(is.finite(x)))
 }
 
@@ -1974,11 +2018,20 @@ starting values;\n starting values are generated using ',control$init_method,
   # site_spp_wts <- model.weights(mf)
   if(is.null(site_spp_weights))site_spp_weights <- model.weights(mf)
 
-  if(!is.null(site_spp_weights)){
-      site_spp_weights <- replicate(length(sp_names),site_spp_weights)
+  if(distribution=='ippm'){
+      if(!is.null(site_spp_weights)){
+        site_spp_weights <- subset(site_spp_weights, select = colnames(site_spp_weights)%in%sp_names)
+      } else {
+        site_spp_weights <- matrix(1,nrow(mf),length(sp_names))
+      }
     } else {
-      site_spp_weights <- matrix(1,nrow(mf),length(sp_names))
+      if(!is.null(site_spp_weights)){
+          site_spp_weights <- replicate(length(sp_names),site_spp_weights)
+    } else {
+          site_spp_weights <- matrix(1,nrow(mf),length(sp_names))
     }
+
+  }
 
   return(site_spp_weights)
 }
@@ -2194,7 +2247,8 @@ starting values;\n starting values are generated using ',control$init_method,
   }
 
 "clean_data_sam" <- function(data, form1, form2, distribution){
-    na_rule <- "na.exclude"
+  if(distribution=='ippm') na_rule <- "na.pass"
+  else  na_rule <- "na.exclude"
     mf.X <- stats::model.frame(form1, data = data, na.action = na_rule)
     if( !is.null( form2)){
       mf.W <- stats::model.frame(form2, data = data, na.action = na_rule)
