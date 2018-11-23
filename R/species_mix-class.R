@@ -149,7 +149,7 @@
 
   #get distribution
   disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
-  disty <- ecomix:::get_distribution_sam(disty_cases, distribution)
+  disty <- get_distribution_sam(disty_cases, distribution)
 
   # get offsets
   offset <- get_offset_sam(dat$mf.X)
@@ -240,7 +240,7 @@
   }
 
   if(is.null(inits)){
-    starting_values  <-  ecomix:::get_starting_values_sam(y = y, X = X,
+    starting_values  <-  get_starting_values_sam(y = y, X = X,
                                                  spp_weights = spp_weights,
                                                  site_spp_weights = site_spp_weights,
                                                  offset = offset,
@@ -256,7 +256,7 @@
     starting_values <- inits
   }
 
-  # cat(starting_values$alpha,"\n\n",starting_values$beta,"\n\n", ecomix:::additive_logistic(starting_values$eta,FALSE))
+  # cat(starting_values$alpha,"\n\n",starting_values$beta,"\n\n", additive_logistic(starting_values$eta,FALSE))
   tmp <- sam_optimise(y, X, offset, spp_weights, site_spp_weights,
                       y_is_na, S, G, disty, starting_values, control)
 
@@ -340,7 +340,7 @@
 
   #get distribution
   disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
-  disty <- ecomix:::get_distribution_sam(disty_cases, distribution)
+  disty <- get_distribution_sam(disty_cases, distribution)
 
   # get offsets
   offset <- get_offset_sam(dat$mf.X)
@@ -1332,7 +1332,7 @@
     emfits <- list()
     for(ii in seq_len(control$em_refit)){
       if(!control$quiet)message('ECM fit: ',ii,'\n')
-      emfits[[ii]] <-  ecomix:::fitmix_EM_sam(y, X, spp_weights, site_spp_weights,
+      emfits[[ii]] <-  fitmix_EM_sam(y, X, spp_weights, site_spp_weights,
                                      offset, y_is_na, G, S, disty, control)
     }
     bf <- which.max(vapply(emfits,function(x)c(x$logl),c(logl=0)))
@@ -1569,7 +1569,7 @@ starting values;\n starting values are generated using ',control$init_method,
   logl_new <- -88888888
 
   # get starting values
-  starting_values <- ecomix:::get_initial_values_sam(y = y, X = X,
+  starting_values <- get_initial_values_sam(y = y, X = X,
                                             spp_weights = spp_weights,
                                             site_spp_weights = site_spp_weights,
                                             offset = offset, y_is_na = y_is_na,
@@ -1583,7 +1583,7 @@ starting values;\n starting values are generated using ',control$init_method,
   pis <- starting_values$pis
   # cat('start pis', pis,'\n')
   first_fit <- starting_values$first_fit
-  logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
+  logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
 
   while(control$em_reltol(logl_new,logl_old) & ite <= control$em_steps){
     if(restart_ite>10){
@@ -1621,18 +1621,18 @@ starting values;\n starting values are generated using ',control$init_method,
 
     # m-step
     fm_sp_int <- surveillance::plapply(seq_len(S),
-                                       ecomix:::apply_glm_sam_sp_intercepts,
+                                       apply_glm_sam_sp_intercepts,
                                        y, X, G, taus, site_spp_weights, offset,
                                        y_is_na, disty, fits,
                                        .parallel = control$cores,
                                        .verbose = FALSE)
     #check weights in this.
     alpha <- unlist(lapply(fm_sp_int, `[[`, 1))
-    fits$alpha <- ecomix:::update_sp_coefs(fits$alpha,alpha)
+    fits$alpha <- update_sp_coefs(fits$alpha,alpha)
 
     ## update the betas
     fmix_coefs <- surveillance::plapply(seq_len(G),
-                                        ecomix:::apply_glm_group_tau_sam,
+                                        apply_glm_group_tau_sam,
                                         y, X, site_spp_weights,
                                         offset, y_is_na, disty, taus,
                                         fits, logls_mus$fitted,
@@ -1641,30 +1641,30 @@ starting values;\n starting values are generated using ',control$init_method,
 
     # update the coefs.
     fmix_coefs_mat <- t(do.call(cbind,fmix_coefs))
-    fits$beta <- ecomix:::update_mix_coefs(fits$beta, fmix_coefs_mat)
+    fits$beta <- update_mix_coefs(fits$beta, fmix_coefs_mat)
 
 
     ## need a function here that updates the dispersion parameter.
     if(disty%in%c(4,6)){
-      fm_disp <- surveillance::plapply(1:S, ecomix:::apply_optimise_spp_theta,
+      fm_disp <- surveillance::plapply(1:S, apply_optimise_spp_theta,
                                        first_fit, fits,
                                        G, disty, taus,
                                        .parallel = control$cores,
                                        .verbose = FALSE)
       disp <- unlist(lapply(fm_disp, `[[`, 1))
       disp <- log(1/disp)
-      fits$disp <- ecomix:::update_sp_dispersion(fits$disp,disp,0.5)
+      fits$disp <- update_sp_dispersion(fits$disp,disp,0.5)
     }
 
     # e-step
     # get the log-likes and taus
-    logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-    taus <- ecomix:::get_taus(pis, logls_mus$logl_sp, G, S)
-    # taus <- ecomix:::shrink_taus(taus,)
+    logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
+    taus <- get_taus(pis, logls_mus$logl_sp, G, S)
+    # taus <- shrink_taus(taus,)
 
     #update the likelihood
     logl_old <- logl_new
-    logl_new <- get_incomplete_logl_sam(eta = ecomix:::additive_logistic(pis,inv = TRUE)[-G],
+    logl_new <- get_incomplete_logl_sam(eta = additive_logistic(pis,inv = TRUE)[-G],
                                         first_fit, fits, spp_weights, G, S, disty)
     # cat(ite,"\n")
     # cat(logl_old," ->", logl_new,"\n")
@@ -1749,17 +1749,16 @@ starting values;\n starting values are generated using ',control$init_method,
 
   #get taus as starting values
   if(G==1){
-    taus <- matrix(1,nrow=ncol(y), ncol= G)
+    taus <- matrix(1,nrow=ncol(y), ncol = G)
   } else {
   taus <- matrix(0,nrow=ncol(y), ncol= G)
   if(length(sel_omit_spp)>0){
     for(j in 1:length((1:S)[-sel_omit_spp]))
-      taus[(1:S)[-sel_omit_spp][j],fmmvnorm$cluster[j],drop=FALSE] <- 1
-      taus[sel_omit_spp,,drop=FALSE] <- matrix(runif(length(sel_omit_spp)*G),length(sel_omit_spp), G)
+      taus[(1:S)[-sel_omit_spp][j],fmmvnorm$cluster[j]] <- 1
+      taus[sel_omit_spp,] <- matrix(runif(length(sel_omit_spp)*G),length(sel_omit_spp), G)
       } else {
-        for(j in seq_len(S))
-        taus[j,fmmvnorm$cluster[j],drop=FALSE] <- 1
-    }
+          for(j in seq_len(S))taus[j,fmmvnorm$cluster[j]] <- 1
+        }
   }
   taus <- taus/rowSums(taus)
   taus <- shrink_taus(taus,G=G)
