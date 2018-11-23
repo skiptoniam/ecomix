@@ -1157,7 +1157,7 @@
     if(disty == 4)
       cw.out <- sum(taus[ss,gg]*dnbinom(first_fit$y[,ss], mu = exp(cw.eta), size = 1/exp(-x), log = TRUE)); #print(x)
     if(disty == 6)
-      cw.out <- sum(taus[ss,gg]*dnorm(first_fit$yy[,ss], mean = cw.eta, sd = sqrt(x), log = TRUE))
+      cw.out <- sum(taus[ss,gg]*dnorm(first_fit$y[,ss], mean = cw.eta, sd = exp(x), log = TRUE))
     out <- out + cw.out
   }
   return(out)
