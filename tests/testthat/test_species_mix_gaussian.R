@@ -37,7 +37,7 @@ testthat::test_that('species mix gaussian', {
   # testthat::expect_length(tmp <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control),10)
 
   #get the taus
-  starting_values <- ecomix:::initiate_fit_sam(y, X, site_spp_wts, offset, y_is_na, G, S, disty, control)
+  starting_values <- ecomix:::initiate_fit_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control)
   fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,disp=starting_values$disp)
   first_fit <- list(x = X, y = y, weights=site_spp_wts, offset=offset)
 
@@ -45,7 +45,7 @@ testthat::test_that('species mix gaussian', {
   logls <- ecomix:::get_logls_sam(first_fit, fits, spp_wts, G, S, disty)
   pis <- rep(1/G, G)
   taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
-  taus <- ecomix:::skrink_taus(taus, max_tau=1/G + 0.1, G)
+  taus <- ecomix:::shrink_taus(taus, max_tau=1/G + 0.1, G)
 
   ## get to this in a bit
   gg <- 1
@@ -53,8 +53,8 @@ testthat::test_that('species mix gaussian', {
 
   # ## now let's try and fit the optimisation
   sv <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control)
-  tmp <- ecomix:::sam_optimise(y,X,offset,spp_wts,site_spp_wts, y_is_na, S, G, nrow(y), disty, start_vals = sv, control)
-  testthat::expect_length(tmp,16)
+  tmp <- ecomix:::sam_optimise(y,X,offset,spp_wts,site_spp_wts, y_is_na, S, G, disty, start_vals = sv, control)
+  testthat::expect_length(tmp,17)
 
   set.seed(42)
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~1+x1+x2"))
