@@ -184,8 +184,8 @@
   print_input_sam(y, X, S, archetype_formula, species_formula, distribution, quiet=control$quiet)
 
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
-  cat(dim(site_spp_weights))
-  cat(site_spp_weights[!is.na(site_spp_weights[])][1:20])
+  # cat(dim(site_spp_weights))
+  # cat(site_spp_weights[!is.na(site_spp_weights[])][1:20])
   tmp <- species_mix.fit(y=y, X=X, G=n_mixtures, S=S, spp_weights=spp_weights,
                          site_spp_weights=site_spp_weights,
                          offset=offset, disty=disty, y_is_na=y_is_na,
@@ -194,7 +194,8 @@
   tmp$dist <- disty_cases[disty]
 
 
-  tmp$pis <- additive_logistic(tmp$eta)
+  if(n_mixtures==1) tmp$pis <- tmp$pis
+  else tmp$pis <- additive_logistic(tmp$eta)
 
   #calc posterior porbs and pis.
   if(n_mixtures>1)
@@ -230,6 +231,13 @@
 #'@export
 
 "species_mix.fit" <- function(y, X, G, S, spp_weights, site_spp_weights, offset, y_is_na, disty, control, inits=NULL){
+
+  if(G==1){
+    tmp <- fitmix_EM_sam(y, X, spp_weights, site_spp_weights,
+                         offset, y_is_na, G, S, disty, control)
+    tmp <- clean_em_output_one_group(tmp, G, S, disty)
+    return(tmp)
+  }
 
   if(is.null(inits)){
     starting_values  <-  ecomix:::get_starting_values_sam(y = y, X = X,
@@ -1261,12 +1269,12 @@
   Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
   X_no_NA <- list()
   for (jj in 1:ncol(y)){
-    X_no_NA[[jj]] <- X[!y_is_na[,jj],-1]
+    X_no_NA[[jj]] <- X[!y_is_na[,jj],-1,drop=FALSE]
   }
   X_tau <- do.call(rbind, X_no_NA)
   n_ys <- sapply(X_no_NA,nrow)
 
-  wts_tau <- rep(tau[,gg],c(n_ys))
+  wts_tau <- rep(tau[,gg,drop=FALSE],c(n_ys))
   if(disty==4)wts_tau <- rep(tau[,gg],c(n_ys))/(1+rep(exp(-fits$disp),n_ys)*as.vector(mus[gg,,]))
 
   site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
@@ -1297,14 +1305,13 @@
                       family = fam))
     if (class(ft_mix) %in% 'try-error'){
       # mix_coefs <- rep(NA, ncol(X_tau)
-      mix_coefs <- fits$beta[gg,]
+      mix_coefs <- fits$beta[gg,,drop=FALSE]
     } else {
       mix_coefs <- ft_mix$coefficients
     }
 
     }
-
-    return(mix_coefs)
+    return(as.matrix(mix_coefs))
 }
 
 "get_starting_values_sam" <- function(y, X, spp_weights, site_spp_weights,
@@ -1711,11 +1718,14 @@ starting values;\n starting values are generated using ',control$init_method,
   sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
   if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,,drop=FALSE]
 
+  if(G==1) control$init_method <- 'kmeans'
+
   if(control$init_method=='kmeans'){
     # if(!control$quiet)message( "Initial groups by K-means clustering\n")
     fmmvnorm <- stats::kmeans(beta, centers=G, nstart=100)
     tmp_grp <- fmmvnorm$cluster
     grp_coefs <- apply(beta, 2, function(x) tapply(x, tmp_grp, mean))
+    grp_coefs <- matrix(grp_coefs,nrow=G)
   }
 
   if(control$init_method=='kmed'){
@@ -1724,27 +1734,33 @@ starting values;\n starting values are generated using ',control$init_method,
       fmmvnorm <- kmed::fastkmed(mrwdist, ncluster = G, iterate = 100)
       tmp_grp <- fmmvnorm$cluster
       grp_coefs <- beta[fmmvnorm$medoid,,drop=FALSE]
+      grp_coefs <- matrix(grp_coefs,nrow=G)
   }
 
   if(control$init_method=='random' | is.null(tmp_grp)){
     # if(!control$quiet)message( "Initial groups by random allocation and means from random numbers\n")
     grp_coefs <- matrix( stats::rnorm(G*ncol(beta), sd=control$init_sd, mean=0), nrow=G, ncol=ncol(beta))
     tmp_grp <- sample(1:G, S, replace=TRUE)
+    grp_coefs <- matrix(grp_coefs,nrow=G)
   }
 
-  colnames(grp_coefs) <- colnames(X[,-1])
+ if(ncol(X[,-1,drop=FALSE])==1)names(grp_coefs)[2] <- names(X[,-1,drop=FALSE])[2]
+ else colnames(grp_coefs) <- colnames(X[,-1,drop=FALSE])
 
   #get taus as starting values
-  taus <- matrix(0,ncol(y), G)
+  if(G==1){
+    taus <- matrix(1,nrow=ncol(y), ncol= G)
+  } else {
+  taus <- matrix(0,nrow=ncol(y), ncol= G)
   if(length(sel_omit_spp)>0){
     for(j in 1:length((1:S)[-sel_omit_spp]))
-      taus[(1:S)[-sel_omit_spp][j],fmmvnorm$cluster[j]] <- 1
-      taus[sel_omit_spp,] <- matrix(runif(length(sel_omit_spp)*G),length(sel_omit_spp), G)
-  } else {
-    for(j in seq_len(S))
-      taus[j,fmmvnorm$cluster[j]] <- 1
+      taus[(1:S)[-sel_omit_spp][j],fmmvnorm$cluster[j],drop=FALSE] <- 1
+      taus[sel_omit_spp,,drop=FALSE] <- matrix(runif(length(sel_omit_spp)*G),length(sel_omit_spp), G)
+      } else {
+        for(j in seq_len(S))
+        taus[j,fmmvnorm$cluster[j],drop=FALSE] <- 1
+    }
   }
-
   taus <- taus/rowSums(taus)
   taus <- shrink_taus(taus,G=G)
   pis <- colMeans(taus)
@@ -1862,6 +1878,25 @@ starting values;\n starting values are generated using ',control$init_method,
   ret$removed_species <- start_vals$first_fit$removed_species
   return(ret)
 }
+
+"clean_em_output_one_group" <- function(em_fit, G, S, disty){
+
+  np <- ncol(em_fit$first_fit$x[,-1,drop=FALSE])
+  n <- nrow(em_fit$first_fit$x[,-1,drop=FALSE])
+
+  if(!disty%in%c(4,6))
+    em_fit$coefs <- list(alpha = em_fit$alpha, beta = matrix(em_fit$beta,G,np), eta = em_fit$eta)
+  else
+    em_fit$coefs <- list(alpha = em_fit$alpha, beta = matrix(em_fit$beta,G,np), eta = em_fit$eta, disp = em_fit$disp)
+
+  em_fit$names <- list(spp=colnames(em_fit$first_fit$y), SAMs=paste("SAM", 1:G, sep=""), Xvars=colnames(em_fit$first_fit$X[,-1,drop=FALSE]))
+
+  em_fit$S <- S; em_fit$G <- G; em_fit$np <- np; em_fit$n <- n;
+  em_fit$removed_species <- em_fit$first_fit$removed_species
+
+  return(em_fit)
+}
+
 
 "sam_bootstrap" <-function (object, nboot=1000, type="BayesBoot", mc.cores=1,
                             quiet=FALSE, orderSamps=FALSE, MLstart=TRUE){
