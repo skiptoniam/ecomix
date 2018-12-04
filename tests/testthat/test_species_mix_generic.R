@@ -244,7 +244,7 @@ testthat::test_that('species mix predict functions', {
   fm3 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'negative_binomial', n_mixtures=4)
 
   preds5 <- predict(fm3)
-  testthat::expect_length(preds3,2)
+  testthat::expect_length(preds3,4)
   testthat::expect_is(preds5,'list')
 
   preds6 <- predict(fm2, newobs = dat2)
@@ -257,7 +257,7 @@ testthat::test_that('species mix predict functions', {
   fm4 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'gaussian', n_mixtures=4)
 
   preds7 <- predict(fm4)
-  testthat::expect_length(preds7,2)
+  testthat::expect_length(preds7,4)
   testthat::expect_is(preds7,'list')
 
   preds8 <- predict(fm4, newobs = dat2)

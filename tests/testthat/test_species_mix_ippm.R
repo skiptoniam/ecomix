@@ -4,7 +4,6 @@ library(ecomix)
 library(raster)
 library(scales)
 
-
 testthat::test_that('species mix ippm', {
 
   # library(ecomix)

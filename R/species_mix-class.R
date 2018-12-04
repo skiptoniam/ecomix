@@ -1249,7 +1249,7 @@
       my_coefs <- ft_sp$coef
     }
     tmp <- ft_sp$theta
-    if(tmp>10) tmp <- 10
+    if(tmp>2) tmp <- 2
     disp <- log(1/tmp)
   }
   if( disty == 6){
@@ -1302,7 +1302,7 @@
                       y = as.numeric(Y_tau),
                       weights = c(wts_tauXsite_weights)+1e-6,
                       offset = offy,
-                      family = fam))
+                      family = fam), silent = TRUE)
     if (class(ft_mix) %in% 'try-error'){
       # mix_coefs <- rep(NA, ncol(X_tau)
       mix_coefs <- fits$beta[gg,,drop=FALSE]
@@ -1311,7 +1311,7 @@
     }
 
     }
-    return(as.matrix(mix_coefs))
+    return(c(mix_coefs))
 }
 
 "get_starting_values_sam" <- function(y, X, spp_weights, site_spp_weights,
@@ -1337,10 +1337,10 @@
     }
     bf <- which.max(vapply(emfits,function(x)c(x$logl),c(logl=0)))
     emfit <- emfits[[bf]]
-    start_vals <- list(alpha = emfit$alpha,
-                       beta = emfit$beta,
-                       disp = emfit$disp,
-                       pis = emfit$pis,
+    start_vals <- list(alpha = (emfit$alpha),
+                       beta = (emfit$beta),
+                       disp = (emfit$disp),
+                       pis = (emfit$pis),
                        first_fit = emfit$first_fit)
   } else {
     if(!control$quiet)message('You are not using the EM algorith to find
@@ -1353,10 +1353,10 @@ starting values;\n starting values are generated using ',control$init_method,
                                               G = G, S = S,
                                               disty=disty,
                                               control = control)
-    start_vals <- list(alpha=starting_values$fits$alpha,
-                       beta=starting_values$fits$beta,
-                       disp=starting_values$fits$disp,
-                       pis=starting_values$pis,
+    start_vals <- list(alpha=(starting_values$fits$alpha),
+                       beta=(starting_values$fits$beta),
+                       disp=(starting_values$fits$disp),
+                       pis=(starting_values$pis),
                        first_fit = starting_values$first_fit)
   }
 
