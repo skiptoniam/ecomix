@@ -217,7 +217,7 @@ testthat::test_that('species mix predict functions', {
   fm1 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'bernoulli', n_mixtures=4)
 
   preds <- predict(fm1)
-  testthat::expect_length(preds,2)
+  testthat::expect_length(preds,4)
   testthat::expect_is(preds,'list')
 
   dat2 <- data.frame(x1=runif(100,-2.5,2.5),x2=rnorm(100,-2.5,2.5))
@@ -231,7 +231,7 @@ testthat::test_that('species mix predict functions', {
   fm2 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'poisson', n_mixtures=4)
 
   preds3 <- predict(fm2)
-  testthat::expect_length(preds3,2)
+  testthat::expect_length(preds3,4)
   testthat::expect_is(preds3,'list')
 
   preds4 <- predict(fm2, newobs = dat2)

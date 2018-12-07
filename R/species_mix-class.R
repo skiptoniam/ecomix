@@ -1038,7 +1038,7 @@
         lp <- as.numeric(alphas[s] +  X[,-1]%*%betas[g, ] + offset)
         s.outpred[, s] <- link.fun$linkinv(lp)
         if(estimate_variance){
-          if (family == "bernoulli") dhdB <- (exp(lp)/(1 + exp(lp))) * X - exp(lp)^2/((1 + exp(lp))^2) * X
+          if (family == "bernoulli") dhdB <- ((exp(lp)/(1 + exp(lp))) * X) - ((exp(lp)^2/((1 + exp(lp))^2)) * X)
           if (family %in% c("negative_binomial","poisson","ippm")) dhdB <- exp(lp) * X
           if (family == "gaussian") dhdB <- lp * X
           c2 <- covar[c(seq(g + S, G * (dim(X)[2] - 1) + S, G), s),
@@ -1056,9 +1056,9 @@
                                         nrow(newobs),S,byrow=T)*s.outvar
       # predict the archetype species responses
       outpred_arch[, g] <- apply(s.outpred * rep(mixture.model$taus[, g], each = dim(X)[1]),
-                            1, sum)/sum(mixture.model$taus[, g])
+                            1, mean)/sum(mixture.model$taus[, g])
       outvar_arch[, g] <- apply(s.outvar * rep(mixture.model$taus[, g], each = dim(X)[1]),
-                                1, sum)/sum(mixture.model$taus[, g])
+                                1, mean)/sum(mixture.model$taus[, g])
       }
   return(list(fit = outpred_arch, se.fit = sqrt(outvar_arch),
               fit_spp = outpred_spp, se.fit_spp = sqrt(outvar_spp)))

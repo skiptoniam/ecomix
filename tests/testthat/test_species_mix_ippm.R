@@ -24,7 +24,7 @@ testthat::test_that('species mix ippm', {
 
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="ippm")
+  simulated_data <- simulate_species_mix_data(sam_form,~1,dat,thetas,dist="ippm")
   # wts <- simulated_data$background_weights
   offset <- simulated_data$offset
 
