@@ -1026,23 +1026,23 @@
       offset <- rep(0, nrow(X))
     outvar_arch <- matrix(NA, dim(X)[1], G)
     outpred_arch <- matrix(NA, dim(X)[1], G)
-    outvar_spp <- matrix(0, dim(X)[1], S)
-    outpred_spp <- matrix(0, dim(X)[1], S)
+    outvar_spp <- array(0,dim=c(dim(X)[1], G, S))
+    outpred_spp <- array(0,dim=c(dim(X)[1], G, S))
     colnames(outpred_arch) <- colnames(outvar_arch) <- paste("G", 1:G, sep = ".")
-    colnames(outpred_spp) <- colnames(outvar_spp) <- paste("spp", 1:S, sep = ".")
+    # colnames(outpred_spp) <- colnames(outvar_spp) <- paste("spp", 1:S, sep = ".")
 
     for (g in seq_len(G)) {
       s.outvar <- matrix(NA, dim(X)[1], length(alphas))
       s.outpred <- matrix(NA, dim(X)[1], length(alphas))
       for (s in seq_len(S)) {
-        lp <- as.numeric(alphas[s] +  X[,-1]%*%betas[g, ] + offset)
+        lp <- as.numeric(X%*%c(alphas[s],betas[g, ]) + offset)
         s.outpred[, s] <- link.fun$linkinv(lp)
         if(estimate_variance){
           if (family == "bernoulli") dhdB <- ((exp(lp)/(1 + exp(lp))) * X) - ((exp(lp)^2/((1 + exp(lp))^2)) * X)
           if (family %in% c("negative_binomial","poisson","ippm")) dhdB <- exp(lp) * X
           if (family == "gaussian") dhdB <- lp * X
-          c2 <- covar[c(seq(g + S, G * (dim(X)[2] - 1) + S, G), s),
-                      c(seq(g + S, G * (dim(X)[2] - 1) + S, G), s)]
+          c2 <- covar[c(s,seq(g + S, G * (dim(X)[2] - 1) + S, G)),
+                      c(s,seq(g + S, G * (dim(X)[2] - 1) + S, G))]
           for (k in 1:dim(X)[1]) {
               s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
           }
@@ -1050,18 +1050,20 @@
       }
 
       # predict the species specific responses
-      outpred_spp <- outpred_spp + matrix(mixture.model$taus[,g],
+      outpred_spp[,g,] <- matrix(mixture.model$taus[,g],
                                           nrow(newobs),S,byrow=T)*s.outpred
-      outvar_spp <- outvar_spp + matrix(mixture.model$taus[,g],
+      outvar_spp[,g,] <- matrix(mixture.model$taus[,g],
                                         nrow(newobs),S,byrow=T)*s.outvar
       # predict the archetype species responses
       outpred_arch[, g] <- apply(s.outpred * rep(mixture.model$taus[, g], each = dim(X)[1]),
-                            1, mean)/sum(mixture.model$taus[, g])
+                            1, sum)/sum(mixture.model$taus[, g])
       outvar_arch[, g] <- apply(s.outvar * rep(mixture.model$taus[, g], each = dim(X)[1]),
                                 1, mean)/sum(mixture.model$taus[, g])
       }
-  return(list(fit = outpred_arch, se.fit = sqrt(outvar_arch),
-              fit_spp = outpred_spp, se.fit_spp = sqrt(outvar_spp)))
+  return(list(fit = outpred_arch,
+              se.fit = sqrt(outvar_arch),
+              fit_spp = apply(outpred_spp,c(1,3),sum),
+              se.fit_spp = apply(outvar_spp,c(1,3),mean)))
 }
 
 
