@@ -1066,6 +1066,163 @@
               se.fit_spp = apply(outvar_spp,c(1,3),mean)))
 }
 
+"predict2.species_mix" <- function (object, object2 = NULL, ..., newdata = NULL,
+                                    nboot = 0, alpha = 0.95, mc.cores = 1){
+  if (is.null(newdata)) {
+    X <- object$titbits$X
+  } else {
+    form.X <- as.formula(object$titbit$archetype_formula)
+    if (length(form.X) == 3)form.X[[2]] <- NULL
+    X <- model.matrix(form.X, stats::model.frame(form.X, data = as.data.frame(newdata)))
+  }
+  offy <- rep(0, nrow(X))
+  S <- object$S
+  G <- object$G
+  n <- nrow(X)
+  np <- object$np
+  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
+  disty <- get_distribution_sam(disty_cases, object$titbits$distribution)
+  taus <- object$taus
+  if (is.null(object2)) {
+    if (nboot > 0) {
+      if( !object$titbits$control$quiet)
+        message("Using a parametric bootstrap based on the ML estimates and their vcov")
+      my.nboot <- nboot
+    }
+    else
+      my.nboot <- 0
+    allCoBoot <- species_mix_boot_parametric(fm = object, mf = mf,
+                                             nboot = my.nboot)
+  }
+  else {
+    if( !object$titbits$control$quiet)
+      message("Using supplied regional_mix_boot object (non-parametric bootstrap)")
+    allCoBoot <- as.matrix(object2)
+    nboot <- nrow(object2)
+  }
+  if (is.null(allCoBoot))
+    return(NULL)
+
+  alphaBoot <- allCoBoot[, seq_len(S), drop=FALSE]
+  betaBoot <- allCoBoot[, S + seq_len((G*np)), drop=FALSE]
+  etaBoot <- allCoBoot[, S + ((G*np)) + seq_len(G - 1), drop=FALSE]
+  if(disty%in%c(4,6))
+    dispBoot <- allCoBoot[, S + ((G*np)) + (G - 1) + seq_len(S), drop=FALSE]
+  else
+    dispBoot <- rep(-999999,S)
+
+  alphaIn <- c(NA, as.numeric(object$coefs$alpha))
+  alphaIn <- alphaIn[-1]
+  betaIn <- c(NA, as.numeric(object$coef$beta))
+  betaIn <- betaIn[-1]
+  etaIn <- c(NA, as.numeric(object$coef$eta))
+  etaIn <- etaIn[-1]
+  if (disty%in%c(4,6)) {
+    dispIn <- c(NA, as.numeric(object$coef$disp))
+    dispIn <- dispIn[-1]
+  }
+  else dispIn <- -999999
+  predCol <- G
+  ptPreds <- as.numeric(matrix(NA, nrow = n, ncol = predCol))
+  bootPreds <- as.numeric(array(NA, c(n, predCol, nboot)))
+  conc <- as.numeric(NA)
+  mysd <- as.numeric(NA)
+  outcomes <- matrix(NA, nrow = nrow(X), ncol = S)
+  myContr <- object$titbits$control
+  nam <- paste("G", 1:G, sep = "_")
+  boot.funny <- function(seg) {
+    if (any(segments <= 0)) {
+      nboot <- 0
+      bootSampsToUse <- 1
+    }
+    else {
+      nboot <- segments[seg]
+      bootSampsToUse <- (sum( segments[1:seg])-segments[seg]+1):sum(segments[1:seg])
+    }
+    bootPreds <- as.numeric(array(NA, c(n, predCol, nboot)))
+    tmp <- .Call("SAM_predict_C", as.numeric(-999999), as.numeric(X),
+                 as.numeric(offy), as.numeric(spp_wts),
+                 as.numeric(site_spp_wts), as.numeric(-999999),
+                 as.numeric(taus),
+                 as.integer(S), as.integer(G), as.integer(np),
+                 as.integer(n), as.integer(disty),
+                 as.numeric(alphaIn), as.numeric(betaIn),
+                 as.numeric(etaIn), as.numeric(dispIn),
+                 as.numeric(alphaBoot[bootSampsToUse,]),
+                 as.numeric(betaBoot[bootSampsToUse,]),
+                 as.numeric(etaBoot[bootSampsToUse,]),
+                 as.numeric(dispBoot[bootSampsToUse,]),
+                 as.integer(nboot), as.numeric(ptPreds),
+                 as.numeric(bootPreds), as.integer(1),
+                 PACKAGE = "ecomix")
+    if (nboot == 0) {
+      ret <- matrix(ptPreds, nrow = nrow(X), ncol = predCol)
+      colnames(ret) <- nam
+      return(ret)
+    }
+    bootPreds <- matrix(bootPreds, nrow = nrow(X) * predCol,
+                        ncol = nboot)
+    return(bootPreds)
+  }
+  segments <- -999999
+  ret <- list()
+  ptPreds <- boot.funny(1)
+  if (nboot > 0) {
+    if (Sys.info()["sysname"] == "Windows") {
+      if( !object$titbits$control$quiet)
+        message("Parallelised version of function not available for Windows machines. Reverting to single processor.")
+      mc.cores <- 1
+    }
+    segments <- rep(nboot%/%mc.cores, mc.cores)
+    if( nboot %% mc.cores > 0)
+      segments[1:(nboot%%mc.cores)] <- segments[1:(nboot%%mc.cores)] + 1
+
+    tmp <- parallel::mclapply(1:mc.cores, boot.funny, mc.cores = mc.cores)
+    bootPreds <- do.call("cbind", tmp)
+    bPreds <- list()
+    row.exp <- rowMeans(bootPreds)
+    tmp <- matrix(row.exp, nrow = nrow(X), ncol = predCol)
+    bPreds$fit <- tmp
+    tmp <- sweep(bootPreds, 1, row.exp, "-")
+    tmp <- tmp^2
+    tmp <- sqrt(rowSums(tmp)/(nboot - 1))
+    tmp <- matrix(tmp, nrow = nrow(X), ncol = predCol)
+    bPreds$ses <- tmp
+    colnames(bPreds$fit) <- colnames(bPreds$ses) <- nam
+    tmp.fun <- function(x) return(quantile(bootPreds[x, ],
+                                           probs = c(0, alpha) + (1 - alpha)/2, na.rm = TRUE))
+    tmp1 <- parallel::mclapply(seq_len(nrow(bootPreds)), tmp.fun,
+                               mc.cores = mc.cores)
+    tmp1 <- do.call("rbind", tmp1)
+    tmp1 <- array(tmp1, c(nrow(X), predCol, 2), dimnames = list(NULL,
+                                                                NULL, NULL))
+    bPreds$cis <- tmp1[, 1:predCol, ]
+    dimnames(bPreds$cis) <- list(NULL, nam, c("lower", "upper"))
+    ret <- list(ptPreds = ptPreds, bootPreds = bPreds$fit,
+                bootSEs = bPreds$ses, bootCIs = bPreds$cis)
+  }
+  else ret <- ptPreds
+  gc()
+  return(ret)
+}
+
+#' @rdname regional_mix
+#' @export
+
+"species_mix_boot_parametric" <- function( fm, mf, nboot){
+  if( nboot > 0){
+    if( is.null( fm$vcov)){
+      message( "An estimate of the variance matrix for regression parameters is required. Please run fm$vcov <- vcov(), see ?vcov.regional_mix for help")
+      return( NULL)
+    }
+    allCoBoot <- my.rmvnorm( n=nboot, mean=as.numeric(unlist( fm$coefs)), sigma=fm$vcov, method='eigen')
+    return( allCoBoot)
+  }
+  else{
+    boot.estis <- matrix( unlist( fm$coef), nrow=1)
+    return( boot.estis)
+  }
+}
 
 ###### SAM internal functions for fitting ######
 # replace this function with one that include eta (linear predictor) as an offset in when estimating the species-specific intercepts.
@@ -2270,9 +2427,7 @@ starting values;\n starting values are generated using ',control$init_method,
     logSums <- mset + log( rowSums( exp( logPostProbs-mset)))
     logPostProbs <- logPostProbs - logSums
     postProbs <- exp( logPostProbs)
-
     return( postProbs)
-
   }
 
 "check_species_formula" <- function(f){

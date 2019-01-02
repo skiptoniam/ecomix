@@ -1587,9 +1587,7 @@ function (x, ...)
 #' @rdname regional_mix
 #' @export
 
-"regional_mix_bootParametric" <-
-function( fm, mf, nboot)
-{
+"regional_mix_bootParametric" <- function( fm, mf, nboot){
 	if( nboot > 0){
 		if( is.null( fm$vcov)){
 			message( "An estimate of the variance matrix for regression parameters is required. Please run fm$vcov <- vcov(), see ?vcov.regional_mix for help")
