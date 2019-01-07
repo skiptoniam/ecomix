@@ -1075,13 +1075,22 @@
     if (length(form.X) == 3)form.X[[2]] <- NULL
     X <- model.matrix(form.X, stats::model.frame(form.X, data = as.data.frame(newdata)))
   }
-  offy <- rep(0, nrow(X))
+  offset <- model.frame(model.fm, data = newobs)
+  offset <- model.offset(offset)
+  if (is.null(offset))
+    offset <- rep(0, nrow(X))
+
   S <- object$S
   G <- object$G
   n <- nrow(X)
   np <- object$np
+
+  spp_wts <- rep(1,S)
+  site_spp_wts <- rep(1,S*n)
+
+
   disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
-  disty <- get_distribution_sam(disty_cases, object$titbits$distribution)
+  disty <- ecomix:::get_distribution_sam(disty_cases, object$titbits$distribution)
   taus <- object$taus
   if (is.null(object2)) {
     if (nboot > 0) {
@@ -1093,8 +1102,7 @@
       my.nboot <- 0
     allCoBoot <- species_mix_boot_parametric(fm = object, mf = mf,
                                              nboot = my.nboot)
-  }
-  else {
+  } else {
     if( !object$titbits$control$quiet)
       message("Using supplied regional_mix_boot object (non-parametric bootstrap)")
     allCoBoot <- as.matrix(object2)
@@ -1105,12 +1113,12 @@
 
   alphaBoot <- allCoBoot[, seq_len(S), drop=FALSE]
   betaBoot <- allCoBoot[, S + seq_len((G*np)), drop=FALSE]
-  etaBoot <- allCoBoot[, S + ((G*np)) + seq_len(G - 1), drop=FALSE]
-  if(disty%in%c(4,6))
-    dispBoot <- allCoBoot[, S + ((G*np)) + (G - 1) + seq_len(S), drop=FALSE]
-  else
-    dispBoot <- rep(-999999,S)
-
+  # etaBoot <- allCoBoot[, S + ((G*np)) + seq_len(G - 1), drop=FALSE]
+  # if(disty%in%c(4,6)){
+    # dispBoot <- allCoBoot[, S + ((G*np)) + (G - 1) + seq_len(S), drop=FALSE]
+  # } else {
+    # dispBoot <- rep(-999999,S)
+  # }
   alphaIn <- c(NA, as.numeric(object$coefs$alpha))
   alphaIn <- alphaIn[-1]
   betaIn <- c(NA, as.numeric(object$coef$beta))
@@ -1120,11 +1128,15 @@
   if (disty%in%c(4,6)) {
     dispIn <- c(NA, as.numeric(object$coef$disp))
     dispIn <- dispIn[-1]
+  } else {
+    dispIn <- -999999
   }
-  else dispIn <- -999999
-  predCol <- G
-  ptPreds <- as.numeric(matrix(NA, nrow = n, ncol = predCol))
-  bootPreds <- as.numeric(array(NA, c(n, predCol, nboot)))
+
+  spp_pt_preds <- as.numeric(matrix(NA, nrow = n, ncol = S))
+  grp_pt_preds <- as.numeric(matrix(NA, nrow = n, ncol = G))
+  spp_boot_preds <- as.numeric(array(NA, c(n, S, nboot)))
+  grp_boot_preds <- as.numeric(array(NA, c(n, G, nboot)))
+
   conc <- as.numeric(NA)
   mysd <- as.numeric(NA)
   outcomes <- matrix(NA, nrow = nrow(X), ncol = S)
@@ -1134,15 +1146,20 @@
     if (any(segments <= 0)) {
       nboot <- 0
       bootSampsToUse <- 1
-    }
-    else {
+    } else {
       nboot <- segments[seg]
       bootSampsToUse <- (sum( segments[1:seg])-segments[seg]+1):sum(segments[1:seg])
     }
-    bootPreds <- as.numeric(array(NA, c(n, predCol, nboot)))
-    tmp <- .Call("SAM_predict_C", as.numeric(-999999), as.numeric(X),
-                 as.numeric(offy), as.numeric(spp_wts),
-                 as.numeric(site_spp_wts), as.numeric(-999999),
+    # bootPreds <- as.numeric(array(NA, c(n, predCol, nboot)))
+    # bootPreds <- as.numeric(array(NA, c(n, predCol, nboot)))
+    tmp <- .Call("SAM_predict_C",
+                 as.numeric(-999999),
+                 as.numeric(X),
+                 as.numeric(offy),
+                 as.numeric(spp_wts),
+                 as.numeric(site_spp_wts),
+                 # as.integer(as.matrix(!y_is_na))
+                 as.integer(as.matrix(!is.na(site_spp_wts))),
                  as.numeric(taus),
                  as.integer(S), as.integer(G), as.integer(np),
                  as.integer(n), as.integer(disty),
@@ -1150,11 +1167,24 @@
                  as.numeric(etaIn), as.numeric(dispIn),
                  as.numeric(alphaBoot[bootSampsToUse,]),
                  as.numeric(betaBoot[bootSampsToUse,]),
-                 as.numeric(etaBoot[bootSampsToUse,]),
-                 as.numeric(dispBoot[bootSampsToUse,]),
-                 as.integer(nboot), as.numeric(ptPreds),
-                 as.numeric(bootPreds), as.integer(1),
+                 # as.numeric(etaBoot[bootSampsToUse,]),
+                 # as.numeric(dispBoot[bootSampsToUse,]),
+                 as.integer(nboot),
+                 as.numeric(spp_pt_preds),
+                 as.numeric(grp_pt_preds),
+                 as.numeric(spp_boot_preds),
+                 as.numeric(grp_boot_preds),
+                 as.integer(1),
                  PACKAGE = "ecomix")
+
+    # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_wts,
+    # SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rtaus,
+    # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty,
+    # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
+    # SEXP RalphaBoot, SEXP RbetaBoot, SEXP RetaBoot, SEXP RdispBoot,
+    # SEXP Rnboot, SEXP Rspp_pt_preds, SEXP Rgrp_pt_preds,
+    # SEXP Rspp_boot_preds, SEXP Rgrp_boot_preds, SEXP RoptiDisp
+    #
     if (nboot == 0) {
       ret <- matrix(ptPreds, nrow = nrow(X), ncol = predCol)
       colnames(ret) <- nam
