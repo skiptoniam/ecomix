@@ -21,7 +21,8 @@ extern "C" { SEXP SAM_predict_C(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_wts,
 
 
 	//not creating a myFits object, as the data structure for the bootstrap fits is not present.
-	vector<double> all_fits(all.data.nG*all.data.nObs*all.data.nS, 0);
+	vector<double> all_fits(all.data.nG*all.data.nObs*all.data.nS, all.data.NAnum);
+	vector<double> all_fits_weights(all.data.nG*all.data.nObs*all.data.nS, all.data.NAnum);
 
 	calc_mu_fits(all_fits, all.params, all.data); // This should give the g,s,i fits. 		
     spp_pt_preds = REAL( Rspp_pt_preds);
@@ -35,28 +36,58 @@ extern "C" { SEXP SAM_predict_C(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_wts,
 	for(int s=0; s<all.data.nS; s++){
 			for( int i=0; i<all.data.nObs; i++){
 			    	for( int g=0; g<all.data.nG; g++){
-				        //spp_pt_preds[MATREF2D(i,s,all.data.nObs)] += all_fits[MATREF3D(i,g,s,all.data.nObs,all.data.nG)]*taus[MATREF2D(s,g,all.data.nS)];
-			            std::cout << all_fits[MATREF3D(i,g,s,all.data.nObs,all.data.nG)] << '\n';
+				        all_fits_weights[MATREF3D(i,s,g,all.data.nObs,all.data.nS)] = all_fits[MATREF3D(i,s,g,all.data.nObs,all.data.nS)]*taus[MATREF2D(s,g,all.data.nS)];
+			            //std::cout << all_fits_weights[MATREF3D(i,g,s,all.data.nObs,all.data.nG)] << '\n';
+			            //std::cout << taus[MATREF2D(s,g,all.data.nS)] << "\n";
 			}
 			//std::cout << spp_pt_preds[MATREF2D(i,s,all.data.nObs)] << '\n';
 		}
 	}
 
-    vector<double> tau_sum(all.data.nG,all.data.NAnum);
-   	for( int g=0; g<all.data.nG; g++){
-		for(int s=0; s<all.data.nS; s++){
-		    tau_sum[g] +=  taus[MATREF2D(s,g,all.data.nS)];	
+	for(int s=0; s<all.data.nS; s++){
 			for( int i=0; i<all.data.nObs; i++){
-			        //grp_pt_preds[MATREF2D(i,g,all.data.nObs)] += all_fits[MATREF3D(i,g,s,all.data.nObs,all.data.nG)]*taus[MATREF2D(s,g,all.data.nS)];			        
+			    	for( int g=0; g<all.data.nG; g++){
+				        spp_pt_preds[MATREF2D(i,s,all.data.nObs)] += all_fits_weights[MATREF3D(i,s,g,all.data.nObs,all.data.nS)];
 			}
-	 	}
+			//std::cout << spp_pt_preds[MATREF2D(i,s,all.data.nObs)] << '\n';
+		}
 	}
 
-	for( int g=0; g<all.data.nG; g++){ 	
-        for( int i=0; i<all.data.nObs; i++){
-			        grp_pt_preds[MATREF2D(i,g,all.data.nObs)] = grp_pt_preds[MATREF2D(i,g,all.data.nObs)]/tau_sum[g];
-    	}
+
+	// estimate the grp level pt predictions.
+	vector<double> tau_sum(all.data.nG,0);
+	 
+	for( int g=0; g<all.data.nG; g++){
+	
+	vector<double> all_fits_spp(all.data.nObs*all.data.nS, 0);
+	vector<double> all_fits_site(all.data.nObs, 0);
+		
+		for( int i=0; i<all.data.nObs; i++){
+				for(int s=0; s<all.data.nS; s++){
+			        all_fits_spp[MATREF2D(i,s,all.data.nObs)] += all_fits[MATREF3D(i,s,g,all.data.nObs,all.data.nS)];			        
+			}
+	 	}
+	 
+	 for( int i=0; i<all.data.nObs; i++){
+			for(int s=0; s<all.data.nS; s++){
+				all_fits_spp[MATREF2D(i,s,all.data.nObs)] =	all_fits_spp[MATREF2D(i,s,all.data.nObs)]*taus[MATREF2D(s,g,all.data.nS)];
+				//std::cout << all_fits_spp[MATREF2D(i,s,all.data.nObs)] << '\n'; 
+			    all_fits_site[i] += all_fits_spp[MATREF2D(i,s,all.data.nObs)];
+			}
+			std::cout << all_fits_site[i] << '\n'; 
+		}
+	
+	 for(int s=0; s<all.data.nS; s++){
+	    tau_sum[g] +=  taus[MATREF2D(s,g,all.data.nS)];	
+		}
+		
+	 for( int i=0; i<all.data.nObs; i++){
+	     grp_pt_preds[MATREF2D(i,g,all.data.nObs)] =  all_fits_site[i]/tau_sum[g];
+		}
+
+	 	
 	}
+
 
 	//setting up the bootstrap values for alpha, tau, beta, disps
 	bootalpha = REAL( RalphaBoot);
@@ -75,20 +106,45 @@ extern "C" { SEXP SAM_predict_C(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_wts,
 			bootParms[kount] = bootbeta[MATREF2D(b,i,nboot)];
 			kount++;
 		}
+		//for( int i=0; i<all.params.nbeta; i++){
+			//bootParms[kount] = eta[MATREF2D(b,i,nboot)];
+			//kount++;
+		//}
+
 	
 	all.params.update( bootParms, all.data);
 
 	//generate a new set of values for fitting.
 	vector<double> all_fits(all.data.nG*all.data.nObs*all.data.nS, all.data.NAnum);
+	vector<double> all_fits_weights(all.data.nG*all.data.nObs*all.data.nS, all.data.NAnum);
 	
 	calc_mu_fits(all_fits, all.params, all.data); // This should give the g,s,i fits. 		
+	
+	// estimate the species specific predictions.
+	for(int s=0; s<all.data.nS; s++){
+		for( int i=0; i<all.data.nObs; i++){
+	    	for( int g=0; g<all.data.nG; g++){
+				        all_fits_weights[MATREF3D(i,g,s,all.data.nObs,all.data.nG)] = all_fits[MATREF3D(i,g,s,all.data.nObs,all.data.nG)]*taus[MATREF2D(s,g,all.data.nS)];
+			            //std::cout << all_fits_weights[MATREF3D(i,g,s,all.data.nObs,all.data.nG)] << '\n';
+			            //std::cout << taus[MATREF2D(s,g,all.data.nS)] << "\n";
+			}
+			//std::cout << spp_pt_preds[MATREF2D(i,s,all.data.nObs)] << '\n';
+		}
+	}
 
-    taus = REAL( Rtaus);
-	//for ( int j=0; j<nboot; j++)
-		for( int s=0; s<all.data.nS; s++)
-			for( int i=0; i<all.data.nObs; i++)
-			    	for( int g=0; g<all.data.nG; g++)
-			    	     spp_boot_preds[MATREF3D(i,s,b, all.data.nObs, all.data.nS)] += all_fits[MATREF3D(i,g,s,all.data.nObs,all.data.nG)]*taus[MATREF2D(s,g,all.data.nS)];
+	for(int s=0; s<all.data.nS; s++){
+			for( int i=0; i<all.data.nObs; i++){
+			    	for( int g=0; g<all.data.nG; g++){
+				        spp_boot_preds[MATREF3D(i,s,b, all.data.nObs, all.data.nS)] += all_fits_weights[MATREF3D(i,g,s,all.data.nObs,all.data.nG)];
+			}
+			//std::cout << spp_pt_preds[MATREF2D(i,s,all.data.nObs)] << '\n';
+		}
+	}
+	
+	//for( int s=0; s<all.data.nS; s++)
+			//for( int i=0; i<all.data.nObs; i++)
+			    	//for( int g=0; g<all.data.nG; g++)
+			    	     //spp_boot_preds[MATREF3D(i,s,b, all.data.nObs, all.data.nS)] += all_fits[MATREF3D(i,g,s,all.data.nObs,all.data.nG)]*taus[MATREF2D(s,g,all.data.nS)];
 
     //for ( int j=0; j<nboot; j++){
 		for( int g=0; g<all.data.nG; g++){

@@ -1153,7 +1153,7 @@
     # bootPreds <- as.numeric(array(NA, c(n, predCol, nboot)))
     # bootPreds <- as.numeric(array(NA, c(n, predCol, nboot)))
     tmp <- .Call("SAM_predict_C",
-                 as.numeric(-999999),
+                 as.numeric(outcomes),
                  as.numeric(X),
                  as.numeric(offy),
                  as.numeric(spp_wts),
