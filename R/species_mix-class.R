@@ -399,8 +399,8 @@
       #titbits object, if wanted/needed.
       tmp$titbits <- get_titbits_sam(titbits, y, X, spp_weights, site_spp_weights, offset,
                                      y_is_na , archetype_formula, species_formula,
-                                     control, disty_cases[disty])
-      class(tmp) <- c("species_mix", distribution)
+                                     control, disty_cases[disty], tmp$removed_species)
+      class(tmp) <- c("species_mix")
       return( tmp)
    }
 
@@ -1113,12 +1113,7 @@
 
   alphaBoot <- allCoBoot[, seq_len(S), drop=FALSE]
   betaBoot <- allCoBoot[, S + seq_len((G*np)), drop=FALSE]
-  # etaBoot <- allCoBoot[, S + ((G*np)) + seq_len(G - 1), drop=FALSE]
-  # if(disty%in%c(4,6)){
-    # dispBoot <- allCoBoot[, S + ((G*np)) + (G - 1) + seq_len(S), drop=FALSE]
-  # } else {
-    # dispBoot <- rep(-999999,S)
-  # }
+
   alphaIn <- c(NA, as.numeric(object$coefs$alpha))
   alphaIn <- alphaIn[-1]
   betaIn <- c(NA, as.numeric(object$coef$beta))
@@ -1134,10 +1129,6 @@
     usedisp <- 0
   }
 
-  # spp_pt_preds <- as.numeric(matrix(0, nrow = n, ncol = S))
-  # grp_pt_preds <- as.numeric(matrix(0, nrow = n, ncol = G))
-  # spp_boot_preds <- as.numeric(array(0, c(n, S, nboot)))
-  # grp_boot_preds <- as.numeric(array(0, c(n, G, nboot)))
 
   outcomes <- matrix(NA, nrow = nrow(X), ncol = S)
   myContr <- object$titbits$control

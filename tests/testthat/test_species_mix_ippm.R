@@ -120,14 +120,14 @@ testthat::test_that('species mix ippm', {
 
   testthat::expect_is(beta,'matrix')
 
-  tmp <- ecomix:::get_starting_values_sam(y,X,spp_weights,site_spp_weights,offset,y_is_na,G,S,disty,control)
+  # tmp <- ecomix:::get_starting_values_sam(y,X,spp_weights,site_spp_weights,offset,y_is_na,G,S,disty,control)
 
   # does a ippm work?
   # wts <- rbind(presence_sites[,-1],background_sites[,-1])
   # colnames(wts) <- c(sp_name)#,"const","x1","x2")
   # wts <- as.matrix(wts)
-  offset <- rep(0,nrow(wts))
-  sam_form <- as.formula(paste0('cbind(',paste(LETTERS702[1:(n_sp)],collapse = ','),")~1+x1+x2"))
+  offset <- rep(0,nrow(as.matrix(site_spp_weights)))
+  sam_form <- as.formula(paste0('cbind(',paste(colnames(y),collapse = ','),")~1+x1+x2"))
   sp_form <- ~ 1
   model_data <- make_mixture_data(y,X[,-1])
 
@@ -136,7 +136,7 @@ testthat::test_that('species mix ippm', {
                      weights = as.matrix(site_spp_weights),
                      n_mixtures = 4,
                      control = species_mix.control(minimum_sites_prevelance = 50,init_method = 'kmed'))
-  testthat::expect_s3_class(fm1,'ippm')
+  # testthat::expect_s3_class(fm1,'ippm')
   testthat::expect_s3_class(fm1,'species_mix')
 
   # expect error if there are no weights

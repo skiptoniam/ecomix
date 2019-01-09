@@ -52,8 +52,8 @@ testthat::test_that('species mix poisson', {
 
   # ## now let's try and fit the optimisation
   sv <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control)
-  tmp <- ecomix:::sam_optimise(y,X,offset,spp_wts,site_spp_wts, y_is_na, S, G, nrow(y), disty, start_vals = sv, control)
-  testthat::expect_length(tmp,16)
+  tmp <- ecomix:::sam_optimise(y,X,offset,spp_wts,site_spp_wts, y_is_na, S, G, disty, start_vals = sv, control)
+  testthat::expect_length(tmp,17)
 
 
   set.seed(42)

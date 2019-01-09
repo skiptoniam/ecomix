@@ -23,7 +23,7 @@ testthat::test_that('species mix generic', {
   nP <- ncol(X[,-1])
   control <- species_mix.control()
 
-  # test a new glmnet function bernoulli
+  # test a new glm function bernoulli
   ss <- 1
   disty <- 1
   fm1 <- ecomix:::apply_glm_sam_inits(ss, y, X, site_spp_weights, offset, y_is_na, disty)
@@ -217,7 +217,7 @@ testthat::test_that('species mix predict functions', {
   fm1 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'bernoulli', n_mixtures=4)
 
   preds <- predict(fm1)
-  testthat::expect_length(preds,4)
+  testthat::expect_length(preds,2)
   testthat::expect_is(preds,'list')
 
   dat2 <- data.frame(x1=runif(100,-2.5,2.5),x2=rnorm(100,-2.5,2.5))
@@ -231,7 +231,7 @@ testthat::test_that('species mix predict functions', {
   fm2 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'poisson', n_mixtures=4)
 
   preds3 <- predict(fm2)
-  testthat::expect_length(preds3,4)
+  testthat::expect_length(preds3,2)
   testthat::expect_is(preds3,'list')
 
   preds4 <- predict(fm2, newobs = dat2)
@@ -244,7 +244,7 @@ testthat::test_that('species mix predict functions', {
   fm3 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'negative_binomial', n_mixtures=4)
 
   preds5 <- predict(fm3)
-  testthat::expect_length(preds3,4)
+  testthat::expect_length(preds3,2)
   testthat::expect_is(preds5,'list')
 
   preds6 <- predict(fm2, newobs = dat2)
@@ -257,13 +257,13 @@ testthat::test_that('species mix predict functions', {
   fm4 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'gaussian', n_mixtures=4)
 
   preds7 <- predict(fm4)
-  testthat::expect_length(preds7,4)
+  testthat::expect_length(preds7,2)
   testthat::expect_is(preds7,'list')
 
   preds8 <- predict(fm4, newobs = dat2)
   testthat::expect_is(preds8,'list')
 
-  testthat::expect_error(preds8 <- predict(fm4, newobs = data.frame(1,dat2)))
+  testthat::expect_error(preds8 <- predict('a'))
 
 })
 
