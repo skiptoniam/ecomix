@@ -993,80 +993,80 @@
 #'@export
 #'@examples
 #'\dontrun{
-#'preds_fm1 <- predict(fm1, newdata)
+#'preds_fm1 <- predict(fm1)
 #'}
 
-"predict.species_mix" <- function (object, newobs=NULL, ...){
+# "predict.species_mix" <- function (object, newobs=NULL, ...){
+#
+#   family <- object$dist
+#   estimate_variance <- TRUE
+#   mixture.model <- object
+#
+#   if (family == "bernoulli") link.fun <- make.link("logit")
+#   if (family %in% c("negative_binomial","poisson","ippm")) link.fun <- make.link("log")
+#   if (family == "gaussian")link.fun <- make.link("identity")
+#   if(is.null(newobs)) newobs <- as.data.frame(object$titbits$X[,-1])
+#   if(ncol(newobs) != ncol(coefficients(object)$beta)) stop("Number of coefficients does not match the number of predictors in the new observations - double check you're not including an intercept.")
+#
+#     G <- mixture.model$G
+#     S <- mixture.model$S
+#     covar <- mixture.model$vcov
+#     if(is.null(covar)){
+#       estimate_variance <- FALSE
+#       message(' please estimate vcov matrix and \n append to model with "mod$vcov <- vcov(mod)"\n to get an estimate of uncertainty in predictions.\n')
+#     }
+#     alphas <- mixture.model$coefs$alpha
+#     betas <- mixture.model$coefs$beta
+#     model.fm <- as.formula(mixture.model$titbits$archetype_formula)
+#     model.fm[[2]] <- NULL
+#     X <- model.matrix(model.fm, newobs)
+#     offset <- model.frame(model.fm, data = newobs)
+#     offset <- model.offset(offset)
+#     if (is.null(offset))
+#       offset <- rep(0, nrow(X))
+#     outvar_arch <- matrix(NA, dim(X)[1], G)
+#     outpred_arch <- matrix(NA, dim(X)[1], G)
+#     outvar_spp <- array(0,dim=c(dim(X)[1], G, S))
+#     outpred_spp <- array(0,dim=c(dim(X)[1], G, S))
+#     colnames(outpred_arch) <- colnames(outvar_arch) <- paste("G", 1:G, sep = ".")
+#     # colnames(outpred_spp) <- colnames(outvar_spp) <- paste("spp", 1:S, sep = ".")
+#
+#     for (g in seq_len(G)) {
+#       s.outvar <- matrix(NA, dim(X)[1], length(alphas))
+#       s.outpred <- matrix(NA, dim(X)[1], length(alphas))
+#       for (s in seq_len(S)) {
+#         lp <- as.numeric(X%*%c(alphas[s],betas[g, ]) + offset)
+#         s.outpred[, s] <- link.fun$linkinv(lp)
+#         if(estimate_variance){
+#           if (family == "bernoulli") dhdB <- ((exp(lp)/(1 + exp(lp))) * X) - ((exp(lp)^2/((1 + exp(lp))^2)) * X)
+#           if (family %in% c("negative_binomial","poisson","ippm")) dhdB <- exp(lp) * X
+#           if (family == "gaussian") dhdB <- lp * X
+#           c2 <- covar[c(s,seq(g + S, G * (dim(X)[2] - 1) + S, G)),
+#                       c(s,seq(g + S, G * (dim(X)[2] - 1) + S, G))]
+#           for (k in 1:dim(X)[1]) {
+#               s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
+#           }
+#         }
+#       }
+#
+#       # predict the species specific responses
+#       outpred_spp[,g,] <- matrix(mixture.model$taus[,g],
+#                                           nrow(newobs),S,byrow=T)*s.outpred
+#       outvar_spp[,g,] <- matrix(mixture.model$taus[,g],
+#                                         nrow(newobs),S,byrow=T)*s.outvar
+#       # predict the archetype species responses
+#       outpred_arch[, g] <- apply(s.outpred * rep(mixture.model$taus[, g], each = dim(X)[1]),
+#                             1, sum)/sum(mixture.model$taus[, g])
+#       outvar_arch[, g] <- apply(s.outvar * rep(mixture.model$taus[, g], each = dim(X)[1]),
+#                                 1, mean)/sum(mixture.model$taus[, g])
+#       }
+#   return(list(fit = outpred_arch,
+#               se.fit = sqrt(outvar_arch),
+#               fit_spp = apply(outpred_spp,c(1,3),sum),
+#               se.fit_spp = apply(outvar_spp,c(1,3),mean)))
+# }
 
-  family <- object$dist
-  estimate_variance <- TRUE
-  mixture.model <- object
-
-  if (family == "bernoulli") link.fun <- make.link("logit")
-  if (family %in% c("negative_binomial","poisson","ippm")) link.fun <- make.link("log")
-  if (family == "gaussian")link.fun <- make.link("identity")
-  if(is.null(newobs)) newobs <- as.data.frame(object$titbits$X[,-1])
-  if(ncol(newobs) != ncol(coefficients(object)$beta)) stop("Number of coefficients does not match the number of predictors in the new observations - double check you're not including an intercept.")
-
-    G <- mixture.model$G
-    S <- mixture.model$S
-    covar <- mixture.model$vcov
-    if(is.null(covar)){
-      estimate_variance <- FALSE
-      message(' please estimate vcov matrix and \n append to model with "mod$vcov <- vcov(mod)"\n to get an estimate of uncertainty in predictions.\n')
-    }
-    alphas <- mixture.model$coefs$alpha
-    betas <- mixture.model$coefs$beta
-    model.fm <- as.formula(mixture.model$titbits$archetype_formula)
-    model.fm[[2]] <- NULL
-    X <- model.matrix(model.fm, newobs)
-    offset <- model.frame(model.fm, data = newobs)
-    offset <- model.offset(offset)
-    if (is.null(offset))
-      offset <- rep(0, nrow(X))
-    outvar_arch <- matrix(NA, dim(X)[1], G)
-    outpred_arch <- matrix(NA, dim(X)[1], G)
-    outvar_spp <- array(0,dim=c(dim(X)[1], G, S))
-    outpred_spp <- array(0,dim=c(dim(X)[1], G, S))
-    colnames(outpred_arch) <- colnames(outvar_arch) <- paste("G", 1:G, sep = ".")
-    # colnames(outpred_spp) <- colnames(outvar_spp) <- paste("spp", 1:S, sep = ".")
-
-    for (g in seq_len(G)) {
-      s.outvar <- matrix(NA, dim(X)[1], length(alphas))
-      s.outpred <- matrix(NA, dim(X)[1], length(alphas))
-      for (s in seq_len(S)) {
-        lp <- as.numeric(X%*%c(alphas[s],betas[g, ]) + offset)
-        s.outpred[, s] <- link.fun$linkinv(lp)
-        if(estimate_variance){
-          if (family == "bernoulli") dhdB <- ((exp(lp)/(1 + exp(lp))) * X) - ((exp(lp)^2/((1 + exp(lp))^2)) * X)
-          if (family %in% c("negative_binomial","poisson","ippm")) dhdB <- exp(lp) * X
-          if (family == "gaussian") dhdB <- lp * X
-          c2 <- covar[c(s,seq(g + S, G * (dim(X)[2] - 1) + S, G)),
-                      c(s,seq(g + S, G * (dim(X)[2] - 1) + S, G))]
-          for (k in 1:dim(X)[1]) {
-              s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
-          }
-        }
-      }
-
-      # predict the species specific responses
-      outpred_spp[,g,] <- matrix(mixture.model$taus[,g],
-                                          nrow(newobs),S,byrow=T)*s.outpred
-      outvar_spp[,g,] <- matrix(mixture.model$taus[,g],
-                                        nrow(newobs),S,byrow=T)*s.outvar
-      # predict the archetype species responses
-      outpred_arch[, g] <- apply(s.outpred * rep(mixture.model$taus[, g], each = dim(X)[1]),
-                            1, sum)/sum(mixture.model$taus[, g])
-      outvar_arch[, g] <- apply(s.outvar * rep(mixture.model$taus[, g], each = dim(X)[1]),
-                                1, mean)/sum(mixture.model$taus[, g])
-      }
-  return(list(fit = outpred_arch,
-              se.fit = sqrt(outvar_arch),
-              fit_spp = apply(outpred_spp,c(1,3),sum),
-              se.fit_spp = apply(outvar_spp,c(1,3),mean)))
-}
-
-"predict2.species_mix" <- function (object, object2 = NULL, ..., newdata = NULL,
+"predict.species_mix" <- function (object, object2 = NULL, ..., newdata = NULL,
                                     nboot = 0, alpha = 0.95, mc.cores = 1){
   if (is.null(newdata)) {
     X <- object$titbits$X
@@ -1128,17 +1128,17 @@
   if (disty%in%c(4,6)) {
     dispIn <- c(NA, as.numeric(object$coef$disp))
     dispIn <- dispIn[-1]
+    usedisp <- 1
   } else {
     dispIn <- -999999
+    usedisp <- 0
   }
 
-  spp_pt_preds <- as.numeric(matrix(NA, nrow = n, ncol = S))
-  grp_pt_preds <- as.numeric(matrix(NA, nrow = n, ncol = G))
-  spp_boot_preds <- as.numeric(array(NA, c(n, S, nboot)))
-  grp_boot_preds <- as.numeric(array(NA, c(n, G, nboot)))
+  # spp_pt_preds <- as.numeric(matrix(0, nrow = n, ncol = S))
+  # grp_pt_preds <- as.numeric(matrix(0, nrow = n, ncol = G))
+  # spp_boot_preds <- as.numeric(array(0, c(n, S, nboot)))
+  # grp_boot_preds <- as.numeric(array(0, c(n, G, nboot)))
 
-  conc <- as.numeric(NA)
-  mysd <- as.numeric(NA)
   outcomes <- matrix(NA, nrow = nrow(X), ncol = S)
   myContr <- object$titbits$control
   nam <- paste("G", 1:G, sep = "_")
@@ -1150,12 +1150,14 @@
       nboot <- segments[seg]
       bootSampsToUse <- (sum( segments[1:seg])-segments[seg]+1):sum(segments[1:seg])
     }
-    # bootPreds <- as.numeric(array(NA, c(n, predCol, nboot)))
-    # bootPreds <- as.numeric(array(NA, c(n, predCol, nboot)))
+    spp_pt_preds <- as.numeric(matrix(0, nrow = n, ncol = S))
+    grp_pt_preds <- as.numeric(matrix(0, nrow = n, ncol = G))
+    spp_boot_preds <- as.numeric(array(0, c(n, S, nboot)))
+    grp_boot_preds <- as.numeric(array(0, c(n, G, nboot)))
     tmp <- .Call("SAM_predict_C",
                  as.numeric(outcomes),
                  as.numeric(X),
-                 as.numeric(offy),
+                 as.numeric(offset),
                  as.numeric(spp_wts),
                  as.numeric(site_spp_wts),
                  # as.integer(as.matrix(!y_is_na))
@@ -1174,24 +1176,21 @@
                  as.numeric(grp_pt_preds),
                  as.numeric(spp_boot_preds),
                  as.numeric(grp_boot_preds),
-                 as.integer(1),
+                 as.integer(usedisp),
                  PACKAGE = "ecomix")
 
-    # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_wts,
-    # SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rtaus,
-    # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty,
-    # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
-    # SEXP RalphaBoot, SEXP RbetaBoot, SEXP RetaBoot, SEXP RdispBoot,
-    # SEXP Rnboot, SEXP Rspp_pt_preds, SEXP Rgrp_pt_preds,
-    # SEXP Rspp_boot_preds, SEXP Rgrp_boot_preds, SEXP RoptiDisp
-    #
     if (nboot == 0) {
-      ret <- matrix(ptPreds, nrow = nrow(X), ncol = predCol)
-      colnames(ret) <- nam
+      ret_grp <- matrix(tmp$grp_pt_pred, nrow = nrow(X), ncol = G)
+      ret_spp <- matrix(tmp$spp_pt_pred, nrow = nrow(X), ncol = S)
+      colnames(ret_grp) <- object$names$SAMs
+      colnames(ret_spp) <- object$names$spp
+      ret <- list(fit=ret_grp,fit_spp=ret_spp)
       return(ret)
     }
-    bootPreds <- matrix(bootPreds, nrow = nrow(X) * predCol,
-                        ncol = nboot)
+
+    ret_grp <- matrix(tmp$grp_boot_pred, nrow = nrow(X)*G, ncol = nboot)
+    ret_spp <- matrix(tmp$spp_boot_pred, nrow = nrow(X)*S, ncol = nboot)
+    bootPreds <- list(grp_boot = ret_grp, spp_boot = ret_spp)
     return(bootPreds)
   }
   segments <- -999999
@@ -1208,28 +1207,55 @@
       segments[1:(nboot%%mc.cores)] <- segments[1:(nboot%%mc.cores)] + 1
 
     tmp <- parallel::mclapply(1:mc.cores, boot.funny, mc.cores = mc.cores)
-    bootPreds <- do.call("cbind", tmp)
+    bootPreds_grp <- tmp[[1]]$grp_boot
+    bootPreds_spp <- tmp[[1]]$spp_boot
     bPreds <- list()
-    row.exp <- rowMeans(bootPreds)
-    tmp <- matrix(row.exp, nrow = nrow(X), ncol = predCol)
-    bPreds$fit <- tmp
-    tmp <- sweep(bootPreds, 1, row.exp, "-")
-    tmp <- tmp^2
-    tmp <- sqrt(rowSums(tmp)/(nboot - 1))
-    tmp <- matrix(tmp, nrow = nrow(X), ncol = predCol)
-    bPreds$ses <- tmp
-    colnames(bPreds$fit) <- colnames(bPreds$ses) <- nam
-    tmp.fun <- function(x) return(quantile(bootPreds[x, ],
+    row.exp.grp <- rowMeans(bootPreds_grp)
+    row.exp.spp <- rowMeans(bootPreds_spp)
+    tmp.grp <- matrix(row.exp.grp, nrow = nrow(X), ncol = G)
+    tmp.spp <- matrix(row.exp.spp, nrow = nrow(X), ncol = S)
+    bPreds$fit <- tmp.grp
+    bPreds$fit_spp <- tmp.spp
+    tmp.grp <- sweep(bootPreds_grp, 1, row.exp.grp, "-")
+    tmp.grp <- tmp.grp^2
+    tmp.grp <- sqrt(rowSums(tmp.grp)/(nboot - 1))
+    tmp.grp <- matrix(tmp.grp, nrow = nrow(X), ncol = G)
+    tmp.spp <- sweep(bootPreds_spp, 1, row.exp.spp, "-")
+    tmp.spp <- tmp.spp^2
+    tmp.spp <- sqrt(rowSums(tmp.spp)/(nboot - 1))
+    tmp.spp <- matrix(tmp.spp, nrow = nrow(X), ncol = G)
+    bPreds$fit.se <- tmp.grp
+    bPreds$fit_spp.se <- tmp.spp
+    colnames(bPreds$fit) <- colnames(bPreds$fit.se) <- object$names$SAMs
+    colnames(bPreds$fit_spp) <- colnames(bPreds$fit_spp.se) <- object$names$spp
+    tmp.fun.grp <- function(x) return(quantile(bootPreds_grp[x, ],
                                            probs = c(0, alpha) + (1 - alpha)/2, na.rm = TRUE))
-    tmp1 <- parallel::mclapply(seq_len(nrow(bootPreds)), tmp.fun,
+    tmp1 <- parallel::mclapply(seq_len(nrow(bootPreds_grp)), tmp.fun.grp,
                                mc.cores = mc.cores)
     tmp1 <- do.call("rbind", tmp1)
-    tmp1 <- array(tmp1, c(nrow(X), predCol, 2), dimnames = list(NULL,
+    tmp1 <- array(tmp1, c(nrow(X), G, 2), dimnames = list(NULL,
                                                                 NULL, NULL))
-    bPreds$cis <- tmp1[, 1:predCol, ]
-    dimnames(bPreds$cis) <- list(NULL, nam, c("lower", "upper"))
-    ret <- list(ptPreds = ptPreds, bootPreds = bPreds$fit,
-                bootSEs = bPreds$ses, bootCIs = bPreds$cis)
+    bPreds$fit_cis <- tmp1[, 1:G, ]
+    dimnames(bPreds$fit_cis) <- list(NULL, object$names$SAMs, c("lower", "upper"))
+
+    tmp.fun.spp <- function(x) return(quantile(bootPreds_spp[x, ],
+                                               probs = c(0, alpha) + (1 - alpha)/2, na.rm = TRUE))
+    tmp1 <- parallel::mclapply(seq_len(nrow(bootPreds_spp)), tmp.fun.spp,
+                               mc.cores = mc.cores)
+    tmp1 <- do.call("rbind", tmp1)
+    tmp1 <- array(tmp1, c(nrow(X), S, 2), dimnames = list(NULL,
+                                                          NULL, NULL))
+    bPreds$fit_spp_cis <- tmp1[, 1:S, ]
+    dimnames(bPreds$fit_spp_cis) <- list(NULL, object$names$spp, c("lower", "upper"))
+
+    ret <- list(fit = ptPreds$fit,
+                fit_spp = ptPreds$fit_spp,
+                fit_Boot = bPreds$fit,
+                fit_spp_Boot = bPreds$fit_spp,
+                fit_BootSE = bPreds$fit.se,
+                fit_spp_BootSE = bPreds$fit_spp.se,
+                fit_BootCIs = bPreds$fit_cis,
+                fit_spp_BootCIs = bPreds$fit_spp_cis)
   }
   else ret <- ptPreds
   gc()

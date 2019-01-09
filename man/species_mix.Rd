@@ -57,7 +57,8 @@ simulate_species_mix_data(archetype_formula, species_formula, dat, theta,
 
 \method{summary}{species_mix}(object, ...)
 
-\method{predict}{species_mix}(object, newobs = NULL, ...)
+\method{predict}{species_mix}(object, object2 = NULL, ..., newdata = NULL,
+  nboot = 0, alpha = 0.95, mc.cores = 1)
 }
 \arguments{
 \item{archetype_formula}{an object of class "formula" (or an object that can be
@@ -155,8 +156,6 @@ minimum you will need pis (additive_logitic transformed), alpha
 
 \item{object}{is a matrix model returned from the species_mix model.}
 
-\item{newobs}{a matrix of new observations for prediction.}
-
 \item{W}{is a design matrix for species_formula and will be implemented if species_formula has covariates.}
 
 \item{offset}{this is a vector of site specific offsets, this might be something like area sampled at sites.}
@@ -174,6 +173,8 @@ minimum you will need pis (additive_logitic transformed), alpha
 \item{species_formula}{formula to simulate species_mix species-specific responses, e.g: ~1}
 
 \item{distribution}{Which statistical distribution to simulate data for. 'bernoulli', 'gaussian', 'ippm', 'negative_binomial','poisson' and 'tweedie'.}
+
+\item{newobs}{a matrix of new observations for prediction.}
 }
 \description{
 Fits a finite mixture model to identify species archetype
@@ -229,6 +230,6 @@ print(fm1)}
 \dontrun{
 vcov(fm1)}
 \dontrun{
-preds_fm1 <- predict(fm1, newdata)
+preds_fm1 <- predict(fm1)
 }
 }
