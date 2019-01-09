@@ -175,32 +175,32 @@ testthat::test_that('testing species mix S3 class functions', {
 })
 
 
-testthat::test_that('species mix generic vcov functions', {
-
-  # build and test a single model.
-  # estimate variance-covariance matrix
-  library(ecomix)
-  set.seed(42)
-  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:100),collapse = ','),")~1+x1+x2"))
-  theta <- matrix(c(-2.9,1.6,0.5,1,-0.9,1,.9,2.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
-  dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
-  dat[,-1] <- scale(dat[,-1])
-  simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="bernoulli")
-  model_data <- make_mixture_data(species_data = simulated_data$species_data,
-                                  covariate_data = simulated_data$covariate_data[,-1])
-  fm1 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'bernoulli', n_mixtures=4)
-
-  vcv_mat <- vcov(object = fm1)
-  testthat::expect_equal(nrow(vcv_mat),nrow(vcv_mat))
-  testthat::expect_is(vcv_mat,'matrix')
-  testthat::expect_true(all(is.finite(sqrt(diag(vcv_mat)))))
-
-  vcv_mat_bb <- vcov(object = fm1,method = 'BayesBoot', nboot = 100)
-  testthat::expect_equal(nrow(vcv_mat),nrow(vcv_mat))
-  testthat::expect_is(vcv_mat_bb,'matrix')
-  testthat::expect_true(all(is.finite(sqrt(diag(vcv_mat_bb)))))
-
-})
+# testthat::test_that('species mix generic vcov functions', {
+#
+#   # build and test a single model.
+#   # estimate variance-covariance matrix
+#   library(ecomix)
+#   set.seed(42)
+#   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:100),collapse = ','),")~1+x1+x2"))
+#   theta <- matrix(c(-2.9,1.6,0.5,1,-0.9,1,.9,2.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
+#   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
+#   dat[,-1] <- scale(dat[,-1])
+#   simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="bernoulli")
+#   model_data <- make_mixture_data(species_data = simulated_data$species_data,
+#                                   covariate_data = simulated_data$covariate_data[,-1])
+#   fm1 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'bernoulli', n_mixtures=4)
+#
+#   vcv_mat <- vcov(object = fm1)
+#   testthat::expect_equal(nrow(vcv_mat),nrow(vcv_mat))
+#   testthat::expect_is(vcv_mat,'matrix')
+#   testthat::expect_true(all(is.finite(sqrt(diag(vcv_mat)))))
+#
+#   vcv_mat_bb <- vcov(object = fm1,method = 'BayesBoot', nboot = 100)
+#   testthat::expect_equal(nrow(vcv_mat),nrow(vcv_mat))
+#   testthat::expect_is(vcv_mat_bb,'matrix')
+#   testthat::expect_true(all(is.finite(sqrt(diag(vcv_mat_bb)))))
+#
+# })
 
 testthat::test_that('species mix predict functions', {
 

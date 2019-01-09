@@ -57,8 +57,8 @@ simulate_species_mix_data(archetype_formula, species_formula, dat, theta,
 
 \method{summary}{species_mix}(object, ...)
 
-\method{predict}{species_mix}(object, object2 = NULL, ..., newdata = NULL,
-  nboot = 0, alpha = 0.95, mc.cores = 1)
+\method{predict}{species_mix}(object, object2 = NULL, newdata = NULL,
+  offset = NULL, nboot = 0, alpha = 0.95, mc.cores = 1, ...)
 }
 \arguments{
 \item{archetype_formula}{an object of class "formula" (or an object that can be

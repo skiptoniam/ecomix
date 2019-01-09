@@ -1066,17 +1066,19 @@
 #               se.fit_spp = apply(outvar_spp,c(1,3),mean)))
 # }
 
-"predict.species_mix" <- function (object, object2 = NULL, ..., newdata = NULL,
-                                    nboot = 0, alpha = 0.95, mc.cores = 1){
+"predict.species_mix" <- function (object, object2 = NULL, newdata = NULL,
+                                   offset = NULL, nboot = 0, alpha = 0.95,
+                                   mc.cores = 1, ...){
   if (is.null(newdata)) {
     X <- object$titbits$X
   } else {
-    form.X <- as.formula(object$titbit$archetype_formula)
-    if (length(form.X) == 3)form.X[[2]] <- NULL
-    X <- model.matrix(form.X, stats::model.frame(form.X, data = as.data.frame(newdata)))
+    model.fm <- as.formula(object$titbits$archetype_formula)
+    if (length(model.fm) == 3) model.fm[[2]] <- NULL
+    X <- model.matrix(model.fm, as.data.frame(newobs))
+    offset <- model.frame(model.fm, data = newobs)
+    offset <- model.offset(offset)
   }
-  offset <- model.frame(model.fm, data = newobs)
-  offset <- model.offset(offset)
+
   if (is.null(offset))
     offset <- rep(0, nrow(X))
 
@@ -1090,7 +1092,7 @@
 
 
   disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
-  disty <- ecomix:::get_distribution_sam(disty_cases, object$titbits$distribution)
+  disty <- get_distribution_sam(disty_cases, object$titbits$distribution)
   taus <- object$taus
   if (is.null(object2)) {
     if (nboot > 0) {
@@ -1133,18 +1135,26 @@
   outcomes <- matrix(NA, nrow = nrow(X), ncol = S)
   myContr <- object$titbits$control
   nam <- paste("G", 1:G, sep = "_")
-  boot.funny <- function(seg) {
+  boot.funny.sam <- function(seg) {
     if (any(segments <= 0)) {
       nboot <- 0
       bootSampsToUse <- 1
+      spp_pt_preds <- as.numeric(matrix(0, nrow = n, ncol = S))
+      grp_pt_preds <- as.numeric(matrix(0, nrow = n, ncol = G))
+      spp_boot_preds <- as.numeric(-99999)#array(0, c(n, S, nboot)))
+      grp_boot_preds <- as.numeric(-99999)#array(0, c(n, G, nboot)))
     } else {
       nboot <- segments[seg]
       bootSampsToUse <- (sum( segments[1:seg])-segments[seg]+1):sum(segments[1:seg])
+      spp_pt_preds <- as.numeric(matrix(0, nrow = n, ncol = S))
+      grp_pt_preds <- as.numeric(matrix(0, nrow = n, ncol = G))
+      spp_boot_preds <- as.numeric(array(0, c(n, S, nboot)))
+      grp_boot_preds <- as.numeric(array(0, c(n, G, nboot)))
     }
-    spp_pt_preds <- as.numeric(matrix(0, nrow = n, ncol = S))
-    grp_pt_preds <- as.numeric(matrix(0, nrow = n, ncol = G))
-    spp_boot_preds <- as.numeric(array(0, c(n, S, nboot)))
-    grp_boot_preds <- as.numeric(array(0, c(n, G, nboot)))
+    # spp_pt_preds <- as.numeric(matrix(0, nrow = n, ncol = S))
+    # grp_pt_preds <- as.numeric(matrix(0, nrow = n, ncol = G))
+    # spp_boot_preds <- as.numeric(array(0, c(n, S, nboot)))
+    # grp_boot_preds <- as.numeric(array(0, c(n, G, nboot)))
     tmp <- .Call("SAM_predict_C",
                  as.numeric(outcomes),
                  as.numeric(X),
@@ -1186,7 +1196,7 @@
   }
   segments <- -999999
   ret <- list()
-  ptPreds <- boot.funny(1)
+  ptPreds <- boot.funny.sam(1)
   if (nboot > 0) {
     if (Sys.info()["sysname"] == "Windows") {
       if( !object$titbits$control$quiet)
@@ -1197,7 +1207,7 @@
     if( nboot %% mc.cores > 0)
       segments[1:(nboot%%mc.cores)] <- segments[1:(nboot%%mc.cores)] + 1
 
-    tmp <- parallel::mclapply(1:mc.cores, boot.funny, mc.cores = mc.cores)
+    tmp <- parallel::mclapply(1:mc.cores, boot.funny.sam, mc.cores = mc.cores)
     bootPreds_grp <- tmp[[1]]$grp_boot
     bootPreds_spp <- tmp[[1]]$spp_boot
     bPreds <- list()
