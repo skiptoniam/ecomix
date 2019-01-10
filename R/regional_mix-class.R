@@ -30,8 +30,10 @@
 #' data <- make_mixture_data(species_data = simulated_data$species_data,
 #'                                 covariate_data = simulated_data$covariate_data[,-1])
 #' fm_regional_mix <- regional_mix(rcp_form,spp_form,data=data,distribution='bernoulli',n_mixtures=5)}
-"regional_mix" <- function (rcp_formula = NULL, species_formula = NULL, data, nRCP = 3, distribution="bernoulli", offset=NULL, weights=NULL, control = list(), inits="random2", titbits = TRUE, power=1.6)
-{
+"regional_mix" <- function (rcp_formula = NULL, species_formula = NULL, data,
+                            nRCP = 3, distribution="bernoulli", offset=NULL,
+                            weights=NULL, control = list(), inits="random2",
+                            titbits = TRUE, power=1.6){
   #the control parameters
   control <- set.control( control)
   if( !control$quiet)
@@ -116,20 +118,24 @@
 
 }
 
-"regional_mix.fit" <- function(outcomes, W, X, offy, wts, disty, nRCP, power, inits, control, n, S, p.x, p.w){
+"regional_mix.fit" <- function(outcomes, W, X, offy, wts, disty, nRCP, power,
+                               inits, control, n, S, p.x, p.w){
     if( nRCP==1){ #if there is just one RCP type -- ie no dependence on environment
-      tmp <- noRCPfit(outcomes, W, X, offy, wts, disty, nRCP, power, inits, control, n, S, p.x, p.w)
+      tmp <- noRCPfit(outcomes, W, X, offy, wts, disty, nRCP,
+                      power, inits, control, n, S, p.x, p.w)
       return( tmp)
     }
 
     #initial values
-    start.vals <- get_start_vals_rcp( outcomes, W, X, offy, wts, disty, nRCP, S, power, inits, control$quiet)
+    start.vals <- get_start_vals_rcp( outcomes, W, X, offy, wts, disty,
+                                      nRCP, S, power, inits, control$quiet)
     #doing the optimisation
     if( !control$quiet)
       message( "Quasi-Newton Optimisation")
     # if( disty != 4){ #not Tweedie
     optimiseDisp <- TRUE
-    tmp <- notTweedieOptimise( outcomes, X, W, offy, wts, S, nRCP, p.x, p.w, nrow( X), disty, start.vals, power, control)
+    tmp <- notTweedieOptimise( outcomes, X, W, offy, wts, S, nRCP, p.x,
+                               p.w, nrow( X), disty, start.vals, power, control)
     # }
     # else #Tweedie -- quite convoluted in comparison
     #   tmp <- TweedieOptimise( outcomes, X, W, offy, wts, S, nRCP, p.x, p.w, nrow( X), disty, start.vals, power, control)
@@ -144,9 +150,12 @@
 #' @param mc.cores for regional_mix.multifit only. The number of cores to spread the re-fitting over.
 #' @export
 
-"regional_mix.multifit" <-
-  function (rcp_formula = NULL, species_formula = NULL, data, nRCP = 3, distribution="bernoulli", offset=NULL, weights=NULL, control = list(), inits = "random2", titbits = FALSE, power=1.6, nstart=10, mc.cores=1)
-  {
+"regional_mix.multifit" <-  function(rcp_formula = NULL, species_formula = NULL,
+                                     data, nRCP = 3, distribution="bernoulli",
+                                     offset=NULL, weights=NULL,
+                                     control = list(), inits = "random2",
+                                     titbits = FALSE, power=1.6, nstart=10,
+                                     mc.cores=1) {
     #the control parameters
     control <- set.control( control)
     if( !control$quiet)
@@ -197,19 +206,24 @@
     #get model wts (if not specified then it will be ones)
     wts <- get_wts_rcp( mf)
     #get distribution
-    disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie","gaussian")
+    disty.cases <- c("bernoulli","poisson",
+                     "negative_binomial","tweedie","gaussian")
     disty <- get_dist_rcp( disty.cases, distribution)
     # #get power params for Tweedie
     # power <- get_power_rcp( disty, power)
     #summarising data to console
-    print.data.summ( data, dat, S, rcp_formula, species_formula, disty.cases, disty, control$quiet)
+    print.data.summ( data, dat, S, rcp_formula, species_formula,
+                     disty.cases, disty, control$quiet)
 
     tmp.fun <- function(x){
       if( !control$quiet & nstart>1)
         setTxtProgressBar(pb, x)
       tmpQuiet <- control$quiet
       control$quiet <- TRUE
-      dumbOut <- capture.output( tmp <- regional_mix.fit( outcomes, W, X, offy, wts, disty, nRCP, power, inits, control, nrow(X), S, p.x, p.w))
+      dumbOut <- capture.output( tmp <- regional_mix.fit( outcomes, W, X, offy,
+                                                          wts, disty, nRCP,
+                                                          power, inits, control,
+                                                          nrow(X), S, p.x, p.w))
       control$quiet <- tmpQuiet
       tmp$dist <- disty.cases[disty]
       #calculate the posterior probs
@@ -221,7 +235,9 @@
       #Information criteria
       tmp <- calcInfoCrit( tmp)
       #titbits object, if wanted/needed.
-      tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts, rcp_formula, species_formula, control, distribution, p.w=p.w, power)
+      tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts,
+                                      rcp_formula, species_formula, control,
+                                      distribution, p.w=p.w, power)
       tmp$titbits$disty <- disty
       #the last bit of the regional_mix object puzzle
       tmp$call <- call
