@@ -5,8 +5,6 @@ cache: packages
 
 r_packages:
   - covr
-  - devtools
-  - roxygen2
 
 script:
 - |
