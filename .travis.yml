@@ -8,8 +8,12 @@ r_packages:
   - devtools
   - roxygen2
 
+script:
+- R CMD build .
+- travis_wait 40 R CMD check *tar.gz
+
 after_success:
-  - Rscript -e 'devtools::install();devtools::test();covr::codecov()'
+  - Rscript -e 'covr::codecov()'
 
 warnings_are_errors: false
 notifications:
