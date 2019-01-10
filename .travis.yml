@@ -9,8 +9,9 @@ r_packages:
   - roxygen2
 
 script:
-- R CMD build .
-- travis_wait 40 R CMD check *tar.gz
+- |
+  R CMD build .
+  travis_wait 40 R CMD check *tar.gz
 
 after_success:
   - Rscript -e 'covr::codecov()'
