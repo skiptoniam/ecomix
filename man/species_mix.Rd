@@ -156,6 +156,8 @@ minimum you will need pis (additive_logitic transformed), alpha
 
 \item{object}{is a matrix model returned from the species_mix model.}
 
+\item{newdata}{a matrix of new observations for prediction.}
+
 \item{W}{is a design matrix for species_formula and will be implemented if species_formula has covariates.}
 
 \item{offset}{this is a vector of site specific offsets, this might be something like area sampled at sites.}
@@ -173,8 +175,6 @@ minimum you will need pis (additive_logitic transformed), alpha
 \item{species_formula}{formula to simulate species_mix species-specific responses, e.g: ~1}
 
 \item{distribution}{Which statistical distribution to simulate data for. 'bernoulli', 'gaussian', 'ippm', 'negative_binomial','poisson' and 'tweedie'.}
-
-\item{newobs}{a matrix of new observations for prediction.}
 }
 \description{
 Fits a finite mixture model to identify species archetype

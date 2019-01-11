@@ -989,14 +989,14 @@
 
 #'@rdname species_mix
 #'@param object is a matrix model returned from the species_mix model.
-#'@param newobs a matrix of new observations for prediction.
+#'@param newdata a matrix of new observations for prediction.
 #'@export
 #'@examples
 #'\dontrun{
 #'preds_fm1 <- predict(fm1)
 #'}
 
-# "predict.species_mix" <- function (object, newobs=NULL, ...){
+# "predict.species_mix" <- function (object, newdata=NULL, ...){
 #
 #   family <- object$dist
 #   estimate_variance <- TRUE
@@ -1005,8 +1005,8 @@
 #   if (family == "bernoulli") link.fun <- make.link("logit")
 #   if (family %in% c("negative_binomial","poisson","ippm")) link.fun <- make.link("log")
 #   if (family == "gaussian")link.fun <- make.link("identity")
-#   if(is.null(newobs)) newobs <- as.data.frame(object$titbits$X[,-1])
-#   if(ncol(newobs) != ncol(coefficients(object)$beta)) stop("Number of coefficients does not match the number of predictors in the new observations - double check you're not including an intercept.")
+#   if(is.null(newdata)) newdata <- as.data.frame(object$titbits$X[,-1])
+#   if(ncol(newdata) != ncol(coefficients(object)$beta)) stop("Number of coefficients does not match the number of predictors in the new observations - double check you're not including an intercept.")
 #
 #     G <- mixture.model$G
 #     S <- mixture.model$S
@@ -1019,8 +1019,8 @@
 #     betas <- mixture.model$coefs$beta
 #     model.fm <- as.formula(mixture.model$titbits$archetype_formula)
 #     model.fm[[2]] <- NULL
-#     X <- model.matrix(model.fm, newobs)
-#     offset <- model.frame(model.fm, data = newobs)
+#     X <- model.matrix(model.fm, newdata)
+#     offset <- model.frame(model.fm, data = newdata)
 #     offset <- model.offset(offset)
 #     if (is.null(offset))
 #       offset <- rep(0, nrow(X))
@@ -1051,9 +1051,9 @@
 #
 #       # predict the species specific responses
 #       outpred_spp[,g,] <- matrix(mixture.model$taus[,g],
-#                                           nrow(newobs),S,byrow=T)*s.outpred
+#                                           nrow(newdata),S,byrow=T)*s.outpred
 #       outvar_spp[,g,] <- matrix(mixture.model$taus[,g],
-#                                         nrow(newobs),S,byrow=T)*s.outvar
+#                                         nrow(newdata),S,byrow=T)*s.outvar
 #       # predict the archetype species responses
 #       outpred_arch[, g] <- apply(s.outpred * rep(mixture.model$taus[, g], each = dim(X)[1]),
 #                             1, sum)/sum(mixture.model$taus[, g])
@@ -1074,8 +1074,8 @@
   } else {
     model.fm <- as.formula(object$titbits$archetype_formula)
     if (length(model.fm) == 3) model.fm[[2]] <- NULL
-    X <- model.matrix(model.fm, as.data.frame(newobs))
-    offset <- model.frame(model.fm, data = newobs)
+    X <- model.matrix(model.fm, as.data.frame(newdata))
+    offset <- model.frame(model.fm, data = newdata)
     offset <- model.offset(offset)
   }
 

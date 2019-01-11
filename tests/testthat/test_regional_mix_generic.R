@@ -105,5 +105,10 @@ regional_mix(rcp_formula = my.form.RCP, species_formula = NULL, data = simDat,
 })
 
 
+testthat::test_that('testing regional mix diagonstic functions', {
+library(ecomix)
+ecomix:::cooks.distance.regional_mix(fm.final)
+
+})
 
 
