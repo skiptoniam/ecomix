@@ -66,6 +66,7 @@ extern "C" { SEXP SAM_predict_C(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_wts,
 				all_fits_spp[MATREF2D(i,s,all.data.nObs)] =	all_fits_spp[MATREF2D(i,s,all.data.nObs)]*taus[MATREF2D(s,g,all.data.nS)];
 				//std::cout << all_fits_spp[MATREF2D(i,s,all.data.nObs)] << '\n'; 
 			    all_fits_site[i] += all_fits_spp[MATREF2D(i,s,all.data.nObs)];
+			    if(all.data.disty==2 | all.data.disty==3 | all.data.disty ==4) all_fits_site[i]/all.data.nS;
 			}
 			//std::cout << all_fits_site[i] << '\n'; 
 		}
@@ -149,6 +150,7 @@ extern "C" { SEXP SAM_predict_C(SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_wts,
 			for(int s=0; s<all.data.nS; s++){
 				all_fits_spp[MATREF2D(i,s,all.data.nObs)] =	all_fits_spp[MATREF2D(i,s,all.data.nObs)]*taus[MATREF2D(s,g,all.data.nS)];
 			    all_fits_site[i] += all_fits_spp[MATREF2D(i,s,all.data.nObs)];
+			    if(all.data.disty==2 | all.data.disty==3 | all.data.disty ==4) all_fits_site[i]/all.data.nS;
 			}
 			//std::cout << all_fits_site[i] << '\n'; 
 		}

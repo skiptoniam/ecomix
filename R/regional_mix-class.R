@@ -1572,6 +1572,7 @@ function (x, ...)
       samp.object <- orderPost( samp.object, object)
     return( unlist( samp.object$coef))
   }
+
   flag <- TRUE
   tmpOldQuiet <- object$titbits$control$quiet
   object$titbits$control$quiet <- TRUE

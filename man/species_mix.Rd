@@ -14,6 +14,8 @@
 \alias{BIC.species_mix}
 \alias{summary.species_mix}
 \alias{predict.species_mix}
+\alias{species_mix_bootstrap}
+\alias{species_mix_boot_parametric}
 \title{species_mix objects}
 \usage{
 species_mix(archetype_formula = NULL,
@@ -35,8 +37,8 @@ species_mix.control(maxit = 1000, quiet = FALSE, trace = 1, cores = 1,
   init_method = "kmeans", init_sd = 1, minimum_sites_occurrence = 10,
   em_prefit = TRUE, em_steps = 5, em_refit = 2,
   em_abstol = sqrt(.Machine$double.eps), em_reltol = reltol_fun,
-  em_maxtau = 0.8, maxit_cpp = 1000, trace_cpp = 1, nreport_cpp = 1,
-  abstol_cpp = sqrt(.Machine$double.eps),
+  em_maxtau = 0.8, print_cpp_start_vals = FALSE, maxit_cpp = 1000,
+  trace_cpp = 1, nreport_cpp = 1, abstol_cpp = sqrt(.Machine$double.eps),
   reltol_cpp = sqrt(.Machine$double.eps), conv_cpp = 1,
   printparams_cpp = 0, optimise_cpp = 1, loglOnly_cpp = 0,
   derivOnly_cpp = 0, getscores_cpp = 0, ...)
@@ -59,6 +61,11 @@ simulate_species_mix_data(archetype_formula, species_formula, dat, theta,
 
 \method{predict}{species_mix}(object, object2 = NULL, newdata = NULL,
   offset = NULL, nboot = 0, alpha = 0.95, mc.cores = 1, ...)
+
+species_mix_bootstrap(object, nboot = 1000, type = "BayesBoot",
+  mc.cores = 1, quiet = FALSE, orderSamps = FALSE, MLstart = TRUE)
+
+species_mix_boot_parametric(fm, mf, nboot)
 }
 \arguments{
 \item{archetype_formula}{an object of class "formula" (or an object that can be
@@ -140,7 +147,9 @@ minimum you will need pis (additive_logitic transformed), alpha
 
 \item{maxit}{Maximum number of evaluations of the objective function allowed. Defaults to 500.}
 
-\item{trace}{int 1=model will report parameter estimates and loglikelihood at each iteration. 0=quite.}
+\item{quiet}{Should any reporting be performed? Default is FALSE, for reporting.}
+
+\item{trace}{int 1=model will report parameter estimates and loglikelihood at each iteration. 0=quiet.}
 
 \item{cores}{The number of cores to use in fitting of species mix models. These will be largely used to model the species-specific parameteres.}
 
@@ -166,9 +175,7 @@ minimum you will need pis (additive_logitic transformed), alpha
 
 \item{inits}{This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).}
 
-\item{quite}{Should any reporting be performed? Default is FALSE, for reporting.}
-
-\item{reltol}{function that determines the relative tolernace for model convergence. Default is quite strict.}
+\item{reltol}{function that determines the relative tolernace for model convergence. Default is quiet strict.}
 
 \item{archtype_formula}{formula to simulate species_mix data, needs to have the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
 
