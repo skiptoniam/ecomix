@@ -34,11 +34,12 @@ species_mix.multifit(archetype_formula = NULL,
   inits = NULL, standardise = TRUE, titbits = TRUE)
 
 species_mix.control(maxit = 1000, quiet = FALSE, trace = 1, cores = 1,
-  init_method = "kmeans", init_sd = 1, minimum_sites_occurrence = 10,
-  em_prefit = TRUE, em_steps = 5, em_refit = 2,
-  em_abstol = sqrt(.Machine$double.eps), em_reltol = reltol_fun,
-  em_maxtau = 0.8, print_cpp_start_vals = FALSE, maxit_cpp = 1000,
-  trace_cpp = 1, nreport_cpp = 1, abstol_cpp = sqrt(.Machine$double.eps),
+  reguralization = FALSE, init_method = "kmeans", init_sd = 1,
+  minimum_sites_occurrence = 10, em_prefit = TRUE, em_steps = 5,
+  em_refit = 2, em_abstol = sqrt(.Machine$double.eps),
+  em_reltol = reltol_fun, em_maxtau = 0.8, print_cpp_start_vals = FALSE,
+  maxit_cpp = 1000, trace_cpp = 1, nreport_cpp = 1,
+  abstol_cpp = sqrt(.Machine$double.eps),
   reltol_cpp = sqrt(.Machine$double.eps), conv_cpp = 1,
   printparams_cpp = 0, optimise_cpp = 1, loglOnly_cpp = 0,
   derivOnly_cpp = 0, getscores_cpp = 0, ...)

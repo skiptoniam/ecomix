@@ -416,7 +416,6 @@
    return(many_starts)
 }
 
-
 #'@rdname species_mix
 #'@name control
 #'@param quiet Should any reporting be performed? Default is FALSE, for reporting.
@@ -433,16 +432,15 @@
                                   quiet = FALSE,
                                   trace = 1,
                                   cores = 1,
+                                  reguralization = FALSE,
                                   ## intialisation controls
                                   init_method = 'kmeans',
                                   init_sd = 1,
                                   minimum_sites_occurrence = 10,
-                                  # minimum_occurrence_tolerance_ippm = 20,
                                   ## EM algorithim controls
                                   em_prefit = TRUE,
                                   em_steps = 5,
                                   em_refit = 2,
-                                  # em_maxit = 3,
                                   em_abstol = sqrt(.Machine$double.eps),
                                   em_reltol = reltol_fun,
                                   em_maxtau = 0.8,
@@ -461,7 +459,7 @@
                                   getscores_cpp = 0, ...){
                #general controls
   rval <- list(maxit = maxit, quiet = quiet, trace = trace,
-               cores = cores,
+               cores = cores, reguralization = reguralization,
                #initialisation controls
                init_method = init_method, init_sd = init_sd,
                minimum_sites_occurrence = minimum_sites_occurrence,
@@ -1417,24 +1415,23 @@ sam_internal_pred <- function(alpha, beta, taus, G, S, X, offset = NULL, family)
   if(disty == 6)
     fam <- gaussian()
 
-
   coefs <- as.matrix(glmfit$coef)
   eta <- as.numeric(as.matrix(newmatrix) %*% as.numeric(coefs)) + offset
   preds <- fam$linkinv(eta)
   return(preds)
 }
 
-## this will give the species intercepts with respect to the mixture linear predictor.
-"apply_glm_sam_sp_intercepts" <- function(ss, y, X, G, taus, site_spp_weights,
-                                      offset, y_is_na, disty, fits){
+## if we want to use glmnet for estimates.
+"apply_glmnet_sam_inits" <- function(ss, y, X, site_spp_weights,
+                                     offset, y_is_na, disty){
 
-  if(disty == 1)
-    fam <- binomial()
-  if(disty == 2 | disty == 3 | disty == 4)
-    fam <- poisson()
-  if(disty == 6)
-    fam <- gaussian()
-
+  # which family to use?
+  if( disty == 1)
+    fam <- "binomial"
+  if( disty == 2 | disty == 3 | disty == 4)
+    fam <- "poisson"
+  if( disty == 6)
+    fam <- "gaussian"
 
   ids_i <- !y_is_na[,ss]
 
@@ -1443,61 +1440,83 @@ sam_internal_pred <- function(alpha, beta, taus, G, S, X, offset = NULL, family)
   } else {
     outcomes <- as.numeric(y[ids_i,ss])
   }
-  out1 <- kronecker(rep( 1, G), outcomes)
-  X1 <- kronecker(rep( 1, G), X[ids_i,])
-  wts1 <- kronecker(rep( 1, G),
-                    as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,],
-                                                                each=length(site_spp_weights[ids_i,ss]))
-  offy1 <- kronecker(rep( 1, G), offset[ids_i])
-  offy2 <- X[ids_i,-1] %*% t(fits$beta)
-  offy2 <- as.numeric(offy2)
-  offy <- offy1 + offy2
 
-  if(disty %in% c(1,2,3,6)){
-    # ft_sp <- try(glmnet::glmnet(x=as.data.frame(X1),
-    #                y=as.numeric(out1),
-    #                weights=as.numeric(wts1),
-    #                offset=as.numeric(offy),
-    #                family=fam), silent=FALSE)
+  lambda.seq <- sort( unique( c( seq( from=1/0.1, to=1, length=10), seq( from=1/0.1, to=1, length=10),seq(from=0.9, to=10^-2, length=10))), decreasing=TRUE)
+  if(disty != 5){
+    ft_sp <- try(glmnet::glmnet(x=as.matrix(X[ids_i,-1,drop=FALSE]),
+                            y=outcomes,
+                            weights=c(site_spp_weights[ids_i,ss]),
+                            offset=offset[ids_i],
+                            family=fam,
+                            alpha=0,
+                            lambda = lambda.seq,
+                            standardize = FALSE,
+                            intercept = TRUE), silent = TRUE)
 
-  ft_sp <- try(stats::glm.fit(x=as.data.frame(X1),
-  y=as.numeric(out1),
-  weights=as.numeric(wts1),
-  offset=as.numeric(offy),
-  family=fam), silent=FALSE)
+    # ft_sp <- try(glmnet::glmnet(x=as.data.frame(X[ids_i,,drop=FALSE]),
+                                # y = outcomes,
+                                # weights=as.numeric(site_spp_weights[ids_i,ss]),
+                                # offset=offset[ids_i],
+                                # family=fam), silent=FALSE)
     if (class(ft_sp) %in% 'try-error'){
-      print(paste0(ss,"\n"))
-      my_coefs <- rep(NA, ncol(X1))
+      my_coefs <- rep(NA, ncol(X[ids_i,]))
     } else {
-      my_coefs <- coef(ft_sp)
+      my_coefs <- apply(glmnet::coef.glmnet(ft_sp), 1, lambda_penalisation_fun, lambda.seq)
     }
-#
-#   my_coefs <- coef(ft_sp)
   }
-  if(disty %in% 4){
-    ft_sp <- glm.fit.nbinom(x=as.matrix(X1),
-                            y=as.numeric(out1),
-                            weights=as.numeric(wts1),
-                            offset=as.numeric(offy))
-    my_coefs <- ft_sp$coef
-  # dat <- data.frame(out1,as.data.frame(X1[,-1]),offy)
-  # tmpform <- as.formula(paste('out1~1+',paste0(colnames(as.data.frame(X1[,-1])),
-                                             # collapse = "+"),'+offset(offy)'))
-  # ft_sp <- glm.fit.nbinom(formula = tmpform,
-                          # data = dat,
-                          # weights = as.matrix(wts1),
-                          # init.theta = as.numeric(exp(-fits$disp[ss])))
-
+  disp <- NA
+  if( disty == 4){
+    locat.s <- lambda.seq[max(which(as.matrix(glmnet::coef.glmnet(ft_sp))==my_coefs,arr.ind = TRUE)[,2])]
+    preds <-as.numeric(predict(ft_sp, s=locat.s,
+                               type="response",
+                               newx=X[ids_i,-1],
+                               offset=offset[ids_i]))
+    tmp <- MASS::theta.mm(outcomes, preds,
+                          weights=c(site_spp_weights[ids_i,ss]),
+                          dfr=length(y[ids_i,ss]),
+                          eps=1e-4)
+    if(tmp>2) tmp <- 2
+    disp <- log( 1/tmp)
   }
+  if( disty == 6){
+    preds <-as.numeric(predict(ft_sp, s=locat.s,
+                               type="response",
+                               newx=X[ids_i,-1],
+                               offset=offset[ids_i]))
+    disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
+  }
+  # if(disty == 4){
+    # ft_sp <- try(glm.fit.nbinom(x=as.matrix(X[ids_i,,drop=FALSE]),
+                                # y=as.numeric(outcomes),
+                                # weights=as.numeric(site_spp_weights[ids_i,ss]),
+                                # offset=offset[ids_i],est_var=FALSE), silent = TRUE)
 
-  return(list(alpha = my_coefs[1]))
+    # preds <- predict.glm.fit(ft_sp, X[ids_i,], offset[ids_i], disty)
+    # tmp <- MASS::theta.mm(outcomes, preds,
+    #                       weights=c(site_spp_weights[ids_i,ss]),
+    #                       dfr=length(outcomes),
+    #                       eps=1e-4)
+
+  #   if (class(ft_sp) %in% 'try-error'){
+  #     my_coefs <- rep(NA, ncol(X[ids_i,]))
+  #   } else {
+  #     my_coefs <- ft_sp$coef
+  #   }
+  #   tmp <- ft_sp$theta
+  #   if(tmp>2) tmp <- 2
+  #   disp <- log(1/tmp)
+  # }
+  # if( disty == 6){
+  #   preds <- predict.glm.fit(ft_sp, X[ids_i,], offset[ids_i], disty)
+  #   disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
+  # }
+  return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
 }
 
 "apply_glmnet_sam_sp_intercepts" <- function(ss, y, X, G, taus,
                                              site_spp_weights,
                                              offset, y_is_na, disty, fits){
 
-  options(warn = -1)
   # which family to use?
   if( disty == 1)
     fam <- "binomial"
@@ -1568,7 +1587,8 @@ sam_internal_pred <- function(alpha, beta, taus, G, S, X, offset = NULL, family)
 
 }
 
-"apply_glm_group_tau_sam" <- function (gg, y, X, site_spp_weights, offset, y_is_na, disty, tau){
+"apply_glmnet_group_tau_sam" <- function (gg, y, X, site_spp_weights,
+                                          offset, y_is_na, disty, tau){
 
   ### setup the data stucture for this model.
   Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
@@ -1656,7 +1676,7 @@ sam_internal_pred <- function(alpha, beta, taus, G, S, X, offset = NULL, family)
   for(gg in seq_len(G)) {
     cw.eta <- fits$alpha[ss] + first_fit$x[,-1]%*%fits$beta[gg,] + first_fit$offset
     if(disty == 4)
-      cw.out <- sum(taus[ss,gg]*dnbinom(first_fit$y[,ss], mu = exp(cw.eta), size = 1/exp(-x), log = TRUE)); #print(x)
+      cw.out <- sum(taus[ss,gg]*dnbinom(first_fit$y[,ss], mu = exp(cw.eta), size = 1/exp(-x), log = TRUE));
     if(disty == 6)
       cw.out <- sum(taus[ss,gg]*dnorm(first_fit$y[,ss], mean = cw.eta, sd = exp(x), log = TRUE))
     out <- out + cw.out
@@ -1665,32 +1685,32 @@ sam_internal_pred <- function(alpha, beta, taus, G, S, X, offset = NULL, family)
 }
 
 
-"theta.logl2" <- function( theta, ss, first_fit, fits, G,
-                           disty, taus, theta.range) {
-
-  pis <- colMeans(taus)
-  ids_i <- !first_fit$y_is_na[,ss]
-  offy <- first_fit$offset
-  y <- first_fit$y[ids_i,ss]
-  logls <- rep( NA, G)
-  for(gg in seq_len(G)){
-    eta <- fits$alpha[ss] + first_fit$x[ids_i,-1]%*%fits$beta[gg,] + offy[ids_i]
-    if(disty==4) logls[gg] <- sum(dnbinom(y, mu=exp(eta), size=1/exp(-theta), log=TRUE))
-    if(disty==6) logls[gg] <- sum(dnorm(y, mean = eta, sd = exp(theta), log=TRUE))
-  }
-  ak <- logls + log(pis)
-  am <- max(ak)
-  ak <- exp( ak-am)
-  sppLogls <- am + log( sum( ak))
-
-  pen.max <- theta.range[2]
-  pen.min <- theta.range[1]
-  shape1 <- shape2 <- 1.25
-  if(disty==4) db <- (exp(-theta)-pen.min) / (pen.max-pen.min)
-  if(disty==6) db <- (exp(theta)-pen.min) / (pen.max-pen.min)
-  sppLogls <- sppLogls + dbeta(db, shape1, shape2, log=TRUE)
-  return( sppLogls)
-}
+# "theta.logl2" <- function( theta, ss, first_fit, fits, G,
+#                            disty, taus, theta.range) {
+#
+#   pis <- colMeans(taus)
+#   ids_i <- !first_fit$y_is_na[,ss]
+#   offy <- first_fit$offset
+#   y <- first_fit$y[ids_i,ss]
+#   logls <- rep( NA, G)
+#   for(gg in seq_len(G)){
+#     eta <- fits$alpha[ss] + first_fit$x[ids_i,-1]%*%fits$beta[gg,] + offy[ids_i]
+#     if(disty==4) logls[gg] <- sum(dnbinom(y, mu=exp(eta), size=1/exp(-theta), log=TRUE))
+#     if(disty==6) logls[gg] <- sum(dnorm(y, mean = eta, sd = exp(theta), log=TRUE))
+#   }
+#   ak <- logls + log(pis)
+#   am <- max(ak)
+#   ak <- exp( ak-am)
+#   sppLogls <- am + log( sum( ak))
+#
+#   pen.max <- theta.range[2]
+#   pen.min <- theta.range[1]
+#   shape1 <- shape2 <- 1.25
+#   if(disty==4) db <- (exp(-theta)-pen.min) / (pen.max-pen.min)
+#   if(disty==6) db <- (exp(theta)-pen.min) / (pen.max-pen.min)
+#   sppLogls <- sppLogls + dbeta(db, shape1, shape2, log=TRUE)
+#   return( sppLogls)
+# }
 
 ## function for starting values.
 "apply_glm_sam_inits" <- function(ss, y, X, site_spp_weights, offset, y_is_na, disty){
@@ -1752,6 +1772,74 @@ sam_internal_pred <- function(alpha, beta, taus, G, S, X, offset = NULL, family)
    return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
 }
 
+## this will give the species intercepts with respect to the mixture linear predictor.
+"apply_glm_sam_sp_intercepts" <- function(ss, y, X, G, taus, site_spp_weights,
+                                          offset, y_is_na, disty, fits){
+
+  if(disty == 1)
+    fam <- binomial()
+  if(disty == 2 | disty == 3 | disty == 4)
+    fam <- poisson()
+  if(disty == 6)
+    fam <- gaussian()
+
+
+  ids_i <- !y_is_na[,ss]
+
+  if (disty==3){
+    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+  } else {
+    outcomes <- as.numeric(y[ids_i,ss])
+  }
+  out1 <- kronecker(rep( 1, G), outcomes)
+  X1 <- kronecker(rep( 1, G), X[ids_i,])
+  wts1 <- kronecker(rep( 1, G),
+                    as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,],
+                                                                each=length(site_spp_weights[ids_i,ss]))
+  offy1 <- kronecker(rep( 1, G), offset[ids_i])
+  offy2 <- X[ids_i,-1] %*% t(fits$beta)
+  offy2 <- as.numeric(offy2)
+  offy <- offy1 + offy2
+
+  if(disty %in% c(1,2,3,6)){
+    # ft_sp <- try(glmnet::glmnet(x=as.data.frame(X1),
+    #                y=as.numeric(out1),
+    #                weights=as.numeric(wts1),
+    #                offset=as.numeric(offy),
+    #                family=fam), silent=FALSE)
+
+    ft_sp <- try(stats::glm.fit(x=as.data.frame(X1),
+                                y=as.numeric(out1),
+                                weights=as.numeric(wts1),
+                                offset=as.numeric(offy),
+                                family=fam), silent=FALSE)
+    if (class(ft_sp) %in% 'try-error'){
+      print(paste0(ss,"\n"))
+      my_coefs <- rep(NA, ncol(X1))
+    } else {
+      my_coefs <- coef(ft_sp)
+    }
+    #
+    #   my_coefs <- coef(ft_sp)
+  }
+  if(disty %in% 4){
+    ft_sp <- glm.fit.nbinom(x=as.matrix(X1),
+                            y=as.numeric(out1),
+                            weights=as.numeric(wts1),
+                            offset=as.numeric(offy))
+    my_coefs <- ft_sp$coef
+    # dat <- data.frame(out1,as.data.frame(X1[,-1]),offy)
+    # tmpform <- as.formula(paste('out1~1+',paste0(colnames(as.data.frame(X1[,-1])),
+    # collapse = "+"),'+offset(offy)'))
+    # ft_sp <- glm.fit.nbinom(formula = tmpform,
+    # data = dat,
+    # weights = as.matrix(wts1),
+    # init.theta = as.numeric(exp(-fits$disp[ss])))
+
+  }
+
+  return(list(alpha = my_coefs[1]))
+}
 
 # do I need to include the species intercepts in the offsets?
 "apply_glm_group_tau_sam" <- function (gg, y, X, site_spp_weights, offset,
@@ -2112,9 +2200,17 @@ starting values;\n starting values are generated using ',control$init_method,
       restart_ite <- restart_ite + 1
     }
 
+    if(control$regularization==TRUE){
+      alpha_estimater <- ecomix:::apply_glmnet_sam_sp_intercepts
+      beta_estimater <- ecomix:::apply_glmnet_group_tau_sam
+    } else {
+      alpha_estimater <- ecomix:::apply_glm_sam_sp_intercepts
+      beta_estimater <- ecomix:::apply_glm_group_tau_sam
+    }
+
     # m-step
     fm_sp_int <- surveillance::plapply(seq_len(S),
-                                       apply_glm_sam_sp_intercepts,
+                                       alpha_estimater,
                                        y, X, G, taus, site_spp_weights, offset,
                                        y_is_na, disty, fits,
                                        .parallel = control$cores,
@@ -2125,7 +2221,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
     ## update the betas
     fmix_coefs <- surveillance::plapply(seq_len(G),
-                                        apply_glm_group_tau_sam,
+                                        beta_estimater,
                                         y, X, site_spp_weights,
                                         offset, y_is_na, disty, taus,
                                         fits, logls_mus$fitted,
@@ -2182,24 +2278,20 @@ starting values;\n starting values are generated using ',control$init_method,
 
 "initiate_fit_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
-  # cat(dim(site_spp_weights))
-  fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glm_sam_inits, y, X,
+
+  if(control$regularization==TRUE){
+    initial_params_estimater <- ecomix:::apply_glmnet_sam_inits
+  } else {
+    initial_params_estimater <- ecomix:::apply_glm_sam_inits
+  }
+
+  fm_sp_mods <-  surveillance::plapply(seq_len(S), initial_params_estimater, y, X,
                                        site_spp_weights, offset, y_is_na, disty,
                                       .parallel = control$cores, .verbose = FALSE)
-
-  # lapply(fm_sp_mods,print)
-
-  # cat("starting archetype parameters:\n",beta,"\n")
-  # cat("starting archetype membership:\n",disp,"\n")
 
   alpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
   beta <- do.call(rbind,lapply(fm_sp_mods, `[[`, 2))
   disp <- unlist(lapply(fm_sp_mods, `[[`, 3))
-
-  # cat("starting species intercepts:\n",alpha,"\n")
-  # cat("starting archetype parameters:\n",beta,"\n")
-  # cat("starting archetype membership:\n",disp,"\n")
-
 
   species_to_remove <- which(apply(beta, 1, function(x) all(is.na(x))))
 
