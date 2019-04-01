@@ -35,5 +35,5 @@ Depends:
 License: MIT
 SystemRequirements: C++11
 NeedsCompilation: yes
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.1
 VignetteBuilder: knitr

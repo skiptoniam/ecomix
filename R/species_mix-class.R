@@ -69,25 +69,27 @@
 #' @examples
 #' library(ecomix)
 #' set.seed(42)
-#' sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+#' sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
+#' collapse = ','),")~1+x1+x2"))
 #' sp_form <- ~ 1
 #' theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,1.9),3,3,byrow=TRUE)
-#' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
+#' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
+#' x2=stats::rnorm(100,0,2.5))
 #' dat[,-1] <- scale(dat[,-1])
-#' simulated_data <- simulate_species_mix_data(archetype_formula=sam_form, species_formula=sp_form,
-#'                                             dat,theta,dist="bernoulli")
+#' simulated_data <- simulate_species_mix_data(archetype_formula=sam_form,
+#'  species_formula=sp_form, dat,theta,dist="bernoulli")
 #' data <- make_mixture_data(species_data = simulated_data$species_data,
-#'                                 covariate_data = simulated_data$covariate_data[,-1])
+#'                           covariate_data = simulated_data$covariate_data[,-1])
 #' fm1 <- species_mix(sam_form, sp_form, data, distribution = 'bernoulli',
 #'  n_mixtures=3)
 
-"species_mix" <- function(archetype_formula = NULL, species_formula = stats::as.formula(~1), data,
+"species_mix" <- function(archetype_formula = NULL,
+                          species_formula = stats::as.formula(~1), data,
                           n_mixtures = 3, distribution="bernoulli", offset=NULL,
-                          weights=NULL, bb_weights=NULL, control=NULL, inits=NULL,
-                          standardise = TRUE, titbits = TRUE){
+                          weights=NULL, bb_weights=NULL, control=NULL,
+                          inits=NULL, standardise = FALSE, titbits = TRUE){
 
   data <- as.data.frame(data)
-  #the control parameters
   control <- set_control_sam(control)
   if(!control$quiet)
     message( "SAM modelling")
@@ -102,7 +104,6 @@
   if(!is.null(species_formula))
     species_formula <- stats::as.formula(species_formula)
 
-  # Create model matrix
   mf <- match.call(expand.dots = FALSE)
   if(distribution=="ippm"){
     m <- match(c("data","offset"), names(mf), 0L)
@@ -124,7 +125,6 @@
 
   # need this for the na.omit step
   rownames(mf)<-seq_len(nrow(mf))
-
   dat <- clean_data_sam(mf, archetype_formula, NULL, distribution)
 
   # get responses
@@ -161,7 +161,7 @@
 
   if(distribution=='ippm'){
     if(!all(colnames(y)==colnames(site_spp_weights))){
-      stop(cat('When modelling a inhomogenous poisson point process model,\n species data colnames must match weights colnames.\n\nSpecies data colnames from "data" are:\n',colnames(y),'.\n\nWhile the colnames of the weights are:\n', colnames(site_spp_weights),'\n'))
+      stop(cat('When modelling a inhomogeneous poisson point process model,\n species data colnames must match weights colnames.\n\nSpecies data colnames from "data" are:\n',colnames(y),'.\n\nWhile the colnames of the weights are:\n', colnames(site_spp_weights),'\n'))
     }
     if(any(dim(y)!=dim(site_spp_weights))){
       stop('When modelling a inhomogenous poisson point process model,
@@ -169,7 +169,6 @@
            species data - n_sites x n_species')
     }
   }
-
 
   s.means <- NULL
   s.sds <- NULL
@@ -184,15 +183,12 @@
   print_input_sam(y, X, S, archetype_formula, species_formula, distribution, quiet=control$quiet)
 
   # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
-  # cat(dim(site_spp_weights))
-  # cat(site_spp_weights[!is.na(site_spp_weights[])][1:20])
   tmp <- species_mix.fit(y=y, X=X, G=n_mixtures, S=S, spp_weights=spp_weights,
                          site_spp_weights=site_spp_weights,
                          offset=offset, disty=disty, y_is_na=y_is_na,
                          control=control, inits=inits)
 
   tmp$dist <- disty_cases[disty]
-
 
   if(n_mixtures==1) tmp$pis <- tmp$pis
   else tmp$pis <- additive_logistic(tmp$eta)
@@ -230,12 +226,13 @@
 #'@param inits This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).
 #'@export
 
-"species_mix.fit" <- function(y, X, G, S, spp_weights, site_spp_weights, offset, y_is_na, disty, control, inits=NULL){
+"species_mix.fit" <- function(y, X, G, S, spp_weights, site_spp_weights,
+                              offset, y_is_na, disty, control, inits=NULL){
 
   if(G==1){
     tmp <- fitmix_EM_sam(y, X, spp_weights, site_spp_weights,
                          offset, y_is_na, G, S, disty, control)
-    tmp <- clean_em_output_one_group(tmp, G, S, disty)
+    tmp <- clean_ECM_output_one_group(tmp, G, S, disty)
     return(tmp)
   }
 
@@ -256,7 +253,6 @@
     starting_values <- inits
   }
 
-  # cat(starting_values$alpha,"\n\n",starting_values$beta,"\n\n", additive_logistic(starting_values$eta,FALSE))
   tmp <- sam_optimise(y, X, offset, spp_weights, site_spp_weights,
                       y_is_na, S, G, disty, starting_values, control)
 
@@ -272,10 +268,13 @@
 #' \dontrun{
 #' fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli', nstart = 10, n_mixtures=3)
 #' }
-"species_mix.multifit" <- function(archetype_formula = NULL, species_formula = stats::as.formula(~1), data,
-           n_mixtures = 3, nstart = 10, mc.cores=1, distribution="bernoulli", offset=NULL,
-           weights=NULL, bb_weights=NULL, control=species_mix.control(), inits=NULL,
-           standardise = TRUE, titbits = TRUE){
+"species_mix.multifit" <- function(archetype_formula = NULL,
+                                   species_formula = stats::as.formula(~1),
+                                   data, n_mixtures = 3, nstart = 10,
+                                   mc.cores=1, distribution="bernoulli",
+                                   offset=NULL, weights=NULL, bb_weights=NULL,
+                                   control=species_mix.control(), inits=NULL,
+                                   standardise = TRUE, titbits = TRUE){
 
   data <- as.data.frame(data)
 
@@ -432,7 +431,7 @@
                                   quiet = FALSE,
                                   trace = 1,
                                   cores = 1,
-                                  reguralization = FALSE,
+                                  regularisation = FALSE,
                                   ## intialisation controls
                                   init_method = 'kmeans',
                                   init_sd = 1,
@@ -459,7 +458,7 @@
                                   getscores_cpp = 0, ...){
                #general controls
   rval <- list(maxit = maxit, quiet = quiet, trace = trace,
-               cores = cores, reguralization = reguralization,
+               cores = cores, regularisation = regularisation,
                #initialisation controls
                init_method = init_method, init_sd = init_sd,
                minimum_sites_occurrence = minimum_sites_occurrence,
@@ -484,11 +483,15 @@
 
 #' @rdname species_mix
 #' @name simulate_species_mix_data
-#' @param archtype_formula formula to simulate species_mix data, needs to have the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2
-#' @param species_formula formula to simulate species_mix species-specific responses, e.g: ~1
+#' @param archtype_formula formula to simulate species_mix data, needs to have
+#' the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2
+#' @param species_formula formula to simulate species_mix species-specific
+#' responses, e.g: ~1
 #' @param dat a matrix of variables to simulate data from.
-#' @param theta coefficents for each species archetype. Matrix of G x number of parameters. Each row is a different species archetype.
-#' @param distribution Which statistical distribution to simulate data for. 'bernoulli', 'gaussian', 'ippm', 'negative_binomial','poisson' and 'tweedie'.
+#' @param theta coefficents for each species archetype. Matrix of G x number of
+#'  parameters. Each row is a different species archetype.
+#' @param distribution Which statistical distribution to simulate data for.
+#'  'bernoulli', 'gaussian', 'ippm', 'negative_binomial' and 'poisson'.
 #' @export
 #' @examples
 #' \dontrun{
@@ -506,7 +509,7 @@
 #' }
 ## need to update this to take the new formula framework and simulate ippm data.
 "simulate_species_mix_data" <-  function (archetype_formula, species_formula,
-                                          dat,theta,distribution = "bernoulli"){
+                                          dat, theta, distribution = "bernoulli"){
 
   if(distribution=='ippm'){
   message('Generating ippm data on a regular 100x100 grid')
@@ -1208,7 +1211,7 @@ sam_internal_pred <- function(alpha, beta, taus, G, S, X, offset = NULL, family)
   colnames(outpred_arch) <- paste("G", 1:G, sep = ".")
 
   for (g in seq_len(G)) {
-    s.outpred <- matrix(NA, dim(X)[1], length(alphas))
+    s.outpred <- matrix(NA, dim(X)[1], length(alpha))
     for (s in seq_len(S)) {
       lp <- as.numeric(X%*%c(alpha[s],beta[g, ]) + offset)
       s.outpred[, s] <- link.fun$linkinv(lp)
@@ -2200,7 +2203,7 @@ starting values;\n starting values are generated using ',control$init_method,
       restart_ite <- restart_ite + 1
     }
 
-    if(control$regularization==TRUE){
+    if(control$regularisation){
       alpha_estimater <- ecomix:::apply_glmnet_sam_sp_intercepts
       beta_estimater <- ecomix:::apply_glmnet_group_tau_sam
     } else {
@@ -2279,7 +2282,7 @@ starting values;\n starting values are generated using ',control$init_method,
 "initiate_fit_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
 
-  if(control$regularization==TRUE){
+  if(control$regularisation){
     initial_params_estimater <- ecomix:::apply_glmnet_sam_inits
   } else {
     initial_params_estimater <- ecomix:::apply_glm_sam_inits
@@ -2333,11 +2336,17 @@ starting values;\n starting values are generated using ',control$init_method,
       grp_coefs <- matrix(grp_coefs,nrow=G)
   }
 
-  if(control$init_method=='random' | is.null(tmp_grp)){
-    # if(!control$quiet)message( "Initial groups by random allocation and means from random numbers\n")
-    grp_coefs <- matrix( stats::rnorm(G*ncol(beta), sd=control$init_sd, mean=0), nrow=G, ncol=ncol(beta))
-    tmp_grp <- sample(1:G, S, replace=TRUE)
+  if(control$init_method=='random2' | is.null(tmp_grp)){
+    fmmvnorm <- stats::kmeans(beta, centers=G, nstart=100)
+    tmp_grp <- fmmvnorm$cluster
+    grp_coefs <- apply(beta, 2, function(x) tapply(x, tmp_grp, mean))
     grp_coefs <- matrix(grp_coefs,nrow=G)
+
+    random_coefs <- sam_random_inits(alpha, grp_coefs, disp, S, G, mult=0.3)
+    alpha <- random_coefs[[1]]
+    grp_coefs <- random_coefs[[2]]
+    if(disty%in%c(4,6)) disp <- random_coefs[[3]]
+
   }
 
  if(ncol(X[,-1,drop=FALSE])==1)names(grp_coefs)[2] <- names(X[,-1,drop=FALSE])[2]
@@ -2490,10 +2499,11 @@ starting values;\n starting values are generated using ',control$init_method,
   ret$loglikeSG <- matrix(loglikeSG,  nrow = S, ncol = G)  #for residuals
   ret$loglikeS <- loglikeS  #for residuals
   ret$removed_species <- start_vals$first_fit$removed_species
+  gc()
   return(ret)
 }
 
-"clean_em_output_one_group" <- function(em_fit, G, S, disty){
+"clean_ECM_output_one_group" <- function(em_fit, G, S, disty){
 
   np <- ncol(em_fit$first_fit$x[,-1,drop=FALSE])
   n <- nrow(em_fit$first_fit$x[,-1,drop=FALSE])
@@ -2757,8 +2767,24 @@ starting values;\n starting values are generated using ',control$init_method,
                    spp_weights[-species_to_remove], site_spp_weights[,-species_to_remove]))
 }
 
+
+
 "reltol_fun" <- function(logl_n1, logl_n){
   return(abs(logl_n1 - logl_n) > (abs(logl_n1 - logl_n) / abs(logl_n)))
+}
+
+"sam_random_inits" <- function(alpha, beta, disp, S, G, mult=0.3){
+                  my.sd <- mult*sd( alpha); if( is.na( my.sd)) my.sd <- 0.1
+                  alpha <- alpha + rnorm(S, sd = my.sd)
+                  my.sd <- mult*sd( beta); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
+                  beta <- beta + as.numeric(matrix(rnorm(G * ncol(X), mean = 0, sd = my.sd), ncol = ncol(X), nrow = G - 1))
+
+                  if(disty %in% c(4,6)){
+                    my.sd <- mult*sd( disp); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
+                    disp <- disp + as.numeric( rnorm( S, mean=0, my.sd))
+                  }
+                  if(disty %in% c(4,6)) return(list(alpha,beta,disp))
+                  else return(list(alpha,beta))
 }
 
 "setup_inits_sam" <- function(inits, S, G, np, disty, return_list=TRUE){
