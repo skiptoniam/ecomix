@@ -210,6 +210,88 @@
   return(tmp)
 }
 
+#' @rdname species_mix
+#' @name species_mix_bootstrap
+#' @export
+
+"species_mix_bootstrap" <-function (object, nboot=1000, type="BayesBoot", mc.cores=1,
+                                    quiet=FALSE, orderSamps=FALSE, MLstart=TRUE){
+  if (nboot < 1)
+    stop( "No Boostrap samples requested.  Please set nboot to something > 1.")
+  if( ! type %in% c("BayesBoot","SimpleBoot"))
+    stop( "Unknown boostrap type, choices are BayesBoot and SimpleBoot.")
+  n.reorder <- 0
+  object$titbits$control$optimise <- TRUE #just in case it was turned off
+  if(object$titbits$distribution=='ippm')
+    stop('IPPM vcov matrix needs to estimated using FiniteDifference method.\n')
+
+  if( !quiet){
+    chars <- c("><(('> ","_@_'' ")
+    pb <- txtProgressBar(min = 1, max = nboot, style = 3, char = chars[sample(length(chars),1)])
+  }
+
+  if( type == "SimpleBoot"){
+    all.wts <- matrix( sample( 1:object$S, nboot*object$S, replace=TRUE), nrow=nboot, ncol=object$S)
+    tmp <- apply( all.wts, 1, table)
+    all.wts <- matrix( 0, nrow=nboot, ncol=object$S)
+    for( ii in seq_along( tmp))
+      all.wts[ii, as.numeric( names( tmp[[ii]]))] <- tmp[[ii]]
+  }
+  if( type == "BayesBoot")
+    all.wts <- object$S * gtools::rdirichlet( nboot, rep( 1, object$S))
+  if(MLstart)
+    my.inits <- object$coef
+  else{
+    my.inits <- "random"
+    orderSamps <- TRUE
+  }
+
+  tmpOldQuiet <- object$titbits$control$quiet
+  object$titbits$control$quiet <- TRUE
+
+  my.fun <- function(dummy){
+    if( !quiet) setTxtProgressBar(pb, dummy)
+    disty_cases <- c("bernoulli", "poisson", "ippm", "negative_binomial", "tweedie", "gaussian")
+    disty <- get_distribution_sam(disty_cases, object$dist)
+    dumbOut <- capture.output(
+      samp.object <- species_mix.fit(y=object$titbits$Y,
+                                     X=object$titbits$X,
+                                     offset = object$titbits$offset,
+                                     spp_weights = all.wts[dummy,,drop=TRUE],
+                                     site_spp_weights = object$titbits$site_spp_weights,
+                                     G = object$G,
+                                     S = object$S,
+                                     y_is_na = object$titbits$y_is_na,
+                                     disty = disty,
+                                     control = object$titbits$control,
+                                     inits = my.inits))
+    if( orderSamps)
+      samp.object <- orderPost( samp.object, object)
+    return( unlist( samp.object$coef))
+  }
+
+  flag <- TRUE
+  if( Sys.info()['sysname'] == "Windows" | mc.cores==1){
+    boot.estis <- matrix(NA, nrow = nboot, ncol = length(unlist(object$coef)))
+    for (ii in 1:nboot) {
+      if( !quiet)
+        setTxtProgressBar(pb, ii)
+      boot.estis[ii, ] <- my.fun( ii)
+    }
+    flag <- FALSE
+  }
+
+  if( flag){
+    tmp <- surveillance::plapply(seq_len(nboot), my.fun, .parallel = mc.cores)
+    boot.estis <- do.call( "rbind", tmp)
+  }
+  object$titbits$control$quiet <- tmpOldQuiet
+  class( boot.estis) <- "species_mix_bootstrap"
+  return( boot.estis)
+}
+
+
+
 #'@rdname species_mix
 #'@name species_mix.fit
 #'@param y is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.
@@ -659,46 +741,32 @@
   }
 }
 
-#' #'@rdname species_mix
-#' #'
-#' #'@name species_mix_estimate_groups
-#' #'
-#' #'@description This function runs the 'species_mix' function but it iterates through groups (1 to 10) by default.
-#' #'
-#' #'@export
-#' #'
-#' #'@examples
-#' #'
-#' #' \dontrun{
-#' #' fm_groups <- species_mix_estimate_groups(sam_form, sp_form, data, distribution = 'bernoulli', n_mixtures=1:10)
-#' #'}
-#' "species_mix_estimate_groups" <- function(archetype_formula = NULL, species_formula = ~1,
-#'                                           data, n_mixtures = 1:10, distribution="bernoulli",
-#'                                           offset=NULL, weights=NULL, bb_weights=NULL,
-#'                                           control=NULL, inits=NULL,
-#'                                           standardise = TRUE, titbits = TRUE, cores = 1){
-#'
-#'   out <- surveillance::plapply(n_mixtures, apply_species_mix,
-#'                                archetype_formula, species_formula, data, distribution, offset,
-#'                                weights, bb_weights, control, inits, standardise, titbits,
-#'                                .parallel = cores, .verbose = FALSE)
-#'   aic <- rep(0,length(n_mixtures))
-#'   bic <- rep(0,length(n_mixtures))
-#'   fm <- list()
-#'   for(i in seq_along(n_mixtures))
-#'     if(!is.atomic(out[[i]])){
-#'       aic[i] <- out[[i]]$aic
-#'       bic[i] <- out[[i]]$bic
-#'       fm[[i]] <- list(logl=out[[i]]$logl,coef=out[[i]]$coef,tau=out[[i]]$taus,pi=out[[i]]$pi)#,covar=out[[i]]$covar)
-#'     }
-#'   return(list(aic=aic,bic=bic,fm=fm))
-#' }
-#'
+##### S3 class SAM functions #####
+#' @rdname species_mix
+#' @export
+
+"AIC.species_mix" <- function (object, ..., k = 2){
+  p <- length(unlist(object$coefs))
+  if (is.null(k))
+    k <- 2
+  star.ic <- -2 * object$logl + k * p
+  return(star.ic)
+}
 
 #' @rdname species_mix
-#'
 #' @export
-#'
+
+"BIC.species_mix" <-  function (object, ...){
+  p <- length(unlist(object$coefs))
+  k <- log(object$n)
+  star.ic <- -2 * object$logl + k * p
+  return(star.ic)
+}
+
+
+#' @rdname species_mix
+#' @export
+
 "coef.species_mix" <- function (object, ...){
   res <- list()
   res$alpha <- object$coefs$alpha
@@ -715,9 +783,7 @@
 }
 
 #'@rdname species_mix
-#'
 #'@export
-#'
 #'@examples
 #'
 #'#Print information about a species_mix model
@@ -730,25 +796,6 @@
   print(x$pi)
   cat("\nCoefficents\n")
   print(x$coef)
-  # if(x$dist %in% c('negative_binomial','gaussian'))
-  # cat("\n Probabilities\n")
-  # print(x$taus)
-}
-
-"print_starting_values" <-  function (S,G,np,n,
-                                      disty,
-                                      alpha,
-                                      beta,
-                                      eta,
-                                      disp){
-  cat(S, "species.\n")
-  cat(G, "groups.\n")
-  cat(np, "coefs.\n")
-  cat(n,"sites.\n")
-  cat("starting species intercepts:\n",alpha,"\n")
-  cat("starting archetype parameters:\n",beta,"\n")
-  cat("starting archetype membership:\n",additive_logistic(eta),"\n")
-  cat("starting species specific dispersion parameters:\n",disp,"\n")
 
 }
 
@@ -974,25 +1021,6 @@
 
 #' @rdname species_mix
 #' @export
-"AIC.species_mix" <- function (object, ..., k = 2){
-  p <- length(unlist(object$coefs))
-  if (is.null(k))
-    k <- 2
-  star.ic <- -2 * object$logl + k * p
-  return(star.ic)
-}
-
-#' @rdname species_mix
-#' @export
-"BIC.species_mix" <-  function (object, ...){
-    p <- length(unlist(object$coefs))
-    k <- log(object$n)
-    star.ic <- -2 * object$logl + k * p
-    return(star.ic)
-  }
-
-#' @rdname species_mix
-#' @export
 "summary.species_mix" <-function (object, ...){
     if (is.null(object$vcov)) {
       object$vcov <- matrix(NA, nrow = length(unlist(object$coef)),
@@ -1199,188 +1227,6 @@
   gc()
   return(ret)
 }
-
-sam_internal_pred <- function(alpha, beta, taus, G, S, X, offset = NULL, family){
-
-  if (family == "bernoulli") link.fun <- make.link("logit")
-  if (family %in% c("negative_binomial","poisson","ippm")) link.fun <- make.link("log")
-  if (family == "gaussian")link.fun <- make.link("identity")
-  if (is.null(offset)) offset <- rep(0, nrow(X))
-
-  outpred_arch <- matrix(NA, dim(X)[1], G)
-  colnames(outpred_arch) <- paste("G", 1:G, sep = ".")
-
-  for (g in seq_len(G)) {
-    s.outpred <- matrix(NA, dim(X)[1], length(alpha))
-    for (s in seq_len(S)) {
-      lp <- as.numeric(X%*%c(alpha[s],beta[g, ]) + offset)
-      s.outpred[, s] <- link.fun$linkinv(lp)
-    }
-
-    if(family == "bernoulli" )
-      outpred_arch[, g] <- apply(s.outpred*rep(taus[, g],each = dim(X)[1]), 1, sum)/sum(taus[, g])
-    else
-      outpred_arch[, g] <- apply(s.outpred*rep(taus[, g],each = dim(X)[1]), 1, mean)/sum(taus[, g])
-  }
-
-  return(outpred_arch)
-}
-
-"predict2.species_mix" <- function (object, newdata=NULL, predict_species=FALSE, ...){
-
-  family <- object$dist
-  estimate_variance <- TRUE
-  mixture.model <- object
-
-  if (family == "bernoulli") link.fun <- make.link("logit")
-  if (family %in% c("negative_binomial","poisson","ippm")) link.fun <- make.link("log")
-  if (family == "gaussian")link.fun <- make.link("identity")
-  if(is.null(newdata)) newdata <- as.data.frame(object$titbits$X[,-1])
-  if(ncol(newdata) != ncol(coefficients(object)$beta)) stop("Number of coefficients does not match the number of predictors in the new observations - double check you're not including an intercept.")
-
-    G <- mixture.model$G
-    S <- mixture.model$S
-    covar <- mixture.model$vcov
-    if(is.null(covar)){
-      estimate_variance <- FALSE
-      message(' please estimate vcov matrix and \n append to model with "mod$vcov <- vcov(mod)"\n to get an estimate of uncertainty in predictions.\n')
-    }
-    alphas <- mixture.model$coefs$alpha
-    betas <- mixture.model$coefs$beta
-    model.fm <- as.formula(mixture.model$titbits$archetype_formula)
-    model.fm[[2]] <- NULL
-    X <- model.matrix(model.fm, newdata)
-    offset <- model.frame(model.fm, data = newdata)
-    offset <- model.offset(offset)
-    if (is.null(offset))
-      offset <- rep(0, nrow(X))
-    outvar_arch <- matrix(NA, dim(X)[1], G)
-    outpred_arch <- matrix(NA, dim(X)[1], G)
-    outvar_spp <- array(0,dim=c(dim(X)[1], G, S))
-    outpred_spp <- array(0,dim=c(dim(X)[1], G, S))
-    colnames(outpred_arch) <- colnames(outvar_arch) <- paste("G", 1:G, sep = ".")
-    # colnames(outpred_spp) <- colnames(outvar_spp) <- paste("spp", 1:S, sep = ".")
-
-    for (g in seq_len(G)) {
-      s.outvar <- matrix(NA, dim(X)[1], length(alphas))
-      s.outpred <- matrix(NA, dim(X)[1], length(alphas))
-      for (s in seq_len(S)) {
-        lp <- as.numeric(X%*%c(alphas[s],betas[g, ]) + offset)
-        s.outpred[, s] <- link.fun$linkinv(lp)
-        if(estimate_variance){
-          if (family == "bernoulli") dhdB <- ((exp(lp)/(1 + exp(lp))) * X) - ((exp(lp)^2/((1 + exp(lp))^2)) * X)
-          if (family %in% c("negative_binomial","poisson","ippm")) dhdB <- exp(lp) * X
-          if (family == "gaussian") dhdB <- lp * X
-          c2 <- covar[c(s,seq(g + S, G * (dim(X)[2] - 1) + S, G)),
-                      c(s,seq(g + S, G * (dim(X)[2] - 1) + S, G))]
-          for (k in 1:dim(X)[1]) {
-              s.outvar[k, s] <- (dhdB[k, ] %*% c2) %*% (dhdB[k, ])
-          }
-        }
-      }
-
-      # predict the species specific responses
-      if(predict_species){
-      outpred_spp[,g,] <- matrix(mixture.model$taus[,g],
-                                          nrow(newdata),S,byrow=T)*s.outpred
-      outvar_spp[,g,] <- matrix(mixture.model$taus[,g],
-                                        nrow(newdata),S,byrow=T)*s.outvar
-      }
-      # predict the archetype species responses
-      if(family == "bernoulli" )outpred_arch[, g] <- apply(s.outpred * rep(mixture.model$taus[, g], each = dim(X)[1]),
-                                 1, sum)/sum(mixture.model$taus[, g])
-      else outpred_arch[, g] <- apply(s.outpred * rep(mixture.model$taus[, g], each = dim(X)[1]),
-                            1, mean)/sum(mixture.model$taus[, g])
-      outvar_arch[, g] <- apply(s.outvar * rep(mixture.model$taus[, g], each = dim(X)[1]),
-                                1, mean)/sum(mixture.model$taus[, g])
-      }
-  if(predict_species)return(list(fit = outpred_arch,
-              se.fit = sqrt(outvar_arch),
-              fit_spp = apply(outpred_spp,c(1,3),sum),
-              se.fit_spp = apply(outvar_spp,c(1,3),mean)))
-  if(!predict_species)return(list(fit = outpred_arch,
-                                   se.fit = sqrt(outvar_arch)))
-}
-
-#' @rdname species_mix
-#' @export
-
-"species_mix_bootstrap" <-function (object, nboot=1000, type="BayesBoot", mc.cores=1,
-                                    quiet=FALSE, orderSamps=FALSE, MLstart=TRUE){
-  if (nboot < 1)
-    stop( "No Boostrap samples requested.  Please set nboot to something > 1.")
-  if( ! type %in% c("BayesBoot","SimpleBoot"))
-    stop( "Unknown boostrap type, choices are BayesBoot and SimpleBoot.")
-  n.reorder <- 0
-  object$titbits$control$optimise <- TRUE #just in case it was turned off
-  if(object$titbits$distribution=='ippm')
-    stop('IPPM vcov matrix needs to estimated using FiniteDifference method.\n')
-
-  if( !quiet){
-    chars <- c("><(('> ","_@_'' ","@(*O*)@ ")
-    pb <- txtProgressBar(min = 1, max = nboot, style = 3, char = chars[sample(length(chars),1)])
-    }
-
-  if( type == "SimpleBoot"){
-    all.wts <- matrix( sample( 1:object$S, nboot*object$S, replace=TRUE), nrow=nboot, ncol=object$S)
-    tmp <- apply( all.wts, 1, table)
-    all.wts <- matrix( 0, nrow=nboot, ncol=object$S)
-    for( ii in seq_along( tmp))
-      all.wts[ii, as.numeric( names( tmp[[ii]]))] <- tmp[[ii]]
-  }
-  if( type == "BayesBoot")
-    all.wts <- object$S * gtools::rdirichlet( nboot, rep( 1, object$S))
-  if(MLstart)
-    my.inits <- object$coef
-  else{
-    my.inits <- "random"
-    orderSamps <- TRUE
-  }
-
-  tmpOldQuiet <- object$titbits$control$quiet
-  object$titbits$control$quiet <- TRUE
-
-  my.fun <- function(dummy){
-    if( !quiet) setTxtProgressBar(pb, dummy)
-    disty_cases <- c("bernoulli", "poisson", "ippm", "negative_binomial", "tweedie", "gaussian")
-    disty <- get_distribution_sam(disty_cases, object$dist)
-    dumbOut <- capture.output(
-      samp.object <- species_mix.fit(y=object$titbits$Y,
-                                     X=object$titbits$X,
-                                     offset = object$titbits$offset,
-                                     spp_weights = all.wts[dummy,,drop=TRUE],
-                                     site_spp_weights = object$titbits$site_spp_weights,
-                                     G = object$G,
-                                     S = object$S,
-                                     y_is_na = object$titbits$y_is_na,
-                                     disty = disty,
-                                     control = object$titbits$control,
-                                     inits = my.inits))
-    if( orderSamps)
-      samp.object <- orderPost( samp.object, object)
-    return( unlist( samp.object$coef))
-  }
-
-  flag <- TRUE
-  if( Sys.info()['sysname'] == "Windows" | mc.cores==1){
-    boot.estis <- matrix(NA, nrow = nboot, ncol = length(unlist(object$coef)))
-    for (ii in 1:nboot) {
-      if( !quiet)
-        setTxtProgressBar(pb, ii)
-      boot.estis[ii, ] <- my.fun( ii)
-    }
-    flag <- FALSE
-  }
-
-  if( flag){
-    tmp <- surveillance::plapply(seq_len(nboot), my.fun, .parallel = mc.cores)
-    boot.estis <- do.call( "rbind", tmp)
-  }
-  object$titbits$control$quiet <- tmpOldQuiet
-  class( boot.estis) <- "species_mix_bootstrap"
-  return( boot.estis)
-}
-
 
 #' @rdname species_mix
 #' @export
@@ -2768,6 +2614,24 @@ starting values;\n starting values are generated using ',control$init_method,
 }
 
 
+"print_starting_values" <-  function (S,G,np,n,
+                                      disty,
+                                      alpha,
+                                      beta,
+                                      eta,
+                                      disp){
+  cat(S, "species.\n")
+  cat(G, "groups.\n")
+  cat(np, "coefs.\n")
+  cat(n,"sites.\n")
+  cat("starting species intercepts:\n",alpha,"\n")
+  cat("starting archetype parameters:\n",beta,"\n")
+  cat("starting archetype membership:\n",additive_logistic(eta),"\n")
+  cat("starting species specific dispersion parameters:\n",disp,"\n")
+
+}
+
+
 
 "reltol_fun" <- function(logl_n1, logl_n){
   return(abs(logl_n1 - logl_n) > (abs(logl_n1 - logl_n) / abs(logl_n)))
@@ -2786,6 +2650,33 @@ starting values;\n starting values are generated using ',control$init_method,
                   if(disty %in% c(4,6)) return(list(alpha,beta,disp))
                   else return(list(alpha,beta))
 }
+
+"sam_internal_pred" <- function(alpha, beta, taus, G, S, X, offset = NULL, family){
+
+  if (family == "bernoulli") link.fun <- make.link("logit")
+  if (family %in% c("negative_binomial","poisson","ippm")) link.fun <- make.link("log")
+  if (family == "gaussian")link.fun <- make.link("identity")
+  if (is.null(offset)) offset <- rep(0, nrow(X))
+
+  outpred_arch <- matrix(NA, dim(X)[1], G)
+  colnames(outpred_arch) <- paste("G", 1:G, sep = ".")
+
+  for (g in seq_len(G)) {
+    s.outpred <- matrix(NA, dim(X)[1], length(alpha))
+    for (s in seq_len(S)) {
+      lp <- as.numeric(X%*%c(alpha[s],beta[g, ]) + offset)
+      s.outpred[, s] <- link.fun$linkinv(lp)
+    }
+
+    if(family == "bernoulli" )
+      outpred_arch[, g] <- apply(s.outpred*rep(taus[, g],each = dim(X)[1]), 1, sum)/sum(taus[, g])
+    else
+      outpred_arch[, g] <- apply(s.outpred*rep(taus[, g],each = dim(X)[1]), 1, mean)/sum(taus[, g])
+  }
+
+  return(outpred_arch)
+}
+
 
 "setup_inits_sam" <- function(inits, S, G, np, disty, return_list=TRUE){
   if(is.null(inits))res<-NULL

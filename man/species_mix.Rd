@@ -2,19 +2,19 @@
 % Please edit documentation in R/species_mix-class.R
 \name{species_mix}
 \alias{species_mix}
+\alias{species_mix_bootstrap}
 \alias{species_mix.fit}
 \alias{species_mix.multifit}
 \alias{control}
 \alias{species_mix.control}
 \alias{simulate_species_mix_data}
+\alias{AIC.species_mix}
+\alias{BIC.species_mix}
 \alias{coef.species_mix}
 \alias{print.species_mix}
 \alias{vcov.species_mix}
-\alias{AIC.species_mix}
-\alias{BIC.species_mix}
 \alias{summary.species_mix}
 \alias{predict.species_mix}
-\alias{species_mix_bootstrap}
 \alias{species_mix_boot_parametric}
 \title{species_mix objects}
 \usage{
@@ -23,6 +23,9 @@ species_mix(archetype_formula = NULL,
   distribution = "bernoulli", offset = NULL, weights = NULL,
   bb_weights = NULL, control = NULL, inits = NULL,
   standardise = FALSE, titbits = TRUE)
+
+species_mix_bootstrap(object, nboot = 1000, type = "BayesBoot",
+  mc.cores = 1, quiet = FALSE, orderSamps = FALSE, MLstart = TRUE)
 
 species_mix.fit(y, X, G, S, spp_weights, site_spp_weights, offset, y_is_na,
   disty, control, inits = NULL)
@@ -48,6 +51,10 @@ species_mix.control(maxit = 1000, quiet = FALSE, trace = 1,
 simulate_species_mix_data(archetype_formula, species_formula, dat, theta,
   distribution = "bernoulli")
 
+\method{AIC}{species_mix}(object, ..., k = 2)
+
+\method{BIC}{species_mix}(object, ...)
+
 \method{coef}{species_mix}(object, ...)
 
 \method{print}{species_mix}(x, ...)
@@ -56,17 +63,10 @@ simulate_species_mix_data(archetype_formula, species_formula, dat, theta,
   method = "FiniteDifference", nboot = 10, mc.cores = 1,
   D.accuracy = 2)
 
-\method{AIC}{species_mix}(object, ..., k = 2)
-
-\method{BIC}{species_mix}(object, ...)
-
 \method{summary}{species_mix}(object, ...)
 
 \method{predict}{species_mix}(object, object2 = NULL, newdata = NULL,
   offset = NULL, nboot = 0, alpha = 0.95, mc.cores = 1, ...)
-
-species_mix_bootstrap(object, nboot = 1000, type = "BayesBoot",
-  mc.cores = 1, quiet = FALSE, orderSamps = FALSE, MLstart = TRUE)
 
 species_mix_boot_parametric(fm, mf, nboot)
 }
@@ -128,6 +128,12 @@ minimum you will need pis (additive_logitic transformed), alpha
 
 \item{titbits}{either a boolean or a vector of characters. If TRUE (default for species_mix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regimix(qv) and predict.regimix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for species_mix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "offset" for the offset in the model, "site_spp_weights" for the model weights, "archetype_formula" for the formula for the SAMs, "species_formula" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "dist" for the conditional distribution of the species data. Care needs to be taken when using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory.}
 
+\item{object}{is a matrix model returned from the species_mix model.}
+
+\item{mc.cores}{for species_mix.multifit only. The number of cores to spread the re-fitting over.}
+
+\item{quiet}{Should any reporting be performed? Default is FALSE, for reporting.}
+
 \item{y}{is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.}
 
 \item{X}{is a design matrix for the archetype_formula dimension n_sites * n_covariates.}
@@ -146,11 +152,7 @@ minimum you will need pis (additive_logitic transformed), alpha
 
 \item{nstart}{for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
-\item{mc.cores}{for species_mix.multifit only. The number of cores to spread the re-fitting over.}
-
 \item{maxit}{Maximum number of evaluations of the objective function allowed. Defaults to 500.}
-
-\item{quiet}{Should any reporting be performed? Default is FALSE, for reporting.}
 
 \item{trace}{int 1=model will report parameter estimates and loglikelihood at each iteration. 0=quiet.}
 
@@ -166,8 +168,6 @@ minimum you will need pis (additive_logitic transformed), alpha
 
 \item{theta}{coefficents for each species archetype. Matrix of G x number of
 parameters. Each row is a different species archetype.}
-
-\item{object}{is a matrix model returned from the species_mix model.}
 
 \item{newdata}{a matrix of new observations for prediction.}
 
