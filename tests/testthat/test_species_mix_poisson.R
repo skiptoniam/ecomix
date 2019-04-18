@@ -33,10 +33,10 @@ testthat::test_that('species mix poisson', {
   testthat::expect_length(do.call(cbind,fm_poissonint)[1,],S)
 
   # test that the starting values work.
-  testthat::expect_length(tmp <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control),8)
+  testthat::expect_length(tmp <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control),9)
 
   #get the taus
-  starting_values <- ecomix:::initiate_fit_sam(y, X, site_spp_wts, offset, y_is_na, G, S, disty, control)
+  starting_values <- ecomix:::initiate_fit_sam(y, X,spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control)
   fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,disp=starting_values$disp)
   first_fit <- list(x = X, y = y, weights=site_spp_wts, offset=offset)
 
@@ -44,7 +44,7 @@ testthat::test_that('species mix poisson', {
   logls <- ecomix:::get_logls_sam(first_fit, fits, spp_wts, G, S, disty)
   pis <- rep(1/G, G)
   taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
-  taus <- ecomix:::skrink_taus(taus, max_tau=1/G + 0.1, G)
+  taus <- ecomix:::shrink_taus(taus, max_tau=1/G + 0.1, G)
 
   ## get to this in a bit
   gg <- 1
@@ -52,8 +52,8 @@ testthat::test_that('species mix poisson', {
 
   # ## now let's try and fit the optimisation
   sv <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control)
-  tmp <- ecomix:::sam_optimise(y,X,offset,spp_wts,site_spp_wts, y_is_na, S, G, nrow(y), disty, start_vals = sv, control)
-  testthat::expect_length(tmp,16)
+  tmp <- ecomix:::sam_optimise(y,X,offset,spp_wts,site_spp_wts, y_is_na, S, G, disty, start_vals = sv, control)
+  testthat::expect_length(tmp,17)
 
 
   set.seed(42)

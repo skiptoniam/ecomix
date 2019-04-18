@@ -23,7 +23,7 @@ testthat::test_that('species mix generic', {
   nP <- ncol(X[,-1])
   control <- species_mix.control()
 
-  # test a new glmnet function bernoulli
+  # test a new glm function bernoulli
   ss <- 1
   disty <- 1
   fm1 <- ecomix:::apply_glm_sam_inits(ss, y, X, site_spp_weights, offset, y_is_na, disty)
@@ -73,37 +73,6 @@ testthat::test_that('species mix generic', {
   disp <- unlist(lapply(fm_pois, `[[`, 3))
   testthat::expect_true(all(is.na(disp)))
 
-  ## negative binomial
-  simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="negative_binomial")
-
-  y <- simulated_data$species_data
-  X <- simulated_data$covariate_data
-  offset <- rep(0,nrow(y))
-  # weights <- rep(1,nrow(y))
-  spp_weights <- rep(1,ncol(y))
-  site_spp_weights <- matrix(1,nrow(y),ncol(y))
-  y_is_na <- matrix(FALSE,nrow(y),ncol(y))
-  G <- length(simulated_data$pi)
-  S <- length(simulated_data$sp.int)
-  nP <- ncol(X[,-1])
-  control <- species_mix.control()
-
-  ss <- 1
-  disty <- 4
-  fm1 <- ecomix:::apply_glm_sam_inits(ss, y, X, site_spp_weights, offset, y_is_na, disty)
-  testthat::expect_is(fm1,'list')
-  testthat::expect_length(fm1,3)
-  #
-  fm_nb <- surveillance::plapply(seq_len(S), ecomix:::apply_glm_sam_inits, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
-  #
-  alpha <- lapply(fm_nb, `[[`, 1)
-  testthat::expect_length(unlist(alpha),S)
-
-  beta <- lapply(fm_nb, `[[`, 2)
-  testthat::expect_length(do.call(rbind, beta),S*nP)
-
-  disp <- unlist(lapply(fm_nb, `[[`, 3))
-  testthat::expect_length(disp,S)
 
 })
 
@@ -206,32 +175,32 @@ testthat::test_that('testing species mix S3 class functions', {
 })
 
 
-testthat::test_that('species mix generic vcov functions', {
-
-  # build and test a single model.
-  # estimate variance-covariance matrix
-  library(ecomix)
-  set.seed(42)
-  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:100),collapse = ','),")~1+x1+x2"))
-  theta <- matrix(c(-2.9,1.6,0.5,1,-0.9,1,.9,2.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
-  dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
-  dat[,-1] <- scale(dat[,-1])
-  simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="bernoulli")
-  model_data <- make_mixture_data(species_data = simulated_data$species_data,
-                                  covariate_data = simulated_data$covariate_data[,-1])
-  fm1 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'bernoulli', n_mixtures=4)
-
-  vcv_mat <- vcov(object = fm1)
-  testthat::expect_equal(nrow(vcv_mat),nrow(vcv_mat))
-  testthat::expect_is(vcv_mat,'matrix')
-  testthat::expect_true(all(is.finite(sqrt(diag(vcv_mat)))))
-
-  vcv_mat_bb <- vcov(object = fm1,method = 'BayesBoot', nboot = 100)
-  testthat::expect_equal(nrow(vcv_mat),nrow(vcv_mat))
-  testthat::expect_is(vcv_mat_bb,'matrix')
-  testthat::expect_true(all(is.finite(sqrt(diag(vcv_mat_bb)))))
-
-})
+# testthat::test_that('species mix generic vcov functions', {
+#
+#   # build and test a single model.
+#   # estimate variance-covariance matrix
+#   library(ecomix)
+#   set.seed(42)
+#   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:100),collapse = ','),")~1+x1+x2"))
+#   theta <- matrix(c(-2.9,1.6,0.5,1,-0.9,1,.9,2.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
+#   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
+#   dat[,-1] <- scale(dat[,-1])
+#   simulated_data <- simulate_species_mix_data(sam_form,~1,dat,theta,dist="bernoulli")
+#   model_data <- make_mixture_data(species_data = simulated_data$species_data,
+#                                   covariate_data = simulated_data$covariate_data[,-1])
+#   fm1 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'bernoulli', n_mixtures=4)
+#
+#   vcv_mat <- vcov(object = fm1)
+#   testthat::expect_equal(nrow(vcv_mat),nrow(vcv_mat))
+#   testthat::expect_is(vcv_mat,'matrix')
+#   testthat::expect_true(all(is.finite(sqrt(diag(vcv_mat)))))
+#
+#   vcv_mat_bb <- vcov(object = fm1,method = 'BayesBoot', nboot = 100)
+#   testthat::expect_equal(nrow(vcv_mat),nrow(vcv_mat))
+#   testthat::expect_is(vcv_mat_bb,'matrix')
+#   testthat::expect_true(all(is.finite(sqrt(diag(vcv_mat_bb)))))
+#
+# })
 
 testthat::test_that('species mix predict functions', {
 
@@ -294,7 +263,7 @@ testthat::test_that('species mix predict functions', {
   preds8 <- predict(fm4, newobs = dat2)
   testthat::expect_is(preds8,'list')
 
-  testthat::expect_error(preds8 <- predict(fm4, newobs = data.frame(1,dat2)))
+  testthat::expect_error(preds8 <- predict('a'))
 
 })
 

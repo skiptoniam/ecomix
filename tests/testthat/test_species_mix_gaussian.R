@@ -18,8 +18,8 @@ testthat::test_that('species mix gaussian', {
   X <- simulated_data$covariate_data
   offset <- rep(0,nrow(y))
   weights <- rep(1,nrow(y))
-  spp_wts <- rep(1,ncol(y))
-  site_spp_wts <- matrix(1,nrow(y),ncol(y))
+  spp_weights <- rep(1,ncol(y))
+  site_spp_weights <- matrix(1,nrow(y),ncol(y))
   y_is_na <- matrix(FALSE,nrow(y),ncol(y))
   G <- length(simulated_data$pi)
   S <- length(simulated_data$sp.int)
@@ -29,32 +29,32 @@ testthat::test_that('species mix gaussian', {
   # test a single gaussian model
   i <- 1
   # for(i in 1:S)
-  testthat::expect_length(ecomix:::apply_glm_sam_inits(i, y, X, site_spp_wts, offset, y_is_na, disty),3)
-  fm_gaussianint <- surveillance::plapply(1:S, ecomix:::apply_glm_sam_inits,  y, X, site_spp_wts, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  testthat::expect_length(ecomix:::apply_glm_sam_inits(i, y, X, site_spp_weights, offset, y_is_na, disty),3)
+  fm_gaussianint <- surveillance::plapply(1:S, ecomix:::apply_glm_sam_inits,  y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
   testthat::expect_length(do.call(cbind,fm_gaussianint)[1,],S)
 
   # test that the starting values work.
-  # testthat::expect_length(tmp <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control),10)
+  # testthat::expect_length(tmp <- ecomix:::get_starting_values_sam(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control),10)
 
   #get the taus
-  starting_values <- ecomix:::initiate_fit_sam(y, X, site_spp_wts, offset, y_is_na, G, S, disty, control)
+  starting_values <- ecomix:::initiate_fit_sam(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
   fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,disp=starting_values$disp)
-  first_fit <- list(x = X, y = y, weights=site_spp_wts, offset=offset)
+  first_fit <- list(x = X, y = y, weights=site_spp_weights, offset=offset)
 
   # get the loglikelihood based on these values
-  logls <- ecomix:::get_logls_sam(first_fit, fits, spp_wts, G, S, disty)
+  logls <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
   pis <- rep(1/G, G)
   taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
-  taus <- ecomix:::skrink_taus(taus, max_tau=1/G + 0.1, G)
+  taus <- ecomix:::shrink_taus(taus, max_tau=1/G + 0.1, G)
 
   ## get to this in a bit
   gg <- 1
-  testthat::expect_length(ecomix:::apply_glm_group_tau_sam(gg, y, X, site_spp_wts, offset, y_is_na, disty, taus, fits, logls$fitted),2)
+  testthat::expect_length(ecomix:::apply_glm_group_tau_sam(gg, y, X, site_spp_weights, offset, y_is_na, disty, taus, fits, logls$fitted),2)
 
   # ## now let's try and fit the optimisation
-  sv <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control)
-  tmp <- ecomix:::sam_optimise(y,X,offset,spp_wts,site_spp_wts, y_is_na, S, G, nrow(y), disty, start_vals = sv, control)
-  testthat::expect_length(tmp,16)
+  sv <- ecomix:::get_starting_values_sam(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
+  tmp <- ecomix:::sam_optimise(y,X,offset,spp_weights,site_spp_weights, y_is_na, S, G, disty, start_vals = sv, control)
+  testthat::expect_length(tmp,17)
 
   set.seed(42)
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~1+x1+x2"))

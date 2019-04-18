@@ -19,14 +19,15 @@
 \alias{vcov.regional_mix}
 \title{regional_mix objects}
 \usage{
-regional_mix(rcp_formula = NULL, species_formula = NULL, data, nRCP = 3,
-  distribution = "bernoulli", offset = NULL, weights = NULL,
-  control = list(), inits = "random2", titbits = TRUE, power = 1.6)
+regional_mix(rcp_formula = NULL, species_formula = NULL, data,
+  nRCP = 3, distribution = "bernoulli", offset = NULL,
+  weights = NULL, control = list(), inits = "random2",
+  titbits = TRUE, power = 1.6)
 
 regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
-  nRCP = 3, distribution = "bernoulli", offset = NULL, weights = NULL,
-  control = list(), inits = "random2", titbits = FALSE, power = 1.6,
-  nstart = 10, mc.cores = 1)
+  nRCP = 3, distribution = "bernoulli", offset = NULL,
+  weights = NULL, control = list(), inits = "random2",
+  titbits = FALSE, power = 1.6, nstart = 10, mc.cores = 1)
 
 \method{AIC}{regional_mix}(object, ..., k = 2)
 
@@ -35,28 +36,29 @@ regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
 \method{coef}{regional_mix}(object, ...)
 
 \method{plot}{regional_mix}(x, ..., type = "RQR", nsim = 100,
-  alpha.conf = c(0.9, 0.95, 0.99), quiet = FALSE, species = "AllSpecies",
-  fitted.scale = "response")
+  alpha.conf = c(0.9, 0.95, 0.99), quiet = FALSE,
+  species = "AllSpecies", fitted.scale = "response")
 
 \method{plot}{regional_mix_stab}(x, y, minWidth = 1, ncuts = 111,
   ylimmo = NULL, ...)
 
-\method{predict}{regional_mix}(object, object2 = NULL, ..., newdata = NULL,
-  nboot = 0, alpha = 0.95, mc.cores = 1)
+\method{predict}{regional_mix}(object, object2 = NULL, ...,
+  newdata = NULL, nboot = 0, alpha = 0.95, mc.cores = 1)
 
 \method{print}{regional_mix}(x, ...)
 
-regional_mix_boot(object, nboot = 1000, type = "BayesBoot", mc.cores = 1,
-  quiet = FALSE, orderSamps = FALSE, MLstart = TRUE)
+regional_mix_boot(object, nboot = 1000, type = "BayesBoot",
+  mc.cores = 1, quiet = FALSE, orderSamps = FALSE, MLstart = TRUE)
 
 regional_mix_bootParametric(fm, mf, nboot)
 
-\method{residuals}{regional_mix}(object, ..., type = "RQR", quiet = FALSE)
+\method{residuals}{regional_mix}(object, ..., type = "RQR",
+  quiet = FALSE)
 
 simulate_regional_mix_data(nRCP = 3, S = 20, n = 200, p.x = 3,
   p.w = 0, alpha = NULL, tau = NULL, beta = NULL, gamma = NULL,
-  logDisps = NULL, powers = NULL, X = NULL, W = NULL, offset = NULL,
-  dist = "bernoulli")
+  logDisps = NULL, powers = NULL, X = NULL, W = NULL,
+  offset = NULL, dist = "bernoulli")
 
 stability.regional_mix(model, oosSizeRange = NULL, times = model$n,
   mc.cores = 1, quiet = FALSE, doPlot = TRUE)
@@ -135,11 +137,12 @@ normal variates. Within a site they are likely to be correlated (as they share a
 \examples{
 \dontrun{
 simulated_data <- simulate_regional_mix_data() ## need to finishing generating this function.
-rcp_form <- as.formula(paste0("cbind(",paste(sort(sp_name),collapse = ','),")~1+x1+x2+x3"))
+rcp_form <- as.formula(paste0("cbind(",paste(colnames(simulated_data[,1:20]),collapse = ','),")~1+x1+x2+x3"))
 spp_form <- observations ~ 1 + w1 + w2
 data <- make_mixture_data(species_data = simulated_data$species_data,
-                                covariate_data = simulated_data$covariate_data[,-1])
-fm_regional_mix <- regional_mix(rcp_form,spp_form,data=data,distribution='bernoulli',n_mixtures=5)}
+                          covariate_data = simulated_data$covariate_data[,-1])
+fm_regional_mix <- regional_mix(rcp_form,spp_form,data=data,distribution='bernoulli',n_mixtures=5)
+}
 \dontrun{
 #generates synthetic data
 set.seed( 151)
