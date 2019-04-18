@@ -1,4 +1,4 @@
-##### Species mix functions to export #####
+##### Main species mix functions to export #####
 
 #' @title species_mix objects
 #' @rdname species_mix
@@ -360,7 +360,7 @@
     }
   }
 
-   s.means <- NULL
+  s.means <- NULL
   s.sds <- NULL
   if (standardise == TRUE) {
     stand.X <- standardise.X(X[, -1])
@@ -1169,7 +1169,7 @@
     tmp.grp <- tmp.grp^2
     tmp.grp <- sqrt(rowSums(tmp.grp)/(nboot - 1))
     tmp.grp <- matrix(tmp.grp, nrow = nrow(X), ncol = G)
-    bPreds$ses <- tmp
+    bPreds$ses <- tmp.grp
     colnames(bPreds$fit) <- colnames(bPreds$ses) <- object$names$SAMs
     tmp.fun <- function(x) return(quantile(bootPreds[x, ],
                                            probs = c(0, alpha) + (1 - alpha)/2, na.rm = TRUE))
