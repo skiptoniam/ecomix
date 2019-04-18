@@ -7,14 +7,15 @@
 #' models (SAMs).
 #' @details species_mix is used to fit mixtures of glms to multivariate
 #' species data. The function uses BFGS to optimise the mixture likelihood.
-#' There is the option to use EM algorithm to get appropriate starting parameters.
-#' `species_mix` acts as a wrapper for fitmix.cpp that allows for easier data
-#' input. The data frames are merged into the appropriate format for the use
-#' in fitmix.cpp. Minima is found using vmmin (BFGS). Currently 'bernoulli',
+#' There is the option to use EM algorithm to get appropriate starting
+#' parameters. `species_mix` acts as a wrapper for species_mix.fit
+#' that allows for easier data input. The data frames are merged into
+#' the appropriate format for the use in species_mix.fit.
+#' Minima is found using vmmin (BFGS). Currently 'bernoulli',
 #' 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative_binomial'
-#'  and 'tweedie' distributions can be fitted using the species_mix function.
-#' @param archetype_formula an object of class "formula" (or an object that can be
-#' coerced to that class). The response variable (left hand side of the
+#'  and 'normal' distributions can be fitted using the species_mix function.
+#' @param archetype_formula an object of class "formula" (or an object that can
+#' be coerced to that class). The response variable (left hand side of the
 #' formula) needs to be either 'occurrence', 'abundance',
 #' 'biomass' or 'quantity' data. The type of reponse data will help specify
 #' the type of error distribution to be used. The dependent variables
@@ -24,31 +25,31 @@
 #' cbind(spp1,spp2,spp3)~1+temperature+rainfall
 #' @param species_formula an object of class "formula" (or an object that can be
 #' coerced to that class). The right hand side of this formula specifies the
-#' dependence of the species"'" data on covariates (typically different covariates
-#' to \code{archetype_formula} to avoid confusing confounding). Current the formula
-#' is set at ~ 1 by default for species-specific intercepts for the archetype models.
-#' If you include a species specific formula which has more than an intercept you
-#' will be fitting a partial species archetype model which has species
-#' specific covariates and archetype specific covariates.
+#' dependence of the species"'" data on covariates (typically different
+#' covariates to \code{archetype_formula} to avoid confusing confounding).
+#' Current the formula is set at ~ 1 by default for species-specific intercepts
+#' for the archetype models. If you include a species specific formula which has
+#' more than an intercept you will be fitting a partial species archetype model
+#' which has species specific covariates and archetype specific covariates.
 #' @param data a matrix of dataframe which contains the 'species_data'
 #' matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
 #' const, temperature, rainfall. dims of matirx should be
 #' nsites*(nspecies+const+covariates).
 #' @param n_mixtures The number of mixing components (groups) to fit.
 #' @param distribution The family of statistical distribution to use within
-#' the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial", "tweedie"
-#' and "gaussian" distributions are possible and applicable to specific types
-#' of data.
-#' @param offset a numeric vector of length nrow(data) (n sites) that is included into
-#' the model as an offset. It is included into the conditional part of the model
-#' where conditioning is performed on the SAM.
-#' @param weights a numeric vector of length ncol(Y) (n species) that is used as weights
-#' in the log-likelihood calculations. If NULL (default) then all weights are
-#' assumed to be identically 1. Because we are estimating the log-likelihood
-#' over species (rather than sites), the weights should be a vector n species
-#' long.
-#' @param bb_weights a numeric vector of n species long. This is used for undertaking
-#' a Bayesian Bootstrap. See 'vcov.species_mix' for more details.
+#' the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
+#' "negative_binomial" and "gaussian" distributions are possible and applicable
+#' to specific types of data.
+#' @param offset a numeric vector of length nrow(data) (n sites) that is
+#' included into the model as an offset. It is included into the conditional
+#' part of the model where conditioning is performed on the SAM.
+#' @param weights a numeric vector of length ncol(Y) (n species) that is used
+#' as weights in the log-likelihood calculations. If NULL (default) then all
+#' weights are assumed to be identically 1. Because we are estimating the
+#' log-likelihood over species (rather than sites), the weights should be a
+#' vector n species long.
+#' @param bb_weights a numeric vector of n species long. This is used for
+#' undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.
 #' @param control a list of control parameters for optimisation and calculation.
 #' See details. From \code{species_mix.control} for details on optimistaion
 #' parameters.
@@ -57,7 +58,22 @@
 #' minimum you will need pis (additive_logitic transformed), alpha
 #' (intercepts) and beta (mixing coefs).
 #' @param standardise Booliean. If TRUE, standarise the covariate data.
-#' @param titbits either a boolean or a vector of characters. If TRUE (default for species_mix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regimix(qv) and predict.regimix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for species_mix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "offset" for the offset in the model, "site_spp_weights" for the model weights, "archetype_formula" for the formula for the SAMs, "species_formula" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "dist" for the conditional distribution of the species data. Care needs to be taken when using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory.
+#' @param titbits either a boolean or a vector of characters. If TRUE
+#' (default for species_mix(qv)), then some objects used in the estimation of
+#' the model"'"s parameters are returned in a list entitled "titbits" in the
+#' model object. Some functions, for example plot.species_mix(qv) and
+#' predict.species_mix(qv), will require some or all of these pieces of
+#' information. If titbits=FALSE (default for species_mix.multifit(qv)),
+#' then an empty list is returned. If a character vector, then just those
+#' objects are returned. Possible values are:"Y" for the outcome matrix, "X"
+#' for the model matrix for the SAM model, "offset" for the offset in the model,
+#' "site_spp_weights" for the model weights, "archetype_formula" for the formula
+#' for the SAMs, "species_formula" for the formula for the species-specific
+#' model, "control" for the control arguments used in model fitting, "dist" for
+#' the conditional distribution of the species data. Care needs to be taken when
+#' using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created
+#' for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then
+#' setting titbits=TRUE may give users problems with memory.
 #' @importFrom graphics abline hist legend lines matplot par plot points polygon rect
 #' @importFrom stats as.formula binomial cooks.distance cov cutree dbinom dist dnbinom dnorm dpois
 #' fitted gaussian glm hclust lm logLik model.matrix model.offset model.response
@@ -76,7 +92,7 @@
 #' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
 #' x2=stats::rnorm(100,0,2.5))
 #' dat[,-1] <- scale(dat[,-1])
-#' simulated_data <- simulate_species_mix_data(archetype_formula=sam_form,
+#' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
 #'  species_formula=sp_form, dat,theta,dist="bernoulli")
 #' data <- make_mixture_data(species_data = simulated_data$species_data,
 #'                           covariate_data = simulated_data$covariate_data[,-1])
@@ -209,88 +225,6 @@
   class(tmp) <- c("species_mix")
   return(tmp)
 }
-
-#' @rdname species_mix
-#' @name species_mix_bootstrap
-#' @export
-
-"species_mix_bootstrap" <-function (object, nboot=1000, type="BayesBoot", mc.cores=1,
-                                    quiet=FALSE, orderSamps=FALSE, MLstart=TRUE){
-  if (nboot < 1)
-    stop( "No Boostrap samples requested.  Please set nboot to something > 1.")
-  if( ! type %in% c("BayesBoot","SimpleBoot"))
-    stop( "Unknown boostrap type, choices are BayesBoot and SimpleBoot.")
-  n.reorder <- 0
-  object$titbits$control$optimise <- TRUE #just in case it was turned off
-  if(object$titbits$distribution=='ippm')
-    stop('IPPM vcov matrix needs to estimated using FiniteDifference method.\n')
-
-  if( !quiet){
-    chars <- c("><(('> ","_@_'' ")
-    pb <- txtProgressBar(min = 1, max = nboot, style = 3, char = chars[sample(length(chars),1)])
-  }
-
-  if( type == "SimpleBoot"){
-    all.wts <- matrix( sample( 1:object$S, nboot*object$S, replace=TRUE), nrow=nboot, ncol=object$S)
-    tmp <- apply( all.wts, 1, table)
-    all.wts <- matrix( 0, nrow=nboot, ncol=object$S)
-    for( ii in seq_along( tmp))
-      all.wts[ii, as.numeric( names( tmp[[ii]]))] <- tmp[[ii]]
-  }
-  if( type == "BayesBoot")
-    all.wts <- object$S * gtools::rdirichlet( nboot, rep( 1, object$S))
-  if(MLstart)
-    my.inits <- object$coef
-  else{
-    my.inits <- "random"
-    orderSamps <- TRUE
-  }
-
-  tmpOldQuiet <- object$titbits$control$quiet
-  object$titbits$control$quiet <- TRUE
-
-  my.fun <- function(dummy){
-    if( !quiet) setTxtProgressBar(pb, dummy)
-    disty_cases <- c("bernoulli", "poisson", "ippm", "negative_binomial", "tweedie", "gaussian")
-    disty <- get_distribution_sam(disty_cases, object$dist)
-    dumbOut <- capture.output(
-      samp.object <- species_mix.fit(y=object$titbits$Y,
-                                     X=object$titbits$X,
-                                     offset = object$titbits$offset,
-                                     spp_weights = all.wts[dummy,,drop=TRUE],
-                                     site_spp_weights = object$titbits$site_spp_weights,
-                                     G = object$G,
-                                     S = object$S,
-                                     y_is_na = object$titbits$y_is_na,
-                                     disty = disty,
-                                     control = object$titbits$control,
-                                     inits = my.inits))
-    if( orderSamps)
-      samp.object <- orderPost( samp.object, object)
-    return( unlist( samp.object$coef))
-  }
-
-  flag <- TRUE
-  if( Sys.info()['sysname'] == "Windows" | mc.cores==1){
-    boot.estis <- matrix(NA, nrow = nboot, ncol = length(unlist(object$coef)))
-    for (ii in 1:nboot) {
-      if( !quiet)
-        setTxtProgressBar(pb, ii)
-      boot.estis[ii, ] <- my.fun( ii)
-    }
-    flag <- FALSE
-  }
-
-  if( flag){
-    tmp <- surveillance::plapply(seq_len(nboot), my.fun, .parallel = mc.cores)
-    boot.estis <- do.call( "rbind", tmp)
-  }
-  object$titbits$control$quiet <- tmpOldQuiet
-  class( boot.estis) <- "species_mix_bootstrap"
-  return( boot.estis)
-}
-
-
 
 #'@rdname species_mix
 #'@name species_mix.fit
@@ -564,7 +498,88 @@
 }
 
 #' @rdname species_mix
-#' @name simulate_species_mix_data
+#' @name species_mix.bootstrap
+#' @export
+
+"species_mix.bootstrap" <-function (object, nboot=1000, type="BayesBoot", mc.cores=1,
+                                    quiet=FALSE, orderSamps=FALSE, MLstart=TRUE){
+  if (nboot < 1)
+    stop( "No Boostrap samples requested.  Please set nboot to something > 1.")
+  if( ! type %in% c("BayesBoot","SimpleBoot"))
+    stop( "Unknown boostrap type, choices are BayesBoot and SimpleBoot.")
+  n.reorder <- 0
+  object$titbits$control$optimise <- TRUE #just in case it was turned off
+  if(object$titbits$distribution=='ippm')
+    stop('IPPM vcov matrix needs to estimated using FiniteDifference method.\n')
+
+  if( !quiet){
+    chars <- c("><(('> ","_@_'' ")
+    pb <- txtProgressBar(min = 1, max = nboot, style = 3, char = chars[sample(length(chars),1)])
+  }
+
+  if( type == "SimpleBoot"){
+    all.wts <- matrix( sample( 1:object$S, nboot*object$S, replace=TRUE), nrow=nboot, ncol=object$S)
+    tmp <- apply( all.wts, 1, table)
+    all.wts <- matrix( 0, nrow=nboot, ncol=object$S)
+    for( ii in seq_along( tmp))
+      all.wts[ii, as.numeric( names( tmp[[ii]]))] <- tmp[[ii]]
+  }
+  if( type == "BayesBoot")
+    all.wts <- object$S * gtools::rdirichlet( nboot, rep( 1, object$S))
+  if(MLstart)
+    my.inits <- object$coef
+  else{
+    my.inits <- "random"
+    orderSamps <- TRUE
+  }
+
+  tmpOldQuiet <- object$titbits$control$quiet
+  object$titbits$control$quiet <- TRUE
+
+  my.fun <- function(dummy){
+    if( !quiet) setTxtProgressBar(pb, dummy)
+    disty_cases <- c("bernoulli", "poisson", "ippm", "negative_binomial", "tweedie", "gaussian")
+    disty <- get_distribution_sam(disty_cases, object$dist)
+    dumbOut <- capture.output(
+      samp.object <- species_mix.fit(y=object$titbits$Y,
+                                     X=object$titbits$X,
+                                     offset = object$titbits$offset,
+                                     spp_weights = all.wts[dummy,,drop=TRUE],
+                                     site_spp_weights = object$titbits$site_spp_weights,
+                                     G = object$G,
+                                     S = object$S,
+                                     y_is_na = object$titbits$y_is_na,
+                                     disty = disty,
+                                     control = object$titbits$control,
+                                     inits = my.inits))
+    if( orderSamps)
+      samp.object <- orderPost( samp.object, object)
+    return( unlist( samp.object$coef))
+  }
+
+  flag <- TRUE
+  if( Sys.info()['sysname'] == "Windows" | mc.cores==1){
+    boot.estis <- matrix(NA, nrow = nboot, ncol = length(unlist(object$coef)))
+    for (ii in 1:nboot) {
+      if( !quiet)
+        setTxtProgressBar(pb, ii)
+      boot.estis[ii, ] <- my.fun( ii)
+    }
+    flag <- FALSE
+  }
+
+  if( flag){
+    tmp <- surveillance::plapply(seq_len(nboot), my.fun, .parallel = mc.cores)
+    boot.estis <- do.call( "rbind", tmp)
+  }
+  object$titbits$control$quiet <- tmpOldQuiet
+  class( boot.estis) <- "species_mix.bootstrap"
+  return( boot.estis)
+}
+
+
+#' @rdname species_mix
+#' @name species_mix.simulate
 #' @param archtype_formula formula to simulate species_mix data, needs to have
 #' the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2
 #' @param species_formula formula to simulate species_mix species-specific
@@ -577,7 +592,8 @@
 #' @export
 #' @examples
 #' \dontrun{
-#' archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+#' archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',
+#' 1:20),collapse = ','),")~1+x1+x2"))
 #' theta <- matrix(c(-0.9,-0.6,0.5,
 #'                    1.0,-0.9,1.0,
 #'                    0.9,-0.9,2.9,
@@ -586,12 +602,12 @@
 #' dat <- data.frame(y=rep(1,100),
 #'                   x1=stats::runif(100,0,2.5),
 #'                   x2=stats::rnorm(100,0,2.5))
-#' simulated_data <- simulate_species_mix_data(archetype_formula,~1,
+#' simulated_data <- species_mix.simulate(archetype_formula,~1,
 #'                                             dat,theta,dist="bernoulli")
 #' }
 ## need to update this to take the new formula framework and simulate ippm data.
-"simulate_species_mix_data" <-  function (archetype_formula, species_formula,
-                                          dat, theta, distribution = "bernoulli"){
+"species_mix.simulate" <-  function(archetype_formula, species_formula,
+                                    dat, theta, distribution = "bernoulli"){
 
   if(distribution=='ippm'){
   message('Generating ippm data on a regular 100x100 grid')
@@ -1011,7 +1027,7 @@
     if( method %in% c( "BayesBoot","SimpleBoot")){
       object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
       if( is.null( object2))
-        coefMat <- species_mix_bootstrap(object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE, orderSamps=FALSE)
+        coefMat <- species_mix.bootstrap(object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE, orderSamps=FALSE)
       else
         coefMat <- object2
       vcov.mat <- cov( coefMat)
@@ -1084,7 +1100,7 @@
                                              nboot = my.nboot)
   } else {
     if( !object$titbits$control$quiet)
-      message("Using supplied species_mix_bootstrap object (non-parametric bootstrap)")
+      message("Using supplied species_mix.bootstrap object (non-parametric bootstrap)")
     allCoBoot <- as.matrix(object2)
     nboot <- nrow(object2)
   }
@@ -1226,24 +1242,6 @@
   else ret <- ptPreds
   gc()
   return(ret)
-}
-
-#' @rdname species_mix
-#' @export
-
-"species_mix_boot_parametric" <- function( fm, mf, nboot){
-  if( nboot > 0){
-    if( is.null( fm$vcov)){
-      message( "An estimate of the variance matrix for regression parameters is required. Please run fm$vcov <- vcov(), see ?vcov.regional_mix for help")
-      return( NULL)
-    }
-    allCoBoot <- my.rmvnorm( n=nboot, mean=as.numeric(unlist( fm$coefs)), sigma=fm$vcov, method='eigen')
-    return( allCoBoot)
-  }
-  else{
-    boot.estis <- matrix( unlist( fm$coef), nrow=1)
-    return( boot.estis)
-  }
 }
 
 ###### SAM internal functions for fitting ######
@@ -2348,6 +2346,26 @@ starting values;\n starting values are generated using ',control$init_method,
   gc()
   return(ret)
 }
+
+#' @rdname species_mix
+#' @export
+
+"species_mix_boot_parametric" <- function( fm, mf, nboot){
+  if( nboot > 0){
+    if( is.null( fm$vcov)){
+      message( "An estimate of the variance matrix for regression parameters is required. Please run fm$vcov <- vcov(), see ?vcov.regional_mix for help")
+      return( NULL)
+    }
+    allCoBoot <- my.rmvnorm( n=nboot, mean=as.numeric(unlist( fm$coefs)), sigma=fm$vcov, method='eigen')
+    return( allCoBoot)
+  }
+  else{
+    boot.estis <- matrix( unlist( fm$coef), nrow=1)
+    return( boot.estis)
+  }
+}
+
+
 
 "clean_ECM_output_one_group" <- function(em_fit, G, S, disty){
 

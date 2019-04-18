@@ -137,11 +137,12 @@ normal variates. Within a site they are likely to be correlated (as they share a
 \examples{
 \dontrun{
 simulated_data <- simulate_regional_mix_data() ## need to finishing generating this function.
-rcp_form <- as.formula(paste0("cbind(",paste(sort(sp_name),collapse = ','),")~1+x1+x2+x3"))
+rcp_form <- as.formula(paste0("cbind(",paste(colnames(simulated_data[,1:20]),collapse = ','),")~1+x1+x2+x3"))
 spp_form <- observations ~ 1 + w1 + w2
 data <- make_mixture_data(species_data = simulated_data$species_data,
-                                covariate_data = simulated_data$covariate_data[,-1])
-fm_regional_mix <- regional_mix(rcp_form,spp_form,data=data,distribution='bernoulli',n_mixtures=5)}
+                          covariate_data = simulated_data$covariate_data[,-1])
+fm_regional_mix <- regional_mix(rcp_form,spp_form,data=data,distribution='bernoulli',n_mixtures=5)
+}
 \dontrun{
 #generates synthetic data
 set.seed( 151)

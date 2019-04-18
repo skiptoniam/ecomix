@@ -1,3 +1,5 @@
+##### Main species mix functions to export #####
+
 #' @title regional_mix objects
 #' @rdname regional_mix
 #' @name regional_mix
@@ -25,11 +27,12 @@
 #' @examples
 #' \dontrun{
 #' simulated_data <- simulate_regional_mix_data() ## need to finishing generating this function.
-#' rcp_form <- as.formula(paste0("cbind(",paste(sort(sp_name),collapse = ','),")~1+x1+x2+x3"))
+#' rcp_form <- as.formula(paste0("cbind(",paste(colnames(simulated_data[,1:20]),collapse = ','),")~1+x1+x2+x3"))
 #' spp_form <- observations ~ 1 + w1 + w2
 #' data <- make_mixture_data(species_data = simulated_data$species_data,
-#'                                 covariate_data = simulated_data$covariate_data[,-1])
-#' fm_regional_mix <- regional_mix(rcp_form,spp_form,data=data,distribution='bernoulli',n_mixtures=5)}
+#'                           covariate_data = simulated_data$covariate_data[,-1])
+#' fm_regional_mix <- regional_mix(rcp_form,spp_form,data=data,distribution='bernoulli',n_mixtures=5)
+#' }
 "regional_mix" <- function (rcp_formula = NULL, species_formula = NULL, data,
                             nRCP = 3, distribution="bernoulli", offset=NULL,
                             weights=NULL, control = list(), inits="random2",
@@ -43,7 +46,8 @@
     rcp_formula <- as.formula( rcp_formula)
   else{
     if( !control$quiet)
-      message( "There is no RCP model!  Please provide a model (intercept at least) -- exitting now")
+      message( "There is no RCP model!  Please provide a model
+               (intercept at least) -- exitting now")
     return( NULL)
   }
   if( !is.null( species_formula))
@@ -84,14 +88,17 @@
   #get model wts (if not specified then it will be ones)
   wts <- get_wts_rcp( mf)
   #get distribution
-  disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie","gaussian")
+  disty.cases <- c("bernoulli","poisson","negative_binomial","tweedie",
+                   "gaussian")
   disty <- get_dist_rcp( disty.cases, distribution)
   #get power params for Tweedie
   power <- get_power_rcp( disty, power, S)
   #summarising data to console
-  print.data.summ( data, dat, S, rcp_formula, species_formula, disty.cases, disty, control$quiet)
+  print.data.summ( data, dat, S, rcp_formula, species_formula, disty.cases,
+                   disty, control$quiet)
 
-  tmp <- regional_mix.fit( outcomes, W, X, offy, wts, disty, nRCP, power, inits, control, nrow( X), S, p.x, p.w)
+  tmp <- regional_mix.fit( outcomes, W, X, offy, wts, disty, nRCP, power, inits,
+                           control, nrow( X), S, p.x, p.w)
 
   tmp$dist <- disty.cases[disty]
   #calculate the posterior probs
@@ -99,11 +106,13 @@
     tmp$postProbs <- calcPostProbs( tmp$pis, tmp$logCondDens)
   else
     tmp$postProbs <- rep( 1, nrow( X))
-  #Residuals --not calculating residuals here.  Need to call residuals.regional_mix
+  #Residuals --not calculating residuals here.
   #Information criteria
   tmp <- calcInfoCrit( tmp)
   #titbits object, if wanted/needed.
-  tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts, rcp_formula, species_formula, control, distribution, p.w=p.w, power)
+  tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts,
+                                  rcp_formula, species_formula, control,
+                                  distribution, p.w=p.w, power)
   tmp$titbits$disty <- disty
   #the last bit of the regional_mix object puzzle
   tmp$call <- call
@@ -256,6 +265,8 @@
 
     return(many.starts)
   }
+
+##### S3 Class exports #####
 
 #' @rdname regional_mix
 #' @export
