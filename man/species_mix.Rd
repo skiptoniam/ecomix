@@ -11,10 +11,11 @@
 \alias{AIC.species_mix}
 \alias{BIC.species_mix}
 \alias{coef.species_mix}
-\alias{print.species_mix}
-\alias{vcov.species_mix}
-\alias{summary.species_mix}
 \alias{predict.species_mix}
+\alias{print.species_mix}
+\alias{residuals.species_mix}
+\alias{summary.species_mix}
+\alias{vcov.species_mix}
 \alias{species_mix_boot_parametric}
 \title{species_mix objects}
 \usage{
@@ -57,16 +58,19 @@ species_mix.simulate(archetype_formula, species_formula, dat, theta,
 
 \method{coef}{species_mix}(object, ...)
 
+\method{predict}{species_mix}(object, object2 = NULL, newdata = NULL,
+  offset = NULL, nboot = 0, alpha = 0.95, mc.cores = 1, ...)
+
 \method{print}{species_mix}(x, ...)
+
+\method{residuals}{species_mix}(object, ..., type = "RQR",
+  quiet = FALSE)
+
+\method{summary}{species_mix}(object, ...)
 
 \method{vcov}{species_mix}(object, ..., object2 = NULL,
   method = "FiniteDifference", nboot = 10, mc.cores = 1,
   D.accuracy = 2)
-
-\method{summary}{species_mix}(object, ...)
-
-\method{predict}{species_mix}(object, object2 = NULL, newdata = NULL,
-  offset = NULL, nboot = 0, alpha = 0.95, mc.cores = 1, ...)
 
 species_mix_boot_parametric(fm, mf, nboot)
 }
@@ -208,6 +212,11 @@ responses, e.g: ~1}
 \description{
 Fits a finite mixture model to identify species archetype
 models (SAMs).
+
+The randomised quantile residuals ("
+RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution
+function (marginality is over #' other species observations within that site;
+see Woolley et al, in prep).
 }
 \details{
 species_mix is used to fit mixtures of glms to multivariate
@@ -221,6 +230,7 @@ Minima is found using vmmin (BFGS). Currently 'bernoulli',
  and 'normal' distributions can be fitted using the species_mix function.
 }
 \examples{
+\dontrun{
 library(ecomix)
 set.seed(42)
 sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
@@ -236,11 +246,13 @@ data <- make_mixture_data(species_data = simulated_data$species_data,
                           covariate_data = simulated_data$covariate_data[,-1])
 fm1 <- species_mix(sam_form, sp_form, data, distribution = 'bernoulli',
  n_mixtures=3)
+ }
 \dontrun{
 fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli', nstart = 10, n_mixtures=3)
 }
 \dontrun{
-archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',
+1:20),collapse = ','),")~1+x1+x2"))
 theta <- matrix(c(-0.9,-0.6,0.5,
                    1.0,-0.9,1.0,
                    0.9,-0.9,2.9,
@@ -252,6 +264,9 @@ dat <- data.frame(y=rep(1,100),
 simulated_data <- species_mix.simulate(archetype_formula,~1,
                                             dat,theta,dist="bernoulli")
 }
+\dontrun{
+preds_fm1 <- predict(fm1)
+}
 
 #Print information about a species_mix model
 \dontrun{
@@ -261,7 +276,4 @@ print(fm1)}
 # This will provide estimates of uncertainty for model parameters.
 \dontrun{
 vcov(fm1)}
-\dontrun{
-preds_fm1 <- predict(fm1)
-}
 }
