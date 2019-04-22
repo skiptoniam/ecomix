@@ -183,7 +183,11 @@
 
   if(distribution=='ippm'){
     if(!all(colnames(y)==colnames(site_spp_weights))){
-      stop(cat('When modelling a inhomogeneous poisson point process model,\n species data colnames must match weights colnames.\n\nSpecies data colnames from "data" are:\n',colnames(y),'.\n\nWhile the colnames of the weights are:\n', colnames(site_spp_weights),'\n'))
+      stop(cat('When modelling a inhomogeneous poisson point process model,
+               \n species data colnames must match weights colnames.\n\n
+               Species data colnames from "data" are:\n',colnames(y),'.\n\n
+               While the colnames of the weights are:\n',
+               colnames(site_spp_weights),'\n'))
     }
     if(any(dim(y)!=dim(site_spp_weights))){
       stop('When modelling a inhomogenous poisson point process model,
@@ -375,7 +379,11 @@
 
   if(distribution=='ippm'){
     if(!all(colnames(y)==colnames(site_spp_weights))){
-      stop(cat('When modelling a inhomogenous poisson point process model,\n species data colnames must match weights colnames.\n\nSpecies data colnames from "data" are:\n',colnames(y),'.\n\nWhile the colnames of the weights are:\n', colnames(site_spp_weights),'\n'))
+      stop(cat('When modelling a inhomogenous poisson point process model,
+               \n species data colnames must match weights colnames.\n\n
+               Species data colnames from "data" are:\n',colnames(y),'.\n\n
+               While the colnames of the weights are:\n',
+               colnames(site_spp_weights),'\n'))
     }
     if(any(dim(y)!=dim(site_spp_weights))){
       stop('When modelling a inhomogenous poisson point process model,
@@ -420,9 +428,11 @@
       tmp <- calc_info_crit_sam(tmp)
 
       #titbits object, if wanted/needed.
-      tmp$titbits <- get_titbits_sam(titbits, y, X, spp_weights, site_spp_weights, offset,
-                                     y_is_na , archetype_formula, species_formula,
-                                     control, disty_cases[disty], tmp$removed_species)
+      tmp$titbits <- get_titbits_sam(titbits, y, X, spp_weights,
+                                     site_spp_weights, offset,
+                                     y_is_na , archetype_formula,
+                                     species_formula, control,
+                                     disty_cases[disty], tmp$removed_species)
       class(tmp) <- c("species_mix")
       return( tmp)
    }
@@ -648,7 +658,7 @@
     presences <- list()
     for(i in seq_len(n_sp)){
       presences[[i]] <- sample(x=preds_df$idx,size=Ns[i],
-                               replace=TRUE, prob=lambdas[,i]/LAMBDAS[i])# TRUE
+                               replace=TRUE, prob=lambdas[,i]/LAMBDAS[i])
     }
 
     presence_coords <- lapply(presences,function(x)grid2D[x,1:2])
@@ -1014,6 +1024,7 @@
               gaussian = { fn <- function(y,mu,logdisp,power) pnorm( q=y, mean=mu, sd=exp( logdisp), lower.tail=TRUE)})
 
       for( ss in 1:object$S){
+        if( all( object$titbits$power==-999999))  tmpPow <- NULL else tmpPow <- object$titbits$power[ss]
         if( object$dist %in% c("bernoulli","poisson","ippm","negative_binomial")){
           tmpLower <- fn( object$titbits$Y[,ss]-1, object$mus[,ss,], object$coef$disp[ss], tmpPow)
           tmpUpper <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$disp[ss], tmpPow)
