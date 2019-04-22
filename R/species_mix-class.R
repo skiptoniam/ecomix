@@ -168,7 +168,8 @@
   X <- get_X_sam(archetype_formula, dat$mf.X)
 
   #get distribution
-  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
+  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie",
+                   "gaussian")
   disty <- get_distribution_sam(disty_cases, distribution)
 
   # get offsets
@@ -176,7 +177,8 @@
 
   # get the weights
   species_names <- colnames(y)
-  site_spp_weights <- get_site_spp_weights_sam(mf,weights,species_names,distribution)
+  site_spp_weights <- get_site_spp_weights_sam(mf,weights,species_names,
+                                               distribution)
   spp_weights <- check_spp_weights(bb_weights,S)
 
   if(distribution=='ippm'){
@@ -200,9 +202,10 @@
   }
 
   # summarising data to console
-  print_input_sam(y, X, S, archetype_formula, species_formula, distribution, quiet=control$quiet)
+  print_input_sam(y, X, S, archetype_formula, species_formula, distribution,
+                  quiet=control$quiet)
 
-  # fit this bad boy. bad boys, bad boys, what you gonna do when they come for you.
+  # fit species mix.
   tmp <- species_mix.fit(y=y, X=X, G=n_mixtures, S=S, spp_weights=spp_weights,
                          site_spp_weights=site_spp_weights,
                          offset=offset, disty=disty, y_is_na=y_is_na,
@@ -223,9 +226,10 @@
   tmp <- calc_info_crit_sam(tmp)
 
   #titbits object, if wanted/needed.
-  tmp$titbits <- get_titbits_sam(titbits, y, X, spp_weights, site_spp_weights, offset,
-                                 y_is_na , archetype_formula, species_formula,
-                                 control, disty_cases[disty], tmp$removed_species)
+  tmp$titbits <- get_titbits_sam(titbits, y, X, spp_weights, site_spp_weights,
+                                 offset, y_is_na, archetype_formula,
+                                 species_formula, control, disty_cases[disty],
+                                 tmp$removed_species)
   class(tmp) <- c("species_mix")
   return(tmp)
 }
@@ -250,7 +254,7 @@
                               offset, y_is_na, disty, control, inits=NULL){
 
   if(G==1){
-    tmp <- fitmix_EM_sam(y, X, spp_weights, site_spp_weights,
+    tmp <- fitmix_ECM_sam(y, X, spp_weights, site_spp_weights,
                          offset, y_is_na, G, S, disty, control)
     tmp <- clean_ECM_output_one_group(tmp, G, S, disty)
     return(tmp)
@@ -935,7 +939,8 @@
     bPreds$ses <- tmp.grp
     colnames(bPreds$fit) <- colnames(bPreds$ses) <- object$names$SAMs
     tmp.fun <- function(x) return(quantile(bootPreds[x, ],
-                                           probs = c(0, alpha) + (1 - alpha)/2, na.rm = TRUE))
+                                           probs = c(0, alpha) + (1 - alpha)/2,
+                                           na.rm = TRUE))
     tmp1 <- parallel::mclapply(seq_len(nrow(bootPreds)), tmp.fun,
                                mc.cores = mc.cores)
     tmp1 <- do.call("rbind", tmp1)
@@ -1707,7 +1712,7 @@
     emfits <- list()
     for(ii in seq_len(control$em_refit)){
       if(!control$quiet)message('ECM fit: ',ii,'\n')
-      emfits[[ii]] <-  fitmix_EM_sam(y, X, spp_weights, site_spp_weights,
+      emfits[[ii]] <-  fitmix_ECM_sam(y, X, spp_weights, site_spp_weights,
                                      offset, y_is_na, G, S, disty, control)
     }
     bf <- which.max(vapply(emfits,function(x)c(x$logl),c(logl=0)))
@@ -1936,7 +1941,7 @@ starting values;\n starting values are generated using ',control$init_method,
   return(out.list)
 }
 
-"fitmix_EM_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
+"fitmix_ECM_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
   ite <- 1
   restart_ite <- 1
