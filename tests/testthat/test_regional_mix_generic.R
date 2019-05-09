@@ -101,13 +101,7 @@ regional_mix(rcp_formula = my.form.RCP, species_formula = NULL, data = simDat,
              dist="negative_binomial", nRCP = 1, inits = unlist( fm.clean[[goodUn]]$coef),
              control=list(optimise=FALSE), offset=offset)
 
-
-})
-
-
-testthat::test_that('testing regional mix diagonstic functions', {
-library(ecomix)
-ecomix:::cooks.distance.regional_mix(fm.final)
+testthat::expect_s3_class(cooks.distance(fm.final, times = 2),'regiCooksD')
 
 })
 
