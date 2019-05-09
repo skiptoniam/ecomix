@@ -305,8 +305,6 @@
                                    standardise = TRUE, titbits = TRUE){
 
   data <- as.data.frame(data)
-
-  #the control parameters
   control <- set_control_sam(control)
   if(!control$quiet)
     message( "SAM modelling")
@@ -321,7 +319,6 @@
   if(!is.null(species_formula))
     species_formula <- stats::as.formula(species_formula)
 
-  # Create model matrix
   mf <- match.call(expand.dots = FALSE)
   if(distribution=="ippm"){
     m <- match(c("data","offset"), names(mf), 0L)
@@ -1290,11 +1287,6 @@
                             standardize = FALSE,
                             intercept = TRUE), silent = TRUE)
 
-    # ft_sp <- try(glmnet::glmnet(x=as.data.frame(X[ids_i,,drop=FALSE]),
-                                # y = outcomes,
-                                # weights=as.numeric(site_spp_weights[ids_i,ss]),
-                                # offset=offset[ids_i],
-                                # family=fam), silent=FALSE)
     if (class(ft_sp) %in% 'try-error'){
       my_coefs <- rep(NA, ncol(X[ids_i,]))
     } else {
@@ -1322,31 +1314,6 @@
                                offset=offset[ids_i]))
     disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
   }
-  # if(disty == 4){
-    # ft_sp <- try(glm.fit.nbinom(x=as.matrix(X[ids_i,,drop=FALSE]),
-                                # y=as.numeric(outcomes),
-                                # weights=as.numeric(site_spp_weights[ids_i,ss]),
-                                # offset=offset[ids_i],est_var=FALSE), silent = TRUE)
-
-    # preds <- predict.glm.fit(ft_sp, X[ids_i,], offset[ids_i], disty)
-    # tmp <- MASS::theta.mm(outcomes, preds,
-    #                       weights=c(site_spp_weights[ids_i,ss]),
-    #                       dfr=length(outcomes),
-    #                       eps=1e-4)
-
-  #   if (class(ft_sp) %in% 'try-error'){
-  #     my_coefs <- rep(NA, ncol(X[ids_i,]))
-  #   } else {
-  #     my_coefs <- ft_sp$coef
-  #   }
-  #   tmp <- ft_sp$theta
-  #   if(tmp>2) tmp <- 2
-  #   disp <- log(1/tmp)
-  # }
-  # if( disty == 6){
-  #   preds <- predict.glm.fit(ft_sp, X[ids_i,], offset[ids_i], disty)
-  #   disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
-  # }
   return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
 }
 
@@ -1471,29 +1438,6 @@
                              intercept = TRUE)
     my_coefs <- apply(glmnet::coef.glmnet(ft_mix), 1, lambda_penalisation_fun, lambda.seq)
   }
-  # disp <- NA
-  # if( disty == 4){
-  #   locat.s <- lambda.seq[max(which(as.matrix(glmnet::coef.glmnet(ft_mix))==my_coefs,arr.ind = TRUE)[,2])]
-  #   preds <-as.numeric(predict(ft_mix, s=locat.s,
-  #                              type="response",
-  #                              newx=X_tau[,-1],
-  #                              offset=offy))
-  #   tmp <- MASS::theta.mm(Y_tau, preds,
-  #                         weights=wts_tauXippm_weights,
-  #                         dfr=nrow(Y_tau),
-  #                         eps=1e-4)
-  #   if(tmp>2)
-  #     tmp <- 2
-  #   disp <- log( 1/tmp)
-  # }
-  # if( disty == 6){
-  #   preds <-as.numeric(predict(ft_mix, s=locat.s,
-  #                              type="response",
-  #                              newx=X_tau[,-1],
-  #                              offset=offu))
-  #   disp <- log(sqrt(sum((Y_tau - preds)^2)/length(Y_tau)))  #should be something like the resid standard Deviation.
-  # }
-
   return(as.matrix(my_coefs))
 }
 
@@ -1559,12 +1503,6 @@
                                 y=as.numeric(outcomes),
                                 weights=as.numeric(site_spp_weights[ids_i,ss]),
                                 offset=offset[ids_i],est_var=FALSE), silent = TRUE)
-
-    # preds <- predict.glm.fit(ft_sp, X[ids_i,], offset[ids_i], disty)
-    # tmp <- MASS::theta.mm(outcomes, preds,
-    #                       weights=c(site_spp_weights[ids_i,ss]),
-    #                       dfr=length(outcomes),
-    #                       eps=1e-4)
 
     if (class(ft_sp) %in% 'try-error'){
       my_coefs <- rep(NA, ncol(X[ids_i,]))
@@ -1638,14 +1576,6 @@
                             weights=as.numeric(wts1),
                             offset=as.numeric(offy))
     my_coefs <- ft_sp$coef
-    # dat <- data.frame(out1,as.data.frame(X1[,-1]),offy)
-    # tmpform <- as.formula(paste('out1~1+',paste0(colnames(as.data.frame(X1[,-1])),
-    # collapse = "+"),'+offset(offy)'))
-    # ft_sp <- glm.fit.nbinom(formula = tmpform,
-    # data = dat,
-    # weights = as.matrix(wts1),
-    # init.theta = as.numeric(exp(-fits$disp[ss])))
-
   }
 
   return(list(alpha = my_coefs[1]))
@@ -2490,6 +2420,8 @@ starting values;\n starting values are generated using ',control$init_method,
 
   return(site_spp_weights)
 }
+
+#'@export
 
 "glm.nbinom" <- function(form, data, weights=NULL, offset=NULL, mustart=NULL, est_var=FALSE){
   X <- stats::model.matrix(form, data)
