@@ -3,6 +3,7 @@
 \name{regional_mix}
 \alias{regional_mix}
 \alias{regional_mix.multifit}
+\alias{regional_mix.species_membership}
 \alias{AIC.regional_mix}
 \alias{BIC.regional_mix}
 \alias{coef.regional_mix}
@@ -28,6 +29,8 @@ regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
   nRCP = 3, distribution = "bernoulli", offset = NULL,
   weights = NULL, control = list(), inits = "random2",
   titbits = FALSE, power = 1.6, nstart = 10, mc.cores = 1)
+
+regional_mix.species_membership(object, ...)
 
 \method{AIC}{regional_mix}(object, ..., k = 2)
 
@@ -97,6 +100,8 @@ The response variable (left hand side of the formula) needs to be either 'presen
 
 \item{mc.cores}{for regional_mix.multifit only. The number of cores to spread the re-fitting over.}
 
+\item{object}{A RCP model}
+
 \item{alpha}{Numeric vector of length S. Specifies the mean prevalence for each species, on the logit scale}
 
 \item{S}{Integer giving the number of species}
@@ -129,6 +134,8 @@ The response variable (left hand side of the formula) needs to be either 'presen
 }
 \description{
 creates an \code{regional_mix} model.
+
+Extracts the average species' each RCP.
 
 The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep). The result is one residual per species per site and they all should be standard
 normal variates. Within a site they are likely to be correlated (as they share a common latent factor), but across sampling locations they will be independent.

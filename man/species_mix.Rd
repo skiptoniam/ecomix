@@ -13,6 +13,7 @@
 \alias{coef.species_mix}
 \alias{predict.species_mix}
 \alias{print.species_mix}
+\alias{print.species_mix.multifit}
 \alias{residuals.species_mix}
 \alias{summary.species_mix}
 \alias{vcov.species_mix}
@@ -62,6 +63,8 @@ species_mix.simulate(archetype_formula, species_formula, dat, theta,
   offset = NULL, nboot = 0, alpha = 0.95, mc.cores = 1, ...)
 
 \method{print}{species_mix}(x, ...)
+
+\method{print}{species_mix.multifit}(x, ...)
 
 \method{residuals}{species_mix}(object, ..., type = "RQR",
   quiet = FALSE)
@@ -271,6 +274,12 @@ preds_fm1 <- predict(fm1)
 #Print information about a species_mix model
 \dontrun{
 print(fm1)}
+
+#Print information about a species_mix model
+\dontrun{
+fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli', nstart = 10, n_mixtures=3)
+print(fmods)
+}
 
 # Estimate the variance-covariance matrix.
 # This will provide estimates of uncertainty for model parameters.

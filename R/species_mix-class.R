@@ -443,6 +443,8 @@
                                         .parallel = mc.cores,
                                         .verbose = !control$quiet)
 
+   class(many_starts) <- c("species_mix.multifit")
+
    return(many_starts)
 }
 
@@ -985,6 +987,25 @@
 
 "print.species_mix" <-  function (x,...){
   cat(x$titbits$distribution, "species_mix model\n")
+  cat("\nMixing probabilities\n")
+  print(x$pi)
+  cat("\nCoefficents\n")
+  print(x$coef)
+
+}
+
+#'@rdname species_mix
+#'@export
+#'@examples
+#'
+#'#Print information about a species_mix model
+#'\dontrun{
+#'fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli', nstart = 10, n_mixtures=3)
+#'print(fmods)
+#'}
+
+"print.species_mix.multifit" <-  function (x,...){
+  cat(x[[1]]$titbits$distribution, "species_mix model\n")
   cat("\nMixing probabilities\n")
   print(x$pi)
   cat("\nCoefficents\n")
