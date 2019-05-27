@@ -1571,12 +1571,6 @@
   offy <- offy1 + offy2
 
   if(disty %in% c(1,2,3,6)){
-    # ft_sp <- try(glmnet::glmnet(x=as.data.frame(X1),
-    #                y=as.numeric(out1),
-    #                weights=as.numeric(wts1),
-    #                offset=as.numeric(offy),
-    #                family=fam), silent=FALSE)
-
     ft_sp <- try(stats::glm.fit(x=as.data.frame(X1),
                                 y=as.numeric(out1),
                                 weights=as.numeric(wts1),
@@ -1588,8 +1582,6 @@
     } else {
       my_coefs <- coef(ft_sp)
     }
-    #
-    #   my_coefs <- coef(ft_sp)
   }
   if(disty %in% 4){
     ft_sp <- glm.fit.nbinom(x=as.matrix(X1),

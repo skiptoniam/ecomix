@@ -274,17 +274,22 @@
 #'@export
 #'@description Extracts the average species' each RCP.
 #'@examples
-regional_mix.species_membership(fm)
+#' species_membership.regional_mix(fm)
 
-regional_mix.species_membership <- function(object,...){
+"species_membership.regional_mix" <- function(object, object2=NULL,
+                                              CI=c(0.025,0.975), ...){
 
-  if(class(object)=="regional_mix") type <- "single"
-  if(class(object)=="regional_mix_boot") type <- "multi"
-  if(is.na(object$names$Wvars) & type == "single") type <- "single_no_sp"
+
+  if(is.null(object2)){
+    if(!check_if_sampling(object)) type <- "single_no_sp_results"
+    else type <- "single_results"
+  } else {
+    type <- "bootstrap_results"
+  }
   partial_mus <- switch(type,
-                       single_no_sp = partial_mus_no_species_form(object),
-                       single = partial_mus_with_species_form(object),
-                       multi = partial_mus_bootstrap(object))
+                       single_no_sp_results = partial_mus_no_species_form(object),
+                       single_results = partial_mus_with_species_form(object),
+                       bootstrap_results = partial_mus_from_boostrap(object, object2, CI = CI))
 
   return(partial_mus)
 }
@@ -292,14 +297,14 @@ regional_mix.species_membership <- function(object,...){
 partial_mus_no_species_form <- function(object, ...){
 
   ## what are the species taus?
-  taus <- coef(object)$tau
-  taus <- rbind(taus, -colSums( tau))
+  tau <- coef(object)$tau
+  tau <- rbind(tau, -colSums( tau))
 
   ## what was the the model offset?
   offy <- object$titbits$offset
 
   ## what is the linear predictor (eta)
-  eta <- sweep(taus, 2, coef(object)$alpha, "+") + mean(offy)
+  eta <- sweep(tau, 2, coef(object)$alpha, "+") + mean(offy)
 
   ## what is the link function of appropriate distribution?
   if(object$dist=="bernoulli") link.fun <- make.link('logit')
@@ -313,7 +318,7 @@ partial_mus_no_species_form <- function(object, ...){
   dimnames(partial_mus)[[1]] <- object$names$RCPs
 
   ## return the partial mus if their is no sampling artifacts (species formula).
-  return(t(partial_mus))
+  return((partial_mus))
 }
 
 
@@ -327,7 +332,7 @@ partial_mus_with_species_form <- function(object, ... ){
   offy <- object$titbits$offset
 
   ## what is the linear predictor (eta)?
-  eta <- sweep(taus, 2, coef(object)$alpha, "+") + mean(offy)
+  eta <- sweep(tau, 2, coef(object)$alpha, "+") + mean(offy)
 
   ## what is the link function of appropriate distribution?
   if(object$dist=="bernoulli") link.fun <- make.link('logit')
@@ -345,124 +350,120 @@ partial_mus_with_species_form <- function(object, ... ){
   return(res)
 }
 
+## quick function to echk if model output has sampling artifacts (species formula)
 
-## Calculates average species prevalence and uncertainty estimates for each RCP using Bayesian bootstraps
-## Accomodates single sampling factor
-calc_prev<-function(boot_obj,                                              # Regiboot object
-                    mod_obj,                                               # Regimod  object
-                    samp_fact=NULL,                                        # Vector of sampling factor names if present
-                    calc_level=c("NULL", "bootstrap", "sample_fact", "overall"),   # Level at which to calculate expected prevalence
-                    CI=c(0.025,0.975))                                     # Levels at which to calculate confidence intervals
-{
-  #require(tidyr)
+check_if_sampling <-function(object){all(!is.na(object$names$Wvars))}
+
+partial_mus_from_boostrap  <- function(object, object2, CI=c(0.025,0.975)){
 
   #set up coefficient extraction
-  taus<-grepl("tau",dimnames(boot_obj)[[2]])
-  alphas<-grepl("alpha",dimnames(boot_obj)[[2]])
+  taus<-grepl("tau",dimnames(object2)[[2]])
+  alphas<-grepl("alpha",dimnames(object2)[[2]])
 
-  if (is.null(samp_fact)){
+  ## what is the link function of appropriate distribution?
+  if(object$dist=="bernoulli") link.fun <- make.link('logit')
+  if(object$dist%in%c("poisson","negative_binomial")) link.fun <- make.link('log')
+  if(object$dist=='negative_binomial') link.fun <- make.link('log')
+  if(object$dist=='guassian') link.fun <- make.link('identity')
 
-    res_all<-list()
-    for(i in 1:dim(boot_obj)[1]){
+  if(!check_if_sampling(object)){
 
-      #extract and reformat coeficients
-      #alpha- OK as is
-      temp_alphas<-boot_obj[i,alphas]
+    res_all <- list()
+    for(i in seq_len(dim(object2)[1])){
 
-      #tau
-      temp_tau <- boot_obj[i,taus]
-      temp_tau <- matrix( temp_tau, nrow=length(mod_obj$names$RCPs)-1)
-      tau_all <- rbind( temp_tau, -colSums( temp_tau))
-      colnames( tau_all) <- mod_obj$names$spp
-      rownames( tau_all) <- mod_obj$names$RCPs
+      ## bootstrap alpha (intercept)
+      tmp_alphas<-object2[i,alphas]
+
+      # bootstrap tau
+      tmp_tau <- object2[i,taus]
+      tmp_tau <- matrix(tmp_tau, nrow=length(object$names$RCPs)-1)
+      tmp_tau_all <- rbind(tmp_tau,-colSums(tmp_tau))
+      colnames(tmp_tau_all) <- object$names$spp
+      rownames(tmp_tau_all) <- object$names$RCPs
+
+      ## offset from the model if used.
+      offy <- object$titbits$offset
+
+      ## what is the linear predictor (eta)
+      tmp_eta <- sweep(tmp_tau_all, 2, tmp_alphas, "+") + mean(offy)
 
       #calculate values
-      lps <- sweep( tau_all, 2, temp_alphas, "+")
-      res_all[[i]]<-as.matrix(round(exp( lps)/ (1+ exp(lps)),3))
+      part_mu <- link.fun$linkinv(tmp_eta);
+      res_all[[i]]<-as.matrix(part_mu)
     }
 
-    overall_temp<-array(unlist(res_all), dim=c( length(mod_obj$names$RCPs),length(mod_obj$names$spp),nrow(boot_obj)))
+    overall_temp<-array(unlist(res_all), dim=c( length(object$names$RCPs),length(object$names$spp),nrow(object2)))
     overall_res<-list( mean=round(apply(overall_temp, c(1,2), mean),3),
                        sd= round(apply(overall_temp, c(1,2), sd),3),
                        lower= round(apply(overall_temp, c(1,2), function(x) quantile(x, probs=CI[1])),3),
                        upper= round(apply(overall_temp, c(1,2), function(x) quantile(x, probs=CI[2])),3))
 
-    dimnames(overall_res[[1]])<-dimnames(overall_res[[2]])<-dimnames(overall_res[[3]])<-dimnames(overall_res[[4]])<-list(mod_obj$names$RCPs, mod_obj$names$spp)
+    dimnames(overall_res[[1]])<-dimnames(overall_res[[2]])<-dimnames(overall_res[[3]])<-dimnames(overall_res[[4]])<-list(object$names$RCPs, object$names$spp)
     return (overall_res)
   }
 
-  if (! is.null(samp_fact)){
-    #extract gammas and set up results frame
-    gammas<-grepl("gamma",dimnames(boot_obj)[[2]])
-    res<-rep( list(list()), length(samp_fact))
-    names(res)<-samp_fact
+  if (check_if_sampling(object)){
 
-    for(i in 1:dim(boot_obj)[1]){
-      print(i)
+    gammas<-grepl("gamma",dimnames(object2)[[2]])
+    res_all <- list()
+    # res <- rep( list(list()), length(object$names$Wvars))
 
-      #extract and reformat coeficients
-      #alpha- OK as is
-      temp_alphas<-boot_obj[i,alphas]
 
-      #tau
-      temp_tau <- boot_obj[i,taus]
-      temp_tau <- matrix( temp_tau, nrow=length(mod_obj$names$RCPs)-1)
-      tau_all <- rbind( temp_tau, -colSums( temp_tau))
-      colnames( tau_all) <- mod_obj$names$spp
-      rownames( tau_all) <- mod_obj$names$RCPs
+    for(i in seq_len(dim(object2)[1])){
+      ## bootstrap alpha (intercept)
+      tmp_alphas<-object2[i,alphas]
+
+      # bootstrap tau
+      tmp_tau <- object2[i,taus]
+      tmp_tau <- matrix(tmp_tau, nrow=length(object$names$RCPs)-1)
+      tmp_tau_all <- rbind(tmp_tau,-colSums(tmp_tau))
+      colnames(tmp_tau_all) <- object$names$spp
+      rownames(tmp_tau_all) <- object$names$RCPs
+
+      ## offset from the model if used.
+      offy <- object$titbits$offset
 
       #gamma
-      temp_gamma<-boot_obj[i, gammas]
-      temp_gamma<-matrix(temp_gamma, nrow=length(mod_obj$names$spp))
-      colnames(temp_gamma)<-mod_obj$names$Wvars
-      rownames(temp_gamma)<-mod_obj$names$spp
+      tmp_gamma<-object2[i, gammas]
+      tmp_gamma<-matrix(tmp_gamma, nrow=length(object$names$spp))
+      colnames(tmp_gamma)<-object$names$Wvars
+      rownames(tmp_gamma)<-object$names$spp
 
-      ## Level 1 of sampling factor (no gamma adjustment needed)
-      lps <- sweep( tau_all, 2, temp_alphas, "+")
-      res[[1]][[i]]<-as.matrix(round(exp( lps)/ (1+ exp(lps)),3))
+      ## what is the linear predictor (eta)
+      tmp_eta <- sweep(tmp_tau_all, 2, tmp_alphas, "+") + mean(offy)
 
-      ## other levels of sampling factor
-      for(j in 1:length(mod_obj$names$Wvars)){
-        lps_temp<-sweep( lps, 2, temp_gamma[,j], "+")
-        res[[j+1]][[i]]<- as.matrix(round(exp( lps_temp)/ (1+ exp(lps_temp)),3))
-      }
+      res<- lapply(seq_along(object$names$Wvars),function(jj){
+        new_eta <- sweep(tmp_eta, 2, tmp_gamma[,jj], "+");
+        part_mu <- link.fun$linkinv(new_eta);
+        return(part_mu)})
+
+      names(res)<-object$names$Wvars
+      res_all[[i]] <- res
     }
-
-    if(calc_level=="bootstrap"){
-      return(res)
-    }
-
 
     #Compile list of summaries at the sampling factor level
-    if(calc_level=="samp_fact"){
-      samp_res<-rep( list(list()), length(samp_fact))
-      names(samp_res)<-samp_fact
+    samp_res <- rep(list(list()), length(object$names$Wvars))
+    names(samp_res) <- object$names$Wvars
 
-      for(k in 1: length(samp_fact)){
-        samp_res[[k]]<-list(mean=round(apply(simplify2array(res[[k]]), c(1,2), mean),3),
-                            sd=round(apply(simplify2array(res[[k]]), c(1,2), sd),3),
-                            lower=round(apply(simplify2array(res[[k]]), c(1,2), function(x) quantile(x, probs=CI[1])),3),
-                            upper=round(apply(simplify2array(res[[k]]), c(1,2), function(x) quantile(x, probs=CI[2])),3))
-      }
-      return(samp_res)
+    for(k in seq_along(object$names$Wvars)){
+        samp_res[[k]]<-list(mean=round(apply(simplify2array(res_all[[k]]), c(1,2), mean),3),
+                            sd=round(apply(simplify2array(res_all[[k]]), c(1,2), sd),3),
+                            lower=round(apply(simplify2array(res_all[[k]]), c(1,2), function(x) quantile(x, probs=CI[1])),3),
+                            upper=round(apply(simplify2array(res_all[[k]]), c(1,2), function(x) quantile(x, probs=CI[2])),3))
     }
 
-    #compile summaries across each bootstrap for all sampling factors
-    if(calc_level=="overall"){
-      #extract ith bootstrap values for each sampling factor
-      #average species values across sampling factor for each bootstrap
-      #perform calculations across averaged bootstrap values
-      overall_temp<-list()
-      for(i in 1:dim(boot_obj)[1]){
-        get_vals<-lapply(res, function(x) x[[i]])
+    overall_temp<-list()
+    for(i in seq_len(dim(object2)[1])){
+        get_vals <- res_all[[i]]
         overall_temp[[i]]<-apply(simplify2array(get_vals), c(1,2), mean)
-      }
-      overall=list(mean=round(apply(simplify2array(overall_temp), c(1,2), mean),3),
+    }
+
+    overall_samp <-list(mean=round(apply(simplify2array(overall_temp), c(1,2), mean),3),
                    sd= round(apply(simplify2array(overall_temp), c(1,2), sd),3),
                    lower= round(apply(simplify2array(overall_temp), c(1,2), function(x) quantile(x, probs=CI[1])),3),
                    upper= round(apply(simplify2array(overall_temp), c(1,2), function(x) quantile(x, probs=CI[2])),3))
-      return(overall)
-    }
+    samp_res$overall<-overall_samp
+    return(samp_res)
   }
 }
 

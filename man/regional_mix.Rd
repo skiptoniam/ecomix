@@ -4,6 +4,7 @@
 \alias{regional_mix}
 \alias{regional_mix.multifit}
 \alias{regional_mix.species_membership}
+\alias{species_membership.regional_mix}
 \alias{AIC.regional_mix}
 \alias{BIC.regional_mix}
 \alias{coef.regional_mix}
@@ -30,7 +31,8 @@ regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
   weights = NULL, control = list(), inits = "random2",
   titbits = FALSE, power = 1.6, nstart = 10, mc.cores = 1)
 
-regional_mix.species_membership(object, ...)
+species_membership.regional_mix(object, object2 = NULL, CI = c(0.025,
+  0.975), ...)
 
 \method{AIC}{regional_mix}(object, ..., k = 2)
 
@@ -150,6 +152,7 @@ data <- make_mixture_data(species_data = simulated_data$species_data,
                           covariate_data = simulated_data$covariate_data[,-1])
 fm_regional_mix <- regional_mix(rcp_form,spp_form,data=data,distribution='bernoulli',n_mixtures=5)
 }
+species_membership.regional_mix(fm)
 \dontrun{
 #generates synthetic data
 set.seed( 151)
