@@ -4,8 +4,7 @@
 #' @rdname regional_mix
 #' @name regional_mix
 #' @description creates an \code{regional_mix} model.
-#' @param rcp_formula an object of class "formula" (or an object that can be coerced to that class).
-#' The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the region of common profile (rcp) probabilities on covariates.
+#' @param rcp_formula an object of class "formula" (or an object that can be coerced to that class). The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the region of common profile (rcp) probabilities on covariates.
 #' @param species_formula an object of class "formula" (or an object that can be coerced to that class). The left hand side of this formula should be left empty (it is removed if it is not empty). The right hand side of this formula specifies the dependence of the species"'" data on covariates (typically different covariates to \code{rcp_formula} to avoid confusing confounding). An example formula is observations ~ gear_type + time_of_day, where gear_type describes the different sampling gears and time_of_day describes the time of the sample. #maybe could call this detection/bias
 #' @param data a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containng the covariate data for each site. Names of columns must match that given in \code{rcp_formula} and \code{species_formula}.
 #' @param nRCP The number of mixing components (groups) to fit.
@@ -14,7 +13,7 @@
 #' @param weights a numeric vector of length nrow( data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1.
 #' @param control a list of control parameters for optimisation and calculation. See details. From \code{control} control.
 #' @param inits a characture string which defines the method used to initialise finite mixture model clustering. #Will have to synergise this function call across RCP and SpeciesMix. Looks like SpeciesMix uses a em.prefit to setup initialisations. regional_mix has a number of methods. This seems like a good place to setup the bivariate clusting step - cobra function.
-#' @param titbits either a boolean or a vector of characters. If TRUE (default for regimix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regimix(qv) and predict.regimix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for regimix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "W" for the model matrix for the species-specific model, "offset" for the offset in the model, "wts" for the model weights, "form.RCP" for the formula for the RCPs, "form.spp" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "dist" for the conditional distribution of the species data, and "power" for the power parameters used (only used in Tweedie models). Care needs to be taken when using titbits=TRUE in regimix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory. It is more efficient, from a memory perspective, to refit the "best" model using regimix(qv) after identifying it with regimix.multifit(qv). See examples for illustration about how to do this.
+#' @param titbits either a boolean or a vector of characters. If TRUE (default for regional_mix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regional_mix(qv) and predict.regional_mix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for regional_mix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "W" for the model matrix for the species-specific model, "offset" for the offset in the model, "wts" for the model weights, "form.RCP" for the formula for the RCPs, "form.spp" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "dist" for the conditional distribution of the species data, and "power" for the power parameters used (only used in Tweedie models). Care needs to be taken when using titbits=TRUE in regional_mix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory. It is more efficient, from a memory perspective, to refit the "best" model using regional_mix(qv) after identifying it with regional_mix.multifit(qv). See examples for illustration about how to do this.
 #' @param power a numeric vector (length either 1 or the number of species) defining the power parameter to use in the Tweedie models. If length(power)==1, then the same power parameter is used for all species. If length(power)==No_species, then each species gets its own power parameter. Power values must be between 1 and 2, for computational reasons they should be well away from the boundary. The default is 1.6 as this has proved to be a good ball-park value for the fisheries data that the developer has previously analysed.
 #' @importFrom graphics abline hist legend lines matplot par plot points polygon rect
 #' @importFrom stats as.formula binomial cooks.distance cov cutree dbinom dist dnbinom dnorm dpois
@@ -268,6 +267,206 @@
 
 ##### S3 Class exports #####
 
+#'@rdname regional_mix
+#'@name regional_mix.species_membership
+#'@param object A RCP model
+#'@export
+#'@description Extracts the average species' each RCP.
+#'@examples
+#' species_membership.regional_mix(fm)
+
+"species_membership.regional_mix" <- function(object, object2=NULL,
+                                              CI=c(0.025,0.975), ...){
+
+
+  if(is.null(object2)){
+    if(!check_if_sampling(object)) type <- "single_no_sp_results"
+    else type <- "single_results"
+  } else {
+    type <- "bootstrap_results"
+  }
+  partial_mus <- switch(type,
+                       single_no_sp_results = partial_mus_no_species_form(object),
+                       single_results = partial_mus_with_species_form(object),
+                       bootstrap_results = partial_mus_from_boostrap(object, object2, CI = CI))
+
+  return(partial_mus)
+}
+
+partial_mus_no_species_form <- function(object, ...){
+
+  ## what are the species taus?
+  tau <- coef(object)$tau
+  tau <- rbind(tau, -colSums( tau))
+
+  ## what was the the model offset?
+  offy <- object$titbits$offset
+
+  ## what is the linear predictor (eta)
+  eta <- sweep(tau, 2, coef(object)$alpha, "+") + mean(offy)
+
+  ## what is the link function of appropriate distribution?
+  if(object$dist=="bernoulli") link.fun <- make.link('logit')
+  if(object$dist%in%c("poisson","negative_binomial")) link.fun <- make.link('log')
+  if(object$dist=='negative_binomial') link.fun <- make.link('log')
+  if(object$dist=='guassian') link.fun <- make.link('identity')
+
+  ## what are the partial mus: dim[nRCPs,nSpp]
+  partial_mus <- link.fun$linkinv(eta)
+  dimnames(partial_mus)[[2]] <- object$names$spp
+  dimnames(partial_mus)[[1]] <- object$names$RCPs
+
+  ## return the partial mus if their is no sampling artifacts (species formula).
+  return((partial_mus))
+}
+
+
+partial_mus_with_species_form <- function(object, ... ){
+
+  # what are the taus?
+  tau <- coef(object)$tau
+  tau <- rbind(tau, -colSums( tau))
+
+  ## what was the the model offset?
+  offy <- object$titbits$offset
+
+  ## what is the linear predictor (eta)?
+  eta <- sweep(tau, 2, coef(object)$alpha, "+") + mean(offy)
+
+  ## what is the link function of appropriate distribution?
+  if(object$dist=="bernoulli") link.fun <- make.link('logit')
+  if(object$dist%in%c("poisson","negative_binomial")) link.fun <- make.link('log')
+  if(object$dist=='negative_binomial') link.fun <- make.link('log')
+  if(object$dist=='guassian') link.fun <- make.link('identity')
+
+  #probabilities for all other levels of same sampling var
+  res<- lapply(seq_along(object$names$Wvars),function(jj){
+    new_eta <- sweep(eta, 2, coef(object)$gamma[,object$names$Wvars[jj]], "+");
+    part_mu <- link.fun$linkinv(new_eta);
+    return(part_mu)})
+
+  names(res)<- object$names$Wvars
+  return(res)
+}
+
+## quick function to echk if model output has sampling artifacts (species formula)
+
+check_if_sampling <-function(object){all(!is.na(object$names$Wvars))}
+
+partial_mus_from_boostrap  <- function(object, object2, CI=c(0.025,0.975)){
+
+  #set up coefficient extraction
+  taus<-grepl("tau",dimnames(object2)[[2]])
+  alphas<-grepl("alpha",dimnames(object2)[[2]])
+
+  ## what is the link function of appropriate distribution?
+  if(object$dist=="bernoulli") link.fun <- make.link('logit')
+  if(object$dist%in%c("poisson","negative_binomial")) link.fun <- make.link('log')
+  if(object$dist=='negative_binomial') link.fun <- make.link('log')
+  if(object$dist=='guassian') link.fun <- make.link('identity')
+
+  if(!check_if_sampling(object)){
+
+    res_all <- list()
+    for(i in seq_len(dim(object2)[1])){
+
+      ## bootstrap alpha (intercept)
+      tmp_alphas<-object2[i,alphas]
+
+      # bootstrap tau
+      tmp_tau <- object2[i,taus]
+      tmp_tau <- matrix(tmp_tau, nrow=length(object$names$RCPs)-1)
+      tmp_tau_all <- rbind(tmp_tau,-colSums(tmp_tau))
+      colnames(tmp_tau_all) <- object$names$spp
+      rownames(tmp_tau_all) <- object$names$RCPs
+
+      ## offset from the model if used.
+      offy <- object$titbits$offset
+
+      ## what is the linear predictor (eta)
+      tmp_eta <- sweep(tmp_tau_all, 2, tmp_alphas, "+") + mean(offy)
+
+      #calculate values
+      part_mu <- link.fun$linkinv(tmp_eta);
+      res_all[[i]]<-as.matrix(part_mu)
+    }
+
+    overall_temp<-array(unlist(res_all), dim=c( length(object$names$RCPs),length(object$names$spp),nrow(object2)))
+    overall_res<-list( mean=round(apply(overall_temp, c(1,2), mean),3),
+                       sd= round(apply(overall_temp, c(1,2), sd),3),
+                       lower= round(apply(overall_temp, c(1,2), function(x) quantile(x, probs=CI[1])),3),
+                       upper= round(apply(overall_temp, c(1,2), function(x) quantile(x, probs=CI[2])),3))
+
+    dimnames(overall_res[[1]])<-dimnames(overall_res[[2]])<-dimnames(overall_res[[3]])<-dimnames(overall_res[[4]])<-list(object$names$RCPs, object$names$spp)
+    return (overall_res)
+  }
+
+  if (check_if_sampling(object)){
+
+    gammas<-grepl("gamma",dimnames(object2)[[2]])
+    res_all <- list()
+    # res <- rep( list(list()), length(object$names$Wvars))
+
+
+    for(i in seq_len(dim(object2)[1])){
+      ## bootstrap alpha (intercept)
+      tmp_alphas<-object2[i,alphas]
+
+      # bootstrap tau
+      tmp_tau <- object2[i,taus]
+      tmp_tau <- matrix(tmp_tau, nrow=length(object$names$RCPs)-1)
+      tmp_tau_all <- rbind(tmp_tau,-colSums(tmp_tau))
+      colnames(tmp_tau_all) <- object$names$spp
+      rownames(tmp_tau_all) <- object$names$RCPs
+
+      ## offset from the model if used.
+      offy <- object$titbits$offset
+
+      #gamma
+      tmp_gamma<-object2[i, gammas]
+      tmp_gamma<-matrix(tmp_gamma, nrow=length(object$names$spp))
+      colnames(tmp_gamma)<-object$names$Wvars
+      rownames(tmp_gamma)<-object$names$spp
+
+      ## what is the linear predictor (eta)
+      tmp_eta <- sweep(tmp_tau_all, 2, tmp_alphas, "+") + mean(offy)
+
+      res<- lapply(seq_along(object$names$Wvars),function(jj){
+        new_eta <- sweep(tmp_eta, 2, tmp_gamma[,jj], "+");
+        part_mu <- link.fun$linkinv(new_eta);
+        return(part_mu)})
+
+      names(res)<-object$names$Wvars
+      res_all[[i]] <- res
+    }
+
+    #Compile list of summaries at the sampling factor level
+    samp_res <- rep(list(list()), length(object$names$Wvars))
+    names(samp_res) <- object$names$Wvars
+
+    for(k in seq_along(object$names$Wvars)){
+        samp_res[[k]]<-list(mean=round(apply(simplify2array(res_all[[k]]), c(1,2), mean),3),
+                            sd=round(apply(simplify2array(res_all[[k]]), c(1,2), sd),3),
+                            lower=round(apply(simplify2array(res_all[[k]]), c(1,2), function(x) quantile(x, probs=CI[1])),3),
+                            upper=round(apply(simplify2array(res_all[[k]]), c(1,2), function(x) quantile(x, probs=CI[2])),3))
+    }
+
+    overall_temp<-list()
+    for(i in seq_len(dim(object2)[1])){
+        get_vals <- res_all[[i]]
+        overall_temp[[i]]<-apply(simplify2array(get_vals), c(1,2), mean)
+    }
+
+    overall_samp <-list(mean=round(apply(simplify2array(overall_temp), c(1,2), mean),3),
+                   sd= round(apply(simplify2array(overall_temp), c(1,2), sd),3),
+                   lower= round(apply(simplify2array(overall_temp), c(1,2), function(x) quantile(x, probs=CI[1])),3),
+                   upper= round(apply(simplify2array(overall_temp), c(1,2), function(x) quantile(x, probs=CI[2])),3))
+    samp_res$overall<-overall_samp
+    return(samp_res)
+  }
+}
+
+
 #' @rdname regional_mix
 #' @export
 "AIC.regional_mix" <- function (object, ..., k = 2){
@@ -370,10 +569,38 @@
     return(res)
 }
 
+#'@title cooks.distance
+#'@rdname cooks.distance
+#'@description Performs leave-some-out measures for a regional_mix model. This includes a measure of how much effect leaving out an observation has on the probability of each site's RCP label. Also, this function can be used as a cross-validation workhorse.
 
-"cooks.distance.regional_mix" <-
-function( model, ..., oosSize=1, times=model$n, mc.cores=1, quiet=FALSE)
-{
+#'@param model A regional_mix object whose fit you want to assess
+#'@param ... ignored
+#'@param oosSize The size of the with held partitions (out-of-sample size). Use 1 (default) for leave-one-out statistics, such as Cook's distance and leave-one-out validation.
+#'@param times The number of times to perform the re-estimation (the number of leave out groups). For each 1:times a random partition of the data, of size oosSize, is taken and the model is fitted to one of the partitions. It is predicted to the other partition. The exception is when oosSize=1 and times=model$n (leave-one-out). In such cases (the default too), the observations are left out one-by-one and not randomly.
+#'@param mc.cores The number of cores to spread the workload over. Default is 1. Argument is useless on Windows machines ??? see ?parallel::mclapply
+#'@param quiet Should printing be suppressed? Default is no, it should not. Note that in either case, printing of the iteration trace etc is suppressed for each regional_mix fit.
+
+#'@return An object of class regiCooksD. It is a list of 4 elements:
+#'@return Y the species data,
+#'@return CV the model$n by model$S by times array of out-of-sample predictions (this array contains a lot of NAs for where predictions would in-sample),
+#'@return cooksD a model$n by model$nRCP matrix of statistics that resemble Cook's distance. The statistic is the change in the prediction of RCP probability from the model with all the data to the model with only the in-sample data, and predLogL the predictive log-likelihood of each point in each withheld sample (log-likelihood contributions of withheld observations, again there will be many NAs).
+#'@export
+#'@examples
+#' \dontrun{
+#' #not run as R CMD check complains about the time taken.
+#' #This code will take a little while to run (<1 minute on my computer)
+#' #For leave-one-out cooks distance, use oosSize=1
+#' #for serious use times will need to be larger.
+#' system.time({
+#'   example( regional_mix);
+#'   cooksD <- cooks.distance( fm, oosSize=10, times=25)
+#' })
+#' #For leave-one-out cooks distance, use oosSize=1
+#' cooksD <- cooks.distance( fm, oosSize=10, times=5)
+#' }
+
+
+"cooks.distance.regional_mix" <- function( model, ..., oosSize=1, times=model$n, mc.cores=1, quiet=FALSE){
   if (oosSize > model$n %/% 2)
     stop("Out of sample is more than half the size of the data! This is almost certainly an error.  Please set `oosSize' to something smaller.")
   if (is.null(model$titbits))
@@ -1148,8 +1375,7 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
 #' @rdname regional_mix
 #' @export
 
-"plot.regional_mix" <-
-function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet=FALSE, species="AllSpecies", fitted.scale="response")
+"plot.regional_mix" <- function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet=FALSE, species="AllSpecies", fitted.scale="response")
 {
   if( ! type %in% c("RQR","deviance"))
     stop( "Unknown type of residuals. Options are 'RQR' and 'deviance'.\n")
@@ -1508,9 +1734,7 @@ function (x, ..., type="RQR", nsim = 100, alpha.conf = c(0.9, 0.95, 0.99), quiet
 }
 
 
-"print.data.summ" <-
-function( data, dat, S, rcp_formula, species_formula, disty.cases, disty, quiet=FALSE)
-{
+"print.data.summ" <- function( data, dat, S, rcp_formula, species_formula, disty.cases, disty, quiet=FALSE){
   if( quiet)
     return( NULL)
   n.tot <- nrow( data)
@@ -1824,7 +2048,7 @@ function(control)
 #'Offy <- log( runif( n, min=30, max=60))
 #'pols <- list()
 #'pols[[1]] <- poly( X$x1, degree=3)
-#important to scale covariates so that regimix can get half-way decent starting values
+#important to scale covariates so that regional_mix can get half-way decent starting values
 #'pols[[2]] <- poly( X$x2, degree=3)
 #'X <- as.matrix( cbind( 1, X, pols[[1]], pols[[2]]))
 #'colnames( X) <- c("const", 'x1', 'x2', paste( "x1",1:3,sep='.'), paste( "x2",1:3,sep='.'))

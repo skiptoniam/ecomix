@@ -3,6 +3,8 @@
 \name{regional_mix}
 \alias{regional_mix}
 \alias{regional_mix.multifit}
+\alias{regional_mix.species_membership}
+\alias{species_membership.regional_mix}
 \alias{AIC.regional_mix}
 \alias{BIC.regional_mix}
 \alias{coef.regional_mix}
@@ -28,6 +30,9 @@ regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
   nRCP = 3, distribution = "bernoulli", offset = NULL,
   weights = NULL, control = list(), inits = "random2",
   titbits = FALSE, power = 1.6, nstart = 10, mc.cores = 1)
+
+species_membership.regional_mix(object, object2 = NULL, CI = c(0.025,
+  0.975), ...)
 
 \method{AIC}{regional_mix}(object, ..., k = 2)
 
@@ -70,8 +75,7 @@ stability.regional_mix(model, oosSizeRange = NULL, times = model$n,
   D.accuracy = 2)
 }
 \arguments{
-\item{rcp_formula}{an object of class "formula" (or an object that can be coerced to that class).
-The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the region of common profile (rcp) probabilities on covariates.}
+\item{rcp_formula}{an object of class "formula" (or an object that can be coerced to that class). The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the region of common profile (rcp) probabilities on covariates.}
 
 \item{species_formula}{an object of class "formula" (or an object that can be coerced to that class). The left hand side of this formula should be left empty (it is removed if it is not empty). The right hand side of this formula specifies the dependence of the species"'" data on covariates (typically different covariates to \code{rcp_formula} to avoid confusing confounding). An example formula is observations ~ gear_type + time_of_day, where gear_type describes the different sampling gears and time_of_day describes the time of the sample. #maybe could call this detection/bias}
 
@@ -89,13 +93,15 @@ The response variable (left hand side of the formula) needs to be either 'presen
 
 \item{inits}{a characture string which defines the method used to initialise finite mixture model clustering. #Will have to synergise this function call across RCP and SpeciesMix. Looks like SpeciesMix uses a em.prefit to setup initialisations. regional_mix has a number of methods. This seems like a good place to setup the bivariate clusting step - cobra function.}
 
-\item{titbits}{either a boolean or a vector of characters. If TRUE (default for regimix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regimix(qv) and predict.regimix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for regimix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "W" for the model matrix for the species-specific model, "offset" for the offset in the model, "wts" for the model weights, "form.RCP" for the formula for the RCPs, "form.spp" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "dist" for the conditional distribution of the species data, and "power" for the power parameters used (only used in Tweedie models). Care needs to be taken when using titbits=TRUE in regimix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory. It is more efficient, from a memory perspective, to refit the "best" model using regimix(qv) after identifying it with regimix.multifit(qv). See examples for illustration about how to do this.}
+\item{titbits}{either a boolean or a vector of characters. If TRUE (default for regional_mix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regional_mix(qv) and predict.regional_mix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for regional_mix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "W" for the model matrix for the species-specific model, "offset" for the offset in the model, "wts" for the model weights, "form.RCP" for the formula for the RCPs, "form.spp" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "dist" for the conditional distribution of the species data, and "power" for the power parameters used (only used in Tweedie models). Care needs to be taken when using titbits=TRUE in regional_mix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory. It is more efficient, from a memory perspective, to refit the "best" model using regional_mix(qv) after identifying it with regional_mix.multifit(qv). See examples for illustration about how to do this.}
 
 \item{power}{a numeric vector (length either 1 or the number of species) defining the power parameter to use in the Tweedie models. If length(power)==1, then the same power parameter is used for all species. If length(power)==No_species, then each species gets its own power parameter. Power values must be between 1 and 2, for computational reasons they should be well away from the boundary. The default is 1.6 as this has proved to be a good ball-park value for the fisheries data that the developer has previously analysed.}
 
 \item{nstart}{for regional_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
 \item{mc.cores}{for regional_mix.multifit only. The number of cores to spread the re-fitting over.}
+
+\item{object}{A RCP model}
 
 \item{alpha}{Numeric vector of length S. Specifies the mean prevalence for each species, on the logit scale}
 
@@ -130,6 +136,8 @@ The response variable (left hand side of the formula) needs to be either 'presen
 \description{
 creates an \code{regional_mix} model.
 
+Extracts the average species' each RCP.
+
 The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep). The result is one residual per species per site and they all should be standard
 normal variates. Within a site they are likely to be correlated (as they share a common latent factor), but across sampling locations they will be independent.
  The deviance residuals (as used here), are actually just square root of minus two times the log-likelihood contribution for each sampling location. We do #' not subtract the log-likelihood of the saturated model as, at the time of writing, we are unsure what this log-likelihood should be (latent factors confuse #' things here). This implies that the residuals will not have mean zero and their variance might also be heteroskedastic. This was not realised when writing #' the original RCP paper (Foster et al, 2013), obviously. We still believe that these residuals have some utility, but we are unsure where that utility stops. #' For general useage, the "RQR" residuals should probably be preferred.
@@ -143,6 +151,7 @@ data <- make_mixture_data(species_data = simulated_data$species_data,
                           covariate_data = simulated_data$covariate_data[,-1])
 fm_regional_mix <- regional_mix(rcp_form,spp_form,data=data,distribution='bernoulli',n_mixtures=5)
 }
+species_membership.regional_mix(fm)
 \dontrun{
 #generates synthetic data
 set.seed( 151)
