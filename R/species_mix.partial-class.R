@@ -1,7 +1,8 @@
 ### Main species mix partial functions to export ###
 
 "species_mix_partial" <- function(archetype_formula, species_formula, data,
-                                  n_mixtures = 3, offset = NULL, weights = NULL,
+                                  n_mixtures = 3, distribution="negative_binomial",
+                                  offset = NULL, weights = NULL,
                                   bb_weights = NULL, control = NULL,
                                   inits=NULL, standardise = FALSE,
                                   titbits = TRUE){
@@ -9,7 +10,7 @@
   data <- as.data.frame(data)
   control <- ecomix:::set_control_sam(control)
   if(!control$quiet)
-    message("SAM modelling")
+    message( "SAM modelling")
   call <- match.call()
   if(!is.null(archetype_formula)){
     archetype_formula <- stats::as.formula(archetype_formula)
@@ -28,8 +29,18 @@
     m <- match(c("data","offset","weights"), names(mf), 0L)
   }
 
+  mf <- mf[c(1L, m)]
+  mf$drop.unused.levels <- TRUE
+
+  if(distribution=="ippm"){
+    mf$na.action <- "na.pass"
+  } else {
+    mf$na.action <- "na.exclude"
+  }
+
   mf[[1L]] <- quote(stats::model.frame)
   mf <- eval(mf, parent.frame())
+
 
   # need this for the na.omit step
   rownames(mf)<-seq_len(nrow(mf))
@@ -444,8 +455,8 @@
   # if(is.null(spp_weights))spp_weights <- rep(1,S) #for bayesian boostrap.
 
   logl_sp <- matrix(NA, nrow=S, ncol=G)
-  eta.species <- cbind(1,first_fit$W) %*% t(cbind(fits$alpha,fits$gamma))
-  eta.mixture <- first_fit$x[,-1] %*% t(fits$beta)
+  eta.species <- as.matrix(cbind(1,first_fit$W)) %*% t(as.matrix(cbind(fits$alpha,fits$gamma)))
+  eta.mixture <- as.matrix(first_fit$x[,-1]) %*% t(fits$beta)
 
   #bernoulli
   if(disty == 1){
