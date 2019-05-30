@@ -318,28 +318,31 @@
     # beta_estimater <- apply_glm_mix_coefs_partial_sams
 
     # m-step
-    fm_sp_coefs <- surveillance::plapply(seq_len(S),
+    fm_species_coefs <- surveillance::plapply(seq_len(S),
                                        apply_glm_spp_coefs_partial_sams,
-                                       y, X, G, taus, site_spp_weights, offset,
+                                       y, X, W, G, taus, site_spp_weights, offset,
                                        y_is_na, disty, fits,
                                        .parallel = control$cores,
                                        .verbose = FALSE)
     #check weights in this.
-    alpha <- unlist(lapply(fm_sp_int, `[[`, 1))
-    fits$alpha <- update_sp_coefs(fits$alpha,alpha)
+    alpha <- unlist(lapply(fm_species_coefs, `[[`, 1))
+    fits$alpha <- alpha#update_alpha_coefs(fits$alpha,alpha)
+    gamma <- do.call(rbind,lapply(fm_species_coefs, `[[`, 2))
+    fits$gamma <- gamma#update_gamma_coefs(fits$gamma,gamma)
+
 
     ## update the betas
     fm_mix_coefs <- surveillance::plapply(seq_len(G),
                                         apply_glm_mix_coefs_partial_sams,
-                                        y, X, site_spp_weights,
+                                        y, X, W, site_spp_weights,
                                         offset, y_is_na, disty, taus,
                                         fits, logls_mus$fitted,
                                         .parallel = control$cores,
                                         .verbose = FALSE)
 
     # update the coefs.
-    fmix_coefs_mat <- t(do.call(cbind,fmix_coefs))
-    fits$beta <- update_mix_coefs(fits$beta, fmix_coefs_mat)
+    fmix_coefs_mat <- t(do.call(cbind,fm_mix_coefs))
+    fits$beta <- ecomix:::update_mix_coefs(fits$beta, fmix_coefs_mat)
 
 
     ## need a function here that updates the dispersion parameter.
@@ -356,13 +359,13 @@
 
     # e-step
     # get the log-likes and taus
-    logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-    taus <- get_taus(pis, logls_mus$logl_sp, G, S)
+    logls_mus <- get_logls_partial_sam(first_fit, fits, spp_weights, G, S, disty,get_fitted = FALSE)
+    taus <- ecomix:::get_taus(pis, logls_mus$logl_sp, G, S)
     # taus <- shrink_taus(taus,)
 
     #update the likelihood
     logl_old <- logl_new
-    logl_new <- get_incomplete_logl_sam(eta = additive_logistic(pis,inv = TRUE)[-G],
+    logl_new <- get_incomplete_logl_partial_sam(eta = additive_logistic(pis,inv = TRUE)[-G],
                                         first_fit, fits, spp_weights, G, S, disty)
     if(!control$quiet)cat("Iteration ",ite,"\n")
     if(!control$quiet)cat("Loglike: ", logl_new,"\n")
@@ -372,21 +375,23 @@
 
   taus <- data.frame(taus)
   names(taus) <- paste("grp.", seq_len(G), sep = "")
-  int_out <- fits$alpha
-  fm_out <- fits$beta
+  alpha_out <- fits$alpha
+  beta_out <- fits$beta
+  gamma_out <- fits$gamma
+  theta_out <- fits$theta
   names(pis) <- paste("G", seq_len(G), sep = ".")
   eta <- additive_logistic(pis, TRUE)[-1]
 
   # estimate log-likelihood
-  logl_new <- get_incomplete_logl_sam(eta, first_fit, fits, spp_weights, G, S, disty)
+  # logl_new <- get_incomplete_logl_partial_sam(eta, first_fit, fits, spp_weights, G, S, disty)
 
-  return(list(logl = logl_new, alpha = int_out, beta = fm_out, disp = fits$disp,
-              eta = eta, pis = pis, taus = round(taus,4), first_fit = first_fit))
+  return(list(logl = logl_new, alpha = alpha_out, beta = beta_out, gamma = gamma_out, theta = theta_out, eta = eta, pis = pis, taus = round(taus,4), first_fit = first_fit))
 
 }
 
 
-"apply_glm_spp_coefs_partial_sams" <- function(ss, y, X, W, G, taus, site_spp_weights,
+"apply_glm_spp_coefs_partial_sams" <- function(ss, y, X, W, G, taus,
+                                               site_spp_weights,
                                                offset, y_is_na, disty, fits){
 
   if(disty == 1)
@@ -405,6 +410,7 @@
   }
   out1 <- kronecker(rep( 1, G), outcomes)
   X1 <- kronecker(rep( 1, G), X[ids_i,])
+  W1 <- kronecker(rep( 1, G), cbind(1,W[ids_i,]))
   wts1 <- kronecker(rep( 1, G),
                     as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,],
                                                                 each=length(site_spp_weights[ids_i,ss]))
@@ -414,7 +420,7 @@
   offy <- offy1 + offy2
 
   if(disty %in% c(1,2,3,6)){
-    ft_sp <- try(stats::glm.fit(x=as.data.frame(X1),
+    ft_sp <- try(stats::glm.fit(x=as.data.frame(W1),
                                 y=as.numeric(out1),
                                 weights=as.numeric(wts1),
                                 offset=as.numeric(offy),
@@ -424,6 +430,7 @@
       my_coefs <- rep(NA, ncol(X1))
     } else {
       my_coefs <- coef(ft_sp)
+      names(my_coefs) <- c(colnames(y)[ss],colnames(W))
     }
   }
   if(disty %in% 4){
@@ -432,15 +439,64 @@
                             weights=as.numeric(wts1),
                             offset=as.numeric(offy))
     my_coefs <- ft_sp$coef
+    names(my_coefs) <- c(colnames(y)[ss],colnames(W))
+  }
+  return(list(alpha = my_coefs[1], gamma = my_coefs[-1]))
+}
+
+"apply_glm_mix_coefs_partial_sams" <- function(gg, y, X, W, site_spp_weights, offset,
+                                                 y_is_na, disty,
+                                                 taus, fits, mus){
+
+  ### setup the data stucture for this model.
+  Y_taus <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
+  X_no_NA <- list()
+  W_no_NA <- list()
+  for (jj in 1:ncol(y)){
+    X_no_NA[[jj]] <- X[!y_is_na[,jj],-1,drop=FALSE]
+    W_no_NA[[jj]] <- cbind(1,W[!y_is_na[,jj],,drop=FALSE])
+  }
+  X_taus <- do.call(rbind, X_no_NA)
+  W_taus <- do.call(rbind, W_no_NA)
+  n_ys <- sapply(X_no_NA,nrow)
+  wts_taus <- rep(taus[,gg,drop=FALSE],c(n_ys))
+  if(disty==4)wts_taus <- rep(taus[,gg],c(n_ys))/(1+rep(exp(-fits$disp),n_ys)*as.vector(mus[gg,,]))
+
+  site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
+  wts_tausXsite_weights <- wts_taus*site_weights
+  offy_mat <- replicate(ncol(y),offset)
+  offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
+  offy2 <- cbind(1,W) %*% t(cbind(fits$alpha,fits$gamma))
+  offy2 <- unlist(as.data.frame(offy2[!y_is_na]))
+  offy <- as.numeric(offy1 + offy2)
+
+  # which family to use?
+  if( disty == 1)
+    fam <- binomial()
+  if( disty == 2 | disty == 3 |disty == 4)
+    fam <- poisson()
+  if( disty == 6)
+    fam <- gaussian()
+  if (disty==3){
+    Y_taus <- as.matrix(Y_taus/site_weights)
+  } else {
+    Y_taus <- as.matrix(Y_taus)
   }
 
-  return(list(alpha = my_coefs[1]))
-}
+  if(disty %in% c(1,2,3,4,6)){ #don't use for tweedie
+    ft_mix <- try(glm.fit(x = as.data.frame(X_taus),
+                          y = as.numeric(Y_taus),
+                          weights = c(wts_tausXsite_weights),
+                          offset = offy,
+                          family = fam), silent = TRUE)
+    if (class(ft_mix) %in% 'try-error'){
+      mix_coefs <- rep(NA, ncol(X_taus[,-1]))
+    } else {
+      mix_coefs <- ft_mix$coefficients
+    }
 
-}
-
-"apply_glm_mix_coefs_partial_sams" <- function(){
-
+  }
+  return(c(mix_coefs))
 }
 
 "get_initial_values_partial_sam" <- function(y, X, W, spp_weights, site_spp_weights,
@@ -547,6 +603,82 @@
   return(out.list)
 }
 
+
+"get_incomplete_logl_partial_sam" <- function(eta, first_fit, fits, spp_weights, G, S, disty){
+
+  pis <- additive_logistic(eta)
+  logl_sp <- matrix(NA, nrow=S, ncol=G)
+  eta.species <- cbind(1,first_fit$W) %*% t(cbind(fits$alpha,fits$gamma))
+  eta.mixture <- first_fit$x[,-1] %*% t(fits$beta)
+
+  #bernoulli
+  if(disty == 1){
+    link <- make.link('logit')
+    for( ss in seq_len(S)){
+      for( gg in seq_len(G)){
+        eta <- eta.species[,ss] + eta.mixture[,gg] + first_fit$offset
+        logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, link$linkinv(eta), log = TRUE))
+      }
+      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
+    }
+  }
+
+  #poisson
+  if(disty==2){
+    link <- make.link('log')
+    for(ss in seq_len(S)){
+      for(gg in seq_len(G)){
+        eta <- eta.species[,ss] + eta.mixture[,gg] + first_fit$offset
+        logl_sp[ss,gg] <- sum(dpois(first_fit$y[,ss],link$linkinv(eta),log=TRUE))
+      }
+      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
+    }
+  }
+
+  #ippm
+  if(disty==3){
+    link <- make.link('log')
+    for(ss in seq_len(S)){
+      sp_idx<-!first_fit$y_is_na[,ss]
+      for(gg in seq_len(G)){
+        #lp is the same as log_lambda (linear predictor)
+        eta <- cbind(first_fit$x[sp_idx,1],first_fit$W[sp_idx,]) %*% c(fits$alpha[ss],fits$gamma[ss,]) + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
+        logl_sp[ss,gg] <- (first_fit$y[sp_idx,ss] %*% eta - first_fit$site_spp_weights[sp_idx,ss] %*% link$linkinv(eta))
+      }
+    }
+  }
+
+  #negative binomial
+  if(disty==4){
+    link <- make.link('log')
+    for(ss in seq_len(S)){
+      for(gg in seq_len(G)){
+        eta <- eta.species[,ss] + eta.mixture[,gg] + first_fit$offset
+        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss], mu=link$linkinv(eta), size=1/exp(-fits$theta[ss]),log=TRUE))
+      }
+      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
+    }
+  }
+
+  # gaussian
+  if(disty==6){
+    link <- make.link('identity')
+    for(ss in seq_len(S)){
+      for(gg in seq_len(G)){
+        eta <- eta.species[,ss] + eta.mixture[,gg] + first_fit$offset
+        logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=link$linkinv(eta),sd=exp(fits$theta[ss]),log=TRUE))
+      }
+      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
+    }
+  }
+ak <- logl_sp + matrix(rep(log( pis), each=S), nrow=S, ncol=G)
+am <- apply( ak, 1, max)
+ak <- exp( ak-am)
+sppLogls <- am + log( rowSums( ak))
+logl <- sum( sppLogls)
+
+return(logl)
+}
 
 
 "get_partial_data_objects" <- function(archetype_formula, species_formula, dat){

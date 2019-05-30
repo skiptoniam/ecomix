@@ -2022,7 +2022,7 @@ starting values;\n starting values are generated using ',control$init_method,
   eta <- additive_logistic(pis, TRUE)[-1]
 
   # estimate log-likelihood
-  logl_new <- get_incomplete_logl_sam(eta, first_fit, fits, spp_weights, G, S, disty)
+  # logl_new <- get_incomplete_logl_sam(eta, first_fit, fits, spp_weights, G, S, disty)
 
   return(list(logl = logl_new, alpha = int_out, beta = fm_out, disp = fits$disp,
               eta = eta, pis = pis, taus = round(taus,4), first_fit = first_fit))
