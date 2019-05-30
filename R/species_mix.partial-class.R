@@ -386,7 +386,56 @@
 }
 
 
-"apply_glm_spp_coefs_partial_sams" <- function(){
+"apply_glm_spp_coefs_partial_sams" <- function(ss, y, X, W, G, taus, site_spp_weights,
+                                               offset, y_is_na, disty, fits){
+
+  if(disty == 1)
+    fam <- binomial()
+  if(disty == 2 | disty == 3 | disty == 4)
+    fam <- poisson()
+  if(disty == 6)
+    fam <- gaussian()
+
+  ids_i <- !y_is_na[,ss]
+
+  if (disty==3){
+    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+  } else {
+    outcomes <- as.numeric(y[ids_i,ss])
+  }
+  out1 <- kronecker(rep( 1, G), outcomes)
+  X1 <- kronecker(rep( 1, G), X[ids_i,])
+  wts1 <- kronecker(rep( 1, G),
+                    as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,],
+                                                                each=length(site_spp_weights[ids_i,ss]))
+  offy1 <- kronecker(rep( 1, G), offset[ids_i])
+  offy2 <- X[ids_i,-1] %*% t(fits$beta)
+  offy2 <- as.numeric(offy2)
+  offy <- offy1 + offy2
+
+  if(disty %in% c(1,2,3,6)){
+    ft_sp <- try(stats::glm.fit(x=as.data.frame(X1),
+                                y=as.numeric(out1),
+                                weights=as.numeric(wts1),
+                                offset=as.numeric(offy),
+                                family=fam), silent=FALSE)
+    if (class(ft_sp) %in% 'try-error'){
+      print(paste0(ss,"\n"))
+      my_coefs <- rep(NA, ncol(X1))
+    } else {
+      my_coefs <- coef(ft_sp)
+    }
+  }
+  if(disty %in% 4){
+    ft_sp <- glm.fit.nbinom(x=as.matrix(X1),
+                            y=as.numeric(out1),
+                            weights=as.numeric(wts1),
+                            offset=as.numeric(offy))
+    my_coefs <- ft_sp$coef
+  }
+
+  return(list(alpha = my_coefs[1]))
+}
 
 }
 
