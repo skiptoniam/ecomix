@@ -2311,7 +2311,7 @@ starting values;\n starting values are generated using ',control$init_method,
   return(tau_star)
 }
 
-"print_input_sam" <- function(y, X, S, archetype_formula, species_formula, distribution, quiet=FALSE){
+"print_input_sam" <- function(y, X, W=NULL, S, archetype_formula, species_formula, distribution, quiet=FALSE){
   if( quiet)
     return( NULL)
   n.tot <- nrow(y)
@@ -2322,13 +2322,15 @@ starting values;\n starting values are generated using ',control$init_method,
     message("There are ", n_bkgrd, " background (integration) points for each of the ", S," species")
   } else {
     message("There are ", nrow(X), " site observations for ", S," species")
+    # message("There are ", ncol(W), " parameters for each species, and ",ncol(X),"parameters for each archetype")
   }
 
   archetype_formula[[2]] <- NULL
-  message("The model for the SAM is ", Reduce( "paste", deparse(archetype_formula)))
+  message("The model for the archetype (grouping) is ", Reduce( "paste", deparse(archetype_formula)))
   if(!is.null(species_formula))
   message("The model for the species is ", Reduce( "paste", deparse(species_formula)))
-  message("You are implementing a ", distribution, " SAM.")
+  if(is.null(W)) message("You are implementing a ", distribution, " Species Archetype Model.")
+  if(!is.null(W)) message("You are implementing a ", distribution, " Partial Species Archetype Model.")
 }
 
 "get_distribution_sam" <- function( disty_cases, dist1) {
