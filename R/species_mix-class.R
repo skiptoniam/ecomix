@@ -206,7 +206,7 @@
   }
 
   # summarising data to console
-  print_input_sam(y, X, S, archetype_formula, species_formula, distribution,
+  print_input_sam(y, X, W=NULL, S, archetype_formula, species_formula, distribution,
                   quiet=control$quiet)
 
   # fit species mix.
@@ -230,10 +230,10 @@
   tmp <- calc_info_crit_sam(tmp)
 
   #titbits object, if wanted/needed.
-  tmp$titbits <- get_titbits_sam(titbits, y, X, spp_weights, site_spp_weights,
-                                 offset, y_is_na, archetype_formula,
-                                 species_formula, control, disty_cases[disty],
-                                 tmp$removed_species)
+  tmp$titbits <- get_titbits_sam(titbits, y, X, W=NULL, spp_weights,
+                                 site_spp_weights, offset, y_is_na,
+                                 archetype_formula, species_formula, control,
+                                 disty_cases[disty], tmp$removed_species)
   class(tmp) <- c("species_mix")
   return(tmp)
 }
@@ -464,7 +464,6 @@
                                   quiet = FALSE,
                                   trace = 1,
                                   cores = 1,
-                                  regularisation = FALSE,
                                   ## intialisation controls
                                   init_method = 'kmeans',
                                   init_sd = 1,
@@ -476,6 +475,10 @@
                                   em_abstol = sqrt(.Machine$double.eps),
                                   em_reltol = reltol_fun,
                                   em_maxtau = 0.8,
+                                  ## Partial mixture penalities
+                                  theta_range = c(0.001,10),
+                                  pen_param = 1.25,
+                                  update_kappa = c(1,0.5,1),
                                   ## c++ controls
                                   print_cpp_start_vals = FALSE,
                                   maxit_cpp = 1000,
@@ -491,7 +494,7 @@
                                   getscores_cpp = 0, ...){
                #general controls
   rval <- list(maxit = maxit, quiet = quiet, trace = trace,
-               cores = cores, regularisation = regularisation,
+               cores = cores,
                #initialisation controls
                init_method = init_method, init_sd = init_sd,
                minimum_sites_occurrence = minimum_sites_occurrence,
@@ -499,6 +502,10 @@
                em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps,
                em_abstol = em_abstol, em_reltol = em_reltol,
                em_maxtau = em_maxtau,
+               # partial controls
+               theta_range = theta_range,
+               pen_param = pen_param,
+               update_kappa = update_kappa,
                #cpp controls
                print_cpp_start_vals = print_cpp_start_vals,
                maxit_cpp = maxit_cpp, trace_cpp = trace_cpp,
@@ -2032,13 +2039,7 @@ starting values;\n starting values are generated using ',control$init_method,
 "initiate_fit_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
 
-  if(control$regularisation){
-    initial_params_estimater <- ecomix:::apply_glmnet_sam_inits
-  } else {
-    initial_params_estimater <- ecomix:::apply_glm_sam_inits
-  }
-
-  fm_sp_mods <-  surveillance::plapply(seq_len(S), initial_params_estimater, y, X,
+  fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glm_sam_inits, y, X,
                                        site_spp_weights, offset, y_is_na, disty,
                                       .parallel = control$cores, .verbose = FALSE)
 
@@ -2373,24 +2374,23 @@ starting values;\n starting values are generated using ',control$init_method,
   return(offset)
 }
 
-"get_titbits_sam" <- function( titbits, y, X, spp_weights, site_spp_weights, offset,
+"get_titbits_sam" <- function(titbits, y, X, W, spp_weights, site_spp_weights, offset,
                                y_is_na , archetype_formula, species_formula,
                                control, distribution,removed_species)  {
     if( titbits==TRUE)
-      titbits <- list( Y = y, X = X, spp_weights=spp_weights,
-                       site_spp_weights=site_spp_weights, offset=offset,
-                       y_is_na=y_is_na,
-                       archetype_formula =  archetype_formula,
-                       species_formula = species_formula,
-                       control = control,
-                       distribution = distribution,
-                       removed_species = removed_species)
+      titbits <- list( Y = y, X = X, W = W, spp_weights = spp_weights,
+                       site_spp_weights = site_spp_weights, offset = offset,
+                       y_is_na = y_is_na, archetype_formula =  archetype_formula,
+                       species_formula = species_formula, control = control,
+                       distribution = distribution, removed_species = removed_species)
     else{
       titbits <- list()
       if( "Y" %in% titbits)
         titbits$Y <- y
       if( "X" %in% titbits)
         titbits$X <- X
+      if( "W" %in% titbits)
+        titbits$W <- W
       if( "spp_weights" %in% titbits)
         titbits$spp_weights <- spp_weights
       if( "site_spp_weights" %in% titbits)
@@ -2665,7 +2665,7 @@ starting values;\n starting values are generated using ',control$init_method,
 }
 
 "calc_post_probs_sam" <- function( pis, logCondDens)  {
-    logPostProbs <- log( pis) + logCondDens #would be better to be working with log(pis) previously but c'est la vie
+    logPostProbs <- log( pis) + logCondDens
     mset <- apply( logPostProbs, 1, max)
     logSums <- mset + log( rowSums( exp( logPostProbs-mset)))
     logPostProbs <- logPostProbs - logSums

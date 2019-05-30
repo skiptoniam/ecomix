@@ -1,18 +1,15 @@
 ### Main species mix partial functions to export ###
 
 "species_mix_partial" <- function(archetype_formula, species_formula, data,
-                                n_mixtures = 3, offset = NULL, weights = NULL,
-                                bb_weights = NULL, control = NULL,
-                                inits = "random", standardise = FALSE,
-                                titbits = TRUE, #vcov=FALSE,
-                                theta.range=c(0.001,10), pen.parm=1.25,
-                                iters=c(10,200), update.kappa=c(1,0.5,1),
-                                contr=list(eps=1e-8,init.sd=1), init.fit = NULL){
+                                  n_mixtures = 3, offset = NULL, weights = NULL,
+                                  bb_weights = NULL, control = NULL,
+                                  inits=NULL, standardise = FALSE,
+                                  titbits = TRUE){
 
   data <- as.data.frame(data)
   control <- ecomix:::set_control_sam(control)
   if(!control$quiet)
-    message( "Partial SAM modelling")
+    message("SAM modelling")
   call <- match.call()
   if(!is.null(archetype_formula)){
     archetype_formula <- stats::as.formula(archetype_formula)
@@ -39,7 +36,6 @@
 
   #get data object
   dat <- ecomix:::clean_data_sam(mf, archetype_formula, species_formula, distribution)
-  # allData <- get_partial_data_objects(archetype_formula, species_formula, mf)
 
   # get responses
   y <- stats::model.response(dat$mf.X)
@@ -51,10 +47,10 @@
   S <- ecomix:::check_reponse_sam(y)
 
   # what is the X matrix (archetype covariates)
-  X <- ecomix:::get_X_sam(archetype_formula = archetype_formula, mf.X = dat$mf.X)
+  X <- get_X_part_sam(archetype_formula = archetype_formula, mf.X = dat$mf.X)
 
   # what is the W matrix (species covariates)
-  W <- get_W_sam(species_formula = species_formula, mf.W = dat$mf.W)
+  W <- get_W_part_sam(species_formula = species_formula, mf.W = dat$mf.W)
 
   x.means <- NULL
   x.sds <- NULL
@@ -110,148 +106,65 @@
                                  offset=offset, disty=disty, y_is_na=y_is_na,
                                  control=control, inits=inits)
 
+  tmp$dist <- disty_cases[disty]
 
-  # if( is.null( init.fit))
-    # fits <- initiate.mod.nb( allData, species_formula, archetype_formula, inits, G, theta.range, contr$init.sd)
-  # else{
-    # fits <- init.fit
-    # cat( "Using initial fit object without checking -- good luck\n")
-  # }
-
-  #the first E-step
-  #get the initial pis == taus #well kinda
-  pi <- rep( 1/G, G)	#summary( as.factor( fits$grps)) / length( fits$grps)
-  logls <- get.logls.nb( allData, fits, G)
-  taus <- get.taus( pi, logls, G, S)
-  taus <- shrink.taus( taus, maxTau=1/G + 0.1, G)
-
-  logl.old <- logl.new <- -.Machine$double.xmax
-  kount <- 1
-
-  cat( "iteration: 0\n")
-  print( fits$coefs)
-  maxit <- iters[2]
-  n.init.steps <- iters[1]
-
-  while( (kount <= maxit & !converged(logl.old, logl.new, eps=contr$eps)) | kount <= n.init.steps){
-    old.fits <- fits
-    pi <- colSums( taus) / S
-    #update the mixing params
-    tmp <- nlminb( start=fits$coefs, objective=incom.logl2.nb, gradient=NULL, hessian=NULL, allData=allData, pis=pi, fits=fits, G=G, S=S)
-    fits$coefs <- update.coefs( fits$coefs, tmp$par, kapp=update.kappa[3])
-    #update the spp-specific params
-    out1 <- kronecker( rep( 1, G), allData$outcomes)
-    X1.noMix <- kronecker( rep( 1, G), allData$X.noMix)
-    offy1 <- kronecker( rep( 1, G), allData$offset)
-    offy2 <- allData$X.Mix %*% t( fits$coefs)
-    offy2 <- as.numeric( offy2)
-    for( ss in seq_len(S)){
-      Mix.taus <- rep( taus[ss,], each=N)
-      tmpform <- as.formula( paste( paste( 'out1', '[,ss]', sep=''), '-1+X1.noMix+offset( offy1)+offset( offy2)', sep='~'))
-      #			fm <- try( glm2( tmpform, weights=Mix.taus, family=negative.binomial( theta=fits$sppTheta[ss], link='log')))
-      fm <- try( gam( tmpform, weights=Mix.taus, family=negbin(theta=fits$sppTheta[ss])))
-      kount1 <- 1
-      while( class( fm) %in% 'try-error' & kount1 < 10){
-        kount1 <- kount1 + 1
-        theta <- 10 * fits$sppTheta[ss]
-        #	  		fm <- try( glm2( tmpform, weights=Mix.taus, family=poisson( link='log')))
-        fm <- try( gam( tmpform, weights=Mix.taus, family=negbin(theta=fits$sppTheta[ss])))
-      }
-      fits$sppCoefs[ss,] <- update.coefs( fits$sppCoefs[ss,], fm$coef, kappa=update.kappa[1])
-    }
-    #update the dispersion params
-    if( kount >= n.init.steps){
-      for( ss in seq_len(S)){
-        thet <- optimise(f = theta.logl, interval = theta.range, allData=allData, fits=fits, pi=pi, ss=ss, theta.range=theta.range, maximum=TRUE)$maximum
-        fits$sppTheta[ss] <- update.coefs( fits$sppTheta[ss], thet, kappa=update.kappa[2])
-      }
-    }
-    cat( "iteration: ", kount, "\n")
-    print( fits$coefs)
-    #E-step
-    logls <- get.logls.nb( allData, fits, G)	###############need to sort out dispersions!##########
-    taus <- get.taus( pi, logls, G, S)
-
-    logl.old <- logl.new
-    logl.new <- get.incomplete.logl.nb( pi, allData, fits, G, S, theta.range, pen.parm)
-    cat( logl.new, '\n')
-    kount2 <- 1
-    max.decrease <- 100
-    cat( "\n")
-    kount <- kount + 1
+  if(n_mixtures==1){
+    tmp$pis <- tmp$pis
+  } else {
+    tmp$pis <- additive_logistic(tmp$eta)
   }
 
+  #calc posterior porbs and pis.
+  if(n_mixtures>1)
+    tmp$taus <- calc_post_probs_sam(tmp$pis,tmp$loglloglikeSG)
 
-  fits$tau <- taus
-  if( kount > maxit)
-    cat( "NOT ")
-  cat( "converged\n")
+  tmp$pis <- colSums(tmp$taus)/S
 
-  npTot <- (G-1) +  #pi
-    prod( dim( fits$sppCoefs)) + #spp parameters
-    S +  #spp dispersion
-    prod( dim( fits$coefs))  #grp coefs
-  BIC <- -2*logl.new + npTot * log( S)
+  #Information criteria
+  tmp <- calc_info_crit_part_sam(tmp)
 
-  # flag <- TRUE
-  # if( vcov){
-  #   if( kount < maxit){
-  #     flag <- FALSE
-  #     cat( "Finding covariance matrix for estimates\n")
-  #     allPars <- c( addLogit(pi), as.double( fits$sppCoefs), fits$sppTheta, as.double( fits$coefs))
-  #     tmp1 <- incom.logl2( allPars, allData, G, S, theta.range, pen.parm=pen.parm)
-  #     #      dyn.load( "partialSAMnb.so")
-  #     tmp2 <- .Call( "calcDerHess", as.numeric( allData$outcomes), as.numeric( allData$offset), as.numeric( allPars), as.numeric( allData$X.noMix), as.numeric( allData$X.Mix), as.integer(S), as.integer(G), as.integer(nrow( allData$outcomes)), as.integer( ncol( allData$X.noMix)), as.integer( ncol( allData$X.Mix)), as.numeric( theta.range), as.numeric( pen.parm))
-  #     tmpLogl <- tmp2[1]
-  #     tmpScores <- tmp2[1+1:length( allPars)]
-  #     tmpHess <- matrix( tmp2[1+length( allPars) + 1:(length(allPars)^2)], nrow=length( allPars), ncol=length( allPars))
-  #     try( vcov <- solve( -tmpHess), silent=TRUE)
-  #   }
-  # }
-  # if( flag){
-  #   cat( "Not finding covariance matrix for estimates.  Either unrequested or maximum iterations reached.\n")
-  #   vcov <- tmpHess <- NULL
-  # }
-
-  #	print( fits)
-
-  print( "Done!")
-  options( warn=as.numeric( oldWarn))
-  return( list( MixCoefs=fits$coefs, sppCoefs=fits$sppCoefs, sppTheta=fits$sppTheta, allData=allData, logl=logl.new, taus=taus, pi=pi, maxit=maxit, niters=kount-1, vcov=vcov, Hessian=tmpHess, BIC=BIC, fits=fits))
-  #  return( list( fits=fits, allData=allData))
+  #titbits object, if wanted/needed.
+  tmp$titbits <- get_titbits_partial_sam(titbits, y, X, W, spp_weights, site_spp_weights,
+                                 offset, y_is_na, archetype_formula,
+                                 species_formula, control, disty_cases[disty],
+                                 tmp$removed_species)
+  class(tmp) <- c("species_mix_partial")
 }
 
-"species_mix_partial.fit" <- function(y, X, W, G, S, spp_weights, site_spp_weights,
-                              offset, y_is_na, disty, control, inits=NULL){
+"species_mix_partial.fit" <- function(y, X, W, G, S, spp_weights,
+                                      site_spp_weights, offset, y_is_na, disty,
+                                      control, inits=NULL){
 
-  if(G==1){
-    tmp <- fitmix_ECM_partial_sam(y, X, W, spp_weights, site_spp_weights,
+
+  ## currently just ecm working - I need to code up the c++ code.
+  # if(G==1){
+  tmp <- fitmix_ECM_partial_sam(y, X, W, spp_weights, site_spp_weights,
                           offset, y_is_na, G, S, disty, control)
-    tmp <- clean_ECM_output_one_group(tmp, G, S, disty)
-    return(tmp)
-  }
-
-  if(is.null(inits)){
-    starting_values  <-  get_starting_values_sam(y = y, X = X, W = W,
-                                                 spp_weights = spp_weights,
-                                                 site_spp_weights = site_spp_weights,
-                                                 offset = offset,
-                                                 y_is_na = y_is_na,
-                                                 G = G, S = S,
-                                                 disty = disty,
-                                                 control = control)
-
-  } else {
-    if(!control$quiet)message('Be careful! You are using your own initial starting values to optimise the species_mix model.')
-    inits <- setup_inits_sam(inits, S=S, G=G, np=ncol(X[,-1]), disty, return_list = TRUE)
-    print(inits)
-    starting_values <- inits
-  }
-
-  tmp <- sam_optimise(y, X, offset, spp_weights, site_spp_weights,
-                      y_is_na, S, G, disty, starting_values, control)
-
+  if(G==1)tmp <- clean_ECM_output_one_group(tmp, G, S, disty)
   return(tmp)
+  # }
+
+  # if(is.null(inits)){
+    # starting_values  <-  get_starting_values_partial_sam(y = y, X = X, W = W,
+  #                                                spp_weights = spp_weights,
+  #                                                site_spp_weights = site_spp_weights,
+  #                                                offset = offset,
+  #                                                y_is_na = y_is_na,
+  #                                                G = G, S = S,
+  #                                                disty = disty,
+  #                                                control = control)
+  #
+  # } else {
+  #   if(!control$quiet)message('Be careful! You are using your own initial starting values to optimise the species_mix model.')
+  #   inits <- setup_inits_sam(inits, S=S, G=G, np=ncol(X[,-1]), disty, return_list = TRUE)
+  #   print(inits)
+  #   starting_values <- inits
+  # }
+  #
+  # tmp <- sam_optimise(y, X, offset, spp_weights, site_spp_weights,
+  #                     y_is_na, S, G, disty, starting_values, control)
+  #
+  # return(tmp)
 }
 
 
@@ -291,7 +204,7 @@
     if (any(pis < sqrt(.Machine$double.eps))) {
       if(restart_ite==1){
         cat('Pis have gone to zero - restarting with new initialisation \n')
-        starting_values <- get_initial_values_sam(y = y, X = X,
+        starting_values <- get_initial_values_partial_sam(y = y, X = X, W=W,
                                                   spp_weights = spp_weights,
                                                   site_spp_weights = site_spp_weights,
                                                   offset = offset, y_is_na = y_is_na,
@@ -306,9 +219,10 @@
         cat('Pis have gone to zero - restarting with random inits \n')
         taus <- matrix(runif(S*G),S); taus <- taus/rowSums(taus);
         pis <- colSums(taus)/S;
-        fits$beta <- matrix(rnorm(G*(ncol(X)-1)),G,(ncol(X)-1))
         fits$alpha <- rnorm(S)
-        if (disty%in%c(4,6)) fits$disp <- rep(0.05,S)
+        fits$beta <- matrix(rnorm(G*(ncol(X)-1)),G,(ncol(X)-1))
+        fits$gamma <- matrix(rnorm(S*(ncol(W)),S,ncol(W)))
+        if (disty%in%c(4,6)) fits$theta <- rep(0.05,S)
       }
       ite <- 1
       restart_ite <- restart_ite + 1
@@ -354,7 +268,7 @@
                                        .verbose = FALSE)
       disp <- unlist(lapply(fm_disp, `[[`, 1))
       disp <- log(1/disp)
-      fits$disp <- update_sp_dispersion(fits$disp,disp,0.5)
+      fits$theta <- update_sp_dispersion(fits$theta,disp,0.5)
     }
 
     # e-step
@@ -726,9 +640,16 @@ return(logl)
 }
 
 
+"get_X_part_sam" <-function(archetype_formula, mf.X){
+  form.X <- archetype_formula
+  form.X[[2]] <- NULL
+  form.X <- stats::as.formula(form.X)
+  X <- stats::model.matrix(form.X, mf.X)
+  return( X)
+}
 
 
-"get_W_sam" <- function(species_formula, mf.W){
+"get_W_part_sam" <- function(species_formula, mf.W){
   form.W <- species_formula
   if( !is.null( species_formula)){
     if( length( form.W)>2)
@@ -918,3 +839,17 @@ return(logl)
 
   return( res)
 }
+
+"calc_info_crit_part_sam" <-  function(tmp) {
+  # k <- length(unlist(tmp$coefs))
+
+  k <- length(tmp$eta) +  #pi
+    prod(dim(fits$gamma)) + #spp parameters
+    length(tmp$alpha) +  #spp dispersion
+    prod( dim( fits$beta))  #grp coefs
+
+  tmp$BIC <- -2 * tmp$logl + log(length(tmp$alpha)) * k
+  tmp$AIC <- -2 * tmp$logl + 2 * k
+  return( tmp)
+}
+
