@@ -11,6 +11,7 @@ X <- simulated_data$covariate_data
 mf <- as.data.frame(cbind(y,X))
 archetype_formula <- sam_form
 species_formula <- ~ w2
+distribution <- 'bernoulli'
 
 offset <- rep(0,nrow(y))
 # weights <- rep(1,nrow(y))

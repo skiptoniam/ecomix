@@ -39,28 +39,36 @@
 
   #get data object
   dat <- ecomix:::clean_data_sam(mf, archetype_formula, species_formula, distribution)
-  allData <- get_partial_data_objects(archetype_formula, species_formula, mf)
+  # allData <- get_partial_data_objects(archetype_formula, species_formula, mf)
 
   # get responses
   y <- stats::model.response(dat$mf.X)
 
-  # logical matirx needed for removing NAs from response and weights.
+  # logical matirx needed for removing NAs from response and weights mainly used for ippms.
   y_is_na <- is.na(y)
 
   # check names of reponses
   S <- ecomix:::check_reponse_sam(y)
 
+  # what is the X matrix (archetype covariates)
   X <- ecomix:::get_X_sam(archetype_formula = archetype_formula, mf.X = dat$mf.X)
 
+  # what is the W matrix (species covariates)
   W <- get_W_sam(species_formula = species_formula, mf.W = dat$mf.W)
 
-  s.means <- NULL
-  s.sds <- NULL
+  x.means <- NULL
+  x.sds <- NULL
+  w.means <- NULL
+  w.sds <- NULL
   if (standardise == TRUE) {
     stand.X <- standardise.X(X[, -1])
     X <- as.matrix(cbind(1, stand.X$X))
-    s.means <- stand.X$dat.means
-    s.sds <- stand.X$dat.sds
+    stand.W <- standardise.X(W)
+    W <- as.matrix(stand.X$X)
+    x.means <- stand.X$dat.means
+    x.sds <- stand.X$dat.sds
+    w.means <- stand.W$dat.means
+    w.sds <- stand.W$dat.sds
   }
 
   # summarising data to console
@@ -78,7 +86,7 @@
   # get the weights
   species_names <- colnames(y)
   site_spp_weights <- ecomix:::get_site_spp_weights_sam(mf, weights, species_names, distribution)
-  spp_weights <- check_spp_weights(bb_weights,S)
+  spp_weights <- ecomix:::check_spp_weights(bb_weights,S)
 
   if(distribution=='ippm'){
     if(!all(colnames(y)==colnames(site_spp_weights))){
@@ -95,13 +103,20 @@
     }
   }
 
-  #Get initial model fits and groupings
-  if( is.null( init.fit))
-    fits <- initiate.mod.nb( allData, species_formula, archetype_formula, inits, G, theta.range, contr$init.sd)
-  else{
-    fits <- init.fit
-    cat( "Using initial fit object without checking -- good luck\n")
-  }
+  # fit partial species mix model
+  tmp <- species_mix_partial.fit(y=y, X=X, W=W, G=n_mixtures, S=S,
+                                 spp_weights=spp_weights,
+                                 site_spp_weights=site_spp_weights,
+                                 offset=offset, disty=disty, y_is_na=y_is_na,
+                                 control=control, inits=inits)
+
+
+  # if( is.null( init.fit))
+    # fits <- initiate.mod.nb( allData, species_formula, archetype_formula, inits, G, theta.range, contr$init.sd)
+  # else{
+    # fits <- init.fit
+    # cat( "Using initial fit object without checking -- good luck\n")
+  # }
 
   #the first E-step
   #get the initial pis == taus #well kinda
