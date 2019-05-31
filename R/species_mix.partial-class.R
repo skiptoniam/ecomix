@@ -1,4 +1,7 @@
 ### Main species mix partial functions to export ###
+#' @name species_mix_partial
+#' @rdname species_mix_partial
+#' @export
 
 "species_mix_partial" <- function(archetype_formula, species_formula, data,
                                   n_mixtures = 3, distribution="negative_binomial",
@@ -146,36 +149,12 @@
                                       site_spp_weights, offset, y_is_na, disty,
                                       control, inits=NULL){
 
-
-  ## currently just ecm working - I need to code up the c++ code.
-  # if(G==1){
+  ## currently only use the ECM. We could move the newton-rapts in the future.
   tmp <- fitmix_ECM_partial_sam(y, X, W, spp_weights, site_spp_weights,
                           offset, y_is_na, G, S, disty, control)
   if(G==1)tmp <- clean_ECM_output_one_group(tmp, G, S, disty)
   return(tmp)
-  # }
 
-  # if(is.null(inits)){
-    # starting_values  <-  get_starting_values_partial_sam(y = y, X = X, W = W,
-  #                                                spp_weights = spp_weights,
-  #                                                site_spp_weights = site_spp_weights,
-  #                                                offset = offset,
-  #                                                y_is_na = y_is_na,
-  #                                                G = G, S = S,
-  #                                                disty = disty,
-  #                                                control = control)
-  #
-  # } else {
-  #   if(!control$quiet)message('Be careful! You are using your own initial starting values to optimise the species_mix model.')
-  #   inits <- setup_inits_sam(inits, S=S, G=G, np=ncol(X[,-1]), disty, return_list = TRUE)
-  #   print(inits)
-  #   starting_values <- inits
-  # }
-  #
-  # tmp <- sam_optimise(y, X, offset, spp_weights, site_spp_weights,
-  #                     y_is_na, S, G, disty, starting_values, control)
-  #
-  # return(tmp)
 }
 
 
@@ -202,7 +181,7 @@
   pis <- starting_values$pis
   # cat('start pis', pis,'\n')
   first_fit <- starting_values$first_fit
-  logls_mus <- get_logls_partial_sam(first_fit, fits, spp_weights, G, S, disty, get_fitted = FALSE)
+  logls_mus <- get_logls_partial_sam(first_fit, fits, spp_weights, G, S, disty, get_fitted = TRUE)
 
   while(control$em_reltol(logl_new,logl_old) & ite <= control$em_steps){
     if(restart_ite>10){
@@ -272,25 +251,26 @@
 
     ## need a function here that updates the dispersion parameter.
     if(disty%in%c(4,6)){
-      fm_disp <- surveillance::plapply(seq_len(S), apply_optimise_spp_theta,
-                                       first_fit, fits,
-                                       G, disty, taus,
+      fm_theta <- surveillance::plapply(seq_len(S),
+                                        apply_optimise_partial_sam_theta,
+                                        first_fit, fits,
+                                        G, disty, pis,
                                        .parallel = control$cores,
                                        .verbose = FALSE)
-      disp <- unlist(lapply(fm_disp, `[[`, 1))
-      disp <- log(1/disp)
-      fits$theta <- update_sp_dispersion(fits$theta,disp,0.5)
+      thetas <- unlist(lapply(fm_theta, `[[`, 1))
+      theta <- log(1/thetas)
+      fits$theta <- ecomix:::update_sp_dispersion(fits$theta,theta,0.5)
     }
 
     # e-step
     # get the log-likes and taus
-    logls_mus <- get_logls_partial_sam(first_fit, fits, spp_weights, G, S, disty,get_fitted = FALSE)
+    logls_mus <- get_logls_partial_sam(first_fit, fits, spp_weights, G, S, disty, get_fitted = TRUE)
     taus <- ecomix:::get_taus(pis, logls_mus$logl_sp, G, S)
     # taus <- shrink_taus(taus,)
 
     #update the likelihood
     logl_old <- logl_new
-    logl_new <- get_incomplete_logl_partial_sam(eta = additive_logistic(pis,inv = TRUE)[-G],
+    logl_new <- get_incomplete_logl_partial_sam(eta = ecomix:::additive_logistic(pis,inv = TRUE)[-G],
                                         first_fit, fits, spp_weights, G, S, disty)
     if(!control$quiet)cat("Iteration ",ite,"\n")
     if(!control$quiet)cat("Loglike: ", logl_new,"\n")
@@ -359,7 +339,7 @@
     }
   }
   if(disty %in% 4){
-    ft_sp <- glm.fit.nbinom(x=as.matrix(X1),
+    ft_sp <- glm.fit.nbinom(x=as.matrix(W1),
                             y=as.numeric(out1),
                             weights=as.numeric(wts1),
                             offset=as.numeric(offy))
@@ -385,7 +365,7 @@
   W_taus <- do.call(rbind, W_no_NA)
   n_ys <- sapply(X_no_NA,nrow)
   wts_taus <- rep(taus[,gg,drop=FALSE],c(n_ys))
-  if(disty==4)wts_taus <- rep(taus[,gg],c(n_ys))/(1+rep(exp(-fits$disp),n_ys)*as.vector(mus[gg,,]))
+  if(disty==4)wts_taus <- rep(taus[,gg],c(n_ys))/(1+rep(exp(-fits$theta),n_ys)*as.vector(mus[gg,,]))
 
   site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
   wts_tausXsite_weights <- wts_taus*site_weights
@@ -422,6 +402,48 @@
 
   }
   return(c(mix_coefs))
+}
+
+
+"apply_optimise_partial_sam_theta" <- function(ss, first_fit, fits,
+                                               G, disty, pis,
+                                               theta.range = c(0.0001,100)){
+  thet <- optimise(f = theta_logl_part_sam, interval = theta.range, ss, first_fit,
+                   fits, G, disty, pis, theta.range,
+                   maximum = TRUE)$maximum
+  return(thet)
+}
+
+"theta_logl_part_sam" <- function(theta, ss, first_fit, fits, G,
+                          disty, pis, theta.range){
+
+  eta.species <- cbind(1,first_fit$W) %*% t(cbind(fits$alpha[ss],fits$gamma[ss,,drop=FALSE]))
+  eta.mixture <- first_fit$x[,-1] %*% t(fits$beta)
+  logls <- rep(NA,G)
+  for(gg in seq_len(G)) {
+    eta.all <- eta.species + eta.mixture[,gg] + first_fit$offset
+    if(disty == 4){
+      link <- make.link('log')
+      logls[gg] <- sum(dnbinom(first_fit$y[,ss], mu = link.fun$linkinv(eta.all), size = 1/exp(theta), log = TRUE));
+    }
+    if(disty == 6){
+      link <- make.link('identity')
+      logls[gg] <- sum(dnorm(first_fit$y[,ss], mean = link.fun$linkinv(eta.all), sd = exp(theta), log = TRUE));
+    }
+  }
+
+  ak <- logls + log( pis)
+  am <- max(ak)
+  ak <- exp( ak-am)
+  sppLogls <- am + log( sum( ak))
+
+  pen.max <- theta.range[2]
+  pen.min <- theta.range[1]
+  shape1 <- shape2 <- 1.25
+
+  if(disty == 4) sppLogls <- sppLogls + dbeta( (theta-pen.min) / (pen.max-pen.min), shape1, shape2, log=TRUE)
+
+  return(sppLogls)
 }
 
 "get_initial_values_partial_sam" <- function(y, X, W, spp_weights, site_spp_weights,
@@ -531,7 +553,7 @@
 
 "get_incomplete_logl_partial_sam" <- function(eta, first_fit, fits, spp_weights, G, S, disty){
 
-  pis <- additive_logistic(eta)
+  pis <- ecomix:::additive_logistic(eta)
   logl_sp <- matrix(NA, nrow=S, ncol=G)
   eta.species <- cbind(1,first_fit$W) %*% t(cbind(fits$alpha,fits$gamma))
   eta.mixture <- first_fit$x[,-1] %*% t(fits$beta)

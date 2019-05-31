@@ -13,7 +13,7 @@ archetype_formula <- sam_form
 species_formula <- ~ w2
 distribution <- 'bernoulli'
 
-offset <- rep(0,nrow(y))
+offset <- log(F6Data$Swept_Area)
 spp_weights <- rep(1,ncol(y))
 site_spp_weights <- matrix(1,nrow(y),ncol(y))
 y_is_na <- matrix(FALSE,nrow(y),ncol(y))
@@ -22,26 +22,55 @@ S <- length(simulated_data$sp.int)
 nP <- ncol(X[,-1])
 control <- species_mix.control()
 
-head(F6Data)
 
+library(ecomix)
+load("~/Dropbox/ecomix_dev/developing_functions/kampala_code/Aug16.RData")
+head(F6Data)
 archetype_form <- as.formula(paste0('cbind(',paste(colnames(F6Data)[grep("spp",colnames(F6Data))][1:10],collapse = ','),")~cumTW.bs1+cumTW.bs2+cumTW.bs3"))
 species_form <- ~ 1 + bathy1 + bathy2 + str1 + bathy_str + str2
 
 test_dat <- make_mixture_data(F6Data[,grep("spp",colnames(F6Data))],F6Data[,(ncol(F6Data)-7):ncol(F6Data)])
 
-y <- as.matrix(F6Data[,grep("spp",colnames(F6Data))][1:100])
-X <- as.matrix(F6Data[,(ncol(F6Data)-7):(ncol(F6Data)-5)])
+y <- as.matrix(F6Data[,grep("spp",colnames(F6Data))][1:50])
+X <- as.matrix(cbind(1,F6Data[,(ncol(F6Data)-7):(ncol(F6Data)-5)]))
 W <- as.matrix(F6Data[,(ncol(F6Data)-4):(ncol(F6Data))])
-n_mixtures <- G <- 5
-S <- 100
+n_mixtures <- G <- 2
+S <- ncol(y)
 spp_weights <- rep(1,S)
 site_spp_weights <- matrix(1,nrow(y),S)
 disty <- 4
 y_is_na <- is.na(y)
 inits <- NULL
-control <- species_mix.control()
+control <- species_mix.control(quiet = FALSE)
+offset <- log(F6Data$Swept_Area)
+
+
+starting_values <- get_initial_values_partial_sam(y = y, X = X, W = W,
+                                                  spp_weights = spp_weights,
+                                                  site_spp_weights = site_spp_weights,
+                                                  offset = offset, y_is_na = y_is_na,
+                                                  G = G, S = S,
+                                                  disty = disty,
+                                                  control = control)
+
+fits <- starting_values$fits
+taus <- starting_values$taus
+pis <- starting_values$pis
+first_fit <- starting_values$first_fit
+logls_mus <- get_logls_partial_sam(first_fit, fits, spp_weights, G, S, disty, get_fitted = TRUE)
+
+
+ss <- 1
+test <- apply_glm_spp_coefs_partial_sams(ss, y, X, W, G, taus,
+                                         site_spp_weights,
+                                         offset, y_is_na, disty, fits)
+gg <- 1
+test <- apply_glm_mix_coefs_partial_sams(gg, y, X, W, site_spp_weights,
+                                         offset, y_is_na, disty, taus, fits, logls_mus$fitted)
+
 
 test <- fitmix_ECM_partial_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
+
 
 tmp <- species_mix_partial.fit(y=y, X=X, W=W, G=n_mixtures, S=S,
                                spp_weights=spp_weights,
