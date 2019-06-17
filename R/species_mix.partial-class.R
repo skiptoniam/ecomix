@@ -218,9 +218,6 @@
       restart_ite <- restart_ite + 1
     }
 
-    # alpha_estimater <- apply_glm_spp_coefs_partial_sams
-    # beta_estimater <- apply_glm_mix_coefs_partial_sams
-
     # m-step
     fm_species_coefs <- surveillance::plapply(seq_len(S),
                                        apply_glm_spp_coefs_partial_sams,
@@ -290,7 +287,9 @@
   # estimate log-likelihood
   # logl_new <- get_incomplete_logl_partial_sam(eta, first_fit, fits, spp_weights, G, S, disty)
 
-  return(list(logl = logl_new, alpha = alpha_out, beta = beta_out, gamma = gamma_out, theta = theta_out, eta = eta, pis = pis, taus = round(taus,4), first_fit = first_fit))
+  return(list(logl = logl_new, alpha = alpha_out, beta = beta_out,
+              gamma = gamma_out, theta = theta_out, eta = eta, pis = pis,
+              taus = round(taus,4), first_fit = first_fit))
 
 }
 
@@ -886,3 +885,11 @@ return(logl)
   return( tmp)
 }
 
+
+"update_coefs_part_sam" <- function( old, new, kappa=0.5) {
+  if( is.na( old))
+    tmp <- new
+  else
+    tmp <- old + kappa*(new-old)
+  return( tmp)
+}
