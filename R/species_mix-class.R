@@ -1933,7 +1933,7 @@ starting values;\n starting values are generated using ',control$init_method,
       break
     }
 
-    pis <- colMeans(taus)
+    pis <- colSums(taus)/S
 
     if (any(pis < sqrt(.Machine$double.eps))) {
        if(restart_ite==1){
@@ -1960,15 +1960,6 @@ starting values;\n starting values are generated using ',control$init_method,
       ite <- 1
       restart_ite <- restart_ite + 1
     }
-
-    ## remove regularisation for now.
-    # if(control$regularisation){
-    #   alpha_estimater <- ecomix:::apply_glmnet_sam_sp_intercepts
-    #   beta_estimater <- ecomix:::apply_glmnet_group_tau_sam
-    # } else {
-    #   alpha_estimater <- ecomix:::apply_glm_sam_sp_intercepts
-    #   beta_estimater <- ecomix:::apply_glm_group_tau_sam
-    # }
 
     # m-step
     fm_sp_int <- surveillance::plapply(seq_len(S),
@@ -2011,7 +2002,6 @@ starting values;\n starting values are generated using ',control$init_method,
     # get the log-likes and taus
     logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
     taus <- get_taus(pis, logls_mus$logl_sp, G, S)
-    # taus <- shrink_taus(taus,)
 
     #update the likelihood
     logl_old <- logl_new
@@ -2601,7 +2591,7 @@ starting values;\n starting values are generated using ',control$init_method,
     if(family == "bernoulli" )
       outpred_arch[, g] <- apply(s.outpred*rep(taus[, g],each = dim(X)[1]), 1, sum)/sum(taus[, g])
     else
-      outpred_arch[, g] <- apply(s.outpred*rep(taus[, g],each = dim(X)[1]), 1, mean)/sum(taus[, g])
+      outpred_arch[, g] <- apply(s.outpred*rep(taus[, g],each = dim(X)[1]), 1, sum)/sum(taus[, g])
   }
 
   return(outpred_arch)
