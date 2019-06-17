@@ -1500,11 +1500,14 @@
 
   # which family to use?
   if(disty == 1)
-    fam <- binomial()
+    fam <- "binomial" #glmnet
+    # fam <- binomial() #glm
   if(disty == 2 | disty == 3 | disty == 4)
-    fam <- poisson()
+    fam <- "poisson"
+    # fam <- poisson()
   if(disty == 6)
-    fam <- gaussian()
+    fam <- "gaussian"
+    # fam <- gaussian()
 
   ids_i <- !y_is_na[,ss]
 
@@ -1514,12 +1517,36 @@
     outcomes <- as.matrix(y[ids_i,ss])
   }
 
-  if( disty %in% c(1,2,3,6)){
-    ft_sp <- try(stats::glm.fit(x=as.data.frame(X[ids_i,,drop=FALSE]),
-                                y = outcomes,
-                                weights=as.numeric(site_spp_weights[ids_i,ss]),
-                                offset=offset[ids_i],
-                                family=fam), silent=FALSE)
+  if( disty %in% c(1,2,3,4,6)){
+    lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
+
+    ft_sp <- try(glmnet::glmnet(y=outcomes, x=as.matrix(X[ids_i,-1,drop=FALSE]),
+                                family=fam, offset=offset[ids_i],
+                                weights=as.matrix(site_spp_weights[ids_i,ss]),
+                                alpha=0,
+                                lambda=lambda.seq, #the range of penalties, note that only one will be used
+                                standardize=FALSE,  #don't standardize the covariates (they are already standardised)
+                                intercept=TRUE), silent=TRUE)
+    locat.s <- 1/1
+    my.coefs <- glmnet::coef.glmnet(ft_sp, s=locat.s)
+    if( any( is.na( my.coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
+      my.coefs <- glmnet::coef.glmnet(ft_sp, s=lambda.seq)
+      lastID <- apply( my.coefs, 2, function(x) !any( is.na( x)))
+      lastID <- tail( (seq_along( lastID))[lastID], 1)
+      my.coefs <- my.coefs[,lastID]
+    }
+    if (class(ft_sp) %in% 'try-error'){
+      my_coefs <- rep(NA, ncol(X[ids_i,]))
+    } else {
+      my_coefs <- as.numeric(my.coefs)
+    }
+
+    ## glm code
+    # ft_sp <- try(stats::glm.fit(x=as.data.frame(X[ids_i,,drop=FALSE]),
+    #                             y = outcomes,
+    #                             weights=as.numeric(site_spp_weights[ids_i,ss]),
+    #                             offset=offset[ids_i],
+    #                             family=fam), silent=TRUE)
     if (class(ft_sp) %in% 'try-error'){
       my_coefs <- rep(NA, ncol(X[ids_i,]))
     } else {
@@ -1527,24 +1554,38 @@
     }
   }
   disp <- NA
-  if(disty == 4){
-    ft_sp <- try(glm.fit.nbinom(x=as.matrix(X[ids_i,,drop=FALSE]),
-                                y=as.numeric(outcomes),
-                                weights=as.numeric(site_spp_weights[ids_i,ss]),
-                                offset=offset[ids_i],est_var=FALSE), silent = TRUE)
-
-    if (class(ft_sp) %in% 'try-error'){
-      my_coefs <- rep(NA, ncol(X[ids_i,]))
-    } else {
-      my_coefs <- ft_sp$coef
-    }
-    tmp <- ft_sp$theta
-    if(tmp>2) tmp <- 2
-    disp <- log(1/tmp)
+  if( disty == 4){
+    tmp <- MASS::theta.mm(outcomes, as.numeric(predict(ft_sp, s=locat.s,
+                                                              type="response",
+                                                              newx=as.matrix(X[ids_i,-1,drop=FALSE]),
+                                                              newoffset=offset[ids_i])),
+                          weights=as.matrix(site_spp_weights[ids_i,ss]),
+                          dfr=length(outcomes), eps=1e-4)
+    if( tmp>2)
+    tmp <- 2
+    disp[ss] <- log( 1/tmp)
   }
+  # if(disty == 4){
+  #   ft_sp <- try(glm.fit.nbinom(x=as.matrix(X[ids_i,,drop=FALSE]),
+  #                               y=as.numeric(outcomes),
+  #                               weights=as.numeric(site_spp_weights[ids_i,ss]),
+  #                               offset=offset[ids_i],est_var=FALSE), silent = TRUE)
+  #
+  #   if (class(ft_sp) %in% 'try-error'){
+  #     my_coefs <- rep(NA, ncol(X[ids_i,]))
+  #   } else {
+  #     my_coefs <- ft_sp$coef
+  #   }
+  #   tmp <- ft_sp$theta
+  #   if(tmp>2) tmp <- 2
+  #   disp <- log(1/tmp)
+  # }
   if( disty == 6){
-    preds <- predict.glm.fit(ft_sp, X[ids_i,], offset[ids_i], disty)
-    disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
+    preds <- as.numeric( predict(ft_sp, s=locat.s, type="link",
+                                 newx=as.matrix(X[ids_i,-1]), newoffset=offset[ids_i]))
+    disp[ss] <- log( sqrt( sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard
+    # preds <- predict.glm.fit(ft_sp, X[ids_i,], offset[ids_i], disty)
+    # disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
   }
    return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
 }
