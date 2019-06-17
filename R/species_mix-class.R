@@ -1526,7 +1526,7 @@
                                 alpha=0,
                                 lambda=lambda.seq, #the range of penalties, note that only one will be used
                                 standardize=FALSE,  #don't standardize the covariates (they are already standardised)
-                                intercept=TRUE), silent=TRUE)
+                                intercept=TRUE), silent=FALSE)
     locat.s <- 1/1
     my.coefs <- glmnet::coef.glmnet(ft_sp, s=locat.s)
     if( any( is.na( my.coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
@@ -1535,7 +1535,7 @@
       lastID <- tail( (seq_along( lastID))[lastID], 1)
       my.coefs <- my.coefs[,lastID]
     }
-    if (class(ft_sp) %in% 'try-error'){
+    if (any(class(ft_sp) %in% 'try-error')){
       my_coefs <- rep(NA, ncol(X[ids_i,]))
     } else {
       my_coefs <- as.numeric(my.coefs)
@@ -1547,11 +1547,11 @@
     #                             weights=as.numeric(site_spp_weights[ids_i,ss]),
     #                             offset=offset[ids_i],
     #                             family=fam), silent=TRUE)
-    if (class(ft_sp) %in% 'try-error'){
-      my_coefs <- rep(NA, ncol(X[ids_i,]))
-    } else {
-      my_coefs <- coef(ft_sp)
-    }
+    # if (class(ft_sp) %in% 'try-error'){
+    #   my_coefs <- rep(NA, ncol(X[ids_i,]))
+    # } else {
+    #   my_coefs <- coef(ft_sp)
+    # }
   }
   disp <- NA
   if( disty == 4){
