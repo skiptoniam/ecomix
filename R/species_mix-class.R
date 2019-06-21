@@ -122,8 +122,12 @@
       message("There is no SAM model! Please provide a model (intercept at least) -- exitting now")
     return(NULL)
   }
+
+  # check the species formula, if 0 make 1, if 1 use species mix, if 2 use partial mixtures.
+  which_mix <- check_species_formula(species_formula)
   if(!is.null(species_formula))
     species_formula <- stats::as.formula(species_formula)
+
 
   mf <- match.call(expand.dots = FALSE)
   if(distribution=="ippm"){
@@ -146,7 +150,7 @@
 
   # need this for the na.omit step
   rownames(mf)<-seq_len(nrow(mf))
-  dat <- clean_data_sam(mf, archetype_formula, NULL, distribution)
+  dat <- clean_data_sam(mf, archetype_formula, species_formula, distribution)
 
   # get responses
   y <- stats::model.response(dat$mf.X)
@@ -167,6 +171,24 @@
 
   # get archetype model matrix
   X <- get_X_sam(archetype_formula, dat$mf.X)
+
+  # what is the W matrix (species covariates)
+  W <- get_W_part_sam(species_formula = species_formula, mf.W = dat$mf.W)
+
+  x.means <- NULL
+  x.sds <- NULL
+  w.means <- NULL
+  w.sds <- NULL
+  if (standardise == TRUE) {
+    stand.X <- standardise.X(X[, -1])
+    X <- as.matrix(cbind(1, stand.X$X))
+    stand.W <- standardise.X(W)
+    W <- as.matrix(stand.X$X)
+    x.means <- stand.X$dat.means
+    x.sds <- stand.X$dat.sds
+    w.means <- stand.W$dat.means
+    w.sds <- stand.W$dat.sds
+  }
 
   #get distribution
   disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie",
@@ -197,18 +219,21 @@
     }
   }
 
-  s.means <- NULL
-  s.sds <- NULL
-  if (standardise == TRUE) {
-    stand.X <- standardise.X(X[, -1])
-    X <- as.matrix(cbind(1, stand.X$X))
-    s.means <- stand.X$dat.means
-    s.sds <- stand.X$dat.sds
-  }
+  # s.means <- NULL
+  # s.sds <- NULL
+  # if (standardise == TRUE) {
+  #   stand.X <- standardise.X(X[, -1])
+  #   X <- as.matrix(cbind(1, stand.X$X))
+  #   s.means <- stand.X$dat.means
+  #   s.sds <- stand.X$dat.sds
+  # }
 
   # summarising data to console
-  print_input_sam(y, X, W=NULL, S, archetype_formula, species_formula, distribution,
-                  quiet=control$quiet)
+  print_input_sam(y, X, W, S, archetype_formula, species_formula, distribution,
+                           quiet=control$quiet)
+
+  # print_input_sam(y, X, W=NULL, S, archetype_formula, species_formula, distribution,
+  #                 quiet=control$quiet)
 
   # fit species mix.
   tmp <- species_mix.fit(y=y, X=X, G=n_mixtures, S=S, spp_weights=spp_weights,
@@ -456,6 +481,10 @@
 #'@param reltol function that determines the relative tolernace for model convergence. Default is quiet strict.
 #'@param maxit Maximum number of evaluations of the objective function allowed. Defaults to 500.
 #'@param cores The number of cores to use in fitting of species mix models. These will be largely used to model the species-specific parameteres.
+#'@param init_method The method to use for initialisation. The options are "random2", "kmeans", "kmed". The default uses random2, which is a kmeans with noise added to the cluster.
+#'@param init_sd The amount of noise to add to the initailisation the default is 1.
+#'@param minimum_sites_occurrence a integer which determins the number of minimum sites present for any species for it to be included in the initialisation step. This removes rare species from initial groupings. They are then included in the overall analysis.
+#'@param
 #'@param em_prefit Logical if TRUE the model will run a slower EM algorithim fit to find starting values.
 #'@param em_steps int Default is 3, the number of EM iterations to get to starting values.
 #'@param em_refit int Default is 1, number of times to refit using EM.
@@ -466,7 +495,7 @@
                                   trace = 1,
                                   cores = 1,
                                   ## intialisation controls
-                                  init_method = 'kmeans',
+                                  init_method = 'random2',
                                   init_sd = 1,
                                   minimum_sites_occurrence = 10,
                                   ## EM algorithim controls
@@ -476,7 +505,7 @@
                                   em_abstol = sqrt(.Machine$double.eps),
                                   em_reltol = reltol_fun,
                                   em_maxtau = 0.8,
-                                  ## Partial mixture penalities
+                                  ## partial mixture penalities
                                   theta_range = c(0.001,10),
                                   pen_param = 1.25,
                                   update_kappa = c(1,0.5,1),
@@ -492,7 +521,8 @@
                                   optimise_cpp = 1,
                                   loglOnly_cpp = 0,
                                   derivOnly_cpp = 0,
-                                  getscores_cpp = 0, ...){
+                                  getscores_cpp = 0,
+                                  ...){
                #general controls
   rval <- list(maxit = maxit, quiet = quiet, trace = trace,
                cores = cores,
@@ -816,8 +846,8 @@
     res$beta <- matrix(object$coefs$beta, nrow = object$G, ncol = object$np)
     # colnames( res$tau) <- object$names$spp # need to keep the spp names
   }
-  if(!is.null( object$coef$disp)){
-    res$logDisp <- object$coef$disp
+  if(!is.null( object$coef$theta)){
+    res$logDisp <- object$coef$theta
     # names( res$logDisp) <- object$names$spp
   }
   return(res)
@@ -889,12 +919,12 @@
   etaIn <- c(NA, as.numeric(object$coef$eta))
   etaIn <- etaIn[-1]
   if (disty%in%c(4,6)) {
-    dispIn <- c(NA, as.numeric(object$coef$disp))
-    dispIn <- dispIn[-1]
-    usedisp <- 1
+    thetaIn <- c(NA, as.numeric(object$coef$theta))
+    thetaIn <- thetaIn[-1]
+    usetheta <- 1
   } else {
-    dispIn <- -999999
-    usedisp <- 0
+    thetaIn <- -999999
+    usetheta <- 0
   }
 
   outcomes <- matrix(NA, nrow = nrow(X), ncol = S)
@@ -1043,17 +1073,17 @@
     if( type=="RQR"){
       resids <- matrix( NA, nrow=object$n, ncol=object$S)
       switch( object$dist,
-              bernoulli = { fn <- function(y,mu,logdisp,power) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
-              poisson = { fn <- function(y,mu,logdisp,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
-              ippm = { fn <- function(y,mu,logdisp,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
-              negative_binomial = { fn <- function(y,mu,logdisp,power) pnbinom( q=y, mu=mu, size=1/exp( logdisp), lower.tail=TRUE)},
-              gaussian = { fn <- function(y,mu,logdisp,power) pnorm( q=y, mean=mu, sd=exp( logdisp), lower.tail=TRUE)})
+              bernoulli = { fn <- function(y,mu,logtheta,power) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
+              poisson = { fn <- function(y,mu,logtheta,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
+              ippm = { fn <- function(y,mu,logtheta,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
+              negative_binomial = { fn <- function(y,mu,logtheta,power) pnbinom( q=y, mu=mu, size=1/exp( logtheta), lower.tail=TRUE)},
+              gaussian = { fn <- function(y,mu,logtheta,power) pnorm( q=y, mean=mu, sd=exp( logtheta), lower.tail=TRUE)})
 
       for( ss in 1:object$S){
         if( all( object$titbits$power==-999999))  tmpPow <- NULL else tmpPow <- object$titbits$power[ss]
         if( object$dist %in% c("bernoulli","poisson","ippm","negative_binomial")){
-          tmpLower <- fn( object$titbits$Y[,ss]-1, object$mus[,ss,], object$coef$disp[ss], tmpPow)
-          tmpUpper <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$disp[ss], tmpPow)
+          tmpLower <- fn( object$titbits$Y[,ss]-1, object$mus[,ss,], object$coef$theta[ss], tmpPow)
+          tmpUpper <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$theta[ss], tmpPow)
           tmpLower <- rowSums( tmpLower * object$pis)
           tmpLower <- ifelse( tmpLower<0, 0, tmpLower) #get rid of numerical errors for really small negative values
           tmpLower <- ifelse( tmpLower>1, 1, tmpLower) #get rid of numerical errors for 1+epsilon.
@@ -1064,7 +1094,7 @@
           resids[,ss] <- qnorm( resids[,ss])
         }
         if( object$dist == "gaussian"){
-          tmp <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$disp[ss], object$titbits$power[ss])
+          tmp <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$theta[ss], object$titbits$power[ss])
           tmp <- rowSums( tmp * object$pis)
           resids[,ss] <- qnorm( tmp)
         }
@@ -1083,7 +1113,7 @@
           setTxtProgressBar(pb, ii)
         X1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$X[ii,,drop=FALSE])
         W1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$W[ii,,drop=FALSE])
-        sims <- simRCPdata( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, logDisps=object$coef$disp, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,dist=object$dist)
+        sims <- simRCPdata( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, logDisps=object$coef$theta, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,dist=object$dist)
         sims <- sims[,1:object$S]
         yi <- object$titbits$Y[ii,,drop=FALSE]
         many_yi <- matrix( rep( yi, each=nsim), ncol=object$S)
@@ -1170,15 +1200,15 @@
     alpha <- as.numeric(start_vals$alpha)
     beta <- as.numeric(start_vals$beta)
     eta <- as.numeric(start_vals$eta)
-    disp <- as.numeric(start_vals$disp)
+    theta <- as.numeric(start_vals$theta)
 
     #scores
     alpha.score <- as.numeric(rep(NA, length(alpha)))
     beta.score <- as.numeric(rep(NA, length(beta)))
     eta.score <- as.numeric(rep(NA, length(eta)))
-    disp.score <- as.numeric(rep(NA, length(disp)))
+    theta.score <- as.numeric(rep(NA, length(theta)))
     getscores <- 1
-    scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,disp))))
+    scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,theta))))
 
 
     if(disty%in%c(4,6)){
@@ -1206,9 +1236,9 @@
         eta <- x[start + seq_len(G - 1)]
         start <- start + (G-1)
         if(disty%in%c(4,6))
-          disp <- x[start + seq_len(S)]
+          theta <- x[start + seq_len(S)]
         else
-          disp <- rep(-999999,S)
+          theta <- rep(-999999,S)
         tmp <- .Call("species_mix_cpp",
                  as.numeric(as.matrix(Y)), as.numeric(as.matrix(X[,-1])), as.numeric(offy), as.numeric(spp_wts),
                  as.numeric(as.matrix(site_spp_wts)), as.integer(as.matrix(!y_is_na)),
@@ -1216,9 +1246,9 @@
                  as.integer(S), as.integer(G), as.integer(np), as.integer(Obs), as.integer(disty),
                  as.integer(control$optiDisp),
                  # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
-                 as.double(alpha), as.double(beta), as.double(eta), as.double(disp),
-                 # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
-                 alpha.score, beta.score, eta.score, disp.score, as.integer(control$getscores), scores,
+                 as.double(alpha), as.double(beta), as.double(eta), as.double(theta),
+                 # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rtheta,
+                 alpha.score, beta.score, eta.score, theta.score, as.integer(control$getscores), scores,
                  # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
                  pis_out, mus, loglikeS, loglikeSG,
                  # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
@@ -1233,12 +1263,12 @@
         tmp1 <- c(alpha.score, beta.score, eta.score)
         # if( p.w > 0)#class( object$titbits$species_formula) == "formula")
           # tmp1 <- c( tmp1, gamma.score)
-        if(any(!is.null(object$coef$disp)))
-          tmp1 <- c( tmp1, disp.score)
+        if(any(!is.null(object$coef$theta)))
+          tmp1 <- c( tmp1, theta.score)
         return(tmp1)
       }
       mod_coefs <- unlist(object$coefs)
-      # if(any(is.na( object$coef$disp))) mod_coefs <- mod_coefs[!is.na(mod_coefs)]
+      # if(any(is.na( object$coef$theta))) mod_coefs <- mod_coefs[!is.na(mod_coefs)]
 
       hess <- numDeriv::jacobian(grad_fun, mod_coefs)
       vcov.mat <- try( -solve(hess))
@@ -1322,7 +1352,7 @@
 #       my_coefs <- apply(glmnet::coef.glmnet(ft_sp), 1, lambda_penalisation_fun, lambda.seq)
 #     }
 #   }
-#   disp <- NA
+#   theta <- NA
 #   if( disty == 4){
 #     locat.s <- lambda.seq[max(which(as.matrix(glmnet::coef.glmnet(ft_sp))==my_coefs,arr.ind = TRUE)[,2])]
 #     preds <-as.numeric(predict(ft_sp, s=locat.s,
@@ -1334,16 +1364,16 @@
 #                           dfr=length(y[ids_i,ss]),
 #                           eps=1e-4)
 #     if(tmp>2) tmp <- 2
-#     disp <- log( 1/tmp)
+#     theta <- log( 1/tmp)
 #   }
 #   if( disty == 6){
 #     preds <-as.numeric(predict(ft_sp, s=locat.s,
 #                                type="response",
 #                                newx=X[ids_i,-1],
 #                                offset=offset[ids_i]))
-#     disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
+#     theta <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
 #   }
-#   return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
+#   return(list(alpha = my_coefs[1], beta = my_coefs[-1], theta = theta))
 # }
 #
 # "apply_glmnet_sam_sp_intercepts" <- function(ss, y, X, G, taus,
@@ -1393,7 +1423,7 @@
 #                             intercept = TRUE)
 #     my_coefs <- apply(glmnet::coef.glmnet(ft_sp), 1, lambda_penalisation_fun, lambda.seq)
 #   }
-#   disp <- NA
+#   theta <- NA
 #   if( disty == 4){
 #     locat.s <- lambda.seq[max(which(as.matrix(glmnet::coef.glmnet(ft_sp))==my_coefs,arr.ind = TRUE)[,2])]
 #     preds <-as.numeric(predict(ft_sp, s=locat.s,
@@ -1406,17 +1436,17 @@
 #                           eps=1e-4)
 #     if(tmp>2)
 #       tmp <- 2
-#     disp <- log( 1/tmp)
+#     theta <- log( 1/tmp)
 #   }
 #   if( disty == 6){
 #     preds <-as.numeric(predict(ft_sp, s=locat.s,
 #                                type="response",
 #                                newx=X[ids_i,-1],
 #                                offset=offset[ids_i]))
-#     disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
+#     theta <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
 #   }
 #
-#   return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
+#   return(list(alpha = my_coefs[1], beta = my_coefs[-1], theta = theta))
 #
 # }
 #
@@ -1553,7 +1583,7 @@
     #   my_coefs <- coef(ft_sp)
     # }
   }
-  disp <- NA
+  theta <- NA
   if( disty == 4){
     tmp <- MASS::theta.mm(outcomes, as.numeric(predict(ft_sp, s=locat.s,
                                                               type="response",
@@ -1563,7 +1593,7 @@
                           dfr=length(outcomes), eps=1e-4)
     if( tmp>2)
     tmp <- 2
-    disp[ss] <- log( 1/tmp)
+    theta[ss] <- log( 1/tmp)
   }
   # if(disty == 4){
   #   ft_sp <- try(glm.fit.nbinom(x=as.matrix(X[ids_i,,drop=FALSE]),
@@ -1578,16 +1608,16 @@
   #   }
   #   tmp <- ft_sp$theta
   #   if(tmp>2) tmp <- 2
-  #   disp <- log(1/tmp)
+  #   theta <- log(1/tmp)
   # }
   if( disty == 6){
     preds <- as.numeric( predict(ft_sp, s=locat.s, type="link",
                                  newx=as.matrix(X[ids_i,-1]), newoffset=offset[ids_i]))
-    disp[ss] <- log( sqrt( sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard
+    theta[ss] <- log( sqrt( sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard
     # preds <- predict.glm.fit(ft_sp, X[ids_i,], offset[ids_i], disty)
-    # disp <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
+    # theta <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
   }
-   return(list(alpha = my_coefs[1], beta = my_coefs[-1], disp = disp))
+   return(list(alpha = my_coefs[1], beta = my_coefs[-1], theta = theta))
 }
 
 ## this will give the species intercepts with respect to the mixture linear predictor.
@@ -1658,7 +1688,7 @@
   n_ys <- sapply(X_no_NA,nrow)
 
   wts_tau <- rep(tau[,gg,drop=FALSE],c(n_ys))
-  if(disty==4)wts_tau <- rep(tau[,gg],c(n_ys))/(1+rep(exp(-fits$disp),n_ys)*as.vector(mus[gg,,]))
+  if(disty==4)wts_tau <- rep(tau[,gg],c(n_ys))/(1+rep(exp(-fits$theta),n_ys)*as.vector(mus[gg,,]))
 
   site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
   wts_tauXsite_weights <- wts_tau*site_weights
@@ -1722,7 +1752,7 @@
     emfit <- emfits[[bf]]
     start_vals <- list(alpha = (emfit$alpha),
                        beta = (emfit$beta),
-                       disp = (emfit$disp),
+                       theta = (emfit$theta),
                        pis = (emfit$pis),
                        first_fit = emfit$first_fit)
   } else {
@@ -1738,7 +1768,7 @@ starting values;\n starting values are generated using ',control$init_method,
                                               control = control)
     start_vals <- list(alpha=(starting_values$fits$alpha),
                        beta=(starting_values$fits$beta),
-                       disp=(starting_values$fits$disp),
+                       theta=(starting_values$fits$theta),
                        pis=(starting_values$pis),
                        first_fit = starting_values$first_fit)
   }
@@ -1801,7 +1831,7 @@ starting values;\n starting values are generated using ',control$init_method,
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
-        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=1/exp(-fits$disp[ss]),log=TRUE))
+        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=1/exp(-fits$theta[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -1813,7 +1843,7 @@ starting values;\n starting values are generated using ',control$init_method,
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
-        logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=lp,sd=exp(fits$disp[ss]),log=TRUE))
+        logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=lp,sd=exp(fits$theta[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -1835,7 +1865,7 @@ starting values;\n starting values are generated using ',control$init_method,
   starting_values <- initiate_fit_sam(y, X, spp_weights, site_spp_weights,
                                       offset, y_is_na, G, S, disty, control)
 
-  #if any are errors then remove them from the models for ever.
+  #if any are errors then remove them from the models forever.
   updated_y <- update_species_data_structure(y, y_is_na,
                                              spp_weights,
                                              site_spp_weights,
@@ -1848,7 +1878,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
   fits <- list(alpha=starting_values$alpha,
                beta=starting_values$beta,
-               disp=starting_values$disp)
+               theta=starting_values$theta)
   first_fit <- list(x = X, y = y, spp_weights = spp_weights,
                     site_spp_weights = site_spp_weights, offset = offset,
                     y_is_na = y_is_na,
@@ -1920,7 +1950,7 @@ starting values;\n starting values are generated using ',control$init_method,
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
         if(get_fitted) fitted_values[gg,,ss] <- exp(lp)
-        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=1/exp(-fits$disp[ss]),log=TRUE))
+        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=1/exp(-fits$theta[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -1934,7 +1964,7 @@ starting values;\n starting values are generated using ',control$init_method,
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x[,-1]) %*% fits$beta[gg,] + first_fit$offset
         if(get_fitted) fitted_values[gg,,ss] <- lp
-        logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=lp,sd=exp(fits$disp[ss]),log=TRUE))
+        logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=lp,sd=exp(fits$theta[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -1996,7 +2026,7 @@ starting values;\n starting values are generated using ',control$init_method,
       pis <- colSums(taus)/S;
       fits$beta <- matrix(rnorm(G*(ncol(X)-1)),G,(ncol(X)-1))
       fits$alpha <- rnorm(S)
-      if (disty%in%c(4,6)) fits$disp <- rep(0.05,S)
+      if (disty%in%c(4,6)) fits$theta <- rep(0.05,S)
       }
       ite <- 1
       restart_ite <- restart_ite + 1
@@ -2029,14 +2059,14 @@ starting values;\n starting values are generated using ',control$init_method,
 
     ## need a function here that updates the dispersion parameter.
     if(disty%in%c(4,6)){
-      fm_disp <- surveillance::plapply(1:S, apply_optimise_spp_theta,
+      fm_theta <- surveillance::plapply(1:S, apply_optimise_spp_theta,
                                        first_fit, fits,
                                        G, disty, taus,
                                        .parallel = control$cores,
                                        .verbose = FALSE)
-      disp <- unlist(lapply(fm_disp, `[[`, 1))
-      disp <- log(1/disp)
-      fits$disp <- update_sp_dispersion(fits$disp,disp,0.5)
+      theta <- unlist(lapply(fm_theta, `[[`, 1))
+      theta <- log(1/theta)
+      fits$theta <- update_sp_dispersion(fits$theta,theta,0.5)
     }
 
     # e-step
@@ -2064,7 +2094,7 @@ starting values;\n starting values are generated using ',control$init_method,
   # estimate log-likelihood
   # logl_new <- get_incomplete_logl_sam(eta, first_fit, fits, spp_weights, G, S, disty)
 
-  return(list(logl = logl_new, alpha = int_out, beta = fm_out, disp = fits$disp,
+  return(list(logl = logl_new, alpha = int_out, beta = fm_out, theta = fits$theta,
               eta = eta, pis = pis, taus = round(taus,4), first_fit = first_fit))
 
 }
@@ -2078,7 +2108,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
   alpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
   beta <- do.call(rbind,lapply(fm_sp_mods, `[[`, 2))
-  disp <- unlist(lapply(fm_sp_mods, `[[`, 3))
+  theta <- unlist(lapply(fm_sp_mods, `[[`, 3))
 
   species_to_remove <- which(apply(beta, 1, function(x) all(is.na(x))))
 
@@ -2086,7 +2116,7 @@ starting values;\n starting values are generated using ',control$init_method,
     #update fits
     alpha <- alpha[-species_to_remove]
     beta <- beta[-species_to_remove,,drop=FALSE]
-    disp <- disp[-species_to_remove]
+    theta <- theta[-species_to_remove]
 
     # update y, y_is_na and weights
     updated_y <- update_species_data_structure(y, y_is_na, spp_weights, site_spp_weights, species_to_remove)
@@ -2120,17 +2150,16 @@ starting values;\n starting values are generated using ',control$init_method,
       grp_coefs <- matrix(grp_coefs,nrow=G)
   }
 
-  if(control$init_method=='random2' | is.null(tmp_grp)){
+  if(control$init_method=='random2'){
     fmmvnorm <- stats::kmeans(beta, centers=G, nstart=100)
     tmp_grp <- fmmvnorm$cluster
     grp_coefs <- apply(beta, 2, function(x) tapply(x, tmp_grp, mean))
     grp_coefs <- matrix(grp_coefs,nrow=G)
 
-    random_coefs <- sam_random_inits(alpha, grp_coefs, disp, S, G, mult=0.3)
+    random_coefs <- sam_random_inits(alpha, grp_coefs, theta, S, G, X, disty, mult=0.3)
     alpha <- random_coefs[[1]]
     grp_coefs <- random_coefs[[2]]
-    if(disty%in%c(4,6)) disp <- random_coefs[[3]]
-
+    if(disty%in%c(4,6))theta <- random_coefs[[3]]
   }
 
  if(ncol(X[,-1,drop=FALSE])==1)names(grp_coefs)[2] <- names(X[,-1,drop=FALSE])[2]
@@ -2149,6 +2178,7 @@ starting values;\n starting values are generated using ',control$init_method,
           for(j in seq_len(S))taus[j,fmmvnorm$cluster[j]] <- 1
         }
   }
+
   taus <- taus/rowSums(taus)
   taus <- shrink_taus(taus,G=G)
   pis <- colMeans(taus)
@@ -2157,7 +2187,7 @@ starting values;\n starting values are generated using ',control$init_method,
   results$grps <- tmp_grp
   results$alpha <- alpha
   results$beta <- grp_coefs
-  results$disp <- disp
+  results$theta <- theta
   results$taus <- taus
   results$pis <- pis
   results$species_to_remove <- species_to_remove
@@ -2184,7 +2214,7 @@ starting values;\n starting values are generated using ',control$init_method,
 "sam_optimise" <- function(y, X, offset, spp_weights, site_spp_weights, y_is_na,
                            S, G, disty, start_vals, control){
 
-  inits <- c(start_vals$alpha, start_vals$beta, start_vals$eta, start_vals$disp)
+  inits <- c(start_vals$alpha, start_vals$beta, start_vals$eta, start_vals$theta)
   np <- as.integer(ncol(X[,-1,drop=FALSE]))
   n <- as.integer(nrow(X))
 
@@ -2192,15 +2222,15 @@ starting values;\n starting values are generated using ',control$init_method,
   alpha <- as.numeric(start_vals$alpha)
   beta <- as.numeric(start_vals$beta)
   eta <- as.numeric(start_vals$eta)
-  disp <- as.numeric(start_vals$disp)
+  theta <- as.numeric(start_vals$theta)
 
   #scores
   alpha.score <- as.numeric(rep(NA, length(alpha)))
   beta.score <- as.numeric(rep(NA, length(beta)))
   eta.score <- as.numeric(rep(NA, length(eta)))
-  # disp.score <- as.numeric(rep(NA,length(disp)))
+  # theta.score <- as.numeric(rep(NA,length(theta)))
   # getscores <- 1
-  # scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,disp))))
+  # scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,theta))))
   #
   # if(disty%in%c(4,6)){
   #   control$optiDisp <- as.integer(1)
@@ -2208,19 +2238,19 @@ starting values;\n starting values are generated using ',control$init_method,
   #   control$optiDisp <- as.integer(0)
   # }
 
-  # scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,disp.score))))
+  # scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,theta.score))))
 
-  # disp.score <- as.numeric(rep(NA, length(disp)))
+  # theta.score <- as.numeric(rep(NA, length(theta)))
   getscores <- 1
-  # scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,disp))))
+  # scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,theta))))
   if(disty%in%c(4,6)){
     control$optiDisp <- as.integer(1)
-    disp.score <- as.numeric(rep(NA, S))
+    theta.score <- as.numeric(rep(NA, S))
   }else{
     control$optiDisp <- as.integer(0)
-    disp.score <- -999999
+    theta.score <- -999999
   }
-  scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,disp.score))))
+  scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,theta.score))))
 
 
   #model quantities
@@ -2237,7 +2267,7 @@ starting values;\n starting values are generated using ',control$init_method,
                                                         as.double(alpha),
                                                         as.double(beta),
                                                         as.double(eta),
-                                                        as.double(disp))
+                                                        as.double(theta))
 
   #c++ call to optimise the model (needs pretty good starting values)
   tmp <- .Call("species_mix_cpp",
@@ -2246,9 +2276,9 @@ starting values;\n starting values are generated using ',control$init_method,
                # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
                as.integer(S), as.integer(G), as.integer(np), as.integer(n), as.integer(disty),as.integer(control$optiDisp),
                # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
-               as.double(alpha), as.double(beta), as.double(eta), as.double(disp),
+               as.double(alpha), as.double(beta), as.double(eta), as.double(theta),
                # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
-               alpha.score, beta.score, eta.score, disp.score, as.integer(control$getscores), scores,
+               alpha.score, beta.score, eta.score, theta.score, as.integer(control$getscores), scores,
                # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
                pis_out, mus, loglikeS, loglikeSG,
                # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
@@ -2269,14 +2299,14 @@ starting values;\n starting values are generated using ',control$init_method,
   if(!disty%in%c(4,6))
     ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,np), eta = ret$eta)
   else
-    ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,np), eta = ret$eta, disp = ret$disp)
+    ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,np), eta = ret$eta, theta = ret$theta)
 
   ret$names <- list(spp=colnames(y), SAMs=paste("SAM", 1:G, sep=""), Xvars=colnames(X[,-1,drop=FALSE]))
 
   if(!disty%in%c(4,6))
     ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score)
   else
-    ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score, disp.scores=disp.score)
+    ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score, theta.scores=theta.score)
 
   ret$S <- S; ret$G <- G; ret$np <- np; ret$n <- n;
   ret$start.vals <- inits
@@ -2315,7 +2345,7 @@ starting values;\n starting values are generated using ',control$init_method,
   if(!disty%in%c(4,6))
     em_fit$coefs <- list(alpha = em_fit$alpha, beta = matrix(em_fit$beta,G,np), eta = em_fit$eta)
   else
-    em_fit$coefs <- list(alpha = em_fit$alpha, beta = matrix(em_fit$beta,G,np), eta = em_fit$eta, disp = em_fit$disp)
+    em_fit$coefs <- list(alpha = em_fit$alpha, beta = matrix(em_fit$beta,G,np), eta = em_fit$eta, theta = em_fit$theta)
 
   em_fit$names <- list(spp=colnames(em_fit$first_fit$y), SAMs=paste("SAM", 1:G, sep=""), Xvars=colnames(em_fit$first_fit$X[,-1,drop=FALSE]))
 
@@ -2387,6 +2417,22 @@ starting values;\n starting values are generated using ',control$init_method,
   X <- stats::model.matrix(form.X, mf.X)
   return( X)
 }
+
+"get_W_sam" <- function(species_formula, mf.W){
+  form.W <- species_formula
+  if( !is.null( species_formula)){
+    if( length( form.W)>2)
+      form.W[[2]] <- NULL #get rid of outcomes
+    W <- model.matrix( form.W, mf.W)
+    tmp.fun <- function(x){ all( x==1)}
+    intercepts <- apply( W, 2, tmp.fun)
+    W <- W[,!intercepts,drop=FALSE]
+  }
+  else
+    W <- -999999
+  return( W)
+}
+
 
 "species_data_check" <- function(x){
   stopifnot(is.matrix(x)|is.data.frame(x))
@@ -2580,7 +2626,7 @@ starting values;\n starting values are generated using ',control$init_method,
                                       alpha,
                                       beta,
                                       eta,
-                                      disp){
+                                      theta){
   cat(S, "species.\n")
   cat(G, "groups.\n")
   cat(np, "coefs.\n")
@@ -2588,7 +2634,7 @@ starting values;\n starting values are generated using ',control$init_method,
   cat("starting species intercepts:\n",alpha,"\n")
   cat("starting archetype parameters:\n",beta,"\n")
   cat("starting archetype membership:\n",additive_logistic(eta),"\n")
-  cat("starting species specific dispersion parameters:\n",disp,"\n")
+  cat("starting species specific dispersion parameters:\n",theta,"\n")
 
 }
 
@@ -2598,17 +2644,17 @@ starting values;\n starting values are generated using ',control$init_method,
   return(abs(logl_n1 - logl_n) > (abs(logl_n1 - logl_n) / abs(logl_n)))
 }
 
-"sam_random_inits" <- function(alpha, beta, disp, S, G, mult=0.3){
+"sam_random_inits" <- function(alpha, beta, theta, S, G, X, disty, mult=0.3){
                   my.sd <- mult*sd( alpha); if( is.na( my.sd)) my.sd <- 0.1
                   alpha <- alpha + rnorm(S, sd = my.sd)
                   my.sd <- mult*sd( beta); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
-                  beta <- beta + as.numeric(matrix(rnorm(G * ncol(X), mean = 0, sd = my.sd), ncol = ncol(X), nrow = G - 1))
+                  beta <- beta + as.numeric(matrix(rnorm(G * ncol(X[,-1]), mean = 0, sd = my.sd), ncol = ncol(X), nrow = G - 1))
 
                   if(disty %in% c(4,6)){
-                    my.sd <- mult*sd( disp); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
-                    disp <- disp + as.numeric( rnorm( S, mean=0, my.sd))
+                    my.sd <- mult*sd( theta); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
+                    theta <- theta + as.numeric( rnorm( S, mean=0, my.sd))
                   }
-                  if(disty %in% c(4,6)) return(list(alpha,beta,disp))
+                  if(disty %in% c(4,6)) return(list(alpha,beta,theta))
                   else return(list(alpha,beta))
 }
 
@@ -2646,13 +2692,13 @@ starting values;\n starting values are generated using ',control$init_method,
     alpha <- as.numeric(inits$alpha)
     beta <- as.numeric(inits$beta)
     eta <- as.numeric(inits$eta)
-    # disp <- as.numeric(inits$disp)
-    if(disty%in%c(4,6)|is.null(inits$disp))
-      disp <- as.numeric(inits$disp)
+    # theta <- as.numeric(inits$theta)
+    if(disty%in%c(4,6)|is.null(inits$theta))
+      theta <- as.numeric(inits$theta)
     else
-      disp <- rep(-999999,length(alpha))
-    if(return_list) res <- list(alpha=alpha,beta=beta,eta=eta,disp=disp)
-    else res <- c(alpha,beta,eta,disp)
+      theta <- rep(-999999,length(alpha))
+    if(return_list) res <- list(alpha=alpha,beta=beta,eta=eta,theta=theta)
+    else res <- c(alpha,beta,eta,theta)
   }
 
   if(is.numeric(inits)){
@@ -2664,12 +2710,12 @@ starting values;\n starting values are generated using ',control$init_method,
     eta <- inits[start + 1:(G - 1)]
     start <- start + (G-1)
     if(disty%in%c(4,6))
-      disp <- inits[start + 1:S]
+      theta <- inits[start + 1:S]
     else
-      disp <- rep(-999999,S)
+      theta <- rep(-999999,S)
 
-    if(return_list) res <- list(alpha=alpha,beta=beta,eta=eta,disp=disp)
-    else res <- c(alpha,beta,eta,disp)
+    if(return_list) res <- list(alpha=alpha,beta=beta,eta=eta,theta=theta)
+    else res <- c(alpha,beta,eta,theta)
 
   }
 

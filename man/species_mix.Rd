@@ -37,7 +37,7 @@ species_mix.multifit(archetype_formula = NULL,
   titbits = TRUE)
 
 species_mix.control(maxit = 1000, quiet = FALSE, trace = 1,
-  cores = 1, init_method = "kmeans", init_sd = 1,
+  cores = 1, init_method = "random2", init_sd = 1,
   minimum_sites_occurrence = 10, em_prefit = TRUE, em_steps = 5,
   em_refit = 2, em_abstol = sqrt(.Machine$double.eps),
   em_reltol = reltol_fun, em_maxtau = 0.8, theta_range = c(0.001,
@@ -178,6 +178,12 @@ setting titbits=TRUE may give users problems with memory.}
 \item{trace}{int 1=model will report parameter estimates and loglikelihood at each iteration. 0=quiet.}
 
 \item{cores}{The number of cores to use in fitting of species mix models. These will be largely used to model the species-specific parameteres.}
+
+\item{init_method}{The method to use for initialisation. The options are "random2", "kmeans", "kmed". The default uses random2, which is a kmeans with noise added to the cluster.}
+
+\item{init_sd}{The amount of noise to add to the initailisation the default is 1.}
+
+\item{minimum_sites_occurrence}{a integer which determins the number of minimum sites present for any species for it to be included in the initialisation step. This removes rare species from initial groupings. They are then included in the overall analysis.}
 
 \item{em_prefit}{Logical if TRUE the model will run a slower EM algorithim fit to find starting values.}
 

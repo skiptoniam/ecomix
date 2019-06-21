@@ -66,10 +66,10 @@ extern "C" {
 	//return( Rres);
 
 	SEXP Rlogl = PROTECT(allocVector(REALSXP, 1));
-    REAL(Rlogl)[0] = logl;
-   	UNPROTECT(1);
-    SEXP Ralpha_est = PROTECT(allocVector(REALSXP, all.data.nS));
-    for( int s=0; s<all.data.nS; s++) REAL(Ralpha_est)[s] = all.params.Alpha[s];
+  REAL(Rlogl)[0] = logl;
+  UNPROTECT(1);
+  SEXP Ralpha_est = PROTECT(allocVector(REALSXP, all.data.nS));
+  for( int s=0; s<all.data.nS; s++) REAL(Ralpha_est)[s] = all.params.Alpha[s];
 	UNPROTECT(1);
 	SEXP Rbeta_est = PROTECT(allocVector(REALSXP, all.data.nG*all.data.nP));
 	for( int i=0; i<((all.data.nG*all.data.nP)); i++) REAL(Rbeta_est)[i] = all.params.Beta[i];
