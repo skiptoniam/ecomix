@@ -9,14 +9,14 @@ void sam_params::setVals(const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta,
 
 	Alpha = REAL( Ralpha);
 	Beta = REAL( Rbeta);
+	Gamma = REAL( Rgamma);
 	Eta = REAL( Reta);
 	Theta = REAL( Rtheta);
-	Gamma = REAL( Rgamma);
 
 	nalpha = dat.nS;
 	nbeta = dat.nG*dat.nPX;
-	neta = (dat.nG-1);
 	ngamma = dat.nS*dat.nPW;
+	neta = (dat.nG-1);
 	if(dat.isDispersion())
 		ntheta = dat.nS;
 	else
@@ -35,6 +35,11 @@ void sam_params::getArray(double *parArr, const sam_data &dat){
 		parArr[kount] = Beta[i];
 		kount++;
 	}
+	
+	for( int i=0; i<((dat.nS*dat.nPW)); i++){
+		parArr[kount] = Gamma[i];
+		kount++;
+	}
 	for( int i=0; i<((dat.nG-1)); i++){ 
 		parArr[kount] = Eta[i];
 		kount++;
@@ -44,10 +49,6 @@ void sam_params::getArray(double *parArr, const sam_data &dat){
 				parArr[kount] = Theta[i];
 				kount++;
 		}
-	for( int i=0; i<((dat.nS*dat.nPW)); i++){
-		parArr[kount] = Gamma[i];
-		kount++;
-	}
 
 }
 
