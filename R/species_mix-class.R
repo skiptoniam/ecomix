@@ -173,7 +173,7 @@
   X <- get_X_sam(archetype_formula, dat$mf.X)
 
   # what is the W matrix (species covariates)
-  W <- get_W_part_sam(species_formula = species_formula, mf.W = dat$mf.W)
+  W <- get_W_sam(species_formula = species_formula, mf.W = dat$mf.W)
 
   x.means <- NULL
   x.sds <- NULL
