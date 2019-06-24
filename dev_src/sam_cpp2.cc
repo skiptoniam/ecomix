@@ -1,4 +1,4 @@
-#include"sam_cpp.h"
+#include"sam_cpp2.h"
 
 /* Code for all SAMs distributions (except Tweedie).
  * I have tried to set this up like RCP, which makes more sense to me, in the future I can adapt Piers code into a single species_mix_cpp function.
@@ -22,7 +22,7 @@ extern "C" {
 	all.params.setVals(all.data, Ralpha, Rbeta, Reta, Rtheta, Rgamma);	//read in the parameters
 	all.derivs.setVals(all.data, RderivsAlpha, RderivsBeta, RderivsEta, RderivsTheta, RderivsGamma, RgetScores, Rscores);
 	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv, Rprintparams);
-	all.fits.initialise(all.data.nObs, all.data.nG, all.data.nS, all.data.nP, 0);
+	all.fits.initialise(all.data.nObs, all.data.nG, all.data.nS, all.data.nPX, 0);
 
 	double logl = -999999;
 
@@ -182,10 +182,10 @@ void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data
 				lp = lps.at(MATREF2D(g,s,dat.nG)) + dat.offset[i];
 				for( int j=0;j<dat.nPX; j++){
 							lp += params.Beta[MATREF2D(g,j,(dat.nG))] * dat.X[MATREF2D(i,j,dat.nObs)];
-					}
+				}
 				for( int l=0;l<dat.nPW; l++){
 							lp += params.Gamma[MATREF2D(s,l,(dat.nS))] * dat.W[MATREF2D(i,l,dat.nObs)];
-					}
+				}
 					if(dat.disty==1){//bernoulli
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_logit(lp);
 						}
@@ -325,18 +325,6 @@ double log_negative_binomial_sam( const double &y, const double &mu, const doubl
 
 double log_negative_binomial_deriv_theta_sam(const double &y, const double &mu, const double &od){
 
-	//double theta, tmp = 0.0;
-
-    ////sig = exp(od);
-    //theta = 1 / exp(od);
-
-    //tmp = digamma( theta+y);
-    //tmp -= digamma( theta);
-    //tmp += 1 + log(theta) - log(theta+mu);
-    //tmp -= (theta+y)/(theta+mu);
-
-    //return(tmp);
-
     double theta, sig, res=0.0;
 
 	sig = exp(od);
@@ -361,26 +349,6 @@ double log_negative_binomial_deriv_mu_sam( const double &y, const double &mu, co
 	return( tmp);
 }
 
-//double log_tweedie( const double &y, const double &mu, const double &phi, const double &p) {
- 	//double lambda, alpha, tau, muZ, tmp, phi1;
- 	//phi1 = exp( phi);
- 	//lambda = R_pow( mu, (2-p)) / ( phi1*(2-p));
- 	//alpha = ( 2-p) / ( p-1);
- 	//tau = phi1*(p-1)*R_pow(mu,(p-1));
- 	//muZ = alpha * tau;
- 	//tmp = dTweedie( y, lambda, muZ, alpha, 1);
- 	//return( tmp);
-//}
-
-//double log_tweedie_deriv_theta_sam( double y, double fit, double thetaParm , double p){
- 	//double phi, tmp;
- 	//phi = exp( thetaParm);
-	//tmp = dTweediePhi( y, fit, phi, p);
-	//tmp *= phi;
- 	//return( tmp);
-//}
-
-
 double log_normal_sam( const double &y, const double &mu, const double &sig){
 	double tmp = 0.0, sig1;
 	sig1 = exp( sig);
@@ -390,7 +358,7 @@ double log_normal_sam( const double &y, const double &mu, const double &sig){
 }
 
 double log_normal_deriv_mu_sam( const double &y, const double &mu, const double &sig){
-	double tmp, sig1;
+	double tmp =0.0, sig1;
 
 	sig1 = exp( sig);
 	tmp = (y-mu) / (sig1*sig1);
@@ -456,9 +424,10 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	vector<double> parpi((dat.nG-1), 0);
 	vector<double> eta_mu_derivs((dat.nS*dat.nG*dat.nObs), 0);
 	vector<double> alphaDerivs(dat.nS, 0);//change to dat.NAN
-	vector<double> betaDerivs((dat.nG*dat.nP), 0);
+	vector<double> betaDerivs((dat.nG*dat.nPX), 0);
 	vector<double> etaDerivs((dat.nG-1), 0); // check there should only be g pis
 	vector<double> thetaDerivs(dat.nS, 0);
+	vector<double> gammaDerivs((dat.nG*dat.nPW), 0);
 	double logl;
 
     //calc loglike
@@ -490,6 +459,10 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 		calc_dlog_dthetaS(fits.dlogdtheta, fits.allMus, dat, params);
 		calc_theta_deriv(thetaDerivs, fits.dlogdtheta, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
     }
+    
+   	//derivate w.r.t gamma
+	calc_dlog_dgamma(fits.dlogdgamma, eta_mu_derivs, dat);
+	calc_gamma_deriv(gammaDerivs, fits.dlogdgamma, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
 
 	//transform pis back to additative logistic scale to keep pi_dervis happy.
 	additive_logistic_sam(parpi,0,dat.nG);
@@ -499,7 +472,7 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	calc_eta_deriv(etaDerivs, fits.dlogdpi, parpi, dat);
 
 	//update the derivates.
-	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, thetaDerivs);
+	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, thetaDerivs, gammaDerivs);
 	}
 
 /* Ok I'm going to try and generalise the derivate function across all distributions */
@@ -585,7 +558,7 @@ void calc_dlog_dalpha(vector<double> &dlda, vector<double> const &mu_eta_derivs,
 
 void calc_dlog_dbeta(vector<double> &dldb, vector<double> const &mu_eta_derivs, const sam_data &dat){
 
-	// dlda = dlogbeta passed as fits.dlogdbeta(dat.nG*dat.nS*dat.nP, dat.NAnum) from function call
+	// dlda = dlogbeta passed as fits.dlogdbeta(dat.nG*dat.nS*dat.nPX, dat.NAnum) from function call
 	// mus = all the fitted values.
 
 	//double tmp_lpd;
@@ -595,15 +568,15 @@ void calc_dlog_dbeta(vector<double> &dldb, vector<double> const &mu_eta_derivs, 
 			for(int i=0; i<dat.nObs; i++){
 				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
 					//tmp_lpd = log_ippm_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.st_sp_wts[MATREF2D(i,s,dat.nObs)]);
-						for(int j=0; j<dat.nP; j++){
-							dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) += mu_eta_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * dat.X[MATREF2D(i,j,dat.nObs)];
-							//std::cout << dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) << '\n';
+						for(int j=0; j<dat.nPX; j++){
+							dldb.at(MATREF3D(g,j,s,dat.nG,dat.nPX)) += mu_eta_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * dat.X[MATREF2D(i,j,dat.nObs)];
+							//std::cout << dldb.at(MATREF3D(g,j,s,dat.nG,dat.nPX)) << '\n';
 							}
 				}
 			}
-		for(int j=0; j<dat.nP; j++){
-				dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) = dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP))*dat.spp_wts[s];
-				//std::cout << dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) << '\n';
+		for(int j=0; j<dat.nPX; j++){
+				dldb.at(MATREF3D(g,j,s,dat.nG,dat.nPX)) = dldb.at(MATREF3D(g,j,s,dat.nG,dat.nPX))*dat.spp_wts[s];
+				//std::cout << dldb.at(MATREF3D(g,j,s,dat.nG,dat.nPX)) << '\n';
 			}
 		}
 	}
@@ -636,6 +609,34 @@ void calc_dlog_dthetaS(vector<double> &dldd, vector<double> const &mus, const sa
 	}
 }
 
+void calc_dlog_dgamma(vector<double> &dldg, vector<double> const &mu_eta_derivs, const sam_data &dat){
+
+	// dldg = dlogdgamma passed as fits.dlogdbeta(dat.nG*dat.nS*dat.nPW, dat.NAnum) from function call
+	// mus = all the fitted values.
+
+	//double tmp_lpd;
+
+	for(int g=0; g<dat.nG; g++){
+		for(int s=0;s<dat.nS; s++){
+			for(int i=0; i<dat.nObs; i++){
+				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
+					//tmp_lpd = log_ippm_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.st_sp_wts[MATREF2D(i,s,dat.nObs)]);
+						for(int j=0; j<dat.nPW; j++){
+							dldg.at(MATREF3D(g,j,s,dat.nG,dat.nPW)) += mu_eta_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * dat.W[MATREF2D(i,j,dat.nObs)];
+							//std::cout << dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) << '\n';
+							}
+				}
+			}
+		for(int j=0; j<dat.nPW; j++){
+				dldg.at(MATREF3D(g,j,s,dat.nG,dat.nPW)) = dldg.at(MATREF3D(g,j,s,dat.nG,dat.nPW))*dat.spp_wts[s];
+				//std::cout << dldb.at(MATREF3D(g,j,s,dat.nG,dat.nPW)) << '\n';
+			}
+		}
+	}
+
+}
+
+
 
 void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llSG, vector<double> const &llS, const sam_data &dat){
 
@@ -666,10 +667,10 @@ void calc_alpha_deriv( vector<double> &alphaDerivs, vector<double> const &dlogda
 void calc_beta_deriv( vector<double> &betaDerivs, vector<double> const &dlogdbeta, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
 
 	for(int g=0; g<(dat.nG); g++){
-	    for(int j=0; j<(dat.nP); j++){
+	    for(int j=0; j<(dat.nPX); j++){
 			for(int s=0; s<(dat.nS); s++){
 			// calculate for betas.
-			betaDerivs.at(MATREF2D(g,j,dat.nG)) +=  exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s) + log(pis.at(g))) * dlogdbeta.at(MATREF3D(g,j,s,dat.nG,dat.nP));
+			betaDerivs.at(MATREF2D(g,j,dat.nG)) +=  exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s) + log(pis.at(g))) * dlogdbeta.at(MATREF3D(g,j,s,dat.nG,dat.nPX));
 			}
 		}
 	}
@@ -684,6 +685,20 @@ void calc_theta_deriv( vector<double> &thetaDerivs, vector<double> const &dlogdt
 			//calculate for dispersion (thetas)
     		thetaDerivs.at(s) +=  exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s) + log(pis.at(g))) * dlogdthetaS.at(MATREF2D(g,s,dat.nG));
 			}
+	}
+
+}
+
+// this should calculate the derivate w.r.t gamma.
+void calc_gamma_deriv( vector<double> &gammaDerivs, vector<double> const &dlogdgamma, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
+
+	for(int g=0; g<(dat.nG); g++){
+	    for(int j=0; j<(dat.nPW); j++){
+			for(int s=0; s<(dat.nS); s++){
+			// calculate for betas.
+			gammaDerivs.at(MATREF2D(s,j,dat.nS)) +=  exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s) + log(pis.at(g))) * dlogdgamma.at(MATREF3D(g,j,s,dat.nG,dat.nPW));
+			}
+		}
 	}
 
 }

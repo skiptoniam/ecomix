@@ -1,4 +1,4 @@
-#include"sam_cpp.h"
+#include"sam_cpp2.h"
 
 sam_data::sam_data(){};
 sam_data::~sam_data(){};
@@ -51,7 +51,7 @@ void sam_data::printVals( int printX=0, int printy = 0){
 
 	if( printX == 1)
 		for( int i=0; i<nObs; i++){
-			for( int j=0; j<nP; j++)
+			for( int j=0; j<nPX; j++)
 				Rprintf( "%3.2f\t", X[MATREF2D(i,j,nObs)]);
 				Rprintf( "\n");
 		}

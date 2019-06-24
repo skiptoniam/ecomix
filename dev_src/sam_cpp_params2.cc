@@ -1,4 +1,4 @@
-#include"sam_cpp.h"
+#include"sam_cpp2.h"
 
 sam_params::sam_params(){};
 sam_params::~sam_params(){};
@@ -22,7 +22,7 @@ void sam_params::setVals(const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta,
 	else
 		ntheta = 0;
 
-	nTot = nalpha + nbeta + neta + ntheta + ngamma; 
+	nTot = nalpha + nbeta + ngamma + neta + ntheta; 
 }
 
 void sam_params::getArray(double *parArr, const sam_data &dat){
@@ -57,10 +57,14 @@ void sam_params::update( double *parArr, const sam_data &dat){
 		Alpha[i] = parArr[kount];
 		kount++;
 	}
-	for( int i=0; i<((dat.nG*dat.nP)); i++){
+	for( int i=0; i<((dat.nG*dat.nPX)); i++){
 		Beta[i] = parArr[kount];
 		kount++;
 	}
+	for( int i=0; i<((dat.nS*dat.nPW)); i++){
+		Gamma[i] = parArr[kount];
+		kount++;
+	}	
 	for( int i=0; i<((dat.nG-1)); i++){
 		Eta[i] = parArr[kount];
 		kount++;
@@ -70,6 +74,7 @@ void sam_params::update( double *parArr, const sam_data &dat){
 			Theta[i] = parArr[kount];
 			kount++;
 		}
+		
 }
 
 void sam_params::printParms( const sam_data &dat){
@@ -77,11 +82,17 @@ void sam_params::printParms( const sam_data &dat){
 	Rprintf( "ALPHA:\n");
 	for( int i=0; i<dat.nS; i++)
 		Rprintf( "%3.2f\t", Alpha[i]);
-		Rprintf( "\n");
-		Rprintf( "BETA:\n");
+	Rprintf( "\n");
+	Rprintf( "BETA:\n");
 	for( int g=0; g<(dat.nG); g++){
 		for( int i=0; i<dat.nP; i++)
 			Rprintf( "%3.2f\t", Beta[MATREF2D(g,i,(dat.nG))]);
+			Rprintf( "\n");
+	}
+	Rprintf( "GAMMA:\n");
+	for( int g=0; g<(dat.nS); g++){
+		for( int i=0; i<dat.nPW; i++)
+			Rprintf( "%3.2f\t", Gamma[MATREF2D(s,i,(dat.nS))]);
 			Rprintf( "\n");
 	}
 	Rprintf( "PI (transformed Pi):\n");
@@ -95,6 +106,5 @@ void sam_params::printParms( const sam_data &dat){
 		Rprintf( "%3.2f\t", Theta[i]);
 		Rprintf( "\n");
 	}
-		
 		
 }
