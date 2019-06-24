@@ -53,7 +53,7 @@ class sam_params {
 	public:
 		sam_params();
 		~sam_params();
-		void setVals( const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Reta, SEXP &Rtheta, SEXP &Rgamma);
+		void setVals( const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Rgamma, SEXP &Reta, SEXP &Rtheta);
 		void getArray(double *parArr, const sam_data &dat);
 		void update(double *parArr, const sam_data &dat);
 		void printParms( const sam_data &dat);
@@ -61,10 +61,10 @@ class sam_params {
 
 		double 	*Alpha, //the species' prevalences 
 				*Beta,	//the habitats' free covariate params (G*xp)
+				*Gamma; //species x npw parameters form partial SAMs
 				*Eta,	//the pis - mmmmm pies.
 				*Theta; //species specific dispersion parameter for negative binomial and guassian model nspp long.
-				*Gamma; //species x npw parameters form partial SAMs
-	    int nalpha, nbeta, neta, ntheta, ngamma, nTot;
+		int nalpha, nbeta, ngamma, neta, ntheta, nTot;
 };
 
 
@@ -74,20 +74,18 @@ class sam_derivs{
 	public:
 		sam_derivs();
 		~sam_derivs();
-		void setVals( const sam_data &dat, SEXP &RderivsAlpha, SEXP &RderivsBeta, SEXP &RderivsEta, SEXP &RderivsTheta, SEXP &RderivsGamma, SEXP &RgetScores, SEXP &Rscores);
+		void setVals( const sam_data &dat, SEXP &RderivsAlpha,  SEXP &RderivsBeta, SEXP &RderivsGamma, SEXP &RderivsEta, SEXP &RderivsTheta, SEXP &RgetScores, SEXP &Rscores);
 		void zeroDerivs( const sam_data &dat);
-		void updateDerivs( const sam_data &dat, const vector<double> &alphaDerivs,
-		 const vector<double> &betaDerivs, const vector<double> &etaDerivs,
-		  const vector<double> &thetaDerivs, const vector<double> &gammaDerivs);
+		void updateDerivs( const sam_data &dat, const vector<double> &alphaDerivs, const vector<double> &betaDerivs, const vector<double> &gammaDerivs, const vector<double> &etaDerivs, const vector<double> &thetaDerivs);
 		void update( double *grArr, const sam_data &dat);
 		void getArray( double *grArr, const sam_data &dat);
 
         int getScoreFlag;	//Should the scores be calculated for empirical information
 		double 	*Alpha, //the derivatives of logl w.r.t. alpha
 				*Beta,	//the derivatives of logl w.r.t. beta
+				*Gamma,  //the derivatives of logl w.r.t. species specific parameters.
 				*Eta, 	//the derivatives of logl w.r.t. eta (transformed pi)
 				*Theta,  //the derivatives of logl w.r.t. dispersion parameters.
-				*Gamma,  //the derivatives of logl w.r.t. species specific parameters.
 				*Scores;//the score contribution for each site (for empirical information)
 	
 };
@@ -140,8 +138,8 @@ class sam_cpp_all_classes {
 
 extern "C" SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na,
 								SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp,
-								SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rtheta, SEXP Rgamma,
-								SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsTheta, SEXP RderivsGamma, SEXP RgetScores, SEXP Rscores,
+								SEXP Ralpha, SEXP Rbeta, SEXP Rgamma, SEXP Reta, SEXP Rtheta, 
+								SEXP RderivsAlpha, SEXP RderivsBeta,  SEXP RderivsGamma, SEXP RderivsEta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
 								SEXP Rpis, SEXP Rmus, SEXP logliS, SEXP logliSG,
 								SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
 								SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly);
@@ -176,6 +174,7 @@ void calc_beta_deriv( vector<double> &betaDerivs, vector<double> const &dlogdbet
 void calc_theta_deriv( vector<double> &thetaDerivs, vector<double> const &dlogdthetaS, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat);
 void calc_gamma_deriv( vector<double> &gammaDerivs, vector<double> const &dlogdgamma, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat);
 void calc_eta_deriv( vector<double> &etaDerivs, vector<double> const &dlogdpi, vector<double> const eta, const sam_data &dat);
+
 
 //distribution functions
 double log_bernoulli_sam( const double &y, const double &mu);
