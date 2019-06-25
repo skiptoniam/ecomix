@@ -9,8 +9,8 @@
 extern "C" {
 	SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na,
 					     SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp,
-						 SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rtheta,
-						 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsTheta, SEXP RderivsGamma, SEXP RgetScores, SEXP Rscores,
+						 SEXP Ralpha, SEXP Rbeta, SEXP Rgamma, SEXP Reta, SEXP Rtheta,
+						 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsGamma, SEXP RderivsEta, SEXP RderivsTheta, SEXP RderivsGamma, SEXP RgetScores, SEXP Rscores,
 						 SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
 						 SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
 						 SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly){
@@ -19,10 +19,10 @@ extern "C" {
 
 	//initialise the data structures -- they are mostly just pointers to REAL()s...
 	all.data.setVals(Ry, RX, RW, Roffset, Rspp_wts, Rsite_spp_wts, Ry_not_na, RnS, RnG, Rpx, Rpw, RnObs, Rdisty, RoptiDisp);	//read in the data
-	all.params.setVals(all.data, Ralpha, Rbeta, Reta, Rtheta, Rgamma);	//read in the parameters
-	all.derivs.setVals(all.data, RderivsAlpha, RderivsBeta, RderivsEta, RderivsTheta, RderivsGamma, RgetScores, Rscores);
+	all.params.setVals(all.data, Ralpha, Rbeta, Rgamma, Reta, Rtheta);	//read in the parameters
+	all.derivs.setVals(all.data, RderivsAlpha, RderivsBeta, RderivsGamma, RderivsEta, RderivsTheta, RgetScores, Rscores);
 	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv, Rprintparams);
-	all.fits.initialise(all.data.nObs, all.data.nG, all.data.nS, all.data.nPX, 0);
+	all.fits.initialise(all.data.nObs, all.data.nG, all.data.nS, all.data.nPX, all.data.nPW, 0);
 
 	double logl = -999999;
 
@@ -583,32 +583,6 @@ void calc_dlog_dbeta(vector<double> &dldb, vector<double> const &mu_eta_derivs, 
 
 }
 
-void calc_dlog_dthetaS(vector<double> &dldd, vector<double> const &mus, const sam_data &dat, const sam_params &params){
-
-	// dlda = dlogalpha passed as fits.dflogdalpha(dat.nG*dat.nS, dat.NAnum) from function call
-	// mus = all the fitted values.
-
-	for(int g=0; g<dat.nG; g++){
-		for(int s=0;s<dat.nS; s++){
-			for(int i=0; i<dat.nObs; i++){
-				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
-					if(dat.disty==4){ // negative binomial
-						dldd.at(MATREF2D(g,s,dat.nG)) += log_negative_binomial_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Disp[s]);
-						//std::cout << dldd.at(MATREF2D(g,s,dat.nG)) << '\n';
-					}
-					//case 5:	// tweedie
-						//dldd.at(MATREF2D(g,s,dat.nG)) += log_tweedie_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Disp[s]);
-						//break;
-					if(dat.disty==6){ // normal
-						dldd.at(MATREF2D(g,s,dat.nG)) += log_normal_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Disp[s]);
-					}
-				}
-			}
-		//dldd.at(MATREF2D(g,s,dat.nG)) = dldd.at(MATREF2D(g,s,dat.nG))*dat.spp_wts[s];
-		}
-	}
-}
-
 void calc_dlog_dgamma(vector<double> &dldg, vector<double> const &mu_eta_derivs, const sam_data &dat){
 
 	// dldg = dlogdgamma passed as fits.dlogdbeta(dat.nG*dat.nS*dat.nPW, dat.NAnum) from function call
@@ -637,6 +611,31 @@ void calc_dlog_dgamma(vector<double> &dldg, vector<double> const &mu_eta_derivs,
 }
 
 
+void calc_dlog_dthetaS(vector<double> &dldd, vector<double> const &mus, const sam_data &dat, const sam_params &params){
+
+	// dlda = dlogalpha passed as fits.dflogdalpha(dat.nG*dat.nS, dat.NAnum) from function call
+	// mus = all the fitted values.
+
+	for(int g=0; g<dat.nG; g++){
+		for(int s=0;s<dat.nS; s++){
+			for(int i=0; i<dat.nObs; i++){
+				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
+					if(dat.disty==4){ // negative binomial
+						dldd.at(MATREF2D(g,s,dat.nG)) += log_negative_binomial_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Disp[s]);
+						//std::cout << dldd.at(MATREF2D(g,s,dat.nG)) << '\n';
+					}
+					//case 5:	// tweedie
+						//dldd.at(MATREF2D(g,s,dat.nG)) += log_tweedie_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Disp[s]);
+						//break;
+					if(dat.disty==6){ // normal
+						dldd.at(MATREF2D(g,s,dat.nG)) += log_normal_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Disp[s]);
+					}
+				}
+			}
+		//dldd.at(MATREF2D(g,s,dat.nG)) = dldd.at(MATREF2D(g,s,dat.nG))*dat.spp_wts[s];
+		}
+	}
+}
 
 void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llSG, vector<double> const &llS, const sam_data &dat){
 
@@ -659,6 +658,20 @@ void calc_alpha_deriv( vector<double> &alphaDerivs, vector<double> const &dlogda
 			//calculate for alphas
     		alphaDerivs.at(s) +=  exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s) + log(pis.at(g))) * dlogdalpha.at(MATREF2D(g,s,dat.nG));
 			}
+	}
+
+}
+
+// this should calculate the derivate w.r.t gamma.
+void calc_gamma_deriv( vector<double> &gammaDerivs, vector<double> const &dlogdgamma, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
+
+	for(int g=0; g<(dat.nG); g++){
+	    for(int j=0; j<(dat.nPW); j++){
+			for(int s=0; s<(dat.nS); s++){
+			// calculate for betas.
+			gammaDerivs.at(MATREF2D(s,j,dat.nS)) +=  exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s) + log(pis.at(g))) * dlogdgamma.at(MATREF3D(g,j,s,dat.nG,dat.nPW));
+			}
+		}
 	}
 
 }
@@ -688,21 +701,6 @@ void calc_theta_deriv( vector<double> &thetaDerivs, vector<double> const &dlogdt
 	}
 
 }
-
-// this should calculate the derivate w.r.t gamma.
-void calc_gamma_deriv( vector<double> &gammaDerivs, vector<double> const &dlogdgamma, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
-
-	for(int g=0; g<(dat.nG); g++){
-	    for(int j=0; j<(dat.nPW); j++){
-			for(int s=0; s<(dat.nS); s++){
-			// calculate for betas.
-			gammaDerivs.at(MATREF2D(s,j,dat.nS)) +=  exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s) + log(pis.at(g))) * dlogdgamma.at(MATREF3D(g,j,s,dat.nG,dat.nPW));
-			}
-		}
-	}
-
-}
-
 
 // this should calculate the derivate w.r.t eta (transformed pi).
 void calc_eta_deriv( vector<double> &etaDerivs, vector<double> const &dlogdpi, vector<double> const eta, const sam_data &dat){

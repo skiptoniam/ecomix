@@ -2211,38 +2211,30 @@ starting values;\n starting values are generated using ',control$init_method,
   return( res)
 }
 
-"sam_optimise" <- function(y, X, offset, spp_weights, site_spp_weights, y_is_na,
+"sam_optimise" <- function(y, X, W, offset, spp_weights, site_spp_weights, y_is_na,
                            S, G, disty, start_vals, control){
 
   inits <- c(start_vals$alpha, start_vals$beta, start_vals$eta, start_vals$theta)
-  np <- as.integer(ncol(X[,-1,drop=FALSE]))
+  npx <- as.integer(ncol(X[,-1,drop=FALSE]))
+  npw <- as.integer(ncol(W))
   n <- as.integer(nrow(X))
 
   # parameters to optimise
   alpha <- as.numeric(start_vals$alpha)
   beta <- as.numeric(start_vals$beta)
+  gamma <- as.numeric(start_vals$beta)
   eta <- as.numeric(start_vals$eta)
   theta <- as.numeric(start_vals$theta)
 
   #scores
+  getscores <- 1
   alpha.score <- as.numeric(rep(NA, length(alpha)))
   beta.score <- as.numeric(rep(NA, length(beta)))
+  if( npw > 0)
+    gamma.score <- as.numeric(matrix( NA, nrow=S, ncol=ncol(W)))
+  else
+    gamma.score <- -999999
   eta.score <- as.numeric(rep(NA, length(eta)))
-  # theta.score <- as.numeric(rep(NA,length(theta)))
-  # getscores <- 1
-  # scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,theta))))
-  #
-  # if(disty%in%c(4,6)){
-  #   control$optiDisp <- as.integer(1)
-  # }else{
-  #   control$optiDisp <- as.integer(0)
-  # }
-
-  # scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,theta.score))))
-
-  # theta.score <- as.numeric(rep(NA, length(theta)))
-  getscores <- 1
-  # scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,theta))))
   if(disty%in%c(4,6)){
     control$optiDisp <- as.integer(1)
     theta.score <- as.numeric(rep(NA, S))
@@ -2250,7 +2242,7 @@ starting values;\n starting values are generated using ',control$init_method,
     control$optiDisp <- as.integer(0)
     theta.score <- -999999
   }
-  scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,theta.score))))
+  scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,gamma.scores,eta.score,theta.score))))
 
 
   #model quantities
@@ -2261,7 +2253,8 @@ starting values;\n starting values are generated using ',control$init_method,
 
   if(control$print_cpp_start_vals)print_starting_values(as.integer(S),
                                                         as.integer(G),
-                                                        as.integer(np),
+                                                        as.integer(npx),
+                                                        as.integer(npw),
                                                         as.integer(n),
                                                         as.integer(disty),
                                                         as.double(alpha),
@@ -2271,7 +2264,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
   #c++ call to optimise the model (needs pretty good starting values)
   tmp <- .Call("species_mix_cpp",
-               as.numeric(as.matrix(y)), as.numeric(as.matrix(X[,-1,drop=FALSE])), as.numeric(offset), as.numeric(spp_weights),
+               as.numeric(as.matrix(y)), as.numeric(as.matrix(X[,-1,drop=FALSE])), as.numeric(W), as.numeric(offset), as.numeric(spp_weights),
                as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
                # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
                as.integer(S), as.integer(G), as.integer(np), as.integer(n), as.integer(disty),as.integer(control$optiDisp),
@@ -2621,18 +2614,16 @@ starting values;\n starting values are generated using ',control$init_method,
 }
 
 
-"print_starting_values" <-  function (S,G,np,n,
-                                      disty,
-                                      alpha,
-                                      beta,
-                                      eta,
-                                      theta){
+"print_starting_values" <-  function(S, G, npx, npw, n, disty,
+                                     alpha, beta, gamma, eta, theta){
   cat(S, "species.\n")
   cat(G, "groups.\n")
-  cat(np, "coefs.\n")
+  cat(npx, "archetype coefs.\n")
+  cat(npw, "species coefs.\n")
   cat(n,"sites.\n")
   cat("starting species intercepts:\n",alpha,"\n")
   cat("starting archetype parameters:\n",beta,"\n")
+  cat("starting archetype parameters:\n",gamma,"\n")
   cat("starting archetype membership:\n",additive_logistic(eta),"\n")
   cat("starting species specific dispersion parameters:\n",theta,"\n")
 

@@ -1,4 +1,4 @@
-#include"sam_cpp.h"
+#include"sam_cpp2.h"
 
 sam_derivs::sam_derivs(){};
 sam_derivs::~sam_derivs(){};
@@ -19,7 +19,7 @@ void sam_derivs::zeroDerivs( const sam_data &dat){
 		Alpha[i] = 0.0;
 	for( int i=0; i<((dat.nG*dat.nPX)); i++)
 		Beta[i] = 0.0;
-    for( int i=0; i<((dat.nS*dat.)); i++)
+    for( int i=0; i<((dat.nS*dat.nPW)); i++)
 		Gamma[i] = 0.0;	
 	for( int i=0; i<(dat.nG-1); i++)
 		Eta[i] = 0.0;
@@ -42,7 +42,7 @@ void sam_derivs::updateDerivs( const sam_data &dat, const vector<double> &alphaD
 			}
 		}
 	for(int s=0; s<(dat.nS); s++){
-		for( int p=0; p<(dat.); p++){
+		for( int p=0; p<(dat.nPW); p++){
 			Gamma[MATREF2D(s,p,(dat.nS))] = gammaDerivs.at(MATREF2D(s,p,(dat.nS)));
 			}
 		}	
@@ -63,7 +63,7 @@ void sam_derivs::updateDerivs( const sam_data &dat, const vector<double> &alphaD
 		for( int p=0; p<dat.nPX; p++)
 			for( int g=0; g<(dat.nG); g++)
 				Scores[k++] = betaDerivs.at(MATREF2D(g,p,(dat.nG)));
-		for( int p=0; p<dat.; p++)
+		for( int p=0; p<dat.nPW; p++)
 			for( int s=0; s<(dat.nS); s++)
 				Scores[k++] = gammaDerivs.at(MATREF2D(s, p,(dat.nS)));		
 		for( int g=0; g<(dat.nG-1); g++)
@@ -84,7 +84,7 @@ void sam_derivs::update( double *grArr, const sam_data &dat){
 		Beta[i] = grArr[kount];
 		kount++;
 	}
-	for( int i=0; i<(dat.nS*dat.); i++){
+	for( int i=0; i<(dat.nS*dat.pPW); i++){
 		Gamma[i] = grArr[kount];
 		kount++;
 	}
@@ -110,7 +110,7 @@ void sam_derivs::getArray( double *grArr, const sam_data &dat){
 		grArr[kount] = Beta[i];
 		kount++;
 	}
-	for( int i=0; i<(dat.nS*dat.); i++){
+	for( int i=0; i<(dat.nS*dat.nPW); i++){
 		grArr[kount] = Gamma[i];
 		kount++;
 	}
