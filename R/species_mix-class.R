@@ -1526,6 +1526,85 @@
 
 
 ## function for starting values.
+"apply_glmnet_sam_inits" <- function(ss, y, X, W, site_spp_weights, offset, y_is_na, disty){
+
+  # which family to use?
+  if(disty == 1)
+    fam <- "binomial" #glmnet
+  if(disty == 2 | disty == 3 | disty == 4)
+    fam <- "poisson"
+  if(disty == 6)
+    fam <- "gaussian"
+
+  ids_i <- !y_is_na[,ss]
+
+  if (disty==3){
+    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+  } else {
+    outcomes <- as.matrix(y[ids_i,ss])
+  }
+
+  if(ncol(W) != 1){
+    df <- cbind(X[ids_i,,drop=FALSE],W[ids_i,-1,drop=FALSE])
+  } else {
+    df <- X[ids_i,,drop=FALSE]
+  }
+
+
+  if( disty %in% c(1,2,3,4,6)){
+    lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
+
+    ft_sp <- try(glmnet::glmnet(y=outcomes, x=as.matrix(df),
+                                family=fam, offset=offset[ids_i],
+                                weights=as.matrix(site_spp_weights[ids_i,ss]),
+                                alpha=0,
+                                lambda=lambda.seq,
+                                standardize=FALSE,
+                                intercept=TRUE), silent=FALSE)
+    locat.s <- 1/1
+    my.coefs <- glmnet::coef.glmnet(ft_sp, s=locat.s)
+    if( any( is.na( my.coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
+      my.coefs <- glmnet::coef.glmnet(ft_sp, s=lambda.seq)
+      lastID <- apply( my.coefs, 2, function(x) !any( is.na( x)))
+      lastID <- tail( (seq_along( lastID))[lastID], 1)
+      my.coefs <- my.coefs[,lastID]
+    }
+    if (any(class(ft_sp) %in% 'try-error')){
+      my_coefs <- rep(NA, ncol(X[ids_i,]))
+      names(my_coefs) <- colnames(cbind(W[ids_i,,drop=FALSE],X[ids_i,,drop=FALSE]))
+    } else {
+      my_coefs <- t(as.matrix(my.coefs))
+    }
+
+    ##estimate the starting dispersion parameter.
+    theta <- -99999
+    if( disty == 4){
+      tmp <- MASS::theta.mm(outcomes, as.numeric(predict(ft_sp, s=locat.s,
+                                                         type="response",
+                                                         newx=as.matrix(df),
+                                                         newoffset=offset[ids_i])),
+                            weights=as.matrix(site_spp_weights[ids_i,ss]),
+                            dfr=length(outcomes), eps=1e-4)
+      if( tmp>2)
+        tmp <- 2
+      theta <- log( 1/tmp)
+    }
+    if( disty == 6){
+      preds <- as.numeric( predict(ft_sp, s=locat.s, type="link",
+                                   newx=as.matrix(df), newoffset=offset[ids_i]))
+      theta <- log( sqrt( sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard
+    }
+  }
+  # species intercpets
+  alpha <- my_coefs[1]
+  # mixture coefs
+  beta <- my_coefs[match(colnames(X), colnames(my_coefs))]
+  # species coefs apart from intercept
+  if(ncol(W)>1) gamma <-  my_coefs[match(colnames(W), colnames(my_coefs))] else gamma <- -99999
+
+  return(list(alpha = alpha, beta = beta, gamma = gamma, theta = theta))
+}
+
 "apply_glm_sam_inits" <- function(ss, y, X, site_spp_weights, offset, y_is_na, disty){
 
   # which family to use?
@@ -1974,7 +2053,7 @@ starting values;\n starting values are generated using ',control$init_method,
   return(out.list)
 }
 
-"fitmix_ECM_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
+"fitmix_ECM_sam" <- function(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
   ite <- 1
   restart_ite <- 1
@@ -1982,7 +2061,7 @@ starting values;\n starting values are generated using ',control$init_method,
   logl_new <- -88888888
 
   # get starting values
-  starting_values <- get_initial_values_sam(y = y, X = X,
+  starting_values <- get_initial_values_sam(y = y, X = X, W=W,
                                             spp_weights = spp_weights,
                                             site_spp_weights = site_spp_weights,
                                             offset = offset, y_is_na = y_is_na,
@@ -2009,7 +2088,7 @@ starting values;\n starting values are generated using ',control$init_method,
     if (any(pis < sqrt(.Machine$double.eps))) {
        if(restart_ite==1){
          cat('Pis have gone to zero - restarting with new initialisation \n')
-         starting_values <- get_initial_values_sam(y = y, X = X,
+         starting_values <- get_initial_values_sam(y = y, X = X, W = W,
                                                 spp_weights = spp_weights,
                                                 site_spp_weights = site_spp_weights,
                                                 offset = offset, y_is_na = y_is_na,
@@ -2099,10 +2178,10 @@ starting values;\n starting values are generated using ',control$init_method,
 
 }
 
-"initiate_fit_sam" <- function(y, X, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
+"initiate_fit_sam" <- function(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
 
 
-  fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glm_sam_inits, y, X,
+  fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W,
                                        site_spp_weights, offset, y_is_na, disty,
                                       .parallel = control$cores, .verbose = FALSE)
 

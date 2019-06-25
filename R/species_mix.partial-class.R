@@ -703,13 +703,10 @@ return(logl)
   # which family to use?
   if(disty == 1)
     fam <- "binomial" #glmnet
-  # fam <- binomial() #glm
   if(disty == 2 | disty == 3 | disty == 4)
     fam <- "poisson"
-  # fam <- poisson()
   if(disty == 6)
     fam <- "gaussian"
-  # fam <- gaussian()
 
   ids_i <- !y_is_na[,ss]
 
@@ -719,10 +716,17 @@ return(logl)
     outcomes <- as.matrix(y[ids_i,ss])
   }
 
+  if(ncol(W) != 1){
+    df <- cbind(X[ids_i,,drop=FALSE],W[ids_i,-1,drop=FALSE])
+  } else {
+    df <- X[ids_i,,drop=FALSE]
+  }
+
+
   if( disty %in% c(1,2,3,4,6)){
     lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
 
-    ft_sp <- try(glmnet::glmnet(y=outcomes, x=as.matrix(cbind(W[ids_i,-1,drop=FALSE],X[ids_i,,drop=FALSE])),
+    ft_sp <- try(glmnet::glmnet(y=outcomes, x=as.matrix(df),
                                 family=fam, offset=offset[ids_i],
                                 weights=as.matrix(site_spp_weights[ids_i,ss]),
                                 alpha=0,
@@ -745,11 +749,11 @@ return(logl)
     }
 
   ##estimate the starting dispersion parameter.
-  theta <- NA
+  theta <- -99999
   if( disty == 4){
       tmp <- MASS::theta.mm(outcomes, as.numeric(predict(ft_sp, s=locat.s,
                                                          type="response",
-                                                         newx=as.matrix(cbind(W[ids_i,-1,drop=FALSE],X[ids_i,,drop=FALSE])),
+                                                         newx=as.matrix(df),
                                                          newoffset=offset[ids_i])),
                             weights=as.matrix(site_spp_weights[ids_i,ss]),
                             dfr=length(outcomes), eps=1e-4)
@@ -759,7 +763,7 @@ return(logl)
   }
   if( disty == 6){
   preds <- as.numeric( predict(ft_sp, s=locat.s, type="link",
-                                   newx=as.matrix(cbind(W[ids_i,-1,drop=FALSE],X[ids_i,,drop=FALSE])), newoffset=offset[ids_i]))
+                                   newx=as.matrix(df), newoffset=offset[ids_i]))
   theta <- log( sqrt( sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard
     }
   }
@@ -768,7 +772,7 @@ return(logl)
   # mixture coefs
   beta <- my_coefs[match(colnames(X), colnames(my_coefs))]
   # species coefs apart from intercept
-  gamma <-  my_coefs[match(colnames(W), colnames(my_coefs))]
+  if(ncol(W)>1) gamma <-  my_coefs[match(colnames(W), colnames(my_coefs))] else gamma <- -99999
 
   return(list(alpha = alpha, beta = beta, gamma = gamma, theta = theta))
 }
