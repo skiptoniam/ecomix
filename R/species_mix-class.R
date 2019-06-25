@@ -2267,11 +2267,11 @@ starting values;\n starting values are generated using ',control$init_method,
                as.numeric(as.matrix(y)), as.numeric(as.matrix(X[,-1,drop=FALSE])), as.numeric(W), as.numeric(offset), as.numeric(spp_weights),
                as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
                # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
-               as.integer(S), as.integer(G), as.integer(np), as.integer(n), as.integer(disty),as.integer(control$optiDisp),
+               as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n), as.integer(disty),as.integer(control$optiDisp),
                # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
-               as.double(alpha), as.double(beta), as.double(eta), as.double(theta),
+               as.double(alpha), as.double(beta), as.double(eta), as.double(gamma), as.double(theta),
                # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
-               alpha.score, beta.score, eta.score, theta.score, as.integer(control$getscores), scores,
+               alpha.score, beta.score, gamma.score, eta.score, theta.score, as.integer(control$getscores), scores,
                # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
                pis_out, mus, loglikeS, loglikeSG,
                # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
@@ -2408,21 +2408,17 @@ starting values;\n starting values are generated using ',control$init_method,
   form.X[[2]] <- NULL
   form.X <- stats::as.formula(form.X)
   X <- stats::model.matrix(form.X, mf.X)
+  tmp.fun <- function(x){ all( x==1)}
+  intercepts <- apply( X, 2, tmp.fun)
+  X <- X[,!intercepts,drop=FALSE]
   return( X)
 }
 
 "get_W_sam" <- function(species_formula, mf.W){
   form.W <- species_formula
-  if( !is.null( species_formula)){
-    if( length( form.W)>2)
+  if(length( form.W)>2)
       form.W[[2]] <- NULL #get rid of outcomes
-    W <- model.matrix( form.W, mf.W)
-    tmp.fun <- function(x){ all( x==1)}
-    intercepts <- apply( W, 2, tmp.fun)
-    W <- W[,!intercepts,drop=FALSE]
-  }
-  else
-    W <- -999999
+  W <- model.matrix( form.W, mf.W)
   return( W)
 }
 

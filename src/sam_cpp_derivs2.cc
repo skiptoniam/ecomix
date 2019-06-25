@@ -84,7 +84,7 @@ void sam_derivs::update( double *grArr, const sam_data &dat){
 		Beta[i] = grArr[kount];
 		kount++;
 	}
-	for( int i=0; i<(dat.nS*dat.pPW); i++){
+	for( int i=0; i<(dat.nS*dat.nPW); i++){
 		Gamma[i] = grArr[kount];
 		kount++;
 	}

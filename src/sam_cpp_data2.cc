@@ -41,7 +41,7 @@ bool sam_data::isDispersion() const{ // currently just check if negative binomia
 }
 
 
-void sam_data::printVals( int printX=0, int printy = 0){
+void sam_data::printVals( int printX=0, int printW=0, int printy = 0){
 	if( printy == 1)
 		for( int i=0; i<nObs; i++){
 			for( int j=0; j<nS; j++)

@@ -4,7 +4,7 @@ sam_params::sam_params(){};
 sam_params::~sam_params(){};
 
 void sam_params::setVals(const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta,
-						SEXP &Reta, SEXP &Rtheta, &Rgamma){
+						 SEXP &Rgamma, SEXP &Reta, SEXP &Rtheta){
 //	double *tmpD;
 
 	Alpha = REAL( Ralpha);
@@ -86,12 +86,12 @@ void sam_params::printParms( const sam_data &dat){
 	Rprintf( "\n");
 	Rprintf( "BETA:\n");
 	for( int g=0; g<(dat.nG); g++){
-		for( int i=0; i<dat.nP; i++)
+		for( int i=0; i<dat.nPX; i++)
 			Rprintf( "%3.2f\t", Beta[MATREF2D(g,i,(dat.nG))]);
 			Rprintf( "\n");
 	}
 	Rprintf( "GAMMA:\n");
-	for( int g=0; g<(dat.nS); g++){
+	for( int s=0; s<(dat.nS); s++){
 		for( int i=0; i<dat.nPW; i++)
 			Rprintf( "%3.2f\t", Gamma[MATREF2D(s,i,(dat.nS))]);
 			Rprintf( "\n");

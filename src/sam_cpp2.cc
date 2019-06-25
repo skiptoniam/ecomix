@@ -10,7 +10,7 @@ extern "C" {
 	SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na,
 					     SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp,
 						 SEXP Ralpha, SEXP Rbeta, SEXP Rgamma, SEXP Reta, SEXP Rtheta,
-						 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsGamma, SEXP RderivsEta, SEXP RderivsTheta, SEXP RderivsGamma, SEXP RgetScores, SEXP Rscores,
+						 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsGamma, SEXP RderivsEta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
 						 SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
 						 SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
 						 SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly){
@@ -66,7 +66,10 @@ extern "C" {
     for( int s=0; s<all.data.nS; s++) REAL(Ralpha_est)[s] = all.params.Alpha[s];
 	UNPROTECT(1);
 	SEXP Rbeta_est = PROTECT(allocVector(REALSXP, all.data.nG*all.data.nPX));
-	for( int i=0; i<((all.data.nG*all.data.nP)); i++) REAL(Rbeta_est)[i] = all.params.Beta[i];
+	for( int i=0; i<((all.data.nG*all.data.nPX)); i++) REAL(Rbeta_est)[i] = all.params.Beta[i];
+	UNPROTECT(1);
+	SEXP Rgamma_est =PROTECT(allocVector(REALSXP, all.data.nS*all.data.nPW));
+	for( int j=0; j<(all.data.nS*all.data.nPW);j++) REAL(Rgamma_est)[j] = all.params.Gamma[j];
 	UNPROTECT(1);
 	SEXP Reta_est =PROTECT(allocVector(REALSXP, all.data.nG-1));
 	for( int g=0; g<(all.data.nG-1);g++) REAL(Reta_est)[g] = all.params.Eta[g];
@@ -74,19 +77,16 @@ extern "C" {
 	SEXP Rtheta_est =PROTECT(allocVector(REALSXP, all.data.nS));
 	for( int s=0; s<(all.data.nS);s++) REAL(Rtheta_est)[s] = all.params.Theta[s];
 	UNPROTECT(1);
-	SEXP Rgamma_est =PROTECT(allocVector(REALSXP, all.data.nS*all.data.nPW));
-	for( int j=0; j<(all.data.nS*all.data.nPW);j++) REAL(Rtheta_est)[s] = all.params.Theta[s];
-	UNPROTECT(1);
 
 
-	const char *names[] = {"logl", "alpha", "beta", "eta", "theta","gamma",""};                   /* note the null string */
+	const char *names[] = {"logl", "alpha", "beta", "gamma", "eta", "theta",""};                   /* note the null string */
 	SEXP Rres = PROTECT(mkNamed(VECSXP, names));  /* list of length 3 */
 	SET_VECTOR_ELT(Rres, 0, Rlogl);        // loglike
 	SET_VECTOR_ELT(Rres, 1, Ralpha_est);   // species intercepts
 	SET_VECTOR_ELT(Rres, 2, Rbeta_est);    // mixing coefs
-	SET_VECTOR_ELT(Rres, 3, Reta_est);     // etas - transformed pis.
-	SET_VECTOR_ELT(Rres, 4, Rtheta_est);    // dispersion parameters
-	SET_VECTOR_ELT(Rres, 5, Rgamma_est);    // dispersion parameters
+	SET_VECTOR_ELT(Rres, 3, Rgamma_est);    // dispersion parameters
+	SET_VECTOR_ELT(Rres, 4, Reta_est);     // etas - transformed pis.
+	SET_VECTOR_ELT(Rres, 5, Rtheta_est);    // dispersion parameters
 	UNPROTECT(1);
 	return (Rres);
 
@@ -220,13 +220,13 @@ void calc_sam_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_ippm_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.site_spp_wts[MATREF2D(i,s,dat.nObs)]);
 						}
 					if(dat.disty==4){ // negative binomial
-						loglSG.at(MATREF2D(g,s,dat.nG)) += log_negative_binomial_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Disp[s]);
+						loglSG.at(MATREF2D(g,s,dat.nG)) += log_negative_binomial_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 						}
 					//if(dat.disty==5){ // tweedie
 
 					//}
 					if(dat.disty==6){ // normal
-						loglSG.at(MATREF2D(g,s,dat.nG)) += log_normal_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Disp[s]);
+						loglSG.at(MATREF2D(g,s,dat.nG)) += log_normal_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 						}
 
 					}
@@ -496,13 +496,13 @@ void calc_mu_deriv( vector<double> &mu_derivs, const vector<double> &fits, const
 					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_ippm_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.site_spp_wts[MATREF2D(i,s,dat.nObs)]);
 				}
 				if(dat.disty==4){
-					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_negative_binomial_deriv_mu_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Disp[s]);
+					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_negative_binomial_deriv_mu_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 				}
 				//if(dat.disty==5){
-				 	//mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_tweedie_deriv_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp( params.Disp[s]), params.Power[s]);
+				 	//mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_tweedie_deriv_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp( params.Theta[s]), params.Power[s]);
 				//}
 				if(dat.disty==6){
-					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_normal_deriv_mu_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Disp[s]);
+					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_normal_deriv_mu_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 				}
 				//}
 			}
@@ -621,14 +621,14 @@ void calc_dlog_dthetaS(vector<double> &dldd, vector<double> const &mus, const sa
 			for(int i=0; i<dat.nObs; i++){
 				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
 					if(dat.disty==4){ // negative binomial
-						dldd.at(MATREF2D(g,s,dat.nG)) += log_negative_binomial_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Disp[s]);
+						dldd.at(MATREF2D(g,s,dat.nG)) += log_negative_binomial_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Theta[s]);
 						//std::cout << dldd.at(MATREF2D(g,s,dat.nG)) << '\n';
 					}
 					//case 5:	// tweedie
-						//dldd.at(MATREF2D(g,s,dat.nG)) += log_tweedie_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Disp[s]);
+						//dldd.at(MATREF2D(g,s,dat.nG)) += log_tweedie_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Theta[s]);
 						//break;
 					if(dat.disty==6){ // normal
-						dldd.at(MATREF2D(g,s,dat.nG)) += log_normal_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Disp[s]);
+						dldd.at(MATREF2D(g,s,dat.nG)) += log_normal_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Theta[s]);
 					}
 				}
 			}

@@ -27,7 +27,7 @@ class sam_data {
 		 SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw, SEXP &RnObs, SEXP &Rdisty, SEXP &RoptiDisp);
 		bool isDispersion() const;
 		bool doOptiDisp() const;
-		void printVals( int printX, int printy);
+		void printVals( int printX, int printW, int printy);
 
 		int nPX,      //the number of parameters in each of the (G-1) habitat lps, same as lpar
 			nPW,      //the number of parameters in the species level moodel *** yet to be implemented ***
@@ -61,7 +61,7 @@ class sam_params {
 
 		double 	*Alpha, //the species' prevalences 
 				*Beta,	//the habitats' free covariate params (G*xp)
-				*Gamma; //species x npw parameters form partial SAMs
+				*Gamma, //species x npw parameters form partial SAMs
 				*Eta,	//the pis - mmmmm pies.
 				*Theta; //species specific dispersion parameter for negative binomial and guassian model nspp long.
 		int nalpha, nbeta, ngamma, neta, ntheta, nTot;

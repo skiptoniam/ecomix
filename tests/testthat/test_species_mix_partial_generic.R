@@ -44,6 +44,15 @@ inits <- NULL
 control <- species_mix.control(quiet = FALSE)
 offset <- log(F6Data$Swept_Area)
 
+test_dat <- ecomix:::clean_data_sam(test_dat,archetype_form,species_form,distribution = 'negative_binomial')
+test_dat$mf.X
+test_dat$mf.W
+
+y <- as.matrix(F6Data[,grep("spp",colnames(F6Data))][1:50])
+X <- ecomix:::get_X_sam(archetype_form, test_dat$mf.X)
+W <- ecomix:::get_W_sam(species_form, test_dat$mf.W)
+
+
 
 starting_values <- get_initial_values_partial_sam(y = y, X = X, W = W,
                                                   spp_weights = spp_weights,
