@@ -1228,15 +1228,15 @@
         else
           theta <- rep(-999999,S)
         tmp <- .Call("species_mix_cpp",
-                 as.numeric(as.matrix(Y)), as.numeric(as.matrix(X)), as.numeric(offy), as.numeric(spp_wts),
+                 as.numeric(as.matrix(Y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1])), as.numeric(offy), as.numeric(spp_wts),
                  as.numeric(as.matrix(site_spp_wts)), as.integer(as.matrix(!y_is_na)),
                  # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
-                 as.integer(S), as.integer(G), as.integer(np), as.integer(Obs), as.integer(disty),
+                 as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(Obs), as.integer(disty),
                  as.integer(control$optiDisp),
                  # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
-                 as.double(alpha), as.double(beta), as.double(eta), as.double(theta),
+                 as.double(alpha), as.double(beta), as.double(gamma), as.double(eta), as.double(theta),
                  # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rtheta,
-                 alpha.score, beta.score, eta.score, theta.score, as.integer(control$getscores), scores,
+                 alpha.score, beta.score, gamma.score, eta.score, theta.score, as.integer(control$getscores), scores,
                  # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
                  pis_out, mus, loglikeS, loglikeSG,
                  # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
@@ -1593,100 +1593,6 @@
 
   return(list(alpha = alpha, beta = beta, gamma = gamma, theta = theta))
 }
-
-# "apply_glm_sam_inits" <- function(ss, y, X, site_spp_weights, offset, y_is_na, disty){
-#
-#   # which family to use?
-#   if(disty == 1)
-#     fam <- "binomial" #glmnet
-#     # fam <- binomial() #glm
-#   if(disty == 2 | disty == 3 | disty == 4)
-#     fam <- "poisson"
-#     # fam <- poisson()
-#   if(disty == 6)
-#     fam <- "gaussian"
-#     # fam <- gaussian()
-#
-#   ids_i <- !y_is_na[,ss]
-#
-#   if (disty==3){
-#     outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
-#   } else {
-#     outcomes <- as.matrix(y[ids_i,ss])
-#   }
-#
-#   if( disty %in% c(1,2,3,4,6)){
-#     lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
-#
-#     ft_sp <- try(glmnet::glmnet(y=outcomes, x=as.matrix(X[ids_i,-1,drop=FALSE]),
-#                                 family=fam, offset=offset[ids_i],
-#                                 weights=as.matrix(site_spp_weights[ids_i,ss]),
-#                                 alpha=0,
-#                                 lambda=lambda.seq, #the range of penalties, note that only one will be used
-#                                 standardize=FALSE,  #don't standardize the covariates (they are already standardised)
-#                                 intercept=TRUE), silent=FALSE)
-#     locat.s <- 1/1
-#     my.coefs <- glmnet::coef.glmnet(ft_sp, s=locat.s)
-#     if( any( is.na( my.coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
-#       my.coefs <- glmnet::coef.glmnet(ft_sp, s=lambda.seq)
-#       lastID <- apply( my.coefs, 2, function(x) !any( is.na( x)))
-#       lastID <- tail( (seq_along( lastID))[lastID], 1)
-#       my.coefs <- my.coefs[,lastID]
-#     }
-#     if (any(class(ft_sp) %in% 'try-error')){
-#       my_coefs <- rep(NA, ncol(X[ids_i,]))
-#     } else {
-#       my_coefs <- as.numeric(my.coefs)
-#     }
-#
-#     ## glm code
-#     # ft_sp <- try(stats::glm.fit(x=as.data.frame(X[ids_i,,drop=FALSE]),
-#     #                             y = outcomes,
-#     #                             weights=as.numeric(site_spp_weights[ids_i,ss]),
-#     #                             offset=offset[ids_i],
-#     #                             family=fam), silent=TRUE)
-#     # if (class(ft_sp) %in% 'try-error'){
-#     #   my_coefs <- rep(NA, ncol(X[ids_i,]))
-#     # } else {
-#     #   my_coefs <- coef(ft_sp)
-#     # }
-#   }
-#   theta <- NA
-#   if( disty == 4){
-#     tmp <- MASS::theta.mm(outcomes, as.numeric(predict(ft_sp, s=locat.s,
-#                                                               type="response",
-#                                                               newx=as.matrix(X[ids_i,-1,drop=FALSE]),
-#                                                               newoffset=offset[ids_i])),
-#                           weights=as.matrix(site_spp_weights[ids_i,ss]),
-#                           dfr=length(outcomes), eps=1e-4)
-#     if( tmp>2)
-#     tmp <- 2
-#     theta[ss] <- log( 1/tmp)
-#   }
-#   # if(disty == 4){
-#   #   ft_sp <- try(glm.fit.nbinom(x=as.matrix(X[ids_i,,drop=FALSE]),
-#   #                               y=as.numeric(outcomes),
-#   #                               weights=as.numeric(site_spp_weights[ids_i,ss]),
-#   #                               offset=offset[ids_i],est_var=FALSE), silent = TRUE)
-#   #
-#   #   if (class(ft_sp) %in% 'try-error'){
-#   #     my_coefs <- rep(NA, ncol(X[ids_i,]))
-#   #   } else {
-#   #     my_coefs <- ft_sp$coef
-#   #   }
-#   #   tmp <- ft_sp$theta
-#   #   if(tmp>2) tmp <- 2
-#   #   theta <- log(1/tmp)
-#   # }
-#   if( disty == 6){
-#     preds <- as.numeric( predict(ft_sp, s=locat.s, type="link",
-#                                  newx=as.matrix(X[ids_i,-1]), newoffset=offset[ids_i]))
-#     theta[ss] <- log( sqrt( sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard
-#     # preds <- predict.glm.fit(ft_sp, X[ids_i,], offset[ids_i], disty)
-#     # theta <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
-#   }
-#    return(list(alpha = my_coefs[1], beta = my_coefs[-1], theta = theta))
-# }
 
 ## this will give the species intercepts with respect to the mixture linear predictor.
 "apply_glmnet_spp_coefs_sams" <- function(ss, y, X, W, G, taus, site_spp_weights,
@@ -2383,15 +2289,16 @@ starting values;\n starting values are generated using ',control$init_method,
 "sam_optimise" <- function(y, X, W, offset, spp_weights, site_spp_weights, y_is_na,
                            S, G, disty, start_vals, control){
 
-  inits <- c(start_vals$alpha, start_vals$beta, start_vals$eta, start_vals$theta)
-  npx <- as.integer(ncol(X[,-1,drop=FALSE]))
-  npw <- as.integer(ncol(W))
+  inits <- c(start_vals$alpha, start_vals$beta, start_vals$gamma, start_vals$eta, start_vals$theta)
+
+  npx <- as.integer(ncol(X))
+  npw <- as.integer(ncol(W[,-1,drop=FALSE]))
   n <- as.integer(nrow(X))
 
   # parameters to optimise
   alpha <- as.numeric(start_vals$alpha)
   beta <- as.numeric(start_vals$beta)
-  gamma <- as.numeric(start_vals$beta)
+  gamma <- as.numeric(start_vals$gamma)
   eta <- as.numeric(start_vals$eta)
   theta <- as.numeric(start_vals$theta)
 
@@ -2399,10 +2306,11 @@ starting values;\n starting values are generated using ',control$init_method,
   getscores <- 1
   alpha.score <- as.numeric(rep(NA, length(alpha)))
   beta.score <- as.numeric(rep(NA, length(beta)))
-  if( npw > 0)
+  if( npw > 0){
     gamma.score <- as.numeric(matrix( NA, nrow=S, ncol=ncol(W)))
-  else
+  } else {
     gamma.score <- -999999
+  }
   eta.score <- as.numeric(rep(NA, length(eta)))
   if(disty%in%c(4,6)){
     control$optiDisp <- as.integer(1)
@@ -2411,7 +2319,7 @@ starting values;\n starting values are generated using ',control$init_method,
     control$optiDisp <- as.integer(0)
     theta.score <- -999999
   }
-  scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,gamma.scores,eta.score,theta.score))))
+  scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,gamma.score,eta.score,theta.score))))
 
 
   #model quantities
@@ -2433,12 +2341,12 @@ starting values;\n starting values are generated using ',control$init_method,
 
   #c++ call to optimise the model (needs pretty good starting values)
   tmp <- .Call("species_mix_cpp",
-               as.numeric(as.matrix(y)), as.numeric(as.matrix(X[,-1,drop=FALSE])), as.numeric(W), as.numeric(offset), as.numeric(spp_weights),
+               as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(offset), as.numeric(spp_weights),
                as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
                # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
                as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n), as.integer(disty),as.integer(control$optiDisp),
                # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
-               as.double(alpha), as.double(beta), as.double(eta), as.double(gamma), as.double(theta),
+               as.double(alpha), as.double(beta), as.double(gamma), as.double(eta), as.double(theta),
                # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
                alpha.score, beta.score, gamma.score, eta.score, theta.score, as.integer(control$getscores), scores,
                # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
