@@ -31,10 +31,21 @@ species_form <- ~ 1 + bathy1 + bathy2 + str1 + bathy_str + str2
 
 test_dat <- make_mixture_data(F6Data[,grep("spp",colnames(F6Data))],F6Data[,(ncol(F6Data)-7):ncol(F6Data)])
 
-y <- as.matrix(F6Data[,grep("spp",colnames(F6Data))][1:50])
-X <- as.matrix(cbind(1,F6Data[,(ncol(F6Data)-7):(ncol(F6Data)-5)]))
-W <- as.matrix(F6Data[,(ncol(F6Data)-4):(ncol(F6Data))])
-n_mixtures <- G <- 2
+# y <- as.matrix(F6Data[,grep("spp",colnames(F6Data))][1:50])
+# X <- as.matrix(cbind(1,F6Data[,(ncol(F6Data)-7):(ncol(F6Data)-5)]))
+# W <- as.matrix(F6Data[,(ncol(F6Data)-4):(ncol(F6Data))])
+
+test_dat <- ecomix:::clean_data_sam(test_dat,archetype_form,species_form,distribution = 'negative_binomial')
+test_dat$mf.X
+test_dat$mf.W
+
+y <- as.matrix(F6Data[,grep("spp",colnames(F6Data))])
+spp_to_keep <- which(colSums(y)>10)
+y <- y[,spp_to_keep]
+X <- ecomix:::get_X_sam(archetype_form, test_dat$mf.X)
+W <- ecomix:::get_W_sam(species_form, test_dat$mf.W)
+
+n_mixtures <- G <- 4
 S <- ncol(y)
 spp_weights <- rep(1,S)
 site_spp_weights <- matrix(1,nrow(y),S)
@@ -44,17 +55,15 @@ inits <- NULL
 control <- species_mix.control(quiet = FALSE)
 offset <- log(F6Data$Swept_Area)
 
-test_dat <- ecomix:::clean_data_sam(test_dat,archetype_form,species_form,distribution = 'negative_binomial')
-test_dat$mf.X
-test_dat$mf.W
-
-y <- as.matrix(F6Data[,grep("spp",colnames(F6Data))][1:50])
-X <- ecomix:::get_X_sam(archetype_form, test_dat$mf.X)
-W <- ecomix:::get_W_sam(species_form, test_dat$mf.W)
 
 
 
-starting_values <- get_initial_values_partial_sam(y = y, X = X, W = W,
+fm_sp_mods <-  surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam_inits, y, X, W,
+                                     site_spp_weights, offset, y_is_na, disty,
+                                     .parallel = control$cores, .verbose = FALSE)
+
+
+starting_values <- get_initial_values_sam(y = y, X = X, W = W,
                                                   spp_weights = spp_weights,
                                                   site_spp_weights = site_spp_weights,
                                                   offset = offset, y_is_na = y_is_na,

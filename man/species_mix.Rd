@@ -26,8 +26,8 @@ species_mix(archetype_formula = NULL,
   bb_weights = NULL, control = NULL, inits = NULL,
   standardise = FALSE, titbits = TRUE)
 
-species_mix.fit(y, X, G, S, spp_weights, site_spp_weights, offset, y_is_na,
-  disty, control, inits = NULL)
+species_mix.fit(y, X, W, G, S, spp_weights, site_spp_weights, offset,
+  y_is_na, disty, control, inits = NULL)
 
 species_mix.multifit(archetype_formula = NULL,
   species_formula = stats::as.formula(~1), data, n_mixtures = 3,
@@ -155,6 +155,8 @@ setting titbits=TRUE may give users problems with memory.}
 
 \item{X}{is a design matrix for the archetype_formula dimension n_sites * n_covariates.}
 
+\item{W}{is a design matrix for species_formula and will be implemented if species_formula has covariates.}
+
 \item{G}{is the number of species archetypes that are being estimated.}
 
 \item{S}{is the number of species to be modelled (this will be calculated internally in species_mix())}
@@ -199,8 +201,6 @@ setting titbits=TRUE may give users problems with memory.}
 parameters. Each row is a different species archetype.}
 
 \item{newdata}{a matrix of new observations for prediction.}
-
-\item{W}{is a design matrix for species_formula and will be implemented if species_formula has covariates.}
 
 \item{offset}{this is a vector of site specific offsets, this might be something like area sampled at sites.}
 
