@@ -637,20 +637,76 @@
 #' \dontrun{
 #' archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',
 #' 1:20),collapse = ','),")~1+x1+x2"))
-#' theta <- matrix(c(-0.9,-0.6,0.5,
-#'                    1.0,-0.9,1.0,
-#'                    0.9,-0.9,2.9,
-#'                   -1.0,0.2,-0.4),
-#'                 4,3,byrow=TRUE)
+#' species_formula <- stats::as.formula(~1)
+#' beta <- matrix(c(-3.6,0.5,
+#'                  -0.9,1.0,
+#'                   0.9,-2.9,
+#'                   2.2,5.4),
+#'                 4,2,byrow=TRUE)
 #' dat <- data.frame(y=rep(1,100),
 #'                   x1=stats::runif(100,0,2.5),
 #'                   x2=stats::rnorm(100,0,2.5))
-#' simulated_data <- species_mix.simulate(archetype_formula,~1,
-#'                                             dat,theta,dist="bernoulli")
+#' simulated_data <- species_mix.simulate(archetype_formula,species_formula,
+#'                                        dat, n_mixtures = 4, beta,
+#'                                        dist="bernoulli")
 #' }
 ## need to update this to take the new formula framework and simulate ippm data.
-"species_mix.simulate" <-  function(archetype_formula, species_formula,
-                                    dat, theta, distribution = "bernoulli"){
+"species_mix.simulate" <-  function(archetype_formula, species_formula, dat, n_mixtures,
+                                    alpha=NULL, beta=NULL, gamma=NULL, theta=NULL,
+                                    distribution = "bernoulli"){
+
+  #update the formula to old format.
+  if(!is.null(archetype_formula))
+    archetype_formula <- stats::as.formula(archetype_formula)
+  if(!is.null(species_formula))
+    species_formula <- stats::as.formula(species_formula)
+
+  sam_org <- archetype_formula
+  spp_org <- species_formula
+
+  # how many species to simulate???
+  S <- length(archetype_formula[[2]])-1
+  G <- n_mixutes
+
+  archetype_formula <- update(archetype_formula,y~.-1)
+  archetype_formula[[2]] <- NULL
+
+  X <- stats::model.matrix(archetype_formula, dat)
+  W <- stats::model.matrix(species_formula, dat)
+
+  npx <- ncol(X)
+  npw <- ncol(W) - 1
+
+
+  if (is.null(alpha)) {
+    message("Random alpha from normal (-1,0.5) distribution")
+    alpha <- rnorm(S,-1,0.5)
+  }
+  if (is.null(beta) | length(beta) != (npx) * G) {
+    message("Random values for beta")
+    beta <- rnorm(npx*(G))
+  }
+  beta <- matrix(as.numeric(beta), nrow = G)
+  if(( is.null(gamma) | length( gamma) != S * npw)){
+    if( p.w != 0){
+      message("Random values for gamma")
+      gamma <- rnorm( npw*S)
+      gamma <- matrix( as.numeric(gamma), nrow=S, ncol=npw)
+    }
+    else
+      gamma <- NULL
+  }
+  else
+    gamma <- matrix( as.numeric( gamma), nrow=S)
+  if( distribution == "negative_binomial" & (is.null( logDisps) | length( logDisps) != S)){
+    message( "Random values for overdispersions")
+    logDisps <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
+  }
+  if( dist=="gaussian" & (is.null( logDisps) | length( logDisps) != S)){
+    message( "Random values for species' variance parameters")
+    logDisps <- log( 1 + rgamma( n+S, shape=1, scale=0.75))
+  }
+
 
   if(distribution=='ippm'){
   message('Generating ippm data on a regular 100x100 grid')
@@ -731,17 +787,7 @@
   } else {
 
   S <- length(archetype_formula[[2]])-1
-  #update the formula to old format.
-  if(!is.null(archetype_formula))
-    archetype_formula <- stats::as.formula(archetype_formula)
-  form_org <- archetype_formula
-  form <- update(archetype_formula,y~.)
 
-  #check the species formula.
-  sp_form <- species_formula
-  species_int_coefs <- check_species_formula(sp_form)
-
-  X <- stats::model.matrix(form, dat)
   out <- matrix(0, dim(X)[1], S)
   k <- dim(theta)[1]
   if(dim(theta)[2]!=ncol(X))stop('theta must have the same dimensions as "data" (do not forget the intercept)')
@@ -1834,68 +1880,6 @@
   }
   return(c(mix_coefs))
 }
-
-
-
-
-
-#####
-# # do I need to include the species intercepts in the offsets?
-# "apply_glm_mix_coefs_sam" <- function (gg, y, X, site_spp_weights, offset,
-#                                        y_is_na, disty,
-#                                        tau, fits, mus){
-#
-#   ### setup the data stucture for this model.
-#   Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
-#   X_no_NA <- list()
-#   for (jj in 1:ncol(y)){
-#     X_no_NA[[jj]] <- X[!y_is_na[,jj],-1,drop=FALSE]
-#   }
-#   X_tau <- do.call(rbind, X_no_NA)
-#   n_ys <- sapply(X_no_NA,nrow)
-#
-#   wts_tau <- rep(tau[,gg,drop=FALSE],c(n_ys))
-#   if(disty==4)wts_tau <- rep(tau[,gg],c(n_ys))/(1+rep(exp(-fits$theta),n_ys)*as.vector(mus[gg,,]))
-#
-#   site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
-#   wts_tauXsite_weights <- wts_tau*site_weights
-#   offy_mat <- replicate(ncol(y),offset)
-#   offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
-#   offy2 <- fits$alpha[rep(1:length(fits$alpha),n_ys)]
-#   offy <- as.numeric(offy1 + offy2)
-#
-#   # which family to use?
-#   if( disty == 1)
-#     fam <- binomial()
-#   if( disty == 2 | disty == 3 |disty == 4)
-#     fam <- poisson()
-#   if( disty == 6)
-#     fam <- gaussian()
-#   if (disty==3){
-#     Y_tau <- as.matrix(Y_tau/site_weights)
-#   } else {
-#     Y_tau <- as.matrix(Y_tau)
-#   }
-#
-#   if(disty %in% c(1,2,3,4,6)){ #don't use for tweedie
-#     ft_mix <- try(glm.fit(x = as.data.frame(X_tau),
-#                       y = as.numeric(Y_tau),
-#                       weights = c(wts_tauXsite_weights),
-#                       offset = offy,
-#                       family = fam), silent = TRUE)
-#     if (class(ft_mix) %in% 'try-error'){
-#       mix_coefs <- rep(NA, ncol(X_tau[,-1]))
-#       # mix_coefs <- fits$beta[gg,,drop=FALSE]
-#     } else {
-#       mix_coefs <- ft_mix$coefficients
-#     }
-#
-#     }
-#     return(c(mix_coefs))
-# }
-
-
-
 
 "get_starting_values_sam" <- function(y, X, W, spp_weights, site_spp_weights,
                                       offset, y_is_na, G, S, disty, control){

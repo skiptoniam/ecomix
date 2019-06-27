@@ -263,6 +263,7 @@ fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli
 \dontrun{
 archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',
 1:20),collapse = ','),")~1+x1+x2"))
+species_formula <- stats::as.formula(~1)
 theta <- matrix(c(-0.9,-0.6,0.5,
                    1.0,-0.9,1.0,
                    0.9,-0.9,2.9,
@@ -271,7 +272,7 @@ theta <- matrix(c(-0.9,-0.6,0.5,
 dat <- data.frame(y=rep(1,100),
                   x1=stats::runif(100,0,2.5),
                   x2=stats::rnorm(100,0,2.5))
-simulated_data <- species_mix.simulate(archetype_formula,~1,
+simulated_data <- species_mix.simulate(archetype_formula,species_formula,
                                             dat,theta,dist="bernoulli")
 }
 \dontrun{
