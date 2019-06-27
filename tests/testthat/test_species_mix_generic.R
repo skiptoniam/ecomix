@@ -42,7 +42,8 @@ testthat::test_that('species mix internal functions classes work', {
   simulated_data <- species_mix.simulate(sam_form,~1,dat,theta,dist="bernoulli")
 
   y <- simulated_data$species_data
-  X <- simulated_data$covariate_data
+  X <- simulated_data$covariate_data[,-1]
+  W <- simulated_data$covariate_data[,1,drop=FALSE]
   offset <- rep(0,nrow(y))
   # weights <- rep(1,nrow(y))
   spp_weights <- rep(1,ncol(y))
@@ -50,58 +51,53 @@ testthat::test_that('species mix internal functions classes work', {
   y_is_na <- matrix(FALSE,nrow(y),ncol(y))
   G <- length(simulated_data$pi)
   S <- length(simulated_data$sp.int)
-  nP <- ncol(X[,-1])
+  nPX <- ncol(X)
   control <- species_mix.control()
 
   # test a new glm function bernoulli
   ss <- 1
   disty <- 1
-  fm1 <- ecomix:::apply_glm_sam_inits(ss, y, X, site_spp_weights, offset, y_is_na, disty)
+  fm1 <- ecomix:::apply_glmnet_sam_inits(ss, y, X, W, site_spp_weights, offset, y_is_na, disty)
   testthat::expect_is(fm1,'list')
-  testthat::expect_length(fm1,3)
+  testthat::expect_length(fm1,4)
 
-  fm_bern <- surveillance::plapply(seq_len(S), ecomix:::apply_glm_sam_inits, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  fm_bern <- surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam_inits, y, X, W, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
 
   alphas <- lapply(fm_bern, `[[`, 1)
   testthat::expect_length(unlist(alphas),S)
 
   betas <- lapply(fm_bern, `[[`, 2)
-  testthat::expect_length(do.call(rbind, betas),S*nP)
+  testthat::expect_length(do.call(rbind, betas),S*nPX)
 
-  disp <- unlist(lapply(fm_bern, `[[`, 3))
-  testthat::expect_true(all(is.na(disp)))
+  gammas <- lapply(fm_bern, `[[`, 3)
+  testthat::expect_length(do.call(rbind, gammas),S)
+
+  thetas <- unlist(lapply(fm_bern, `[[`, 4))
+  testthat::expect_true(all(-99999))
 
   ## poisson
   simulated_data <- species_mix.simulate(sam_form,~1,dat,theta,dist="poisson")
 
   y <- simulated_data$species_data
-  X <- simulated_data$covariate_data
-  offset <- rep(0,nrow(y))
-  # weights <- rep(1,nrow(y))
-  spp_weights <- rep(1,ncol(y))
-  site_spp_weights <- matrix(1,nrow(y),ncol(y))
-  y_is_na <- matrix(FALSE,nrow(y),ncol(y))
-  G <- length(simulated_data$pi)
-  S <- length(simulated_data$sp.int)
-  nP <- ncol(X[,-1])
-  control <- species_mix.control()
-
   ss <- 1
   disty <- 2
-  fm1 <- ecomix:::apply_glm_sam_inits(ss, y, X, site_spp_weights, offset, y_is_na, disty)
+  fm1 <- ecomix:::apply_glmnet_sam_inits(ss, y, X, W, site_spp_weights, offset, y_is_na, disty)
   testthat::expect_is(fm1,'list')
-  testthat::expect_length(fm1,3)
+  testthat::expect_length(fm1,4)
 
-  fm_pois <- surveillance::plapply(seq_len(S), ecomix:::apply_glm_sam_inits, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  fm_pois <- surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam_inits, y, X, W, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
 
   alphas <- lapply(fm_pois, `[[`, 1)
   testthat::expect_length(unlist(alphas),S)
 
   betas <- lapply(fm_pois, `[[`, 2)
-  testthat::expect_length(do.call(rbind, betas),S*nP)
+  testthat::expect_length(do.call(rbind, betas),S*nPX)
 
-  disp <- unlist(lapply(fm_pois, `[[`, 3))
-  testthat::expect_true(all(is.na(disp)))
+  gammas <- lapply(fm_pois, `[[`, 3)
+  testthat::expect_length(do.call(rbind, gammas),S)
+
+  thetas <- unlist(lapply(fm_pois, `[[`, 4))
+  testthat::expect_true(all(-99999))
 
 
   set.seed(42)
@@ -304,8 +300,8 @@ testthat::test_that('species mix gaussian', {
   # test a single gaussian model
   i <- 1
   # for(i in 1:S)
-  testthat::expect_length(ecomix:::apply_glm_sam_inits(i, y, X, site_spp_weights, offset, y_is_na, disty),3)
-  fm_gaussianint <- surveillance::plapply(1:S, ecomix:::apply_glm_sam_inits,  y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, site_spp_weights, offset, y_is_na, disty),3)
+  fm_gaussianint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam_inits,  y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
   testthat::expect_length(do.call(cbind,fm_gaussianint)[1,],S)
 
   #get the taus
@@ -373,8 +369,8 @@ testthat::test_that('species mix poisson', {
 
   # test a single poisson model
   i <- 1
-  testthat::expect_length(ecomix:::apply_glm_sam_inits(i, y, X, site_spp_wts, offset, y_is_na, disty),3)
-  fm_poissonint <- surveillance::plapply(1:S, ecomix:::apply_glm_sam_inits,  y, X, site_spp_wts, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, site_spp_wts, offset, y_is_na, disty),3)
+  fm_poissonint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam_inits,  y, X, site_spp_wts, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
   testthat::expect_length(do.call(cbind,fm_poissonint)[1,],S)
 
   # test that the starting values work.
@@ -438,7 +434,8 @@ testthat::test_that('species mix bernoulli', {
                                   covariate_data = simulated_data$covariate_data[,-1])
 
   y <- simulated_data$species_data
-  X <- simulated_data$covariate_data
+  X <- simulated_data$covariate_data[,-1]
+  W <- simulated_data$covariate_data[,1,drop=FALSE]
   offset <- rep(0,nrow(y))
   weights <- rep(1,nrow(y))
   spp_weights <- rep(1,ncol(y))
@@ -451,23 +448,24 @@ testthat::test_that('species mix bernoulli', {
 
   # test a single bernoulli model
   i <- 1
-  testthat::expect_length(ecomix:::apply_glm_sam_inits(i, y, X,
+  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W,
                                                        site_spp_weights, offset,
-                                                       y_is_na, disty),3)
-  fm_bernoulliint <- surveillance::plapply(1:S, ecomix:::apply_glm_sam_inits,
-                                           y, X, site_spp_weights, offset, y_is_na,
+                                                       y_is_na, disty),4)
+  fm_bernoulliint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam_inits,
+                                           y, X, W, site_spp_weights, offset, y_is_na,
                                            disty,
                                            .parallel = control$cores,
                                            .verbose = !control$quiet)
   testthat::expect_length(do.call(cbind,fm_bernoulliint)[1,],S)
 
   #get the taus
-  starting_values <- ecomix:::initiate_fit_sam(y, X, site_weights,
+  starting_values <- ecomix:::initiate_fit_sam(y, X, W, site_weights,
                                                site_spp_weights, offset,
                                                y_is_na, G, S, disty, control)
   fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,
-               disp=starting_values$disp)
-  first_fit <- list(x = X, y = y, site_spp_weights=site_spp_weights,
+               gamma=starting_values$gamma,
+               theta=starting_values$theta)
+  first_fit <- list(x = X, W = W, y = y, site_spp_weights=site_spp_weights,
                     offset=offset)
 
   # get the loglikelihood based on these values
@@ -477,6 +475,11 @@ testthat::test_that('species mix bernoulli', {
   taus <- ecomix:::shrink_taus(taus, max_tau=1/G + 0.1, G)
 
   ## get to this in a bit
+  ss <- 1
+  test <- ecomix:::apply_glmnet_spp_coefs_sams(ss, y, X, W, G, taus,
+                                               site_spp_weights,
+                                               offset, y_is_na,
+                                               disty, fits)
   gg <- 1
   testthat::expect_length(ecomix:::apply_glm_group_tau_sam(gg, y, X,
                                                            site_spp_weights,
@@ -557,11 +560,12 @@ testthat::test_that('species mix ippm', {
   control <- species_mix.control(minimum_sites_occurrence = 50)
 
   # test if one species ippm working - expect matrix of coefs back
-  one_sp_ippm <- ecomix:::apply_glm_sam_inits(ss = ss, y = y, X = X, site_spp_weights = site_spp_weights, offset = offset, y_is_na = y_is_na,disty = disty)
+
+  one_sp_ippm <- ecomix:::apply_glmnet_sam_inits(ss = ss, y = y, X = X, site_spp_weights = site_spp_weights, offset = offset, y_is_na = y_is_na,disty = disty)
   testthat::expect_is(one_sp_ippm,'list')
 
   # check that many species ippms work - expect back a list.
-  all_sp_ippm <-surveillance::plapply(seq_len(S), ecomix:::apply_glm_sam_inits, y, X, site_spp_weights, offset, y_is_na,disty)
+  all_sp_ippm <-surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam_inits, y, X, site_spp_weights, offset, y_is_na,disty)
   testthat::expect_is(all_sp_ippm,'list')
 
   alpha <- lapply(all_sp_ippm, `[[`, 1)
@@ -700,11 +704,11 @@ testthat::test_that('species_mix negative binomial', {
   # test_nb <- nbglm::glm.fit.nbinom(X,y[,1],offset,weights,est_var = TRUE)
 
   ss <- 1
-  fm1 <- ecomix:::apply_glm_sam_inits(ss, y, X, site_spp_weights, offset, y_is_na, disty)
+  fm1 <- ecomix:::apply_glmnet_sam_inits(ss, y, X, site_spp_weights, offset, y_is_na, disty)
   testthat::expect_is(fm1,'list')
   testthat::expect_length(fm1,3)
   #
-  fm_nb <- surveillance::plapply(seq_len(S), ecomix:::apply_glm_sam_inits, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  fm_nb <- surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam_inits, y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
   #
   alpha <- lapply(fm_nb, `[[`, 1)
   testthat::expect_length(unlist(alpha),S)
@@ -718,8 +722,8 @@ testthat::test_that('species_mix negative binomial', {
 
   # # test a single negative_binomial model
   i <- 1
-  testthat::expect_length(ecomix:::apply_glm_sam_inits(i, y, X, site_spp_weights, offset, y_is_na, disty),3)
-  fm_negative_binomialint <- surveillance::plapply(1:S, ecomix:::apply_glm_sam_inits,  y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, site_spp_weights, offset, y_is_na, disty),3)
+  fm_negative_binomialint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam_inits,  y, X, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
   testthat::expect_length(do.call(cbind,fm_negative_binomialint)[1,],S)
 
   # test that the starting values work.

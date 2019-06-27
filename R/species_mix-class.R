@@ -296,7 +296,7 @@
     starting_values <- inits
   }
 
-  tmp <- sam_optimise(y, X, offset, spp_weights, site_spp_weights,
+  tmp <- sam_optimise(y, X, W, offset, spp_weights, site_spp_weights,
                       y_is_na, S, G, disty, starting_values, control)
 
   return(tmp)
@@ -1533,7 +1533,7 @@
     outcomes <- as.matrix(y[ids_i,ss])
   }
 
-  if(ncol(W) != 1){
+  if(ncol(W) > 1){
     df <- cbind(X[ids_i,,drop=FALSE],W[ids_i,-1,drop=FALSE])
   } else {
     df <- X[ids_i,,drop=FALSE]
@@ -1545,7 +1545,7 @@
 
     ft_sp <- try(glmnet::glmnet(y=outcomes, x=as.matrix(df),
                                 family=fam, offset=offset[ids_i],
-                                weights=as.matrix(site_spp_weights[ids_i,ss]),
+                                weights=as.numeric(site_spp_weights[ids_i,ss]),
                                 alpha=0,
                                 lambda=lambda.seq,
                                 standardize=FALSE,
@@ -1615,9 +1615,9 @@
   out1 <- kronecker(rep( 1, G), outcomes)
   X1 <- kronecker(rep( 1, G), X[ids_i,])
   if(ncol(W)>1){
-    W1 <- kronecker(rep( 1, G), W[ids_i,])
+    W1 <- kronecker(rep( 1, G), W[ids_i,-1])
   } else {
-    W1 <- kronecker(rep( 1, G), W[ids_i,,drop=FALSE])
+    W1 <- X1
   }
   wts1 <- kronecker(rep( 1, G),
                     as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,],
@@ -1628,10 +1628,10 @@
   offy <- offy1 + offy2
 
   if(disty %in% c(1,2,3,4,6)){
-      lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
-      ft_sp <- try(glmnet::glmnet(y=out1, x=as.matrix(W1[,-1]),
-                                  family=fam, offset=offy,
-                                  weights=as.matrix(wts1),
+      lambda.seq <- sort( unique( c( seq( from=1/0.1, to=1, length=25), seq( from=1, to=0.01, length=10))), decreasing=TRUE)
+      ft_sp <- try(glmnet::glmnet(y=out1, x = as.matrix(W1),
+                                  family = fam, offset=offy,
+                                  weights = as.numeric(wts1),
                                   alpha=0,
                                   lambda=lambda.seq,
                                   standardize=FALSE,
@@ -1715,7 +1715,7 @@
       lastID <- tail( (seq_along( lastID))[lastID], 1)
       my.coefs <- my.coefs[,lastID]
     }
-    if (any(class(ft_sp) %in% 'try-error')){
+    if (any(class(ft_mix) %in% 'try-error')){
       my_coefs <- rep(NA, ncol(X))
     } else {
       my_coefs <- t(as.matrix(my.coefs))[-1]
@@ -1723,6 +1723,120 @@
   }
   return(my_coefs)
 }
+
+
+
+"apply_glm_spp_coefs_sams" <- function(ss, y, X, W, G, taus,
+                                               site_spp_weights,
+                                               offset, y_is_na, disty, fits){
+
+  if(disty == 1)
+    fam <- binomial()
+  if(disty == 2 | disty == 3 | disty == 4)
+    fam <- poisson()
+  if(disty == 6)
+    fam <- gaussian()
+
+  ids_i <- !y_is_na[,ss]
+
+  if (disty==3){
+    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+  } else {
+    outcomes <- as.numeric(y[ids_i,ss])
+  }
+  out1 <- kronecker(rep( 1, G), outcomes)
+  X1 <- kronecker(rep( 1, G), X[ids_i,])
+  W1 <- kronecker(rep( 1, G), cbind(1,W[ids_i,]))
+  wts1 <- kronecker(rep( 1, G),
+                    as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,],
+                                                                each=length(site_spp_weights[ids_i,ss]))
+  offy1 <- kronecker(rep( 1, G), offset[ids_i])
+  offy2 <- X[ids_i,-1] %*% t(fits$beta)
+  offy2 <- as.numeric(offy2)
+  offy <- offy1 + offy2
+
+  if(disty %in% c(1,2,3,6)){
+    ft_sp <- try(stats::glm.fit(x=as.data.frame(W1),
+                                y=as.numeric(out1),
+                                weights=as.numeric(wts1),
+                                offset=as.numeric(offy),
+                                family=fam), silent=FALSE)
+    if (class(ft_sp) %in% 'try-error'){
+      print(paste0(ss,"\n"))
+      my_coefs <- rep(NA, ncol(X1))
+    } else {
+      my_coefs <- coef(ft_sp)
+      names(my_coefs) <- c(colnames(y)[ss],colnames(W))
+    }
+  }
+  if(disty %in% 4){
+    ft_sp <- glm.fit.nbinom(x=as.matrix(W1),
+                            y=as.numeric(out1),
+                            weights=as.numeric(wts1),
+                            offset=as.numeric(offy))
+    my_coefs <- ft_sp$coef
+    names(my_coefs) <- c(colnames(y)[ss],colnames(W))
+  }
+  return(list(alpha = my_coefs[1], gamma = my_coefs[-1]))
+}
+
+"apply_glm_mix_coefs_sams" <- function(gg, y, X, W, site_spp_weights, offset,
+                                               y_is_na, disty,
+                                               taus, fits, mus){
+
+  ### setup the data stucture for this model.
+  Y_taus <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
+  X_no_NA <- list()
+  W_no_NA <- list()
+  for (jj in 1:ncol(y)){
+    X_no_NA[[jj]] <- X[!y_is_na[,jj],-1,drop=FALSE]
+    W_no_NA[[jj]] <- cbind(1,W[!y_is_na[,jj],,drop=FALSE])
+  }
+  X_taus <- do.call(rbind, X_no_NA)
+  W_taus <- do.call(rbind, W_no_NA)
+  n_ys <- sapply(X_no_NA,nrow)
+  wts_taus <- rep(taus[,gg,drop=FALSE],c(n_ys))
+  if(disty==4)wts_taus <- rep(taus[,gg],c(n_ys))/(1+rep(exp(-fits$theta),n_ys)*as.vector(mus[gg,,]))
+
+  site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
+  wts_tausXsite_weights <- wts_taus*site_weights
+  offy_mat <- replicate(ncol(y),offset)
+  offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
+  offy2 <- cbind(1,W) %*% t(cbind(fits$alpha,fits$gamma))
+  offy2 <- unlist(as.data.frame(offy2[!y_is_na]))
+  offy <- as.numeric(offy1 + offy2)
+
+  # which family to use?
+  if( disty == 1)
+    fam <- binomial()
+  if( disty == 2 | disty == 3 |disty == 4)
+    fam <- poisson()
+  if( disty == 6)
+    fam <- gaussian()
+  if (disty==3){
+    Y_taus <- as.matrix(Y_taus/site_weights)
+  } else {
+    Y_taus <- as.matrix(Y_taus)
+  }
+
+  if(disty %in% c(1,2,3,4,6)){ #don't use for tweedie
+    ft_mix <- try(glm.fit(x = as.data.frame(X_taus),
+                          y = as.numeric(Y_taus),
+                          weights = c(wts_tausXsite_weights),
+                          offset = offy,
+                          family = fam), silent = TRUE)
+    if (class(ft_mix) %in% 'try-error'){
+      mix_coefs <- rep(NA, ncol(X_taus[,-1]))
+    } else {
+      mix_coefs <- ft_mix$coefficients
+    }
+
+  }
+  return(c(mix_coefs))
+}
+
+
+
 
 
 #####
@@ -2093,8 +2207,8 @@ starting values;\n starting values are generated using ',control$init_method,
 
     # m-step
     fm_spp_coefs <- surveillance::plapply(seq_len(S),
-                                       ecomix:::apply_glmnet_spp_coefs_sams,
-                                       y, X, W, G, taus, site_spp_weights,
+                                          apply_glmnet_spp_coefs_sams,
+                                          y, X, W, G, taus, site_spp_weights,
                                        offset, y_is_na, disty, fits,
                                        .parallel = control$cores,
                                        .verbose = FALSE)
@@ -2292,7 +2406,7 @@ starting values;\n starting values are generated using ',control$init_method,
   inits <- c(start_vals$alpha, start_vals$beta, start_vals$gamma, start_vals$eta, start_vals$theta)
 
   npx <- as.integer(ncol(X))
-  npw <- as.integer(ncol(W[,-1,drop=FALSE]))
+  if(ncol(W)>1) npw <- as.integer(ncol(W[,-1,drop=FALSE])) else npw <- 0
   n <- as.integer(nrow(X))
 
   # parameters to optimise

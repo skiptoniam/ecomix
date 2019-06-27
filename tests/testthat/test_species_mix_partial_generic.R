@@ -62,8 +62,12 @@ fm_sp_mods <-  surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam_inits
                                      site_spp_weights, offset, y_is_na, disty,
                                      .parallel = control$cores, .verbose = FALSE)
 
+# fm_sp_mods <-  surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_spp_coefs_sams, y, X, W,
+                                     # site_spp_weights, offset, y_is_na, disty,
+                                     # .parallel = control$cores, .verbose = FALSE)
 
-starting_values <- get_initial_values_sam(y = y, X = X, W = W,
+
+starting_values <- ecomix:::get_initial_values_sam(y = y, X = X, W = W,
                                                   spp_weights = spp_weights,
                                                   site_spp_weights = site_spp_weights,
                                                   offset = offset, y_is_na = y_is_na,
@@ -75,29 +79,34 @@ fits <- starting_values$fits
 taus <- starting_values$taus
 pis <- starting_values$pis
 first_fit <- starting_values$first_fit
-logls_mus <- get_logls_partial_sam(first_fit, fits, spp_weights, G, S, disty, get_fitted = TRUE)
+logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty, get_fitted = TRUE)
 
 
 ss <- 1
-test <- apply_glm_spp_coefs_partial_sams(ss, y, X, W, G, taus,
+test <- ecomix:::apply_glmnet_spp_coefs_sams(ss, y, X, W, G, taus,
                                          site_spp_weights,
                                          offset, y_is_na, disty, fits)
 gg <- 1
-test <- apply_glm_mix_coefs_partial_sams(gg, y, X, W, site_spp_weights,
+test <- ecomix:::apply_glmnet_mix_coefs_sams(gg, y, X, W, site_spp_weights,
                                          offset, y_is_na, disty, taus, fits, logls_mus$fitted)
 
 
-test <- fitmix_ECM_partial_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
+test <- ecomix:::fitmix_ECM_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
+
+start_vals <- starting_values
+
+tmp <- ecomix:::sam_optimise(y,X,W,offset,spp_weights,site_spp_weights,y_is_na,S,G,disty,start_vals,control)
 
 
-tmp <- species_mix_partial.fit(y=y, X=X, W=W, G=n_mixtures, S=S,
+
+tmp <- species_mix.fit(y=y, X=X, W=W, G=n_mixtures, S=S,
                                spp_weights=spp_weights,
                                site_spp_weights=site_spp_weights,
                                offset=offset, disty=disty, y_is_na=y_is_na,
                                control=control, inits=inits)
 
 
-test <- species_mix_partial(archetype_form, species_form, test_dat,
+test <- species_mix(archetype_form, species_form, test_dat,
                             n_mixtures = 2, distribution="negative_binomial",
                             offset = NULL, weights = NULL,
                             bb_weights = NULL, control = NULL,

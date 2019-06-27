@@ -183,8 +183,10 @@ void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data
 				for( int j=0;j<dat.nPX; j++){
 							lp += params.Beta[MATREF2D(g,j,(dat.nG))] * dat.X[MATREF2D(i,j,dat.nObs)];
 				}
-				for( int l=0;l<dat.nPW; l++){
+				if(dat.nPW>0){
+					for( int l=0;l<dat.nPW; l++){
 							lp += params.Gamma[MATREF2D(s,l,(dat.nS))] * dat.W[MATREF2D(i,l,dat.nObs)];
+							}	
 				}
 					if(dat.disty==1){//bernoulli
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_logit(lp);
@@ -451,19 +453,21 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	calc_dlog_dbeta(fits.dlogdbeta, eta_mu_derivs, dat);
 	calc_beta_deriv(betaDerivs, fits.dlogdbeta, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
 
+   	//derivate w.r.t gamma
+   	if(dat.nPW>0){
+	calc_dlog_dgamma(fits.dlogdgamma, eta_mu_derivs, dat);
+	calc_gamma_deriv(gammaDerivs, fits.dlogdgamma, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
+	}
+	
 	//derivate w.r.t thetas
 	//std::cout << dat.isDispersion() << '\n';
 	if( dat.isDispersion()){
 			//std::cout << dat.isDispersion() << '\n';
 	//{ // if no disperion?  move along please
-		calc_dlog_dthetaS(fits.dlogdtheta, fits.allMus, dat, params);
+		calc_dlog_dtheta(fits.dlogdtheta, fits.allMus, dat, params);
 		calc_theta_deriv(thetaDerivs, fits.dlogdtheta, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
     }
     
-   	//derivate w.r.t gamma
-	calc_dlog_dgamma(fits.dlogdgamma, eta_mu_derivs, dat);
-	calc_gamma_deriv(gammaDerivs, fits.dlogdgamma, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
-
 	//transform pis back to additative logistic scale to keep pi_dervis happy.
 	additive_logistic_sam(parpi,0,dat.nG);
 
@@ -611,7 +615,7 @@ void calc_dlog_dgamma(vector<double> &dldg, vector<double> const &mu_eta_derivs,
 }
 
 
-void calc_dlog_dthetaS(vector<double> &dldd, vector<double> const &mus, const sam_data &dat, const sam_params &params){
+void calc_dlog_dtheta(vector<double> &dldd, vector<double> const &mus, const sam_data &dat, const sam_params &params){
 
 	// dlda = dlogalpha passed as fits.dflogdalpha(dat.nG*dat.nS, dat.NAnum) from function call
 	// mus = all the fitted values.
@@ -691,12 +695,12 @@ void calc_beta_deriv( vector<double> &betaDerivs, vector<double> const &dlogdbet
 }
 
 //// this should calculate the derivate w.r.t dispersion parameter.
-void calc_theta_deriv( vector<double> &thetaDerivs, vector<double> const &dlogdthetaS, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
+void calc_theta_deriv( vector<double> &thetaDerivs, vector<double> const &dlogdtheta, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
 
 	for(int g=0; g<(dat.nG); g++){
 		for(int s=0;s<(dat.nS);s++){
 			//calculate for dispersion (thetas)
-    		thetaDerivs.at(s) +=  exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s) + log(pis.at(g))) * dlogdthetaS.at(MATREF2D(g,s,dat.nG));
+    		thetaDerivs.at(s) +=  exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s) + log(pis.at(g))) * dlogdtheta.at(MATREF2D(g,s,dat.nG));
 			}
 	}
 
