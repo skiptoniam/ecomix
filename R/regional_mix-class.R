@@ -2104,14 +2104,6 @@ function(control)
       message( "Random values for overdispersions")
       logDisps <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
     }
-    # if( dist=="tweedie" & (is.null( logDisps) | length( logDisps) != S)){
-    #   message( "Random values for species' dispersion parameters")
-    #   logDisps <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
-    # }
-    # if( dist=="tweedie" & (is.null( powers) | length( powers) != S)) {
-    #   message( "Power parameter assigned to 1.6 for each species")
-    #   powers <- rep( 1.6, S)
-    # }
     if( dist=="gaussian" & (is.null( logDisps) | length( logDisps) != S)){
       message( "Random values for species' variance parameters")
       logDisps <- log( 1 + rgamma( n+S, shape=1, scale=0.75))
@@ -2171,8 +2163,6 @@ function(control)
       outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
     if( dist=="negative_binomial")
       outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp( logDisps), each=n)), nrow = n, ncol = S)
-    # if( dist=="tweedie")
-    #   outcomes <- matrix( fishMod::rTweedie( n * S, mu=as.numeric( fitted), phi=rep( exp( logDisps), each=n), p=rep( powers, each=n)), nrow=n, ncol=S)
     if( dist=="gaussian")
       outcomes <- matrix( rnorm( n=n*S, mean=as.numeric( fitted), sd=rep( exp( logDisps), each=n)), nrow=n, ncol=S)
 

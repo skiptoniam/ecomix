@@ -651,8 +651,10 @@
 #'                                        dist="bernoulli")
 #' }
 ## need to update this to take the new formula framework and simulate ippm data.
-"species_mix.simulate" <-  function(archetype_formula, species_formula, dat, n_mixtures,
-                                    alpha=NULL, beta=NULL, gamma=NULL, theta=NULL,
+"species_mix.simulate" <-  function(archetype_formula, species_formula, dat,
+                                    offset = NULL, n_mixtures,
+                                    alpha=NULL, beta=NULL,
+                                    gamma=NULL, theta=NULL,
                                     distribution = "bernoulli"){
 
   #update the formula to old format.
@@ -666,17 +668,17 @@
 
   # how many species to simulate???
   S <- length(archetype_formula[[2]])-1
-  G <- n_mixutes
+  G <- n_mixtures
 
   archetype_formula <- update(archetype_formula,y~.-1)
   archetype_formula[[2]] <- NULL
 
   X <- stats::model.matrix(archetype_formula, dat)
   W <- stats::model.matrix(species_formula, dat)
+  if(is.null(offset)) offset <- rep(0,nrow(X))
 
   npx <- ncol(X)
   npw <- ncol(W) - 1
-
 
   if (is.null(alpha)) {
     message("Random alpha from normal (-1,0.5) distribution")
@@ -688,7 +690,7 @@
   }
   beta <- matrix(as.numeric(beta), nrow = G)
   if(( is.null(gamma) | length( gamma) != S * npw)){
-    if( p.w != 0){
+    if( npw != 0){
       message("Random values for gamma")
       gamma <- rnorm( npw*S)
       gamma <- matrix( as.numeric(gamma), nrow=S, ncol=npw)
@@ -698,15 +700,14 @@
   }
   else
     gamma <- matrix( as.numeric( gamma), nrow=S)
-  if( distribution == "negative_binomial" & (is.null( logDisps) | length( logDisps) != S)){
+  if( distribution == "negative_binomial" & (is.null(theta) | length( theta) != S)){
     message( "Random values for overdispersions")
-    logDisps <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
+    theta <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
   }
-  if( dist=="gaussian" & (is.null( logDisps) | length( logDisps) != S)){
+  if( dist=="gaussian" & (is.null( theta) | length( theta) != S)){
     message( "Random values for species' variance parameters")
-    logDisps <- log( 1 + rgamma( n+S, shape=1, scale=0.75))
+    theta <- log( 1 + rgamma( n+S, shape=1, scale=0.75))
   }
-
 
   if(distribution=='ippm'){
   message('Generating ippm data on a regular 100x100 grid')
@@ -786,63 +787,28 @@
 
   } else {
 
+  if(distribution %in% 'bernoulli') link <- make.link('logit')
+  if(distribution %in% c('poisson','ippm','negative_binomial')) link <- make.link('log')
+  if(distribution %in% c('gaussian')) link <- make.link('idenity')
+
   S <- length(archetype_formula[[2]])-1
 
-  out <- matrix(0, dim(X)[1], S)
-  k <- dim(theta)[1]
-  if(dim(theta)[2]!=ncol(X))stop('theta must have the same dimensions as "data" (do not forget the intercept)')
-  sp.int <- rep(0, S)
+  fitted <- matrix(0, dim(X)[1], S)
   group <- rep(0, S)
-  for (s in 1:S) {
-    g <- ceiling(stats::runif(1) * k)
-    if (distribution == "bernoulli") {
-      theta[g, 1] <- stats::runif(1, -3, 3)
-      sp.int[s] <- theta[g, 1]
-      lgtp <- X %*% theta[g, ]
-      p <- exp(lgtp)/(1 + exp(lgtp))
-      out[, s] <- rbinom(dim(X)[1], 1, p)
-    }
-    if (distribution == "negative_binomial") {
-      tmp <- rep(1e+05, dim(X)[1])
-      while (max(tmp, na.rm = TRUE) > 5000 | sum(tmp>0) < 9) {
-        theta[g, 1] <- stats::runif(1, -25, 15)
-        sp.int[s] <- theta[g, 1]
-        lgtp <- X %*% theta[g, ]
-        p <- exp(lgtp)
-        tmp <- rnbinom(dim(X)[1], mu = p, size = 1)
-      }
-      out[, s] <- tmp
-    }
-    if (distribution == "poisson") {
-      tmp <- rep(1e+05, dim(X)[1])
-      while (max(tmp, na.rm = TRUE) > 5000 | sum(tmp>0) < 9) {
-        theta[g, 1] <- stats::runif(1, -20, 20)
-        sp.int[s] <- theta[g, 1]
-        lgtp <- X %*% theta[g, ]
-        tmp <- rpois(dim(X)[1], lambda = exp(lgtp))
-      }
-      out[, s] <- tmp
-    }
-    if (distribution == "gaussian") {
-      sp.int <- NULL
-      tmp <- rep(1e+05, dim(X)[1])
-      while (max(tmp, na.rm = TRUE) > 50000 | sum(tmp) < 100) {
-        theta[g, 1] <- stats::runif(1, 1, 500)
-        sp.int[s] <- theta[g, 1]
-        # theta[g, 1] <- stats::runif(1, 1, 500)
-        lgtp <- X %*% theta[g, ]
-        p <- (lgtp)
-        tmp <- stats::rnorm(dim(X)[1], mean = p, sd = 1)
-      }
-      out[, s] <- tmp
-    }
-    group[s] <- g
+  for (ss in seq_len(S)) {
+    gg <- ceiling(stats::runif(1) * G)
+    eta_spp <- W %*% c(alpha[ss],gamma[ss,])
+    eta_mix <- X %*% beta[gg, ]
+    eta <- eta_spp + eta_mix + offset
+    fitted[, ss] <- link$linkinv(eta)
+    group[ss] <- gg
   }
   pi <- tapply(group, group, length)/S
-  colnames(out) <- all.vars(form_org)[1:S]
+  colnames(fitted) <- all.vars(sam_org)[1:S]
   out <- as.matrix(out)
   dat <- as.matrix(dat)
-  return(list(species_data = out, covariate_data = dat, group = group, pi = pi, sp.int = sp.int))
+  return(list(species_data = out, covariate_data = dat,
+              group = group, pi = pi, sp.int = sp.int))
   }
 }
 
@@ -1147,7 +1113,7 @@
           setTxtProgressBar(pb, ii)
         X1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$X[ii,,drop=FALSE])
         W1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$W[ii,,drop=FALSE])
-        sims <- simRCPdata( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, logDisps=object$coef$theta, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,dist=object$dist)
+        sims <- simRCPdata( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, theta=object$coef$theta, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,dist=object$dist)
         sims <- sims[,1:object$S]
         yi <- object$titbits$Y[ii,,drop=FALSE]
         many_yi <- matrix( rep( yi, each=nsim), ncol=object$S)
