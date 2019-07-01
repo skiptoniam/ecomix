@@ -1,26 +1,90 @@
 library(ecomix)
 set.seed(42)
-sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~1+x1+x2"))
-theta <- matrix(c(-2.9,1.6,0.5,1,-0.9,1,.9,2.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
+sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~x1+x2"))
+spp_form <- as.formula(~1+w2)
+beta <- matrix(c(-3.6,0.5,
+                 -0.9,1.0,
+                  0.9,-2.9,
+                  2.2,5.4),
+                4,2,byrow=TRUE)
+gamma <- rnorm(50,1)
 dat <- data.frame(y=rep(1,100), x1=runif(100,0,2.5), x2=rnorm(100,0,2.5), w2=rnorm(100,-1,2.5))
 dat[,-1] <- scale(dat[,-1])
-simulated_data <- species_mix.simulate(sam_form, ~w2, dat, theta, dist="bernoulli")
+simulated_data <- species_mix.simulate(sam_form, spp_form, dat = dat,
+                                       beta = beta, gamma = gamma,
+                                       n_mixtures = 4,
+                                       distribution = "bernoulli")
 
-y <- simulated_data$species_data
-X <- simulated_data$covariate_data
-mf <- as.data.frame(cbind(y,X))
 archetype_formula <- sam_form
-species_formula <- ~ w2
-distribution <- 'bernoulli'
+species_formula <- spp_form
 
-offset <- log(F6Data$Swept_Area)
-spp_weights <- rep(1,ncol(y))
-site_spp_weights <- matrix(1,nrow(y),ncol(y))
-y_is_na <- matrix(FALSE,nrow(y),ncol(y))
-G <- length(simulated_data$pi)
-S <- length(simulated_data$sp.int)
-nP <- ncol(X[,-1])
-control <- species_mix.control()
+test_dat <- ecomix:::clean_data_sam(simulated_data, archetype_formula, species_formula, distribution = 'bernoulli')
+test_dat$mf.X
+test_dat$mf.W
+
+y <- simulated_data[,1:50]
+X <- ecomix:::get_X_sam(archetype_formula, test_dat$mf.X)
+W <- ecomix:::get_W_sam(species_formula, test_dat$mf.W)
+
+n_mixtures <- G <- 4
+S <- ncol(y)
+spp_weights <- rep(1,S)
+site_spp_weights <- matrix(1,nrow(y),S)
+disty <- 1
+y_is_na <- is.na(y)
+inits <- NULL
+control <- species_mix.control(quiet = FALSE)
+offset <- rep(0,nrow(X))
+
+fm_sp_mods <-  surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam_inits, y, X, W,
+                                     site_spp_weights, offset, y_is_na, disty,
+                                     .parallel = control$cores, .verbose = FALSE)
+
+
+starting_values <- ecomix:::get_initial_values_sam(y = y, X = X, W = W,
+                                                   spp_weights = spp_weights,
+                                                   site_spp_weights = site_spp_weights,
+                                                   offset = offset, y_is_na = y_is_na,
+                                                   G = G, S = S,
+                                                   disty = disty,
+                                                   control = control)
+
+
+fits <- starting_values$fits
+taus <- starting_values$taus
+pis <- starting_values$pis
+first_fit <- starting_values$first_fit
+logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty, get_fitted = TRUE)
+
+
+ss <- 1
+spp_conditional_max <- ecomix:::apply_glm_spp_coefs_sams(ss, y, X, W, G, taus,
+                                                         site_spp_weights,
+                                                         offset, y_is_na, disty, fits)
+gg <- 1
+mix_conditional_max <- ecomix:::apply_glm_mix_coefs_sams(gg, y, X, W, site_spp_weights,
+                                             offset, y_is_na, disty, taus, fits, logls_mus$fitted)
+
+partial_ECM <- ecomix:::fitmix_ECM_sam(y, X, W, spp_weights, site_spp_weights,
+                                       offset, y_is_na, G, S, disty,
+                                       control=species_mix.control(em_steps=10))
+
+start_vals <- ecomix:::get_starting_values_sam(y = y, X = X, W = W,
+                                      spp_weights = spp_weights,
+                                      site_spp_weights = site_spp_weights,
+                                      offset = offset,
+                                      y_is_na = y_is_na,
+                                      G = G, S = S,
+                                      disty = disty,
+                                      control = control)
+
+
+tmp <- ecomix:::sam_optimise(y,X,W,offset,spp_weights,site_spp_weights,y_is_na,
+                             S,G,disty,start_vals,
+                             control=ecomix:::species_mix.control(optimise_cpp = 0,
+                                                         loglOnly_cpp = 1))
+
+
 
 
 library(ecomix)
@@ -40,12 +104,12 @@ test_dat$mf.X
 test_dat$mf.W
 
 y <- as.matrix(F6Data[,grep("spp",colnames(F6Data))])
-spp_to_keep <- which(colSums(y)>10)
+spp_to_keep <- which(colSums(y>1)>20)
 y <- y[,spp_to_keep]
 X <- ecomix:::get_X_sam(archetype_form, test_dat$mf.X)
 W <- ecomix:::get_W_sam(species_form, test_dat$mf.W)
 
-n_mixtures <- G <- 4
+n_mixtures <- G <- 6
 S <- ncol(y)
 spp_weights <- rep(1,S)
 site_spp_weights <- matrix(1,nrow(y),S)
@@ -55,17 +119,9 @@ inits <- NULL
 control <- species_mix.control(quiet = FALSE)
 offset <- log(F6Data$Swept_Area)
 
-
-
-
 fm_sp_mods <-  surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam_inits, y, X, W,
                                      site_spp_weights, offset, y_is_na, disty,
                                      .parallel = control$cores, .verbose = FALSE)
-
-# fm_sp_mods <-  surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_spp_coefs_sams, y, X, W,
-                                     # site_spp_weights, offset, y_is_na, disty,
-                                     # .parallel = control$cores, .verbose = FALSE)
-
 
 starting_values <- ecomix:::get_initial_values_sam(y = y, X = X, W = W,
                                                   spp_weights = spp_weights,
@@ -83,17 +139,23 @@ logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty, g
 
 
 ss <- 1
-test <- ecomix:::apply_glmnet_spp_coefs_sams(ss, y, X, W, G, taus,
+test <- ecomix:::apply_glm_spp_coefs_sams(ss, y, X, W, G, taus,
                                          site_spp_weights,
                                          offset, y_is_na, disty, fits)
 gg <- 1
-test <- ecomix:::apply_glmnet_mix_coefs_sams(gg, y, X, W, site_spp_weights,
+test <- ecomix:::apply_glm_mix_coefs_sams(gg, y, X, W, site_spp_weights,
                                          offset, y_is_na, disty, taus, fits, logls_mus$fitted)
 
+test <- fitmix_ECM_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
 
-test <- ecomix:::fitmix_ECM_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
-
-start_vals <- starting_values
+start_vals <- ecomix:::get_starting_values_sam(y = y, X = X, W = W,
+                                               spp_weights = spp_weights,
+                                               site_spp_weights = site_spp_weights,
+                                               offset = offset,
+                                               y_is_na = y_is_na,
+                                               G = G, S = S,
+                                               disty = disty,
+                                               control = control)
 
 tmp <- ecomix:::sam_optimise(y,X,W,offset,spp_weights,site_spp_weights,y_is_na,S,G,disty,start_vals,control)
 

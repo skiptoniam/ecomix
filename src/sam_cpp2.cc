@@ -1,9 +1,5 @@
 #include"sam_cpp2.h"
 
-/* Code for all SAMs distributions (except Tweedie).
- * I have tried to set this up like RCP, which makes more sense to me, in the future I can adapt Piers code into a single species_mix_cpp function.
- */
-
 // this is the external C call which will be called by R using .Call.
 
 extern "C" {
@@ -68,8 +64,13 @@ extern "C" {
 	SEXP Rbeta_est = PROTECT(allocVector(REALSXP, all.data.nG*all.data.nPX));
 	for( int i=0; i<((all.data.nG*all.data.nPX)); i++) REAL(Rbeta_est)[i] = all.params.Beta[i];
 	UNPROTECT(1);
-	SEXP Rgamma_est =PROTECT(allocVector(REALSXP, all.data.nS*all.data.nPW));
-	for( int j=0; j<(all.data.nS*all.data.nPW);j++) REAL(Rgamma_est)[j] = all.params.Gamma[j];
+	//if(all.data.nPW>0){
+		SEXP Rgamma_est =PROTECT(allocVector(REALSXP, all.data.nS*all.data.nPW));
+		for( int j=0; j<(all.data.nS*all.data.nPW);j++) REAL(Rgamma_est)[j] = all.params.Gamma[j];
+	//}else{
+	  //SEXP Rgamma_est = PROTECT(allocVector(REALSXP, 1));
+	  //REAL(Rgamma_est)[0] = -99999;  	
+	//}	 
 	UNPROTECT(1);
 	SEXP Reta_est =PROTECT(allocVector(REALSXP, all.data.nG-1));
 	for( int g=0; g<(all.data.nG-1);g++) REAL(Reta_est)[g] = all.params.Eta[g];
@@ -666,20 +667,6 @@ void calc_alpha_deriv( vector<double> &alphaDerivs, vector<double> const &dlogda
 
 }
 
-// this should calculate the derivate w.r.t gamma.
-void calc_gamma_deriv( vector<double> &gammaDerivs, vector<double> const &dlogdgamma, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
-
-	for(int g=0; g<(dat.nG); g++){
-	    for(int j=0; j<(dat.nPW); j++){
-			for(int s=0; s<(dat.nS); s++){
-			// calculate for betas.
-			gammaDerivs.at(MATREF2D(s,j,dat.nS)) +=  exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s) + log(pis.at(g))) * dlogdgamma.at(MATREF3D(g,j,s,dat.nG,dat.nPW));
-			}
-		}
-	}
-
-}
-
 // this should calculate the derivate w.r.t beta.
 void calc_beta_deriv( vector<double> &betaDerivs, vector<double> const &dlogdbeta, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
 
@@ -688,6 +675,20 @@ void calc_beta_deriv( vector<double> &betaDerivs, vector<double> const &dlogdbet
 			for(int s=0; s<(dat.nS); s++){
 			// calculate for betas.
 			betaDerivs.at(MATREF2D(g,j,dat.nG)) +=  exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s) + log(pis.at(g))) * dlogdbeta.at(MATREF3D(g,j,s,dat.nG,dat.nPX));
+			}
+		}
+	}
+
+}
+
+// this should calculate the derivate w.r.t gamma.
+void calc_gamma_deriv( vector<double> &gammaDerivs, vector<double> const &dlogdgamma, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
+
+	for(int g=0; g<(dat.nG); g++){
+		for(int s=0; s<(dat.nS); s++){
+			for(int j=0; j<(dat.nPW); j++){
+			// calculate for gamma.
+			gammaDerivs.at(MATREF2D(s,j,dat.nS)) +=  exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s) + log(pis.at(g))) * dlogdgamma.at(MATREF3D(g,j,s,dat.nG,dat.nPW));
 			}
 		}
 	}

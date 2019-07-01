@@ -51,8 +51,9 @@ species_mix.control(maxit = 1000, quiet = FALSE, trace = 1,
 species_mix.bootstrap(object, nboot = 1000, type = "BayesBoot",
   mc.cores = 1, quiet = FALSE, orderSamps = FALSE, MLstart = TRUE)
 
-species_mix.simulate(archetype_formula, species_formula, dat, theta,
-  distribution = "bernoulli")
+species_mix.simulate(archetype_formula, species_formula, dat,
+  offset = NULL, n_mixtures = 3, alpha = NULL, beta = NULL,
+  gamma = NULL, theta = NULL, distribution = "bernoulli")
 
 \method{AIC}{species_mix}(object, ..., k = 2)
 
@@ -197,8 +198,16 @@ setting titbits=TRUE may give users problems with memory.}
 
 \item{dat}{a matrix of variables to simulate data from.}
 
-\item{theta}{coefficents for each species archetype. Matrix of G x number of
+\item{alpha}{coefficents for each species archetype. vector S long.}
+
+\item{beta}{coefficents for each species archetype. Matrix of G x number of
 parameters. Each row is a different species archetype.}
+
+\item{gamma}{coefficents for each species archetype. Matrix of S x number of
+parameters. Each row is a different species archetype.}
+
+\item{theta}{coefficents for the dispersion variables for negative_binomial
+and gaussian distributions - should be number of species long}
 
 \item{newdata}{a matrix of new observations for prediction.}
 
@@ -215,6 +224,8 @@ the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
 
 \item{species_formula}{formula to simulate species_mix species-specific
 responses, e.g: ~1}
+
+\item{n_mixtures}{number of groups to simulate.}
 
 \item{distribution}{Which statistical distribution to simulate data for.
 'bernoulli', 'gaussian', 'ippm', 'negative_binomial' and 'poisson'.}
@@ -264,16 +275,17 @@ fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli
 archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',
 1:20),collapse = ','),")~1+x1+x2"))
 species_formula <- stats::as.formula(~1)
-theta <- matrix(c(-0.9,-0.6,0.5,
-                   1.0,-0.9,1.0,
-                   0.9,-0.9,2.9,
-                  -1.0,0.2,-0.4),
-                4,3,byrow=TRUE)
+beta <- matrix(c(-3.6,0.5,
+                 -0.9,1.0,
+                  0.9,-2.9,
+                  2.2,5.4),
+                4,2,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),
                   x1=stats::runif(100,0,2.5),
                   x2=stats::rnorm(100,0,2.5))
 simulated_data <- species_mix.simulate(archetype_formula,species_formula,
-                                            dat,theta,dist="bernoulli")
+                                       dat, n_mixtures = 4, beta=beta,
+                                       dist="bernoulli")
 }
 \dontrun{
 preds_fm1 <- predict(fm1)
