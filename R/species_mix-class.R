@@ -677,6 +677,7 @@
   W <- stats::model.matrix(species_formula, dat)
   if(is.null(offset)) offset <- rep(0,nrow(X))
 
+  n <- nrow(X)
   npx <- ncol(X)
   npw <- ncol(W) - 1
 
@@ -694,22 +695,22 @@
       message("Random values for gamma")
       gamma <- rnorm( npw*S)
       gamma <- matrix( as.numeric(gamma), nrow=S, ncol=npw)
-    }
-    else
+    } else {
       gamma <- NULL
-  }
-  else
+    }
+  } else {
     gamma <- matrix( as.numeric( gamma), nrow=S)
+  }
   if( distribution == "negative_binomial" & (is.null(theta) | length( theta) != S)){
     message( "Random values for overdispersions")
     theta <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
   }
-  if( dist=="gaussian" & (is.null( theta) | length( theta) != S)){
+  if( distribution=="gaussian" & (is.null( theta) | length( theta) != S)){
     message( "Random values for species' variance parameters")
     theta <- log( 1 + rgamma( n+S, shape=1, scale=0.75))
   }
 
-  if(distribution=='ippm'){
+  # if(distribution=='ippm'){
   message('Generating ippm data on a regular 100x100 grid')
 
     n_sp <- length(archetype_formula[[2]])-1
@@ -791,8 +792,6 @@
   if(distribution %in% c('poisson','ippm','negative_binomial')) link <- make.link('log')
   if(distribution %in% c('gaussian')) link <- make.link('idenity')
 
-  S <- length(archetype_formula[[2]])-1
-
   fitted <- matrix(0, dim(X)[1], S)
   group <- rep(0, S)
   for (ss in seq_len(S)) {
@@ -803,13 +802,39 @@
     fitted[, ss] <- link$linkinv(eta)
     group[ss] <- gg
   }
+
+  if( distribution=="bernoulli")
+    outcomes <- matrix(rbinom(n * S, 1, as.numeric( fitted)), nrow = n, ncol = S)
+  if( distribution=="poisson")
+    outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
+  if( distribution=="negative_binomial")
+    outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp( logDisps), each=n)), nrow = n, ncol = S)
+  if( distribution=="gaussian")
+    outcomes <- matrix( rnorm( n=n*S, mean=as.numeric( fitted), sd=rep( exp( logDisps), each=n)), nrow=n, ncol=S)
+
   pi <- tapply(group, group, length)/S
   colnames(fitted) <- all.vars(sam_org)[1:S]
-  out <- as.matrix(out)
-  dat <- as.matrix(dat)
-  return(list(species_data = out, covariate_data = dat,
-              group = group, pi = pi, sp.int = sp.int))
+  colnames(outcomes) <-  all.vars(sam_org)[1:S]
+
+  if(ncol(W)>1){
+      if( !all( offset==0))
+        res <- as.data.frame(cbind(outcomes, X, W[,-1,drop=FALSE], offset))
+      else
+        res <- as.data.frame(cbind(outcomes, X, W[,-1,drop=FALSE]))
+  } else {
+    if( !all( offset==0))
+      res <- as.data.frame(cbind(outcomes, X, offset))
+    else
+      res <- as.data.frame(cbind(outcomes, X))
   }
+  attr(res, "SAMs") <- group
+  attr(res, "pis") <- pis
+  attr(res, "alpha") <- alpha
+  attr(res, "beta") <- beta
+  attr(res, "gamma") <- gamma
+  attr(res, "theta") <- theta
+  attr(res, "mu") <- fitted
+  return(res)
 }
 
 ##### S3 class SAM functions #####
@@ -1611,11 +1636,11 @@
                                           offset, y_is_na, disty, fits){
   ## glmnet family format
   if(disty == 1)
-    fam <- "binomial"
+    fam <- stats::binomial() #"binomial"
   if(disty == 2 | disty == 3 | disty == 4)
-    fam <- "poisson"
+    fam <- stats::poisson() #"poisson"
   if(disty == 6)
-    fam <- "gaussian"
+    fam <- stats::gaussian() #"gaussian"
 
   ids_i <- !y_is_na[,ss]
 
@@ -1640,26 +1665,18 @@
   offy <- offy1 + offy2
 
   if(disty %in% c(1,2,3,4,6)){
-      lambda.seq <- sort( unique( c( seq( from=1/0.1, to=1, length=25), seq( from=1, to=0.01, length=10))), decreasing=TRUE)
-      ft_sp <- try(glmnet::glmnet(y=out1, x = as.matrix(W1),
-                                  family = fam, offset=offy,
-                                  weights = as.numeric(wts1),
-                                  alpha=0,
-                                  lambda=lambda.seq,
-                                  standardize=FALSE,
-                                  intercept=TRUE), silent=FALSE)
-      locat.s <- 1/1
-      my.coefs <- glmnet::coef.glmnet(ft_sp, s=locat.s)
-      if( any( is.na( my.coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
-        my.coefs <- glmnet::coef.glmnet(ft_sp, s=lambda.seq)
-        lastID <- apply( my.coefs, 2, function(x) !any( is.na( x)))
-        lastID <- tail( (seq_along( lastID))[lastID], 1)
-        my.coefs <- my.coefs[,lastID]
-      }
-      if (any(class(ft_sp) %in% 'try-error')){
-        my_coefs <- rep(NA, ncol(W[ids_i,]))
+      # lambda.seq <- sort( unique( c( seq( from=1/0.1, to=1, length=25), seq( from=1, to=0.01, length=10))), decreasing=TRUE)
+      ft_sp <- try(stats::glm.fit(x=as.data.frame(W1),
+                                  y=as.numeric(out1),
+                                  weights=as.numeric(wts1),
+                                  offset=as.numeric(offy),
+                                  family=fam), silent=FALSE)
+      if (class(ft_sp) %in% 'try-error'){
+        print(paste0(ss,"\n"))
+        my_coefs <- rep(NA, ncol(X1))
       } else {
-        my_coefs <- t(as.matrix(my.coefs))
+        my_coefs <- coef(ft_sp)
+        names(my_coefs) <- c(colnames(y)[ss],colnames(W))
       }
   }
   if(ncol(W)>1) gamma <- my_coefs[-1] else gamma <- -99999
