@@ -724,7 +724,7 @@
   if(distribution %in% c('poisson','ippm','negative_binomial')) link <- make.link('log')
   if(distribution %in% c('gaussian')) link <- make.link('idenity')
   if(distribution %in% 'ippm') {
-    grid <- ecomix:::simulate_ippm_grid()
+    grid <- simulate_ippm_grid()
     grid2D <- grid$grid2D
     X <- grid$X
     W <- grid$W
@@ -749,9 +749,9 @@
     outcomes <- simulate_ippm_outcomes(X, W, S, grid2D, fitted)
   }
     if( distribution=="negative_binomial")
-    outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp( logDisps), each=n)), nrow = n, ncol = S)
+    outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp(theta), each=n)), nrow = n, ncol = S)
   if( distribution=="gaussian")
-    outcomes <- matrix( rnorm( n=n*S, mean=as.numeric( fitted), sd=rep( exp( logDisps), each=n)), nrow=n, ncol=S)
+    outcomes <- matrix( rnorm( n=n*S, mean=as.numeric( fitted), sd=rep( exp(theta), each=n)), nrow=n, ncol=S)
 
   pi <- tapply(group, group, length)/S
   colnames(fitted) <- all.vars(sam_org)[1:S]
@@ -1280,201 +1280,51 @@
   return(preds)
 }
 
-# ## if we want to use glmnet for estimates.
-# "apply_glmnet_sam_inits" <- function(ss, y, X, site_spp_weights,
-#                                      offset, y_is_na, disty){
-#
-#   # which family to use?
-#   if( disty == 1)
-#     fam <- "binomial"
-#   if( disty == 2 | disty == 3 | disty == 4)
-#     fam <- "poisson"
-#   if( disty == 6)
-#     fam <- "gaussian"
-#
-#   ids_i <- !y_is_na[,ss]
-#
-#   if (disty==3){
-#     outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
-#   } else {
-#     outcomes <- as.numeric(y[ids_i,ss])
-#   }
-#
-#   lambda.seq <- sort( unique( c( seq( from=1/0.1, to=1, length=10), seq( from=1/0.1, to=1, length=10),seq(from=0.9, to=10^-2, length=10))), decreasing=TRUE)
-#   if(disty != 5){
-#     ft_sp <- try(glmnet::glmnet(x=as.matrix(X[ids_i,-1,drop=FALSE]),
-#                             y=outcomes,
-#                             weights=c(site_spp_weights[ids_i,ss]),
-#                             offset=offset[ids_i],
-#                             family=fam,
-#                             alpha=0,
-#                             lambda = lambda.seq,
-#                             standardize = FALSE,
-#                             intercept = TRUE), silent = TRUE)
-#
-#     if (class(ft_sp) %in% 'try-error'){
-#       my_coefs <- rep(NA, ncol(X[ids_i,]))
-#     } else {
-#       my_coefs <- apply(glmnet::coef.glmnet(ft_sp), 1, lambda_penalisation_fun, lambda.seq)
-#     }
-#   }
-#   theta <- NA
-#   if( disty == 4){
-#     locat.s <- lambda.seq[max(which(as.matrix(glmnet::coef.glmnet(ft_sp))==my_coefs,arr.ind = TRUE)[,2])]
-#     preds <-as.numeric(predict(ft_sp, s=locat.s,
-#                                type="response",
-#                                newx=X[ids_i,-1],
-#                                offset=offset[ids_i]))
-#     tmp <- MASS::theta.mm(outcomes, preds,
-#                           weights=c(site_spp_weights[ids_i,ss]),
-#                           dfr=length(y[ids_i,ss]),
-#                           eps=1e-4)
-#     if(tmp>2) tmp <- 2
-#     theta <- log( 1/tmp)
-#   }
-#   if( disty == 6){
-#     preds <-as.numeric(predict(ft_sp, s=locat.s,
-#                                type="response",
-#                                newx=X[ids_i,-1],
-#                                offset=offset[ids_i]))
-#     theta <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
-#   }
-#   return(list(alpha = my_coefs[1], beta = my_coefs[-1], theta = theta))
-# }
-#
-# "apply_glmnet_sam_sp_intercepts" <- function(ss, y, X, G, taus,
-#                                              site_spp_weights,
-#                                              offset, y_is_na, disty, fits){
-#
-#   # which family to use?
-#   if( disty == 1)
-#     fam <- "binomial"
-#   if( disty == 2 | disty == 3 | disty == 4)
-#     fam <- "poisson"
-#   if( disty == 6)
-#     fam <- "gaussian"
-#
-#   ids_i <- !y_is_na[,ss]
-#
-#   if (disty==3){
-#     outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
-#   } else {
-#     outcomes <- as.numeric(y[ids_i,ss])
-#   }
-#   out1 <- kronecker(rep( 1, G), outcomes)
-#   X1 <- kronecker(rep( 1, G), X[ids_i,])
-#   wts1 <- kronecker(rep( 1, G),
-#                     as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,],
-#                                                                 each=length(site_spp_weights[ids_i,ss]))
-#   offy1 <- kronecker(rep( 1, G), offset[ids_i])
-#   offy2 <- X[ids_i,-1] %*% t(fits$beta)
-#   offy2 <- as.numeric(offy2)
-#   offy <- offy1 + offy2
-#
-#   if (disty==3){ outcomes <- as.matrix(y[ids_i,ss]/site_spp_weights[ids_i,ss])
-#   } else { outcomes <- as.matrix(y[ids_i,ss])
-#   }
-#
-#   #lambdas for penalised glm
-#   lambda.seq <- sort( unique( c( seq( from=1/0.1, to=1, length=10), seq( from=1/0.1, to=1, length=10),seq(from=0.9, to=10^-2, length=10))), decreasing=TRUE)
-#   if( disty != 5){ #don't use for tweedie
-#     ft_sp <- glmnet::glmnet(x=as.matrix(X[ids_i,-1]),
-#                             y=outcomes,
-#                             weights=c(site_spp_weights[ids_i,ss]),
-#                             offset=offset[ids_i],
-#                             family=fam,
-#                             alpha=0,
-#                             lambda = lambda.seq,
-#                             standardize = FALSE,
-#                             intercept = TRUE)
-#     my_coefs <- apply(glmnet::coef.glmnet(ft_sp), 1, lambda_penalisation_fun, lambda.seq)
-#   }
-#   theta <- NA
-#   if( disty == 4){
-#     locat.s <- lambda.seq[max(which(as.matrix(glmnet::coef.glmnet(ft_sp))==my_coefs,arr.ind = TRUE)[,2])]
-#     preds <-as.numeric(predict(ft_sp, s=locat.s,
-#                                type="response",
-#                                newx=X[ids_i,-1],
-#                                offset=offset[ids_i]))
-#     tmp <- MASS::theta.mm(outcomes, preds,
-#                           weights=c(site_spp_weights[ids_i,ss]),
-#                           dfr=length(y[ids_i,ss]),
-#                           eps=1e-4)
-#     if(tmp>2)
-#       tmp <- 2
-#     theta <- log( 1/tmp)
-#   }
-#   if( disty == 6){
-#     preds <-as.numeric(predict(ft_sp, s=locat.s,
-#                                type="response",
-#                                newx=X[ids_i,-1],
-#                                offset=offset[ids_i]))
-#     theta <- log(sqrt(sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard Deviation.
-#   }
-#
-#   return(list(alpha = my_coefs[1], beta = my_coefs[-1], theta = theta))
-#
-# }
-#
-# "apply_glmnet_group_tau_sam" <- function (gg, y, X, site_spp_weights,
-#                                           offset, y_is_na, disty, tau){
-#
-#   ### setup the data stucture for this model.
-#   Y_tau <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
-#   X_no_NA <- list()
-#   for (jj in 1:ncol(y)){
-#     X_no_NA[[jj]] <- X[!y_is_na[,jj],]
-#   }
-#   X_tau <- do.call(rbind, X_no_NA)
-#   n_ys <- sapply(X_no_NA,nrow)
-#   wts_tau <- rep(tau[,gg],c(n_ys))
-#
-#
-#   ippm_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
-#   Z_tau <- as.matrix(Y_tau/ippm_weights)
-#   wts_tauXippm_weights <- wts_tau*ippm_weights
-#   offy_mat <- replicate(ncol(y),offset)
-#   offy <- unlist(as.data.frame(offy_mat[!y_is_na]))
-#
-#   options(warn = -1)
-#   # which family to use?
-#   if( disty == 1)
-#     fam <- "binomial"
-#   if( disty == 2 | disty == 3 | disty == 4)
-#     fam <- "poisson"
-#   if( disty == 6)
-#     fam <- "gaussian"
-#
-#   if (disty==3){ Y_tau <- as.matrix(Y_tau/ippm_weights)
-#   } else { Y_tau <- as.matrix(Y_tau)
-#   }
-#
-#   #lambdas for penalised glm
-#   lambda.seq <- sort( unique( c( seq( from=1/0.1, to=1, length=10), seq( from=1/0.1, to=1, length=10),seq(from=0.9, to=10^-2, length=10))), decreasing=TRUE)
-#   if( disty != 5){ #don't use for tweedie
-#     ft_mix <- glmnet::glmnet(x=as.matrix(X_tau[,-1]),
-#                              y=as.matrix(Y_tau),
-#                              weights=c(wts_tauXippm_weights),
-#                              offset = offy,
-#                              family=fam,
-#                              alpha=0,
-#                              lambda = lambda.seq,
-#                              standardize = FALSE,
-#                              intercept = TRUE)
-#     my_coefs <- apply(glmnet::coef.glmnet(ft_mix), 1, lambda_penalisation_fun, lambda.seq)
-#   }
-#   return(as.matrix(my_coefs))
-# }
-#
-
 "apply_optimise_spp_theta" <- function(ss, first_fit, fits,
-                                       G, disty, taus,
+                                       G, disty, pis,
                                        theta.range = c(0.0001,100)){
-  thet <- optimise(f = theta.logl1, interval = theta.range, ss, first_fit,
-                   fits, G, disty, taus, theta.range,
+  thet <- optimise(f = theta.logl, interval = theta.range, ss, first_fit,
+                   fits, G, disty, pis, theta.range,
                    maximum = TRUE)$maximum
   return(thet)
 }
+
+"theta.logl" <- function(theta, ss, first_fit, fits, G,
+                         disty, pis, theta.range){
+
+  if(disty==4)link <- make.link('log')
+  if(disty==6)link <- make.link('identity')
+
+  if(ncol(first_fit$W)>1){
+    eta_spp <- first_fit$W %*% c(fits$alpha[ss],fits$gamma[ss,])
+  }else{
+    eta_spp <- first_fit$W %*% c(fits$alpha[ss])
+  }
+
+  eta_mix <- first_fit$x %*% t(fits$beta)
+  offy <- first_fit$offset
+  y <- first_fit$y[,ss]
+  logls <- rep( NA, G)
+  for( gg in 1:G){
+    eta <- eta_spp + eta_mix[,gg] + offy
+    mus <- link$linkinv(eta)
+    if(disty==4)logls[gg] <- sum( dnbinom(x = y, mu = mus, size = theta, log=TRUE))
+    if(disty==6)logls[gg] <- sum( dnorm(x = y, mean = mus, sd = theta, log=TRUE))
+  }
+  ak <- logls + log(pis)
+  am <- max(ak)
+  ak <- exp( ak-am)
+  sppLogls <- am + log( sum( ak))
+
+  pen.max <- theta.range[2]
+  pen.min <- theta.range[1]
+  shape1 <- shape2 <- 1.25
+
+  sppLogls <- sppLogls + dbeta( (theta-pen.min) / (pen.max-pen.min), shape1, shape2, log=TRUE)
+
+  return(sppLogls)
+}
+
 
 "theta.logl1" <- function(x, ss, first_fit, fits, G,
                           disty, taus, theta.range) {
@@ -1483,7 +1333,7 @@
     eta <- fits$alpha[ss] + first_fit$x%*%fits$beta[gg,] + first_fit$offset
     if(ncol(first_fit$W)>1) eta <- eta + first_fit$W[,-1]%*%fits$gamma[ss,]
     if(disty == 4)
-      out <- sum(taus[ss,gg]*dnbinom(first_fit$y[,ss], mu = exp(eta), size = 1/exp(-x), log = TRUE));
+      out <- sum(taus[ss,gg]*dnbinom(first_fit$y[,ss], mu = exp(eta), size = exp(x), log = TRUE));
     if(disty == 6)
       out <- sum(taus[ss,gg]*dnorm(first_fit$y[,ss], mean = eta, sd = exp(x), log = TRUE))
     out <- out + out
@@ -1491,9 +1341,9 @@
   return(out)
 }
 
-
 ## function for starting values.
-"apply_glmnet_sam_inits" <- function(ss, y, X, W, site_spp_weights, offset, y_is_na, disty){
+"apply_glmnet_sam_inits" <- function(ss, y, X, W, site_spp_weights,
+                                     offset, y_is_na, disty){
 
   # which family to use?
   if(disty == 1)
@@ -1552,9 +1402,9 @@
                                                          newoffset=offset[ids_i])),
                             weights=as.matrix(site_spp_weights[ids_i,ss]),
                             dfr=length(outcomes), eps=1e-4)
-      if( tmp>2)
-        tmp <- 2
+      if(tmp>2) tmp <- 2
       theta <- log( 1/tmp)
+      # cat(tmp,"\n")
     }
     if( disty == 6){
       preds <- as.numeric( predict(ft_sp, s=locat.s, type="link",
@@ -1906,7 +1756,7 @@ starting values;\n starting values are generated using ',control$init_method,
         #lp is the same as log_lambda (linear predictor)
         lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
         if(ncol(W)>1) lp <- lp + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
-        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=1/exp(-fits$theta[ss]),log=TRUE))
+        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size = exp(fits$theta[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -2029,7 +1879,7 @@ starting values;\n starting values are generated using ',control$init_method,
         lp <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
         if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
         if(get_fitted) fitted_values[gg,,ss] <- exp(lp)
-        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=1/exp(-fits$theta[ss]),log=TRUE))
+        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=exp(fits$theta[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -2062,7 +1912,7 @@ starting values;\n starting values are generated using ',control$init_method,
   logl_new <- -88888888
 
   # get starting values
-  starting_values <- ecomix:::get_initial_values_sam(y = y, X = X, W = W,
+  starting_values <- get_initial_values_sam(y = y, X = X, W = W,
                                             spp_weights = spp_weights,
                                             site_spp_weights = site_spp_weights,
                                             offset = offset, y_is_na = y_is_na,
@@ -2142,20 +1992,35 @@ starting values;\n starting values are generated using ',control$init_method,
                                           .parallel = control$cores,
                                           .verbose = FALSE)
 
-    # update the coefs.
+    # update the coefs
     fm_mix_coefs_mat <- do.call(rbind,fm_mix_coefs)
     fits$beta <- update_coefs(fits$beta, fm_mix_coefs_mat)
 
     ## need a function here that updates the dispersion parameter.
-    if(disty%in%c(4,6)){
-      fm_theta <- surveillance::plapply(seq_len(S), apply_optimise_spp_theta,
+    if(disty%in%c(4)){
+      fits$theta <- exp(fits$theta)
+      fm_theta <- surveillance::plapply(seq_len(S), ecomix:::apply_optimise_spp_theta,
                                        first_fit, fits,
-                                       G, disty, taus,
+                                       G, disty, pis,
                                        .parallel = control$cores,
                                        .verbose = FALSE)
       theta <- unlist(lapply(fm_theta, `[[`, 1))
-      theta <- log(1/theta)
-      fits$theta <- update_coefs(fits$theta,theta,0.5)
+      theta <- log(theta)
+      # fits$theta <- log(theta)
+      fits$theta <- ecomix:::update_coefs(log(fits$theta),theta,control$update_kappa[2])
+    }
+
+    if(disty%in%c(6)){
+      # fits$theta <- exp(-fits$theta)
+      fm_theta <- surveillance::plapply(seq_len(S), apply_optimise_spp_theta,
+                                        first_fit, fits,
+                                        G, disty, pis,
+                                        .parallel = control$cores,
+                                        .verbose = FALSE)
+      theta <- unlist(lapply(fm_theta, `[[`, 1))
+      # theta <- log(1/theta)
+      # fits$theta <- log(1/theta)
+      fits$theta <- update_coefs(fits$theta,theta,control$update_kappa[2])
     }
 
     # e-step
@@ -2726,8 +2591,8 @@ starting values;\n starting values are generated using ',control$init_method,
                     gamma <- gamma + as.numeric( matrix(rnorm(S*ncol(W[,-1,drop=FALSE]), mean=0, my.sd), ncol=ncol(W[,-1,drop=FALSE]), nrow=S))
                   }
                   if(disty %in% c(4,6)){
-                    my.sd <- mult*sd( theta); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
-                    theta <- theta + as.numeric( rnorm( S, mean=0, my.sd))
+                    # my.sd <- mult*sd( theta); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
+                    # theta <- theta + as.numeric( rnorm( S, mean=0, my.sd))
                   }
                   if(disty %in% c(4,6)) return(list(alpha,beta,gamma,theta))
                   else return(list(alpha,beta,gamma))

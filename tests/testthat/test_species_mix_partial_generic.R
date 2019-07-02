@@ -13,7 +13,7 @@ dat[,-1] <- scale(dat[,-1])
 simulated_data <- species_mix.simulate(sam_form, spp_form, dat = dat,
                                        beta = beta, gamma = gamma,
                                        n_mixtures = 4,
-                                       distribution = "bernoulli")
+                                       distribution = "negative_binomial")
 
 archetype_formula <- sam_form
 species_formula <- spp_form
@@ -30,7 +30,7 @@ n_mixtures <- G <- 4
 S <- ncol(y)
 spp_weights <- rep(1,S)
 site_spp_weights <- matrix(1,nrow(y),S)
-disty <- 1
+disty <- 4
 y_is_na <- is.na(y)
 inits <- NULL
 control <- species_mix.control(quiet = FALSE)
@@ -65,9 +65,17 @@ gg <- 1
 mix_conditional_max <- ecomix:::apply_glm_mix_coefs_sams(gg, y, X, W, site_spp_weights,
                                              offset, y_is_na, disty, taus, fits, logls_mus$fitted)
 
+# fits$theta <- exp(fits$theta)
+# thet <- ecomix:::apply_optimise_spp_theta(ss, first_fit, fits, G, disty, pis)
+# log(1/thet)
+
+thets <- sapply(seq_len(S), ecomix:::apply_optimise_spp_theta, first_fit, fits, G, disty, pis)
+# thets <- log(1/thets)
+
+
 partial_ECM <- ecomix:::fitmix_ECM_sam(y, X, W, spp_weights, site_spp_weights,
                                        offset, y_is_na, G, S, disty,
-                                       control=species_mix.control(em_steps=10))
+                                       control=species_mix.control(em_steps=3))
 
 start_vals <- ecomix:::get_starting_values_sam(y = y, X = X, W = W,
                                       spp_weights = spp_weights,
@@ -146,7 +154,10 @@ gg <- 1
 test <- ecomix:::apply_glm_mix_coefs_sams(gg, y, X, W, site_spp_weights,
                                          offset, y_is_na, disty, taus, fits, logls_mus$fitted)
 
-test <- fitmix_ECM_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
+ss <-
+thet <- ecomix:::apply_optimise_spp_theta(ss, first_fit, fits, G, disty,pis)
+
+test <- ecomix:::fitmix_ECM_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
 
 start_vals <- ecomix:::get_starting_values_sam(y = y, X = X, W = W,
                                                spp_weights = spp_weights,
