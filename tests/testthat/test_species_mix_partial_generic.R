@@ -61,21 +61,34 @@ ss <- 1
 spp_conditional_max <- ecomix:::apply_glm_spp_coefs_sams(ss, y, X, W, G, taus,
                                                          site_spp_weights,
                                                          offset, y_is_na, disty, fits)
-gg <- 1
-mix_conditional_max <- ecomix:::apply_glm_mix_coefs_sams(gg, y, X, W, site_spp_weights,
-                                             offset, y_is_na, disty, taus, fits, logls_mus$fitted)
 
-# fits$theta <- exp(fits$theta)
-# thet <- ecomix:::apply_optimise_spp_theta(ss, first_fit, fits, G, disty, pis)
-# log(1/thet)
+fm_spp_coefs <- surveillance::plapply(seq_len(S),
+                                      ecomix:::apply_glm_spp_coefs_sams,
+                                      y, X, W, G, taus, site_spp_weights,
+                                      offset, y_is_na, disty, fits,
+                                      .parallel = control$cores,
+                                      .verbose = FALSE)
+
+
+tmp <- nlminb(start=fits$beta, objective=ecomix:::incomplete_negbin_logl, gradient=NULL,
+              hessian=NULL, pis=pis, first_fit=first_fit, fits=fits, G=G, S=S)
+
+# gg <- 1
+# mix_conditional_max <- ecomix:::apply_glm_mix_coefs_sams(gg, y, X, W,
+                                                         # site_spp_weights,
+                                             # offset, y_is_na, disty, taus, fits, logls_mus$fitted)
+
+fits$theta <- exp(-fits$theta)
+thet <- ecomix:::apply_optimise_spp_theta(ss, first_fit, fits, G, disty, pis)
+log(1/thet)
 
 thets <- sapply(seq_len(S), ecomix:::apply_optimise_spp_theta, first_fit, fits, G, disty, pis)
-# thets <- log(1/thets)
+thets <- log(1/thets)
 
 
 partial_ECM <- ecomix:::fitmix_ECM_sam(y, X, W, spp_weights, site_spp_weights,
                                        offset, y_is_na, G, S, disty,
-                                       control=species_mix.control(em_steps=3))
+                                       control=species_mix.control(em_steps=20))
 
 start_vals <- ecomix:::get_starting_values_sam(y = y, X = X, W = W,
                                       spp_weights = spp_weights,
