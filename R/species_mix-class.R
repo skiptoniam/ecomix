@@ -808,14 +808,20 @@
 "coef.species_mix" <- function (object, ...){
   res <- list()
   res$alpha <- object$coefs$alpha
-  # names( res$alpha) <- object$names$spp
+  names(res$alpha) <- object$names$spp
   if( !is.null( object$coef$beta)){
-    res$beta <- matrix(object$coefs$beta, nrow = object$G, ncol = object$np)
-    # colnames( res$tau) <- object$names$spp # need to keep the spp names
+    res$beta <- matrix(object$coefs$beta, nrow = object$G, ncol = object$npx)
+    rownames(res$beta) <- object$names$SAMs
+    colnames(res$beta) <- object$names$Xvars
+  }
+  if( !is.null(object$coef$gamma)){
+    res$gamma <- matrix(object$coefs$gamma, nrow = object$S, ncol = object$npw)
+    rownames(res$gamma) <- object$names$spp
+    colnames(res$gamma) <- object$names$Wvars
   }
   if(!is.null( object$coef$theta)){
-    res$logDisp <- object$coef$theta
-    # names( res$logDisp) <- object$names$spp
+    res$theta <- object$coef$theta
+    names(res$theta) <- object$names$spp
   }
   return(res)
 }
@@ -1609,7 +1615,7 @@
   offy2 <- as.numeric(offy2)
   offy <- offy1 + offy2
 
-  if(disty %in% c(1,2,3,4,6)){
+  if(disty %in% c(1,2,3,6)){
     ft_sp <- try(stats::glm.fit(x=as.data.frame(W1),
                                 y=as.numeric(out1),
                                 weights=as.numeric(wts1),
@@ -1623,7 +1629,7 @@
       names(my_coefs) <- c(colnames(y)[ss],colnames(W[,-1,drop=FALSE]))
     }
   }
-  if(disty %in% 4){
+  if(disty %in% c(4)){
     tmpform <- as.formula( paste('out1','-1+W1+offset(offy)', sep='~'))
     ft_sp <- try(mgcv::gam(tmpform, weights=wts1, family=mgcv::negbin(theta=exp(-fits$theta[ss]))))
     kount1 <- 1
@@ -1972,7 +1978,7 @@ starting values;\n starting values are generated using ',control$init_method,
   # cat('start pis', pis,'\n')
   first_fit <- starting_values$first_fit
   logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-  init_steps <- 5
+  init_steps <- 3
 
   while(control$em_reltol(logl_new,logl_old) & ite <= control$em_steps){
     if(restart_ite>10){
@@ -2306,18 +2312,24 @@ starting values;\n starting values are generated using ',control$init_method,
   # colnames(beta) <-
 
   if(!disty%in%c(4,6))
-    ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,np), eta = ret$eta)
+    ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
+                      gamma = matrix(ret$gamma,S,npw), eta = ret$eta)
   else
-    ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,np), eta = ret$eta, theta = ret$theta)
+    ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
+                      gamma = matrix(ret$gamma,S,npw),eta = ret$eta, theta = ret$theta)
 
-  ret$names <- list(spp=colnames(y), SAMs=paste("SAM", 1:G, sep=""), Xvars=colnames(X[,-1,drop=FALSE]))
+  ret$names <- list(spp=colnames(y), SAMs=paste("SAM", 1:G, sep=""),
+                    Xvars=colnames(X), Wvars=colnames(W[,-1,drop=FALSE]))
 
   if(!disty%in%c(4,6))
-    ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score)
+    ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score,
+                       gamma.scores = gamma.score, eta.scores=eta.score)
   else
-    ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score, eta.scores=eta.score, theta.scores=theta.score)
+    ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score,
+                       gamma.scores = gamma.score, eta.scores=eta.score,
+                       theta.scores=theta.score)
 
-  ret$S <- S; ret$G <- G; ret$np <- np; ret$n <- n;
+  ret$S <- S; ret$G <- G; ret$npx <- npx; ret$npw <- npw; ret$n <- n;
   ret$start.vals <- inits
   ret$loglikeSG <- matrix(loglikeSG,  nrow = S, ncol = G)  #for residuals
   ret$loglikeS <- loglikeS  #for residuals
