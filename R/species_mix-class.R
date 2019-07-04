@@ -1660,7 +1660,7 @@
   W_taus <- do.call(rbind, W_no_NA)
   n_ys <- sapply(X_no_NA,nrow)
   wts_taus <- rep(taus[,gg,drop=FALSE],c(n_ys))
-  if(disty==4)wts_taus <- rep(taus[,gg],c(n_ys))/(1+rep(exp(-fits$theta),n_ys)*as.vector(mus[gg,,]))
+  # if(disty==4)wts_taus <- rep(taus[,gg],c(n_ys))/(1+rep(exp(-fits$theta),n_ys)*as.vector(mus[gg,,]))
 
   site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
   wts_tausXsite_weights <- wts_taus*site_weights
@@ -1695,14 +1695,6 @@
       mix_coefs <- ft_mix$coefficients
     }
   }
-  # if(disty %in% 4){
-  #   ft_mix <- try(glm.fit.nbinom(x=as.matrix(X_taus),
-  #                           y=as.numeric(Y_taus),
-  #                           weights=as.numeric(wts_tausXsite_weights),
-  #                           offset=as.numeric(offy)), silent = TRUE)
-  #   mix_coefs <- ft_mix$coef
-  #   # names(my_coefs) <- c(colnames(y)[ss],colnames(W[,-1,drop=FALSE]))
-  # }
   return(c(mix_coefs))
 }
 
@@ -1766,7 +1758,7 @@ starting values;\n starting values are generated using ',control$init_method,
     for(ss in 1:S){
       for(gg in 1:G){
         lp <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(W)>1) lp <- lp + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
+        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
         logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, link$linkinv(lp),log = TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
@@ -1775,12 +1767,12 @@ starting values;\n starting values are generated using ',control$init_method,
   #poisson
   if(disty==2){
     logl_sp <- matrix(NA, nrow=S, ncol=G)
+    link <- stats::make.link(link = "log")
     for(ss in 1:S){
       for(gg in 1:G){
-        #lp is the same as log_lambda (linear predictor)
-        lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(W)>1) lp <- lp + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
-        logl_sp[ss,gg] <- sum(dpois(first_fit$y[,ss],exp(lp),log=TRUE))
+        lp <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[,-1,drop=FALSE]) %*% fits$gamma[ss,]
+        logl_sp[ss,gg] <- sum(dpois(first_fit$y[,ss], lambda = link$linkinv(lp),log = TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -1792,8 +1784,8 @@ starting values;\n starting values are generated using ',control$init_method,
       sp_idx<-!first_fit$y_is_na[,ss]
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
-        lp <- first_fit$x[sp_idx,1] * fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
-        if(ncol(W)>1) lp <- lp + as.matrix(first_fit$W[sp_idx,-1]) %*% fits$gamma[ss,]
+        lp <- fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
+        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[sp_idx,-1,drop=FALSE]) %*% fits$gamma[ss,]
         logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$site_spp_weights[sp_idx,ss] %*% exp(lp)
       }
     }
@@ -1805,8 +1797,8 @@ starting values;\n starting values are generated using ',control$init_method,
     for(ss in 1:S){
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
-        lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(W)>1) lp <- lp + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
+        lp <- fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
+        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[sp_idx,-1,drop=FALSE]) %*% fits$gamma[ss,]
         logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size = exp(fits$theta[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
@@ -1818,8 +1810,8 @@ starting values;\n starting values are generated using ',control$init_method,
     for(ss in 1:S){
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
-        lp <- first_fit$x[,1] * fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(W)>1) lp <- lp + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
+        lp <- fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
+        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[sp_idx,-1,drop=FALSE]) %*% fits$gamma[ss,]
         logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=lp,sd=exp(fits$theta[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]

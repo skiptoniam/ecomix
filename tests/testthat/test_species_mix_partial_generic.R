@@ -7,15 +7,13 @@ beta <- matrix(c(-3.6,0.5,
                   0.9,-2.9,
                   2.2,5.4),
                 4,2,byrow=TRUE)
-gamma <- rnorm(50,1)
+gamma <- matrix(c(rnorm(50,1),rnorm(50,-2)),50,2)
 dat <- data.frame(y=rep(1,100), x1=runif(100,0,2.5), x2=rnorm(100,0,2.5),w1=rnorm(100,2,1), w2=rnorm(100,-1,2.5))
 dat[,-1] <- scale(dat[,-1])
 simulated_data <- species_mix.simulate(sam_form, spp_form, dat = dat,
                                        beta = beta, gamma = gamma,
                                        n_mixtures = 4,
-                                       distribution = "bernoulli")
-
-test_part_sam <- species_mix(sam_form,spp_form,simulated_data,4)
+                                       distribution = "poisson")
 
 archetype_formula <- sam_form
 species_formula <- spp_form
@@ -32,7 +30,7 @@ n_mixtures <- G <- 4
 S <- ncol(y)
 spp_weights <- rep(1,S)
 site_spp_weights <- matrix(1,nrow(y),S)
-disty <- 1
+disty <- 2
 y_is_na <- is.na(y)
 inits <- NULL
 control <- species_mix.control(quiet = FALSE)
@@ -80,9 +78,17 @@ mix_conditional_max <- ecomix:::apply_glm_mix_coefs_sams(gg, y, X, W,
                                                          offset, y_is_na, disty,
                                                          taus, fits, logls_mus$fitted)
 
+fm_mix_coefs <- surveillance::plapply(seq_len(G),
+                                      ecomix:::apply_glm_mix_coefs_sams,
+                                      y, X, W,
+                                      site_spp_weights, offset, y_is_na, disty,
+                                      taus, fits, logls_mus$fitted,
+                                      .parallel = control$cores,
+                                      .verbose = FALSE)
+
 partial_ECM <- ecomix:::fitmix_ECM_sam(y, X, W, spp_weights, site_spp_weights,
                                        offset, y_is_na, G, S, disty,
-                                       control=species_mix.control(em_steps=20))
+                                       control=species_mix.control(em_steps=10))
 
 start_vals <- ecomix:::get_starting_values_sam(y = y, X = X, W = W,
                                       spp_weights = spp_weights,
@@ -108,6 +114,9 @@ tmp <- ecomix:::sam_optimise(y,X,W,offset,spp_weights,site_spp_weights,y_is_na,
                              S,G,disty,start_vals,
                              control=ecomix:::species_mix.control())
 
+test_part_sam <- species_mix(sam_form,spp_form,simulated_data,4,
+                             distribution = 'bernoulli',
+                             control = species_mix.control(em_steps = 5))
 
 
 
