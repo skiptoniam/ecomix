@@ -725,12 +725,13 @@
   if(distribution %in% c('poisson','ippm','negative_binomial')) link <- make.link('log')
   if(distribution %in% c('gaussian')) link <- make.link('idenity')
   if(distribution %in% 'ippm') {
-    grid <- simulate_ippm_grid()
+    grid <- ecomix:::simulate_ippm_grid(X,W)
     grid2D <- grid$grid2D
     X <- grid$X
     W <- grid$W
   }
 
+  ## simulate the groups and fitted values.
   fitted <- matrix(0, dim(X)[1], S)
   group <- rep(0, S)
   for (ss in seq_len(S)) {
@@ -746,28 +747,35 @@
     outcomes <- matrix(rbinom(n * S, 1, as.numeric( fitted)), nrow = n, ncol = S)
   if( distribution=="poisson")
     outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
-  if( distribution=="ippm"){
-    outcomes <- simulate_ippm_outcomes(X, W, S, grid2D, fitted)
-  }
-    if( distribution=="negative_binomial")
+  if( distribution=="ippm")
+    outcomes <- ecomix:::simulate_ippm_outcomes(X, W, S, grid2D, fitted)
+  if( distribution=="negative_binomial")
     outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp(theta), each=n)), nrow = n, ncol = S)
   if( distribution=="gaussian")
     outcomes <- matrix( rnorm( n=n*S, mean=as.numeric( fitted), sd=rep( exp(theta), each=n)), nrow=n, ncol=S)
 
   pi <- tapply(group, group, length)/S
-  colnames(fitted) <- all.vars(sam_org)[1:S]
-  colnames(outcomes) <-  all.vars(sam_org)[1:S]
 
-  if(ncol(W)>1){
+  if (distribution=='ippm'){
+    res <- outcomes$mm
+    wts <- outcomes$weights
+    colnames(wts) <- all.vars(sam_org)[1:S]
+    colnames(fitted) <- all.vars(sam_org)[1:S]
+  } else {
+    colnames(fitted) <- all.vars(sam_org)[1:S]
+    colnames(outcomes) <-  all.vars(sam_org)[1:S]
+    if(ncol(W)>1){
       if( !all( offset==0))
         res <- data.frame(outcomes,const=1, X, W[,-1,drop=FALSE], offset=offset)
       else
         res <- data.frame(outcomes,const=1, X, W[,-1,drop=FALSE])
-  } else {
-    if( !all( offset==0))
-      res <- data.frame(outcomes,const=1, X, offset=offset)
-    else
-      res <- data.frame(outcomes,const=1, X)
+    } else {
+      if( !all( offset==0))
+        res <- data.frame(outcomes,const=1, X, offset=offset)
+      else
+        res <- data.frame(outcomes,const=1, X)
+    }
+  wts <- NULL
   }
   attr(res, "SAMs") <- group
   attr(res, "pis") <- pi
@@ -776,6 +784,7 @@
   attr(res, "gamma") <- gamma
   attr(res, "theta") <- theta
   attr(res, "mu") <- fitted
+  attr(res, "ippm_weights") <- wts
   return(res)
 }
 
@@ -1381,7 +1390,7 @@
   return(out)
 }
 
-## function for starting values.
+## function for starting values using penalities
 "apply_glmnet_sam_inits" <- function(ss, y, X, W, site_spp_weights,
                                      offset, y_is_na, disty){
 
@@ -1462,130 +1471,7 @@
   return(list(alpha = alpha, beta = beta, gamma = gamma, theta = theta))
 }
 
-## this will give the species intercepts with respect to the mixture linear predictor.
-"apply_glmnet_spp_coefs_sams" <- function(ss, y, X, W, G, taus, site_spp_weights,
-                                          offset, y_is_na, disty, fits){
-  ## glmnet family format
-  if(disty == 1)
-    fam <- stats::binomial() #"binomial"
-  if(disty == 2 | disty == 3 | disty == 4)
-    fam <- stats::poisson() #"poisson"
-  if(disty == 6)
-    fam <- stats::gaussian() #"gaussian"
-
-  ids_i <- !y_is_na[,ss]
-
-  if (disty==3){
-    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
-  } else {
-    outcomes <- as.numeric(y[ids_i,ss])
-  }
-  out1 <- kronecker(rep( 1, G), outcomes)
-  X1 <- kronecker(rep( 1, G), X[ids_i,])
-  if(ncol(W)>1){
-    W1 <- kronecker(rep( 1, G), W[ids_i,-1])
-  } else {
-    W1 <- X1
-  }
-  wts1 <- kronecker(rep( 1, G),
-                    as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,],
-                                                                each=length(site_spp_weights[ids_i,ss]))
-  offy1 <- kronecker(rep( 1, G), offset[ids_i])
-  offy2 <- X[ids_i,] %*% t(fits$beta)
-  offy2 <- as.numeric(offy2)
-  offy <- offy1 + offy2
-
-  if(disty %in% c(1,2,3,4,6)){
-      # lambda.seq <- sort( unique( c( seq( from=1/0.1, to=1, length=25), seq( from=1, to=0.01, length=10))), decreasing=TRUE)
-      ft_sp <- try(stats::glm.fit(x=as.data.frame(W1),
-                                  y=as.numeric(out1),
-                                  weights=as.numeric(wts1),
-                                  offset=as.numeric(offy),
-                                  family=fam), silent=FALSE)
-      if (class(ft_sp) %in% 'try-error'){
-        print(paste0(ss,"\n"))
-        my_coefs <- rep(NA, ncol(X1))
-      } else {
-        my_coefs <- coef(ft_sp)
-        names(my_coefs) <- c(colnames(y)[ss],colnames(W))
-      }
-  }
-  if(ncol(W)>1) gamma <- my_coefs[-1] else gamma <- -99999
-  return(list(alpha = my_coefs[1], gamma = gamma))
-}
-
-
-"apply_glmnet_mix_coefs_sams" <- function(gg, y, X, W, site_spp_weights, offset,
-                                          y_is_na, disty, taus, fits, mus){
-
-  ## glmnet family format
-  if(disty == 1)
-    fam <- "binomial"
-  if(disty == 2 | disty == 3 | disty == 4)
-    fam <- "poisson"
-  if(disty == 6)
-    fam <- "gaussian"
-
-  ### setup the data stucture for this model.
-  Y_taus <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
-  X_no_NA <- list()
-  W_no_NA <- list()
-  for (jj in 1:ncol(y)){
-    X_no_NA[[jj]] <- X[!y_is_na[,jj],,drop=FALSE]
-    W_no_NA[[jj]] <- W[!y_is_na[,jj],,drop=FALSE]
-  }
-  X_taus <- do.call(rbind, X_no_NA)
-  W_taus <- do.call(rbind, W_no_NA)
-  n_ys <- sapply(X_no_NA,nrow)
-  wts_taus <- rep(taus[,gg,drop=FALSE],c(n_ys))
-  if(disty==4)wts_taus <- rep(taus[,gg],c(n_ys))/(1+rep(exp(-fits$theta),n_ys)*as.vector(mus[gg,,]))
-
-  site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
-  wts_tausXsite_weights <- wts_taus*site_weights
-  offy_mat <- replicate(ncol(y),offset)
-  offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
-  if(ncol(W)>1){
-    offy2 <- W %*% t(cbind(fits$alpha,fits$gamma))
-    offy2 <- unlist(as.data.frame(offy2[!y_is_na]))
-  } else {
-    offy2 <- fits$alpha[rep(1:length(fits$alpha),n_ys)]
-  }
-  offy <- as.numeric(offy1 + offy2)
-
-  if (disty==3){
-    Y_taus <- as.matrix(Y_taus/site_weights)
-  } else {
-    Y_taus <- as.matrix(Y_taus)
-  }
-
-  if(disty %in% c(1,2,3,4,6)){ #don't use for tweedie
-    lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
-    ft_mix <- try(glmnet::glmnet(y=Y_taus, x=as.matrix(X_taus),
-                                family=fam, offset=offy,
-                                weights=as.matrix(wts_tausXsite_weights),
-                                alpha=0,
-                                lambda=lambda.seq,
-                                standardize=FALSE,
-                                intercept=FALSE), silent=FALSE)
-    locat.s <- 1/1
-    my.coefs <- glmnet::coef.glmnet(ft_mix, s=locat.s)
-    if( any( is.na( my.coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
-      my.coefs <- glmnet::coef.glmnet(ft_sp, s=lambda.seq)
-      lastID <- apply( my.coefs, 2, function(x) !any( is.na( x)))
-      lastID <- tail( (seq_along( lastID))[lastID], 1)
-      my.coefs <- my.coefs[,lastID]
-    }
-    if (any(class(ft_mix) %in% 'try-error')){
-      my_coefs <- rep(NA, ncol(X))
-    } else {
-      my_coefs <- t(as.matrix(my.coefs))[-1]
-    }
-  }
-  return(my_coefs)
-}
-
-
-
+#get the conditional maxima for species specific parameters.
 "apply_glm_spp_coefs_sams" <- function(ss, y, X, W, G, taus,
                                                site_spp_weights,
                                                offset, y_is_na, disty, fits){
@@ -1633,7 +1519,7 @@
     tmpform <- as.formula( paste('out1','-1+W1+offset(offy)', sep='~'))
     ft_sp <- try(mgcv::gam(tmpform, weights=wts1, family=mgcv::negbin(theta=exp(-fits$theta[ss]))))
     kount1 <- 1
-    while( class( ft_sp) %in% 'try-error' & kount1 < 10){
+    while( any(class( ft_sp) %in% 'try-error') & kount1 < 10){
       kount1 <- kount1 + 1
       theta <- 10 * exp(-fits$theta[ss])
       ft_sp <- try(mgcv::gam(tmpform, weights=wts1, family=mgcv::negbin(theta=theta)))
@@ -1644,6 +1530,7 @@
   return(list(alpha = my_coefs[1], gamma = my_coefs[-1]))
 }
 
+#get the conditional maximums for group coefs.
 "apply_glm_mix_coefs_sams" <- function(gg, y, X, W, site_spp_weights, offset,
                                                y_is_na, disty,
                                                taus, fits, mus){
@@ -1779,6 +1666,7 @@ starting values;\n starting values are generated using ',control$init_method,
   }
   #ippm
   if(disty==3){
+    link <- stats::make.link(link = "log")
     logl_sp <- matrix(NA, nrow=S, ncol=G)
     for(ss in 1:S){
       sp_idx<-!first_fit$y_is_na[,ss]
@@ -1793,13 +1681,14 @@ starting values;\n starting values are generated using ',control$init_method,
 
   #negative binomial
   if(disty==4){
+    link <- stats::make.link(link = "log")
     logl_sp <- matrix(NA, nrow=S, ncol=G)
     for(ss in 1:S){
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
-        lp <- fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
-        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[sp_idx,-1,drop=FALSE]) %*% fits$gamma[ss,]
-        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size = exp(fits$theta[ss]),log=TRUE))
+        lp <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[,-1,drop=FALSE]) %*% fits$gamma[ss,]
+        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=link$linkinv(lp),size = exp(fits$theta[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -2244,7 +2133,7 @@ starting values;\n starting values are generated using ',control$init_method,
   alpha.score <- as.numeric(rep(NA, length(alpha)))
   beta.score <- as.numeric(rep(NA, length(beta)))
   if( npw > 0){
-    gamma.score <- as.numeric(matrix( NA, nrow=S, ncol=ncol(W)))
+    gamma.score <- as.numeric(matrix( NA, nrow=S, ncol=npw))
   } else {
     gamma.score <- -999999
   }
@@ -2739,29 +2628,26 @@ starting values;\n starting values are generated using ',control$init_method,
   control
 }
 
-"simulate_ippm_grid" <- function(n=100){
+"simulate_ippm_grid" <- function(X,W,n=100,cell_area=1){
 
-              message('Generating ippm data on a regular 100x100 grid')
+              message(paste0("Generating ippm data on a regular ",n,"x",n," grid"))
               x <- y <- 1:n/n
               grid2D <- expand.grid( x, y)
-              grid2D$cellArea <- rep( 1, nrow( grid2D))  #all cells have same size here
-              grid2D$x1 <- runif(nrow(grid2D))
-              grid2D$x2 <- runif(rnorm(grid2D))
-              X <- as.matrix(data.frame(const=1,x1=grid2D$x1,x2=grid2D$x2))
-              W <- X[,1,drop=FALSE]
-              X <- X[,-1,drop=FALSE]
-              return(list(grid2D = grid2D, X = X, W = W))
+              grid2D$cellArea <- rep(cell_area, nrow( grid2D))  #all cells have same size here
+              Xippm <- apply(X,2,function(x)sample(x,n*n,replace = TRUE))
+              Wippm <- apply(W,2,function(x)sample(x,n*n,replace = TRUE))
+              return(list(grid2D = grid2D, X = Xippm, W = Wippm))
 }
 
-"simulate_ippm_outcomes" <- function(X, W, S, grid2D, lambdas, cell_area = 1){
+"simulate_ippm_outcomes" <- function(X, W, S, grid2D, fitted, cell_area = 1){
 
-  LAMBDAS <- apply(lambdas,2,function(x) sum(x * cell_area))
+  LAMBDAS <- apply(fitted,2,function(x) sum(x * cell_area))
   Ns <- sapply(LAMBDAS, function(x) rpois(n = 1, lambda = x))
   preds_df <- data.frame(idx=1:nrow(X), X)
   presences <- list()
-    for(i in seq_len(S)){
+  for(i in seq_len(S)){
       presences[[i]] <- sample(x=preds_df$idx,size=Ns[i],
-                               replace=TRUE, prob=lambdas[,i]/LAMBDAS[i])
+                               replace=TRUE, prob=fitted[,i]/LAMBDAS[i])
     }
 
   presence_coords <- lapply(presences,function(x)grid2D[x,1:2])
@@ -2785,9 +2671,10 @@ starting values;\n starting values are generated using ',control$init_method,
   }
   mm <- rbind(presence_data,bkdata)
 
+  ## calculate out the weights for ippm
   species_specific_cell_counts <- lapply(seq_along(rep(sp_name)),
                                          function(x)table(sp_dat_po_ul[sp_dat_po_ul$sp==rep(sp_name)[x],2]))
-  df <- data.frame(id=preds_df$idx,area=grid2D$cellArea,x1=grid2D$x1)
+  df <- data.frame(id=preds_df$idx,area=grid2D$cellArea)
   sp_weights <- lapply(seq_along(sp_name),function(x)(weights=df$area/as.numeric(species_specific_cell_counts[[x]][match(df$id,as.numeric(names(species_specific_cell_counts[[x]])))])))
   sp_weights_mat <- data.frame(cell_id = 1:nrow(X), do.call(cbind,sp_weights))
   m <- sp_weights_mat
@@ -2809,24 +2696,24 @@ starting values;\n starting values are generated using ',control$init_method,
   #   sp_name <- all.vars(archetype_formula)[seq_len(n_sp)]
 #
 #   X <- as.matrix(data.frame(const=1,x1=grid2D$x1,x2=grid2D$x2))
-#   lambdas <- matrix(0, dim(X)[1], n_sp, dimnames=list(NULL,sp_name))
+#   fitted <- matrix(0, dim(X)[1], n_sp, dimnames=list(NULL,sp_name))
 #   sp_int <- rep(0, n_sp)
 #   group <- rep(0, n_sp)
 #   for (s in seq_len(n_sp)) {
 #     g <- sample(n_g,1)
 #     sp_int[s] <- runif(1, -6, -3)
 #     log_lambda <-  X%*%c(sp_int[s],theta[g,-1])
-#     lambdas[, s] <- exp(log_lambda)
+#     fitted[, s] <- exp(log_lambda)
 #     group[s] <- g
 #   }
 #
-#   LAMBDAS <- apply(lambdas,2,function(x)sum(x*grid2D$cellArea))
+#   LAMBDAS <- apply(fitted,2,function(x)sum(x*grid2D$cellArea))
 #   Ns <- sapply(LAMBDAS,function(x)rpois(n=1, lambda= x))
 #   preds_df <- data.frame(idx=1:nrow(X),X)
 #   presences <- list()
 #   for(i in seq_len(n_sp)){
 #     presences[[i]] <- sample(x=preds_df$idx,size=Ns[i],
-#                              replace=TRUE, prob=lambdas[,i]/LAMBDAS[i])
+#                              replace=TRUE, prob=fitted[,i]/LAMBDAS[i])
 #   }
 #
 #   presence_coords <- lapply(presences,function(x)grid2D[x,1:2])
