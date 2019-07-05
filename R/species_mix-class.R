@@ -2679,89 +2679,19 @@ starting values;\n starting values are generated using ',control$init_method,
   species_specific_cell_counts <- lapply(seq_along(rep(sp_name)),
                                          function(x)table(sp_dat_po_ul[sp_dat_po_ul$sp==rep(sp_name)[x],2]))
   df <- data.frame(id=preds_df$idx,area=grid2D$cellArea)
-  sp_weights <- lapply(seq_along(sp_name),function(x)(weights=df$area/as.numeric(species_specific_cell_counts[[x]][match(df$id,as.numeric(names(species_specific_cell_counts[[x]])))])))
+  sp_weights <- lapply(seq_along(sp_name),
+                       function(x)(weights=df$area/as.numeric(species_specific_cell_counts[[x]][match(df$id,as.numeric(names(species_specific_cell_counts[[x]])))])))
   sp_weights_mat <- data.frame(cell_id = 1:nrow(X), do.call(cbind,sp_weights))
   m <- sp_weights_mat
   presence_sites <- m[rowSums(is.na(m[,-1]))!=ncol(m[,-1]), ]
   presence_sites <- data.frame(presence_sites)
-  background_sites <- data.frame(cell_id=1:ncol(X),matrix(rep(grid2D$cellArea,S),
-             nrow(grid2D),S))
+  background_sites <- data.frame(cell_id=1:ncol(X),
+                                 matrix(rep(grid2D$cellArea,S),nrow(grid2D),S))
   cat(colnames(presence_sites),colnames(background_sites))
   wts <- rbind(presence_sites[,-1],background_sites[,-1])
 
   return(list(mm=mm,weights=wts))
 }
-
-
-"simulate_ippm_weights" <- function(){
-
-
-}
-
-  #   sp_name <- all.vars(archetype_formula)[seq_len(n_sp)]
-#
-#   X <- as.matrix(data.frame(const=1,x1=grid2D$x1,x2=grid2D$x2))
-#   fitted <- matrix(0, dim(X)[1], n_sp, dimnames=list(NULL,sp_name))
-#   sp_int <- rep(0, n_sp)
-#   group <- rep(0, n_sp)
-#   for (s in seq_len(n_sp)) {
-#     g <- sample(n_g,1)
-#     sp_int[s] <- runif(1, -6, -3)
-#     log_lambda <-  X%*%c(sp_int[s],theta[g,-1])
-#     fitted[, s] <- exp(log_lambda)
-#     group[s] <- g
-#   }
-#
-#   LAMBDAS <- apply(fitted,2,function(x)sum(x*grid2D$cellArea))
-#   Ns <- sapply(LAMBDAS,function(x)rpois(n=1, lambda= x))
-#   preds_df <- data.frame(idx=1:nrow(X),X)
-#   presences <- list()
-#   for(i in seq_len(n_sp)){
-#     presences[[i]] <- sample(x=preds_df$idx,size=Ns[i],
-#                              replace=TRUE, prob=fitted[,i]/LAMBDAS[i])
-#   }
-#
-#   presence_coords <- lapply(presences,function(x)grid2D[x,1:2])
-#   presences_sort <- lapply(presences,sort)
-#
-#   sp_dat_po_ul<- data.frame(sp=rep(sp_name,unlist(lapply(presences,length))),
-#                             cell_num=unlist(presences_sort))
-#   po_matrix <- table_to_species_data(sp_dat_po_ul,
-#                                      site_id = 'cell_num',species_id = 'sp')
-#   po_matrix[po_matrix==0]<-NA
-#   po_covariates <- X[as.numeric(rownames(po_matrix)),]
-#   presence_data <- data.frame(po_matrix,po_covariates)
-#   bkdata <- cbind(matrix(0,nrow(X),n_sp),X)
-#   colnames(bkdata) <- colnames(presence_data)
-#   mm <- rbind(presence_data,bkdata)
-#   dat <- mm[c(sp_name,"const","x1","x2")]
-#
-#   species_specific_cell_counts <- lapply(seq_along(sp_name),
-#                                          function(x)table(sp_dat_po_ul[sp_dat_po_ul$sp==sp_name[x],2]))
-#
-#   df <- data.frame(id=preds_df$idx,area=grid2D$cellArea,x1=grid2D$x1)
-#
-#   sp_weights <- lapply(seq_along(sp_name),
-#                        function(x)(weights=df$area/as.numeric(species_specific_cell_counts[[x]][match(df$id,as.numeric(names(species_specific_cell_counts[[x]])))])))
-#
-#   sp_weights_mat <- data.frame(cell_id = 1:10000, do.call(cbind,sp_weights))
-#
-#   m <- sp_weights_mat
-#   presence_sites <- m[rowSums(is.na(m[,-1]))!=ncol(m[,-1]), ]
-#   presence_sites <- data.frame(presence_sites)
-#   background_sites <- data.frame(cell_id=1:10000,matrix(rep(grid2D$cellArea,n_sp),
-#                                                         nrow(grid2D),n_sp))
-#
-#   wts <- rbind(presence_sites[,-1],background_sites[,-1])
-#   colnames(wts) <- c(sp_name)#,"const","x1","x2")
-#   y <- dat[,1:n_sp]
-#   X <- dat[,c(n_sp+1):ncol(dat)]
-#   y_is_na <- is.na(y)
-#   weights <- wts
-#   offset <- rep(0,nrow(dat))
-#   pi <- tapply(group, group, length)/n_sp
-#   return(list(species_data = y, covariate_data = X, background_weights = wts, offset=offset,
-#        y_is_na=y_is_na,group = group, pi = pi, sp.int = sp_int, lambdas = LAMBDAS))
 
 
 "standardise.X" <- function (mat){

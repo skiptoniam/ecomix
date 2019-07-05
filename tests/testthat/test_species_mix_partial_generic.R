@@ -242,10 +242,10 @@ testthat::test_that('testing partial species mix poisson ', {
 testthat::test_that('testing partial species mix ippm ', {
 
   library(ecomix)
-  set.seed(42)
+  set.seed(123)
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~x1+x2"))
   spp_form <- as.formula(~1+w1+w2)
-  alpha <- rnorm(50,-14,.5)
+  alpha <- rnorm(50,-13,.5)
   beta <- matrix(c(-2.6,-1.5,
                    -1.1,1.8,
                    0.9,-2.9,
@@ -273,7 +273,7 @@ testthat::test_that('testing partial species mix ippm ', {
   n_mixtures <- G <- 4
   S <- ncol(y)
   spp_weights <- rep(1,S)
-  site_spp_weights <- matrix(1,nrow(y),S)
+  site_spp_weights <- attr(simulated_data,'ippm_weights')
   disty <- 3
   y_is_na <- is.na(y)
   inits <- NULL
@@ -354,6 +354,7 @@ testthat::test_that('testing partial species mix ippm ', {
                                control=ecomix:::species_mix.control())
 
   test_part_sam <- species_mix(sam_form,spp_form,simulated_data,4,
+                               weights = attr(simulated_data,'ippm_weights'),
                                distribution = 'ippm',
                                control = species_mix.control(em_steps = 5))
 })
