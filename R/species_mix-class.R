@@ -748,7 +748,7 @@
   if( distribution=="poisson")
     outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
   if( distribution=="ippm")
-    outcomes <- ecomix:::simulate_ippm_outcomes(X, W, S, grid2D, fitted)
+    outcomes <- simulate_ippm_outcomes(X, W, S, grid2D, fitted)
   if( distribution=="negative_binomial")
     outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp(theta), each=n)), nrow = n, ncol = S)
   if( distribution=="gaussian")
@@ -2645,22 +2645,25 @@ starting values;\n starting values are generated using ',control$init_method,
   Ns <- sapply(LAMBDAS, function(x) rpois(n = 1, lambda = x))
   preds_df <- data.frame(idx=1:nrow(X), X)
   presences <- list()
+
   for(i in seq_len(S)){
-      presences[[i]] <- sample(x=preds_df$idx,size=Ns[i],
-                               replace=TRUE, prob=fitted[,i]/LAMBDAS[i])
+      presences[[i]] <- sample(x=preds_df$idx,size=Ns[i], replace=TRUE, prob=fitted[,i]/LAMBDAS[i])
     }
 
   presence_coords <- lapply(presences,function(x)grid2D[x,1:2])
   presences_sort <- lapply(presences,sort)
-  sp_name <- paste0("spp",seq_len(S))
+  sp_name <- paste0(seq_len(S))
   sp_dat_po_ul<- data.frame(sp=rep(sp_name,unlist(lapply(presences,length))),
                               cell_num=unlist(presences_sort))
   po_matrix <- table_to_species_data(sp_dat_po_ul,
                                        site_id = 'cell_num',species_id = 'sp')
+  po_matrix <- po_matrix[,order(as.numeric(as.character(colnames(po_matrix))))]
   po_matrix[po_matrix==0]<-NA
+  # po_matrix[order]
   po_covariatesX <- X[as.numeric(rownames(po_matrix)),,drop=FALSE]
   absence_data <- matrix(0,nrow(X),S)
-  colnames(absence_data) <- sp_name
+  colnames(po_matrix) <- paste0('spp',sp_name)
+  colnames(absence_data) <- paste0('spp',sp_name)
   if(ncol(W)>1){
     po_covariatesW <- W[as.numeric(rownames(po_matrix)),-1,drop=FALSE]
     presence_data <- data.frame(po_matrix,const=1,po_covariatesX,po_covariatesW)
@@ -2669,6 +2672,7 @@ starting values;\n starting values are generated using ',control$init_method,
     presence_data <- data.frame(po_matrix,const=1,po_covariatesX)
     bkdata <- cbind(absence_data,const=1,X)
   }
+  cat(colnames(presence_data),colnames(bkdata))
   mm <- rbind(presence_data,bkdata)
 
   ## calculate out the weights for ippm
@@ -2682,6 +2686,7 @@ starting values;\n starting values are generated using ',control$init_method,
   presence_sites <- data.frame(presence_sites)
   background_sites <- data.frame(cell_id=1:ncol(X),matrix(rep(grid2D$cellArea,S),
              nrow(grid2D),S))
+  cat(colnames(presence_sites),colnames(background_sites))
   wts <- rbind(presence_sites[,-1],background_sites[,-1])
 
   return(list(mm=mm,weights=wts))

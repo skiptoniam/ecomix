@@ -262,7 +262,7 @@ testthat::test_that('testing partial species mix ippm ', {
                                          n_mixtures = 4,
                                          distribution = "ippm")
 
-  test_dat <- ecomix:::clean_data_sam(simulated_data, archetype_formula, species_formula, distribution = 'poisson')
+  test_dat <- ecomix:::clean_data_sam(simulated_data, archetype_formula, species_formula, distribution = 'ippm')
   test_dat$mf.X
   test_dat$mf.W
 
@@ -274,7 +274,7 @@ testthat::test_that('testing partial species mix ippm ', {
   S <- ncol(y)
   spp_weights <- rep(1,S)
   site_spp_weights <- matrix(1,nrow(y),S)
-  disty <- 2
+  disty <- 3
   y_is_na <- is.na(y)
   inits <- NULL
   control <- species_mix.control(quiet = FALSE)
@@ -329,7 +329,7 @@ testthat::test_that('testing partial species mix ippm ', {
 
   partial_ECM <- ecomix:::fitmix_ECM_sam(y, X, W, spp_weights, site_spp_weights,
                                          offset, y_is_na, G, S, disty,
-                                         control=species_mix.control(em_steps=10))
+                                         control=species_mix.control(em_steps=5))
 
   start_vals <- ecomix:::get_starting_values_sam(y = y, X = X, W = W,
                                                  spp_weights = spp_weights,
@@ -354,7 +354,7 @@ testthat::test_that('testing partial species mix ippm ', {
                                control=ecomix:::species_mix.control())
 
   test_part_sam <- species_mix(sam_form,spp_form,simulated_data,4,
-                               distribution = 'poisson',
+                               distribution = 'ippm',
                                control = species_mix.control(em_steps = 5))
 })
 
