@@ -255,21 +255,20 @@ Minima is found using vmmin (BFGS). Currently 'bernoulli',
 library(ecomix)
 set.seed(42)
 sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
-collapse = ','),")~1+x1+x2"))
+collapse = ','),")~x1+x2"))
 sp_form <- ~ 1
-theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,1.9),3,3,byrow=TRUE)
+beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,1.9),3,2,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
 x2=stats::rnorm(100,0,2.5))
 dat[,-1] <- scale(dat[,-1])
 simulated_data <- species_mix.simulate(archetype_formula=sam_form,
- species_formula=sp_form, dat,theta,dist="bernoulli")
-data <- make_mixture_data(species_data = simulated_data$species_data,
-                          covariate_data = simulated_data$covariate_data[,-1])
-fm1 <- species_mix(sam_form, sp_form, data, distribution = 'bernoulli',
+ species_formula=sp_form, dat,beta=beta,dist="bernoulli")
+fm1 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'bernoulli',
  n_mixtures=3)
  }
 \dontrun{
-fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli', nstart = 10, n_mixtures=3)
+fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
+ distribution = 'bernoulli', nstart = 10, n_mixtures=3)
 }
 \dontrun{
 archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',

@@ -89,17 +89,15 @@
 #' library(ecomix)
 #' set.seed(42)
 #' sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
-#' collapse = ','),")~1+x1+x2"))
+#' collapse = ','),")~x1+x2"))
 #' sp_form <- ~ 1
-#' theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,1.9),3,3,byrow=TRUE)
+#' beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,1.9),3,2,byrow=TRUE)
 #' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
 #' x2=stats::rnorm(100,0,2.5))
 #' dat[,-1] <- scale(dat[,-1])
 #' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
-#'  species_formula=sp_form, dat,theta,dist="bernoulli")
-#' data <- make_mixture_data(species_data = simulated_data$species_data,
-#'                           covariate_data = simulated_data$covariate_data[,-1])
-#' fm1 <- species_mix(sam_form, sp_form, data, distribution = 'bernoulli',
+#'  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
+#' fm1 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'bernoulli',
 #'  n_mixtures=3)
 #'  }
 
@@ -310,7 +308,8 @@
 #'@export
 #'@examples
 #' \dontrun{
-#' fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli', nstart = 10, n_mixtures=3)
+#' fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
+#'  distribution = 'bernoulli', nstart = 10, n_mixtures=3)
 #' }
 "species_mix.multifit" <- function(archetype_formula = NULL,
                                    species_formula = stats::as.formula(~1),
@@ -332,8 +331,12 @@
       message("There is no SAM model! Please provide a model (intercept at least) -- exitting now")
     return(NULL)
   }
+
+  # check the species formula, if 0 make 1, if 1 use species mix, if 2 use partial mixtures.
+  which_mix <- check_species_formula(species_formula)
   if(!is.null(species_formula))
     species_formula <- stats::as.formula(species_formula)
+
 
   mf <- match.call(expand.dots = FALSE)
   if(distribution=="ippm"){
@@ -344,6 +347,7 @@
 
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
+
   if(distribution=="ippm"){
     mf$na.action <- "na.pass"
   } else {
@@ -355,8 +359,7 @@
 
   # need this for the na.omit step
   rownames(mf)<-seq_len(nrow(mf))
-
-  dat <- clean_data_sam(mf, archetype_formula, NULL, distribution)
+  dat <- clean_data_sam(mf, archetype_formula, species_formula, distribution)
 
   # get responses
   y <- stats::model.response(dat$mf.X)
@@ -376,10 +379,30 @@
     message( "There are ", n_mixtures, " archtypes to group the species into")
 
   # get archetype model matrix
-  X <- get_X_sam(archetype_formula, dat$mf.X)
+  X <- get_X_sam(archetype_formula = archetype_formula, mf.X = dat$mf.X)
+
+  # what is the W matrix (species covariates)
+  W <- get_W_sam(species_formula = species_formula, mf.W = dat$mf.W)
+
+  # standarise data if requested.
+  x.means <- NULL
+  x.sds <- NULL
+  w.means <- NULL
+  w.sds <- NULL
+  if (standardise == TRUE) {
+    stand.X <- standardise.X(X[, -1])
+    X <- as.matrix(cbind(1, stand.X$X))
+    stand.W <- standardise.X(W)
+    W <- as.matrix(stand.X$X)
+    x.means <- stand.X$dat.means
+    x.sds <- stand.X$dat.sds
+    w.means <- stand.W$dat.means
+    w.sds <- stand.W$dat.sds
+  }
 
   #get distribution
-  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
+  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie",
+                   "gaussian")
   disty <- get_distribution_sam(disty_cases, distribution)
 
   # get offsets
@@ -387,12 +410,13 @@
 
   # get the weights
   species_names <- colnames(y)
-  site_spp_weights <- get_site_spp_weights_sam(mf,weights,species_names,distribution)
+  site_spp_weights <- get_site_spp_weights_sam(mf,weights,species_names,
+                                               distribution)
   spp_weights <- check_spp_weights(bb_weights,S)
 
   if(distribution=='ippm'){
     if(!all(colnames(y)==colnames(site_spp_weights))){
-      stop(cat('When modelling a inhomogenous poisson point process model,
+      stop(cat('When modelling a inhomogeneous poisson point process model,
                \n species data colnames must match weights colnames.\n\n
                Species data colnames from "data" are:\n',colnames(y),'.\n\n
                While the colnames of the weights are:\n',
@@ -403,33 +427,29 @@
            weights needs to have the same dimensions at the
            species data - n_sites x n_species')
     }
-  }
-
-  s.means <- NULL
-  s.sds <- NULL
-  if (standardise == TRUE) {
-    stand.X <- standardise.X(X[, -1])
-    X <- as.matrix(cbind(1, stand.X$X))
-    s.means <- stand.X$dat.means
-    s.sds <- stand.X$dat.sds
-  }
+    }
 
   # summarising data to console
-  print_input_sam(y, X, S, archetype_formula, species_formula, distribution, quiet=control$quiet)
+  if(!control$quiet) print_input_sam(y, X, W, S, archetype_formula,
+                                     species_formula, distribution,
+                                     quiet=control$quiet)
 
   tmp_fun <- function(x){
-      if( !control$quiet & nstart>1)
-        setTxtProgressBar(pb, x)
-      tmpQuiet <- control$quiet
-      control$quiet <- TRUE
-      tmp <- species_mix.fit(y=y, X=X, G=n_mixtures, S=S, spp_weights=spp_weights,
+    if( !control$quiet & nstart>1)
+      setTxtProgressBar(pb, x)
+        tmpQuiet <- control$quiet
+        control$quiet <- TRUE
+      # fit species mix.
+      tmp <- species_mix.fit(y=y, X=X, W=W, G=n_mixtures, S=S,
+                             spp_weights=spp_weights,
                              site_spp_weights=site_spp_weights,
                              offset=offset, disty=disty, y_is_na=y_is_na,
                              control=control, inits=inits)
 
       tmp$dist <- disty_cases[disty]
 
-      tmp$pis <- additive_logistic(tmp$eta)
+      if(n_mixtures==1) tmp$pis <- tmp$pis
+      else tmp$pis <- additive_logistic(tmp$eta)
 
       #calc posterior porbs and pis.
       if(n_mixtures>1)
@@ -441,10 +461,9 @@
       tmp <- calc_info_crit_sam(tmp)
 
       #titbits object, if wanted/needed.
-      tmp$titbits <- get_titbits_sam(titbits, y, X, spp_weights,
-                                     site_spp_weights, offset,
-                                     y_is_na , archetype_formula,
-                                     species_formula, control,
+      tmp$titbits <- get_titbits_sam(titbits, y, X, W, spp_weights,
+                                     site_spp_weights, offset, y_is_na,
+                                     archetype_formula, species_formula, control,
                                      disty_cases[disty], tmp$removed_species)
       class(tmp) <- c("species_mix")
       return( tmp)
@@ -1158,7 +1177,7 @@
     }
     # if( Sys.info()['sysname'] == "Windows")
     X <- object$titbits$X
-    p.x <- ncol(X)
+    W <- object$titbits$W
     offy <- object$titbits$offset
     spp_wts <- object$titbits$spp_weights
     site_spp_wts <- object$titbits$site_spp_weights
@@ -1166,7 +1185,7 @@
     y_is_na <- object$titbits$y_is_na
     distribution <- object$titbits$distribution
     disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
-    disty <- get_distribution_sam(disty_cases, distribution)
+    disty <- ecomix:::get_distribution_sam(disty_cases, distribution)
     S <- object$S
     G <- object$G
     n <- object$n
@@ -1174,34 +1193,37 @@
 
     # values for optimisation.
     inits <- object$coefs
-    np <- as.integer(ncol(X))
-    n <- Obs <- as.integer(nrow(X))
-    start_vals <- setup_inits_sam(inits,S,G,np,disty,return_list = TRUE)
+    start_vals <- ecomix:::setup_inits_sam(inits, S, G, X, W, disty, return_list = TRUE)
+    if(ncol(W)>1){
+      Wnew <- W[,-1,drop=FALSE]
+      npw <- ncol(W)
+    } else{
+      Wnew <- -999999
+      npw <- 0
+    }
 
     # parameters to optimise
     alpha <- as.numeric(start_vals$alpha)
     beta <- as.numeric(start_vals$beta)
+    gamma <- as.numeric(start_vals$gamma)
     eta <- as.numeric(start_vals$eta)
     theta <- as.numeric(start_vals$theta)
 
     #scores
     alpha.score <- as.numeric(rep(NA, length(alpha)))
     beta.score <- as.numeric(rep(NA, length(beta)))
+    gamma.score <- as.numeric(matrix( NA, nrow=S, ncol=npw))
     eta.score <- as.numeric(rep(NA, length(eta)))
-    theta.score <- as.numeric(rep(NA, length(theta)))
-    getscores <- 1
-    scores <- as.numeric(rep(NA,length(c(alpha,beta,eta,theta))))
-
-
+    theta.score <- as.numeric(rep(NA,length(theta)))
     if(disty%in%c(4,6)){
       control$optiDisp <- as.integer(1)
     }else{
       control$optiDisp <- as.integer(0)
     }
-
+    scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,gamma.score,eta.score,theta.score))))
     #model quantities
     pis_out <- as.numeric(rep(NA, G))  #container for the fitted RCP model
-    mus <- as.numeric(array( NA, dim=c( Obs, S, G)))  #container for the fitted spp model
+    mus <- as.numeric(array(NA, dim=c( Obs, S, G)))  #container for the fitted spp model
     loglikeS <- as.numeric(rep(NA, S))
     loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
 
@@ -1213,45 +1235,48 @@
         start <- 0
         alpha <- x[start + seq_len(S)]
         start <- start + S
-        beta <- x[start + seq_len((G*np))]
-        start <- start + (G*np)
+        beta <- x[start + seq_len((G*npx))]
+        start <- start + (G*npx)
+        if(ncol(W)>1) {
+          gamma <- x[start + seq_len((S*npw))]
+          start <- start + (S*npw)
+        } else {
+          gamma <- rep(-999999,S)
+          start <- start + S
+        }
         eta <- x[start + seq_len(G - 1)]
         start <- start + (G-1)
-        if(disty%in%c(4,6))
+        if(disty%in%c(4,6)){
           theta <- x[start + seq_len(S)]
-        else
+        } else {
           theta <- rep(-999999,S)
+        }
         tmp <- .Call("species_mix_cpp",
-                 as.numeric(as.matrix(Y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1])), as.numeric(offy), as.numeric(spp_wts),
-                 as.numeric(as.matrix(site_spp_wts)), as.integer(as.matrix(!y_is_na)),
-                 # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
-                 as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(Obs), as.integer(disty),
-                 as.integer(control$optiDisp),
-                 # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
-                 as.double(alpha), as.double(beta), as.double(gamma), as.double(eta), as.double(theta),
-                 # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rtheta,
-                 alpha.score, beta.score, gamma.score, eta.score, theta.score, as.integer(control$getscores), scores,
-                 # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
-                 pis_out, mus, loglikeS, loglikeSG,
-                 # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
-                 as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
-                 as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp),
-                 as.integer(control$printparams_cpp),
-                 # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
-                 as.integer(0), as.integer(0), as.integer(1),
-                 # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly,
-                 PACKAGE = "ecomix")
+                     as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(Wnew)),
+                     as.numeric(offset), as.numeric(spp_weights), as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
+                     # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
+                     as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n), as.integer(disty),as.integer(control$optiDisp),
+                     # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
+                     as.double(alpha), as.double(beta), as.double(gamma), as.double(eta), as.double(theta),
+                     # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
+                     alpha.score, beta.score, gamma.score, eta.score, theta.score, as.integer(1), scores,
+                     # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
+                     pis_out, mus, loglikeS, loglikeSG,
+                     # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
+                     as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
+                     as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp), as.integer(1),
+                     # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
+                     as.integer(1), as.integer(0), as.integer(0),
+                     # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
+                     PACKAGE = "ecomix")
 
-        tmp1 <- c(alpha.score, beta.score, eta.score)
-        # if( p.w > 0)#class( object$titbits$species_formula) == "formula")
-          # tmp1 <- c( tmp1, gamma.score)
-        if(any(!is.null(object$coef$theta)))
-          tmp1 <- c( tmp1, theta.score)
+        # tmp1 <- c(alpha.score, beta.score, eta.score)
+        tmp1 <- c(alpha.score, beta.score, gamma.score, eta.score, theta.score)
+        # if(any(!is.null(object$coef$theta)))
+          # tmp1 <- c( tmp1, theta.score)
         return(tmp1)
       }
-      mod_coefs <- unlist(object$coefs)
-      # if(any(is.na( object$coef$theta))) mod_coefs <- mod_coefs[!is.na(mod_coefs)]
-
+      mod_coefs <- ecomix:::setup_inits_sam(inits, S, G, X, W, disty, return_list = FALSE)
       hess <- numDeriv::jacobian(grad_fun, mod_coefs)
       vcov.mat <- try( -solve(hess))
       if( inherits( vcov.mat, 'try-error')){
@@ -1553,7 +1578,8 @@
   wts_tausXsite_weights <- wts_taus*site_weights
   offy_mat <- replicate(ncol(y),offset)
   offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
-  offy2 <- W %*% t(cbind(fits$alpha,fits$gamma))
+  if(ncol(W)>1) offy2 <- W %*% t(cbind(fits$alpha,fits$gamma))
+  else offy2 <- W %*% c(fits$alpha)
   offy2 <- unlist(as.data.frame(offy2[!y_is_na]))
   offy <- as.numeric(offy1 + offy2)
 
@@ -2115,29 +2141,31 @@ starting values;\n starting values are generated using ',control$init_method,
 "sam_optimise" <- function(y, X, W, offset, spp_weights, site_spp_weights, y_is_na,
                            S, G, disty, start_vals, control){
 
-  inits <- c(start_vals$alpha, start_vals$beta, start_vals$gamma, start_vals$eta, start_vals$theta)
+  inits <- c(start_vals$alpha, start_vals$beta, start_vals$eta, start_vals$gamma, start_vals$theta)
 
   npx <- as.integer(ncol(X))
-  if(ncol(W)>1) npw <- as.integer(ncol(W[,-1,drop=FALSE])) else npw <- 0
+  if(ncol(W)>1) npw <- as.integer(ncol(W[,-1,drop=FALSE])) else npw <- as.integer(0)
   n <- as.integer(nrow(X))
 
   # parameters to optimise
   alpha <- as.numeric(start_vals$alpha)
   beta <- as.numeric(start_vals$beta)
-  gamma <- as.numeric(start_vals$gamma)
   eta <- as.numeric(start_vals$eta)
+  gamma <- as.numeric(start_vals$gamma)
   theta <- as.numeric(start_vals$theta)
 
   #scores
   getscores <- 1
   alpha.score <- as.numeric(rep(NA, length(alpha)))
   beta.score <- as.numeric(rep(NA, length(beta)))
+  eta.score <- as.numeric(rep(NA, length(eta)))
   if( npw > 0){
+    control$optiPart <- as.integer(1)
     gamma.score <- as.numeric(matrix( NA, nrow=S, ncol=npw))
   } else {
+    control$optiPart <- as.integer(0)
     gamma.score <- -999999
   }
-  eta.score <- as.numeric(rep(NA, length(eta)))
   if(disty%in%c(4,6)){
     control$optiDisp <- as.integer(1)
     theta.score <- as.numeric(rep(NA, S))
@@ -2145,8 +2173,8 @@ starting values;\n starting values are generated using ',control$init_method,
     control$optiDisp <- as.integer(0)
     theta.score <- -999999
   }
-  scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,gamma.score,eta.score,theta.score))))
-
+  scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,gamma.score,theta.score))))
+  control$conv_cpp <- as.integer(0)
 
   #model quantities
   pis_out <- as.numeric(rep(NA, G))  #container for the fitted RCP model
@@ -2170,7 +2198,8 @@ starting values;\n starting values are generated using ',control$init_method,
                as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(offset), as.numeric(spp_weights),
                as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
                # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
-               as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n), as.integer(disty),as.integer(control$optiDisp),
+               as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n),
+               as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),
                # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
                as.double(alpha), as.double(beta), as.double(gamma), as.double(eta), as.double(theta),
                # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
@@ -2191,6 +2220,8 @@ starting values;\n starting values are generated using ',control$init_method,
 
   # beta <- matrix(ret$beta,G,np)
   # colnames(beta) <-
+
+
 
   if(!disty%in%c(4,6))
     ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
@@ -2580,16 +2611,18 @@ starting values;\n starting values are generated using ',control$init_method,
   if(is.list(inits)){
     alpha <- as.numeric(inits$alpha)
     beta <- as.numeric(inits$beta)
-    if(!is.null(npw))
+    if(!is.null(npw)){
       gamma <- as.numeric(inits$gamma)
-    else
-      gamma <- -99999
+    } else {
+      gamma <- rep(-99999,S)
+    }
     eta <- as.numeric(inits$eta)
-    # theta <- as.numeric(inits$theta)
-    if(disty%in%c(4,6)|is.null(inits$theta))
+
+    if(disty%in%c(4,6)){
       theta <- as.numeric(inits$theta)
-    else
-      theta <- rep(-999999,length(alpha))
+    } else {
+      theta <- rep(-99999,S)
+    }
     if(return_list) res <- list(alpha=alpha,beta=beta,gamma=gamma,eta=eta,theta=theta)
     else res <- c(alpha,beta,gamma,eta,theta)
     }
@@ -2604,7 +2637,8 @@ starting values;\n starting values are generated using ',control$init_method,
       gamma <- inits[start + 1:((S*npw))]
       start <- start + (G*npw)
     } else {
-      gamma <- -99999
+      gamma <- rep(-99999,S)
+      start <- start + S
     }
     start <- start + (G*npw)
     eta <- inits[start + 1:(G - 1)]
@@ -2612,7 +2646,7 @@ starting values;\n starting values are generated using ',control$init_method,
     if(disty%in%c(4,6))
       theta <- inits[start + 1:S]
     else
-      theta <- rep(-999999,S)
+      theta <- rep(-99999,S)
 
     if(return_list) res <- list(alpha=alpha,beta=beta,gamma=gamma,eta=eta,theta=theta)
     else res <- c(alpha,beta,gamma,eta,theta)
