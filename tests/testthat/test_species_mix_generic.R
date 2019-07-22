@@ -9,9 +9,8 @@ testthat::test_that('species mix internal functions classes work', {
   theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,7.9),3,3,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(archetype_formula = archetype_form, species_formula = ~1,dat,theta,dist="bernoulli")
-  model_data <- make_mixture_data(species_data = simulated_data$species_data,
-                                  covariate_data = simulated_data$covariate_data[,-1])
+  simulated_data <- species_mix.simulate(archetype_formula = archetype_form, species_formula = ~1,dat = dat,dist="bernoulli")
+  model_data <- simulated_data
 
   #test formula error
   testthat::expect_error(fm1 <- species_mix(NA, ~1, model_data, distribution = 'bernoulli', n_mixtures=3))
@@ -32,26 +31,17 @@ testthat::test_that('species mix internal functions classes work', {
   testthat::expect_true(ecomix:::check_species_formula(f3)==1)
   testthat::expect_true(ecomix:::check_species_formula(f4)==0)
 
-
-
-  set.seed(42)
-  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~1+x1+x2"))
-  theta <- matrix(c(-2.9,1.6,0.5,1,-0.9,1,.9,2.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
-  dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
-  dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form,~1,dat,theta,dist="bernoulli")
-
-  y <- simulated_data$species_data
-  X <- simulated_data$covariate_data[,-1]
-  W <- simulated_data$covariate_data[,1,drop=FALSE]
+  y <- simulated_data[,1:20]
+  X <- simulated_data[,-1:-21]
+  W <- simulated_data[,21,drop=FALSE]
   offset <- rep(0,nrow(y))
-  # weights <- rep(1,nrow(y))
   spp_weights <- rep(1,ncol(y))
   site_spp_weights <- matrix(1,nrow(y),ncol(y))
   y_is_na <- matrix(FALSE,nrow(y),ncol(y))
-  G <- length(simulated_data$pi)
-  S <- length(simulated_data$sp.int)
+  G <- length(attr(simulated_data,"pis"))
+  S <- 20
   nPX <- ncol(X)
+  nPW <- ncol(W)
   control <- species_mix.control()
 
   # test a new glm function bernoulli
@@ -73,12 +63,12 @@ testthat::test_that('species mix internal functions classes work', {
   testthat::expect_length(do.call(rbind, gammas),S)
 
   thetas <- unlist(lapply(fm_bern, `[[`, 4))
-  testthat::expect_true(all(-99999))
+  testthat::expect_true(all(thetas==-99999))
 
   ## poisson
-  simulated_data <- species_mix.simulate(sam_form,~1,dat,theta,dist="poisson")
+  simulated_data <- species_mix.simulate(sam_form,~1,dat,dist="poisson")
 
-  y <- simulated_data$species_data
+  y <- simulated_data[,1:20]
   ss <- 1
   disty <- 2
   fm1 <- ecomix:::apply_glmnet_sam_inits(ss, y, X, W, site_spp_weights, offset, y_is_na, disty)
@@ -97,56 +87,33 @@ testthat::test_that('species mix internal functions classes work', {
   testthat::expect_length(do.call(rbind, gammas),S)
 
   thetas <- unlist(lapply(fm_pois, `[[`, 4))
-  testthat::expect_true(all(-99999))
+  testthat::expect_true(all(thetas==-99999))
+  })
 
+
+testthat::test_that('species mix bernoulii functions work', {
 
   set.seed(42)
-  sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+  sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
+                                                      collapse = ','),
+                                       ")~1+x1+x2"))
   sp_form <- ~ 1
-  theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,7.9),3,3,byrow=TRUE)
-  dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
+  beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,7.9),3,2,byrow=TRUE)
+  dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
+                    x2=stats::rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(archetype_formula=sam_form, species_formula=sp_form,
-                                              dat,theta,dist="bernoulli")
-  model_data <- make_mixture_data(species_data = simulated_data$species_data,
-                                  covariate_data = simulated_data$covariate_data[,-1])
-  testthat::expect_message(fm1 <- species_mix(NULL, sp_form, model_data, distribution = 'bernoulli',
-                     n_mixtures=3))
+  model_data <- species_mix.simulate(archetype_formula=sam_form,
+                                         species_formula=sp_form,
+                                         dat,beta=beta,dist="bernoulli")
+  testthat::expect_message(fm1 <- species_mix(NULL, sp_form,
+                                              model_data,
+                                              distribution = 'bernoulli',
+                                              n_mixtures=3))
 
   dup_spp_data <- cbind('spp1'=model_data[,1],model_data)
   sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',c(1,1:20)),collapse = ','),")~1+x1+x2"))
 
   testthat::expect_message(fm1 <- species_mix(sam_form, sp_form, dup_spp_data,
-                                              distribution = 'bernoulli',
-                                              n_mixtures=3))
-
-  fmods <- species_mix.multifit(archetype_formula = sam_form,
-                                species_formula = sp_form,
-                                data = model_data,
-                                distribution = 'bernoulli',
-                                nstart = 10, n_mixtures=3)
-  testthat::expect_is(fmods,'list')
-  testthat::expect_length(fmods,10)
-  testthat::expect_s3_class(fmods[[1]],'species_mix')
-
-  set.seed(42)
-  sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
-
-  sp_form <- ~ 1
-  theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,1.9),3,3,byrow=TRUE)
-  dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
-  dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(archetype_formula=sam_form, species_formula=sp_form,
-                                              dat,theta,dist="bernoulli")
-  model_data <- make_mixture_data(species_data = simulated_data$species_data,
-                                  covariate_data = simulated_data$covariate_data[,-1])
-  testthat::expect_message(fm1 <- species_mix.multifit(NULL, sp_form, model_data, distribution = 'bernoulli',
-                                              n_mixtures=3))
-
-  dup_spp_data <- cbind('spp1'=model_data[,1],model_data)
-  sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',c(1,1:20)),collapse = ','),")~1+x1+x2"))
-
-  testthat::expect_message(fm1 <- species_mix.multifit(sam_form, sp_form, dup_spp_data,
                                               distribution = 'bernoulli',
                                               n_mixtures=3))
 
@@ -156,16 +123,17 @@ testthat::test_that('testing species mix S3 class functions', {
 
   library(ecomix)
   set.seed(42)
-  sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
-
+  sam_form <- stats::as.formula(paste0('cbind(',
+                                       paste(paste0('spp',1:20),collapse = ','),
+                                       ")~1+x1+x2"))
   sp_form <- ~ 1
-  theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,1.9),3,3,byrow=TRUE)
+  beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,1.9),3,2,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(archetype_formula=sam_form, species_formula=sp_form,
-                                              dat,theta,dist="bernoulli")
-  model_data <- make_mixture_data(species_data = simulated_data$species_data,
-                                  covariate_data = simulated_data$covariate_data[,-1])
+  model_data <- species_mix.simulate(archetype_formula=sam_form,
+                                         species_formula=sp_form,
+                                         dat, beta= beta,
+                                         dist="bernoulli")
   fm1 <- species_mix(sam_form, sp_form, model_data,
                      distribution = 'bernoulli',
                      n_mixtures=3)
