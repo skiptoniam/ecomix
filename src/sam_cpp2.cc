@@ -4,7 +4,7 @@
 
 extern "C" {
 	SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na,
-					     SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp,
+					     SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart,
 						 SEXP Ralpha, SEXP Rbeta, SEXP Rgamma, SEXP Reta, SEXP Rtheta,
 						 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsGamma, SEXP RderivsEta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
 						 SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
@@ -14,11 +14,11 @@ extern "C" {
 	sam_cpp_all_classes all;
 
 	//initialise the data structures -- they are mostly just pointers to REAL()s...
-	all.data.setVals(Ry, RX, RW, Roffset, Rspp_wts, Rsite_spp_wts, Ry_not_na, RnS, RnG, Rpx, Rpw, RnObs, Rdisty, RoptiDisp);	//read in the data
+	all.data.setVals(Ry, RX, RW, Roffset, Rspp_wts, Rsite_spp_wts, Ry_not_na, RnS, RnG, Rpx, Rpw, RnObs, Rdisty, RoptiDisp, RoptiPart);	//read in the data
 	all.params.setVals(all.data, Ralpha, Rbeta, Rgamma, Reta, Rtheta);	//read in the parameters
 	all.derivs.setVals(all.data, RderivsAlpha, RderivsBeta, RderivsGamma, RderivsEta, RderivsTheta, RgetScores, Rscores);
 	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv, Rprintparams);
-	all.fits.initialise(all.data.nObs, all.data.nG, all.data.nS, all.data.nPX, all.data.nPW, 0);
+	all.fits.initialise(all.data.nObs, all.data.nG, all.data.nS, all.data.nPX, all.data.nPW, all.data.NAnum);
 
 	double logl = -999999;
 
@@ -455,14 +455,15 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	calc_beta_deriv(betaDerivs, fits.dlogdbeta, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
 
    	//derivate w.r.t gamma
-	calc_dlog_dgamma(fits.dlogdgamma, eta_mu_derivs, dat);
-	calc_gamma_deriv(gammaDerivs, fits.dlogdgamma, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
+   	if(dat.isPartial()){
+   		calc_dlog_dgamma(fits.dlogdgamma, eta_mu_derivs, dat);
+		calc_gamma_deriv(gammaDerivs, fits.dlogdgamma, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
+	}
 	
 	//derivate w.r.t thetas
 	//std::cout << dat.isDispersion() << '\n';
 	if( dat.isDispersion()){
 			//std::cout << dat.isDispersion() << '\n';
-	//{ // if no disperion?  move along please
 		calc_dlog_dtheta(fits.dlogdtheta, fits.allMus, dat, params);
 		calc_theta_deriv(thetaDerivs, fits.dlogdtheta, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
     }

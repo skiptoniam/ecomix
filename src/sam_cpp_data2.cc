@@ -6,7 +6,7 @@ sam_data::~sam_data(){};
 void sam_data::setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &Roffset, 
 						SEXP &Rspp_wts, SEXP &Rsite_spp_wts, SEXP &Ry_not_na,
 						SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw, 
-						SEXP &RnObs, SEXP &Rdisty, SEXP &RoptiDisp){
+						SEXP &RnObs, SEXP &Rdisty, SEXP &RoptiDisp, SEXP &RoptiPart){
 
 	nS = *(INTEGER( RS));
 	nG = *(INTEGER( RG));
@@ -15,7 +15,8 @@ void sam_data::setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &Roffset,
 	nObs = *(INTEGER( RnObs));
 	disty = *(INTEGER( Rdisty));
 	optiDisp = *(INTEGER( RoptiDisp));
-	NAnum = -99999;
+	optiPart = *(INTEGER( RoptiPart));
+	NAnum = -999999;
 	
 	y = REAL( Ry);
 	X = REAL( RX);
@@ -28,14 +29,26 @@ void sam_data::setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &Roffset,
 
 }
 
-bool sam_data::doOptiDisp() const{
-	if( optiDisp == 1)
+bool sam_data::doOptiPart() const{
+	if( optiPart == 1)
 		return( TRUE);
 	return( FALSE);
 }
 
 bool sam_data::isDispersion() const{ // currently just check if negative binomial.
 	if((disty == 4) | (disty == 5) | (disty == 6) )
+		return( true);
+	return( false);
+}
+
+bool sam_data::doOptiDisp() const{
+	if( optiDisp == 1)
+		return( TRUE);
+	return( FALSE);
+}
+
+bool sam_data::isPartial() const{ // currently just check if negative binomial.
+	if(optiPart==1)
 		return( true);
 	return( false);
 }

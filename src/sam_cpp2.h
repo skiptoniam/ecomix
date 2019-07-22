@@ -24,9 +24,11 @@ class sam_data {
 		sam_data();
 		~sam_data();
 		void setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &Roffset, SEXP &Rspp_wts, SEXP &Rsite_spp_wts, SEXP &Ry_not_na,
-		 SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw, SEXP &RnObs, SEXP &Rdisty, SEXP &RoptiDisp);
+		 SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw, SEXP &RnObs, SEXP &Rdisty, SEXP &RoptiDisp, SEXP &RoptiPart);
 		bool isDispersion() const;
 		bool doOptiDisp() const;
+		bool isPartial() const;
+		bool doOptiPart() const;
 		void printVals( int printX, int printW, int printy);
 
 		int nPX,      //the number of parameters in each of the (G-1) habitat lps, same as lpar
@@ -36,6 +38,7 @@ class sam_data {
 			nObs,     //the number of observations
 			disty,    //the distribution code
 			optiDisp, //should the dispersion parameter be optimised (this is for negative binomial).
+			optiPart, //should the dispersion parameter be optimised (this is for negative binomial).
 			NAnum;    //a common number to insert for NAs
 
 		double 	*y,	//the outcome matrix, in vector form (nObs x nS)
@@ -137,7 +140,7 @@ class sam_cpp_all_classes {
 ////////////////////////////////////////////////////////
 
 extern "C" SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na,
-								SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp,
+								SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart,
 								SEXP Ralpha, SEXP Rbeta, SEXP Rgamma, SEXP Reta, SEXP Rtheta, 
 								SEXP RderivsAlpha, SEXP RderivsBeta,  SEXP RderivsGamma, SEXP RderivsEta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
 								SEXP Rpis, SEXP Rmus, SEXP logliS, SEXP logliSG,
