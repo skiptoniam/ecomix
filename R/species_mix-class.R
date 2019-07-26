@@ -1637,6 +1637,7 @@
                        pis = (emfit$pis),
                        first_fit = emfit$first_fit)
   } else {
+    message('If you are choosing to not use the ECM algorithm to estimate starting values\nwe recommend that you at least run a multifits to optimise the loglikelihood, see "species_mix.multifit".')
     if(!control$quiet)message('You are not using the EM algorith to find
 starting values;\n starting values are generated using ',control$init_method,
                               '.\n')
@@ -2221,14 +2222,23 @@ starting values;\n starting values are generated using ',control$init_method,
   ret$logl <- ret$logl * -1
   ret$mus <- array(mus, dim=c(n, S, G))
 
-  if(!disty%in%c(4,6))
-    ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
+  if(npw>0){
+    if(!disty%in%c(4,6))
+      ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
                       gamma = matrix(ret$gamma,S,npw), eta = ret$eta)
-  else
-    ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
+    else
+      ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
                       gamma = matrix(ret$gamma,S,npw), eta = ret$eta,
                       theta = ret$theta)
+  } else {
+    if(!disty%in%c(4,6))
+      ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
+                        eta = ret$eta)
+    else
+      ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
+                        eta = ret$eta, theta = ret$theta)
 
+  }
   ret$names <- list(spp=colnames(y), SAMs=paste("SAM", 1:G, sep=""),
                     Xvars=colnames(X), Wvars=colnames(W[,-1,drop=FALSE]))
 
