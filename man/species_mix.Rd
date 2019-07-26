@@ -2,7 +2,6 @@
 % Please edit documentation in R/species_mix-class.R
 \name{species_mix}
 \alias{species_mix}
-\alias{species_mix.fit}
 \alias{species_mix.multifit}
 \alias{control}
 \alias{species_mix.control}
@@ -25,9 +24,6 @@ species_mix(archetype_formula = NULL,
   distribution = "bernoulli", offset = NULL, weights = NULL,
   bb_weights = NULL, control = NULL, inits = NULL,
   standardise = FALSE, titbits = TRUE)
-
-species_mix.fit(y, X, W, G, S, spp_weights, site_spp_weights, offset,
-  y_is_na, disty, control, inits = NULL)
 
 species_mix.multifit(archetype_formula = NULL,
   species_formula = stats::as.formula(~1), data, n_mixtures = 3,
@@ -152,24 +148,6 @@ using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created
 for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then
 setting titbits=TRUE may give users problems with memory.}
 
-\item{y}{is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.}
-
-\item{X}{is a design matrix for the archetype_formula dimension n_sites * n_covariates.}
-
-\item{W}{is a design matrix for species_formula and will be implemented if species_formula has covariates.}
-
-\item{G}{is the number of species archetypes that are being estimated.}
-
-\item{S}{is the number of species to be modelled (this will be calculated internally in species_mix())}
-
-\item{spp_weights}{These are weights on the species logls and are specifically used in the Bayesian Boostrap.}
-
-\item{site_spp_weights}{These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.}
-
-\item{y_is_na}{This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!}
-
-\item{disty}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are avaliable - internal conversion of distribution to a integer.}
-
 \item{nstart}{for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
 \item{mc.cores}{for species_mix.multifit only. The number of cores to spread the re-fitting over.}
@@ -210,12 +188,6 @@ parameters. Each row is a different species archetype.}
 and gaussian distributions - should be number of species long}
 
 \item{newdata}{a matrix of new observations for prediction.}
-
-\item{offset}{this is a vector of site specific offsets, this might be something like area sampled at sites.}
-
-\item{control}{this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.}
-
-\item{inits}{This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).}
 
 \item{reltol}{function that determines the relative tolernace for model convergence. Default is quiet strict.}
 

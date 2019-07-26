@@ -252,8 +252,13 @@
   return(tmp)
 }
 
-#'@rdname species_mix
+#'@title species_mix.fit
+#'@rdname species_mix.fit
 #'@name species_mix.fit
+#' @description species_mix.fit is similar to \link[stats]{glm.fit} and does all the heavy lifting when it
+#' comes to estimating species mix models. If you are unfamilar with how to use \link[stats]{glm.fit} it is
+#' recommended that you use \link[ecomix]{species_mix} which is the user friendly wrapper around this
+#' function.
 #'@param y is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.
 #'@param X is a design matrix for the archetype_formula dimension n_sites * n_covariates.
 #'@param W is a design matrix for species_formula and will be implemented if species_formula has covariates.
@@ -742,7 +747,7 @@
 
   if(distribution %in% 'bernoulli') link <- make.link('logit')
   if(distribution %in% c('poisson','ippm','negative_binomial')) link <- make.link('log')
-  if(distribution %in% c('gaussian')) link <- make.link('idenity')
+  if(distribution %in% c('gaussian')) link <- make.link('identity')
   if(distribution %in% 'ippm') {
     grid <- ecomix:::simulate_ippm_grid(X,W)
     grid2D <- grid$grid2D
@@ -1361,7 +1366,7 @@
   pen.min <- theta.range[1]
   shape1 <- shape2 <- 1.25
 
-  sppLogls <- sppLogls + dbeta( (theta-pen.min) / (pen.max-pen.min), shape1, shape2, log=TRUE)
+  if(disty==4)  sppLogls <- sppLogls + dbeta( (theta-pen.min) / (pen.max-pen.min), shape1, shape2, log=TRUE)
 
   return(sppLogls)
 }
@@ -1725,8 +1730,8 @@ starting values;\n starting values are generated using ',control$init_method,
     for(ss in 1:S){
       for(gg in 1:G){
         #lp is the same as log_lambda (linear predictor)
-        lp <- fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
-        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[sp_idx,-1,drop=FALSE]) %*% fits$gamma[ss,]
+        lp <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[,-1,drop=FALSE]) %*% fits$gamma[ss,]
         logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=lp,sd=exp(fits$theta[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
@@ -1976,16 +1981,16 @@ starting values;\n starting values are generated using ',control$init_method,
       }
 
       if(disty%in%c(6)){
-        # fits$theta <- exp(-fits$theta)
+        fits$theta <- exp(fits$theta)
         fm_theta <- surveillance::plapply(seq_len(S), apply_optimise_spp_theta,
                                           first_fit, fits,
                                           G, disty, pis,
                                           .parallel = control$cores,
                                           .verbose = FALSE)
         theta <- unlist(lapply(fm_theta, `[[`, 1))
-        # theta <- log(1/theta)
+        theta <- log(theta)
         # fits$theta <- log(1/theta)
-        fits$theta <- update_coefs(fits$theta,theta,control$update_kappa[2])
+        fits$theta <- update_coefs(log(fits$theta),theta,control$update_kappa[2])
         }
     }
     # e-step
@@ -2005,8 +2010,6 @@ starting values;\n starting values are generated using ',control$init_method,
 
   taus <- data.frame(taus)
   names(taus) <- paste("grp.", 1:G, sep = "")
-  # int_out <- fits$alpha
-  # fm_out <- fits$beta
   names(pis) <- paste("G", 1:G, sep = ".")
   eta <- additive_logistic(pis, TRUE)[-1]
 
@@ -2218,17 +2221,13 @@ starting values;\n starting values are generated using ',control$init_method,
   ret$logl <- ret$logl * -1
   ret$mus <- array(mus, dim=c(n, S, G))
 
-  # beta <- matrix(ret$beta,G,np)
-  # colnames(beta) <-
-
-
-
   if(!disty%in%c(4,6))
     ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
                       gamma = matrix(ret$gamma,S,npw), eta = ret$eta)
   else
     ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
-                      gamma = matrix(ret$gamma,S,npw),eta = ret$eta, theta = ret$theta)
+                      gamma = matrix(ret$gamma,S,npw), eta = ret$eta,
+                      theta = ret$theta)
 
   ret$names <- list(spp=colnames(y), SAMs=paste("SAM", 1:G, sep=""),
                     Xvars=colnames(X), Wvars=colnames(W[,-1,drop=FALSE]))

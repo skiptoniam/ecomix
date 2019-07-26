@@ -66,8 +66,11 @@ extern "C" {
 	UNPROTECT(1);
 	//if(all.data.nPW>0){
 		SEXP Rgamma_est =PROTECT(allocVector(REALSXP, all.data.nS*all.data.nPW));
+		if(all.data.nPW>0){
 		for( int j=0; j<(all.data.nS*all.data.nPW);j++) REAL(Rgamma_est)[j] = all.params.Gamma[j];
-	//}else{
+			}else{
+		for( int j=0; j<(all.data.nS*all.data.nPW);j++) REAL(Rgamma_est)[j] = -999999;
+	}		
 	  //SEXP Rgamma_est = PROTECT(allocVector(REALSXP, 1));
 	  //REAL(Rgamma_est)[0] = -99999;  	
 	//}	 
