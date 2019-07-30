@@ -6,10 +6,15 @@ testthat::test_that('species mix internal functions classes work', {
 
   set.seed(42)
   archetype_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~x1+x2"))
-  theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,7.9),3,3,byrow=TRUE)
+  beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,7.9),3,2,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(archetype_formula = archetype_form, species_formula = ~1,dat = dat,dist="bernoulli")
+  simulated_data <- species_mix.simulate(archetype_formula = archetype_form,
+                                         species_formula = ~1,
+                                         dat = dat,
+                                         beta=beta,
+                                         n_mixtures = 3,
+                                         dist="bernoulli")
   model_data <- simulated_data
 
   #test formula error
@@ -65,30 +70,7 @@ testthat::test_that('species mix internal functions classes work', {
   thetas <- unlist(lapply(fm_bern, `[[`, 4))
   testthat::expect_true(all(thetas==-99999))
 
-  ## poisson
-  simulated_data <- species_mix.simulate(sam_form,~1,dat,dist="poisson")
-
-  y <- simulated_data[,1:20]
-  ss <- 1
-  disty <- 2
-  fm1 <- ecomix:::apply_glmnet_sam_inits(ss, y, X, W, site_spp_weights, offset, y_is_na, disty)
-  testthat::expect_is(fm1,'list')
-  testthat::expect_length(fm1,4)
-
-  fm_pois <- surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam_inits, y, X, W, site_spp_weights, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
-
-  alphas <- lapply(fm_pois, `[[`, 1)
-  testthat::expect_length(unlist(alphas),S)
-
-  betas <- lapply(fm_pois, `[[`, 2)
-  testthat::expect_length(do.call(rbind, betas),S*nPX)
-
-  gammas <- lapply(fm_pois, `[[`, 3)
-  testthat::expect_length(do.call(rbind, gammas),S)
-
-  thetas <- unlist(lapply(fm_pois, `[[`, 4))
-  testthat::expect_true(all(thetas==-99999))
-  })
+})
 
 
 testthat::test_that('species mix bernoulii functions work', {
@@ -116,7 +98,6 @@ testthat::test_that('species mix bernoulii functions work', {
   testthat::expect_message(fm1 <- species_mix(sam_form, sp_form, dup_spp_data,
                                               distribution = 'bernoulli',
                                               n_mixtures=3))
-
 })
 
 testthat::test_that('testing species mix S3 class functions', {
@@ -140,12 +121,11 @@ testthat::test_that('testing species mix S3 class functions', {
 
   print(fm1)
   testthat::expect_error(summary(fm1))
-  fm1$vcov <- vcov(fm1)
+  fm1$vcov <- vcov(fm1,method = 'BayesBoot')
   testthat::expect_is(summary(fm1),'matrix')
   testthat::expect_length(AIC(fm1),1)
   testthat::expect_length(BIC(fm1),1)
   testthat::expect_is(coef(fm1),'list')
-
 })
 
 
@@ -156,15 +136,15 @@ testthat::test_that('species mix generic vcov functions', {
   library(ecomix)
   set.seed(42)
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:100),collapse = ','),")~1+x1+x2"))
-  theta <- matrix(c(-2.9,1.6,0.5,1,-0.9,1,.9,2.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
+  beta <- matrix(c(1.6,0.5,-0.9,1,2.9,2.9,0.2,-0.4),4,2,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form,~1,dat,theta,dist="bernoulli")
-  model_data <- make_mixture_data(species_data = simulated_data$species_data,
-                                  covariate_data = simulated_data$covariate_data[,-1])
-  fm1 <- species_mix(sam_form, species_formula = ~1, model_data, distribution = 'bernoulli', n_mixtures=4)
+  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, n_mixtures = 4,
+                                         beta = beta, distribution = "bernoulli")
+  fm1 <- species_mix(sam_form, species_formula = ~1, simulated_data,
+                     distribution = 'bernoulli', n_mixtures=4)
 
-  vcv_mat <- vcov(object = fm1)
+  vcv_mat <- vcov(fm1)
   testthat::expect_equal(nrow(vcv_mat),nrow(vcv_mat))
   testthat::expect_is(vcv_mat,'matrix')
   testthat::expect_true(all(is.finite(sqrt(diag(vcv_mat)))))
@@ -311,72 +291,71 @@ testthat::test_that('species mix gaussian', {
 testthat::test_that('species mix poisson', {
 
   set.seed(42)
-  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~1+x1+x2"))
-  theta <- matrix(c(-2.9,1.6,0.5,1,-0.9,1,.9,2.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
-  dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
-  dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form,~1,dat,theta,dist="poisson")
-  model_data <- make_mixture_data(species_data = simulated_data$species_data,
-                                  covariate_data = simulated_data$covariate_data[,-1])
-
-  y <- simulated_data$species_data
-  X <- simulated_data$covariate_data
+  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~x1+x2"))
+  alpha <- rnorm(50,-4, 0.5)
+  beta <- matrix(c(-2.6,0.5,
+                   -0.9,1.0,
+                   0.9,-2.9,
+                   2.2,1.4),
+                 4,2,byrow=TRUE)
+  dat <- data.frame(y=1, x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
+  simulated_data <- species_mix.simulate(archetype_formula = sam_form,
+                                         species_formula = ~1, dat = dat,
+                                         n_mixtures = 4,
+                                         alpha=alpha,
+                                         beta=beta,
+                                         distribution = "poisson")
+  y <- as.matrix(simulated_data[,grep("spp",colnames(simulated_data))])
+  X <- simulated_data[,-grep("spp",colnames(simulated_data))]
+  W <- as.matrix(X[,1,drop=FALSE])
+  X <- as.matrix(X[,-1])
   offset <- rep(0,nrow(y))
   weights <- rep(1,nrow(y))
-  spp_wts <- rep(1,ncol(y))
-  site_spp_wts <- matrix(1,nrow(y),ncol(y))
+  spp_weights <- rep(1,ncol(y))
+  site_spp_weights <- matrix(1,nrow(y),ncol(y))
   y_is_na <- matrix(FALSE,nrow(y),ncol(y))
-  G <- length(simulated_data$pi)
-  S <- length(simulated_data$sp.int)
+  G <- 4
+  S <- ncol(y)
   control <- species_mix.control()
   disty <- 2
 
-  # test a single poisson model
+  # test a single gaussian model
   i <- 1
-  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, site_spp_wts, offset, y_is_na, disty),3)
-  fm_poissonint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam_inits,  y, X, site_spp_wts, offset, y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
-  testthat::expect_length(do.call(cbind,fm_poissonint)[1,],S)
-
-  # test that the starting values work.
-  testthat::expect_length(tmp <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control),9)
+  # for(i in 1:S)
+  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W, site_spp_weights, offset, y_is_na, disty),4)
+  fm_gaussianint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam_inits,
+                                          y, X, W, site_spp_weights, offset,
+                                          y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+  testthat::expect_length(do.call(cbind,fm_gaussianint)[1,],S)
 
   #get the taus
-  starting_values <- ecomix:::initiate_fit_sam(y, X,spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control)
-  fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,theta=starting_values$theta)
-  first_fit <- list(x = X, y = y, weights=site_spp_wts, offset=offset)
+  starting_values <- ecomix:::initiate_fit_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
+  fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,gamma=starting_values$gamma,theta=starting_values$theta)
+  first_fit <- list(y = y, x = X, W = W, weights=site_spp_weights, offset=offset)
 
   # get the loglikelihood based on these values
-  logls <- ecomix:::get_logls_sam(first_fit, fits, spp_wts, G, S, disty)
+  logls <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
   pis <- rep(1/G, G)
   taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
   taus <- ecomix:::shrink_taus(taus, max_tau=1/G + 0.1, G)
 
   ## get to this in a bit
   gg <- 1
-  testthat::expect_length(ecomix:::apply_glm_group_tau_sam(gg, y, X, site_spp_wts, offset, y_is_na, disty, taus,fits,logls$fitted),2)
+  testthat::expect_length(ecomix:::apply_glm_mix_coefs_sams(gg, y, X, W, site_spp_weights, offset, y_is_na, disty, taus, fits, logls$fitted),2)
 
   # ## now let's try and fit the optimisation
-  sv <- ecomix:::get_starting_values_sam(y, X, spp_wts, site_spp_wts, offset, y_is_na, G, S, disty, control)
-  tmp <- ecomix:::sam_optimise(y,X,offset,spp_wts,site_spp_wts, y_is_na, S, G, disty, start_vals = sv, control)
-  testthat::expect_length(tmp,17)
+  sv <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
+  tmp <- ecomix:::sam_optimise(y, X, W, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, start_vals = sv, control)
+  testthat::expect_length(tmp,19)
 
-  set.seed(42)
-  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~1+x1+x2"))
-  sp_form <- ~1
-  theta <- matrix(c(-2.9,1.6,0.5,1,-0.9,1,.9,2.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
-  dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
-  dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form,~1,dat,theta,dist="poisson")
-  model_data <- make_mixture_data(species_data = simulated_data$species_data,
-                                  covariate_data = simulated_data$covariate_data[,-1])
-  fm1 <- species_mix(sam_form, sp_form, model_data, distribution = 'poisson',
-                     n_mixtures=3)
+  fm1 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'gaussian',
+                     n_mixtures=4)
   testthat::expect_s3_class(fm1,'species_mix')
 
-  fm2 <- species_mix(sam_form, sp_form, model_data, distribution = 'poisson',
-                     n_mixtures=3,control=species_mix.control(em_prefit = FALSE))
+  fm2 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'gaussian',
+                     n_mixtures=4,control=species_mix.control(em_prefit = FALSE),
+                     standardise = FALSE)
   testthat::expect_s3_class(fm2,'species_mix')
-
 })
 
 
@@ -390,12 +369,10 @@ testthat::test_that('species mix bernoulli', {
   rm(list = ls())
   set.seed(42)
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~1+x1+x2"))
-  theta <- matrix(c(-2.9,1.6,0.5,1,-0.9,1,.9,2.9,2.9,-1,0.2,-0.4),4,3,byrow=TRUE)
+  beta <- matrix(c(1.6,0.5,-0.9,1,2.9,-2.9,0.2,-0.4),4,2,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form,~1,dat,theta,dist="bernoulli")
-  model_data <- make_mixture_data(species_data = simulated_data$species_data,
-                                  covariate_data = simulated_data$covariate_data[,-1])
+  simulated_data <- species_mix.simulate(sam_form, ~1, dat, n_mixtures = 4, beta=beta, dist="bernoulli")
 
   y <- simulated_data$species_data
   X <- simulated_data$covariate_data[,-1]

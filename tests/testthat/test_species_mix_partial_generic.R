@@ -116,6 +116,11 @@ testthat::test_that('testing partial species mix bernoulli ', {
   test_part_sam <- species_mix(sam_form,spp_form,simulated_data,4,
                                distribution = 'bernoulli',
                                control = species_mix.control(em_steps = 5))
+
+  test_part_sam$vcov <- vcov(test_part_sam)
+
+  summary(test_part_sam)
+
 })
 
 
@@ -357,6 +362,8 @@ testthat::test_that('testing partial species mix ippm ', {
                                weights = attr(simulated_data,'ippm_weights'),
                                distribution = 'ippm',
                                control = species_mix.control(em_steps = 5))
+
+
 })
 
 testthat::test_that('testing partial species mix negative binomial ', {
@@ -482,4 +489,18 @@ test_part_sam <- species_mix(sam_form,spp_form,simulated_data,4,
                              control = species_mix.control(em_steps = 5))
 
 })
+
+testthat::test_that('testing partial species mix S3 classes', {
+
+  AIC()
+
+  BIC()
+
+  coef()
+
+  preds <- predict()
+
+
+})
+
 

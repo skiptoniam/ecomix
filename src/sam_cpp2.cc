@@ -5,8 +5,8 @@
 extern "C" {
 	SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na,
 					     SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart,
-						 SEXP Ralpha, SEXP Rbeta, SEXP Rgamma, SEXP Reta, SEXP Rtheta,
-						 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsGamma, SEXP RderivsEta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
+						 SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rtheta,
+						 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsGamma, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
 						 SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
 						 SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
 						 SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly){
@@ -15,8 +15,8 @@ extern "C" {
 
 	//initialise the data structures -- they are mostly just pointers to REAL()s...
 	all.data.setVals(Ry, RX, RW, Roffset, Rspp_wts, Rsite_spp_wts, Ry_not_na, RnS, RnG, Rpx, Rpw, RnObs, Rdisty, RoptiDisp, RoptiPart);	//read in the data
-	all.params.setVals(all.data, Ralpha, Rbeta, Rgamma, Reta, Rtheta);	//read in the parameters
-	all.derivs.setVals(all.data, RderivsAlpha, RderivsBeta, RderivsGamma, RderivsEta, RderivsTheta, RgetScores, Rscores);
+	all.params.setVals(all.data, Ralpha, Rbeta, Reta, Rgamma, Rtheta);	//read in the parameters
+	all.derivs.setVals(all.data, RderivsAlpha, RderivsBeta, RderivsEta, RderivsGamma, RderivsTheta, RgetScores, Rscores);
 	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv, Rprintparams);
 	all.fits.initialise(all.data.nObs, all.data.nG, all.data.nS, all.data.nPX, all.data.nPW, all.data.NAnum);
 
@@ -58,39 +58,39 @@ extern "C" {
 	SEXP Rlogl = PROTECT(allocVector(REALSXP, 1));
     REAL(Rlogl)[0] = logl;
     UNPROTECT(1);
-    SEXP Ralpha_est = PROTECT(allocVector(REALSXP, all.data.nS));
-    for( int s=0; s<all.data.nS; s++) REAL(Ralpha_est)[s] = all.params.Alpha[s];
+    SEXP Ralpha_hat = PROTECT(allocVector(REALSXP, all.data.nS));
+    for( int s=0; s<all.data.nS; s++) REAL(Ralpha_hat)[s] = all.params.Alpha[s];
 	UNPROTECT(1);
-	SEXP Rbeta_est = PROTECT(allocVector(REALSXP, all.data.nG*all.data.nPX));
-	for( int i=0; i<((all.data.nG*all.data.nPX)); i++) REAL(Rbeta_est)[i] = all.params.Beta[i];
+	SEXP Rbeta_hat = PROTECT(allocVector(REALSXP, all.data.nG*all.data.nPX));
+	for( int i=0; i<((all.data.nG*all.data.nPX)); i++) REAL(Rbeta_hat)[i] = all.params.Beta[i];
+	UNPROTECT(1);
+	SEXP Reta_hat =PROTECT(allocVector(REALSXP, all.data.nG-1));
+	for( int g=0; g<(all.data.nG-1);g++) REAL(Reta_hat)[g] = all.params.Eta[g];
 	UNPROTECT(1);
 	//if(all.data.nPW>0){
-		SEXP Rgamma_est =PROTECT(allocVector(REALSXP, all.data.nS*all.data.nPW));
+		SEXP Rgamma_hat =PROTECT(allocVector(REALSXP, all.data.nS*all.data.nPW));
 		if(all.data.nPW>0){
-		for( int j=0; j<(all.data.nS*all.data.nPW);j++) REAL(Rgamma_est)[j] = all.params.Gamma[j];
+		for( int j=0; j<(all.data.nS*all.data.nPW);j++) REAL(Rgamma_hat)[j] = all.params.Gamma[j];
 			}else{
-		for( int j=0; j<(all.data.nS*all.data.nPW);j++) REAL(Rgamma_est)[j] = -999999;
+		for( int j=0; j<(all.data.nS*all.data.nPW);j++) REAL(Rgamma_hat)[j] = -999999;
 	}		
-	  //SEXP Rgamma_est = PROTECT(allocVector(REALSXP, 1));
-	  //REAL(Rgamma_est)[0] = -99999;  	
+	  //SEXP Rgamma_hat = PROTECT(allocVector(REALSXP, 1));
+	  //REAL(Rgamma_hat)[0] = -99999;  	
 	//}	 
 	UNPROTECT(1);
-	SEXP Reta_est =PROTECT(allocVector(REALSXP, all.data.nG-1));
-	for( int g=0; g<(all.data.nG-1);g++) REAL(Reta_est)[g] = all.params.Eta[g];
-	UNPROTECT(1);
-	SEXP Rtheta_est =PROTECT(allocVector(REALSXP, all.data.nS));
-	for( int s=0; s<(all.data.nS);s++) REAL(Rtheta_est)[s] = all.params.Theta[s];
+	SEXP Rtheta_hat =PROTECT(allocVector(REALSXP, all.data.nS));
+	for( int s=0; s<(all.data.nS);s++) REAL(Rtheta_hat)[s] = all.params.Theta[s];
 	UNPROTECT(1);
 
 
-	const char *names[] = {"logl", "alpha", "beta", "gamma", "eta", "theta",""};                   /* note the null string */
+	const char *names[] = {"logl", "alpha", "beta", "eta", "gamma", "theta",""};                   /* note the null string */
 	SEXP Rres = PROTECT(mkNamed(VECSXP, names));  /* list of length 3 */
 	SET_VECTOR_ELT(Rres, 0, Rlogl);        // loglike
-	SET_VECTOR_ELT(Rres, 1, Ralpha_est);   // species intercepts
-	SET_VECTOR_ELT(Rres, 2, Rbeta_est);    // mixing coefs
-	SET_VECTOR_ELT(Rres, 3, Rgamma_est);    // dispersion parameters
-	SET_VECTOR_ELT(Rres, 4, Reta_est);     // etas - transformed pis.
-	SET_VECTOR_ELT(Rres, 5, Rtheta_est);    // dispersion parameters
+	SET_VECTOR_ELT(Rres, 1, Ralpha_hat);   // species intercepts
+	SET_VECTOR_ELT(Rres, 2, Rbeta_hat);    // mixing coefs
+	SET_VECTOR_ELT(Rres, 3, Reta_hat);     // etas - transformed pis.
+	SET_VECTOR_ELT(Rres, 4, Rgamma_hat);    // dispersion parameters
+	SET_VECTOR_ELT(Rres, 5, Rtheta_hat);    // dispersion parameters
 	UNPROTECT(1);
 	return (Rres);
 
@@ -458,10 +458,10 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	calc_beta_deriv(betaDerivs, fits.dlogdbeta, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
 
    	//derivate w.r.t gamma
-   	if(dat.isPartial()){
-   		calc_dlog_dgamma(fits.dlogdgamma, eta_mu_derivs, dat);
-		calc_gamma_deriv(gammaDerivs, fits.dlogdgamma, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
-	}
+   	//if(dat.isPartial()){
+   	calc_dlog_dgamma(fits.dlogdgamma, eta_mu_derivs, dat);
+	calc_gamma_deriv(gammaDerivs, fits.dlogdgamma, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
+	//}
 	
 	//derivate w.r.t thetas
 	//std::cout << dat.isDispersion() << '\n';
@@ -479,7 +479,7 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	calc_eta_deriv(etaDerivs, fits.dlogdpi, parpi, dat);
 
 	//update the derivates.
-	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, gammaDerivs, etaDerivs, thetaDerivs);
+	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, thetaDerivs);
 	}
 
 /* Ok I'm going to try and generalise the derivate function across all distributions */
@@ -554,7 +554,6 @@ void calc_dlog_dalpha(vector<double> &dlda, vector<double> const &mu_eta_derivs,
 			for(int i=0; i<dat.nObs; i++){
 			  if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
 					// this is the tmp log poisson derivative (lpd)
-					//tmp_lpd = log_ippm_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.st_sp_wts[MATREF2D(i,s,dat.nObs)]);
 					dlda.at(MATREF2D(g,s,dat.nG)) += mu_eta_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));
 				}
 			}
@@ -574,7 +573,6 @@ void calc_dlog_dbeta(vector<double> &dldb, vector<double> const &mu_eta_derivs, 
 		for(int s=0;s<dat.nS; s++){
 			for(int i=0; i<dat.nObs; i++){
 				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
-					//tmp_lpd = log_ippm_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.st_sp_wts[MATREF2D(i,s,dat.nObs)]);
 						for(int j=0; j<dat.nPX; j++){
 							dldb.at(MATREF3D(g,j,s,dat.nG,dat.nPX)) += mu_eta_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * dat.X[MATREF2D(i,j,dat.nObs)];
 							//std::cout << dldb.at(MATREF3D(g,j,s,dat.nG,dat.nPX)) << '\n';

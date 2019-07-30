@@ -56,7 +56,7 @@ class sam_params {
 	public:
 		sam_params();
 		~sam_params();
-		void setVals( const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Rgamma, SEXP &Reta, SEXP &Rtheta);
+		void setVals( const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Reta, SEXP &Rgamma, SEXP &Rtheta);
 		void getArray(double *parArr, const sam_data &dat);
 		void update(double *parArr, const sam_data &dat);
 		void printParms( const sam_data &dat);
@@ -64,8 +64,8 @@ class sam_params {
 
 		double 	*Alpha, //the species' prevalences 
 				*Beta,	//the habitats' free covariate params (G*xp)
-				*Gamma, //species x npw parameters form partial SAMs
 				*Eta,	//the pis - mmmmm pies.
+				*Gamma, //species x npw parameters form partial SAMs
 				*Theta; //species specific dispersion parameter for negative binomial and guassian model nspp long.
 		int nalpha, nbeta, ngamma, neta, ntheta, nTot;
 };
@@ -77,17 +77,17 @@ class sam_derivs{
 	public:
 		sam_derivs();
 		~sam_derivs();
-		void setVals( const sam_data &dat, SEXP &RderivsAlpha,  SEXP &RderivsBeta, SEXP &RderivsGamma, SEXP &RderivsEta, SEXP &RderivsTheta, SEXP &RgetScores, SEXP &Rscores);
+		void setVals( const sam_data &dat, SEXP &RderivsAlpha,  SEXP &RderivsBeta, SEXP &RderivsEta, SEXP &RderivsGamma, SEXP &RderivsTheta, SEXP &RgetScores, SEXP &Rscores);
 		void zeroDerivs( const sam_data &dat);
-		void updateDerivs( const sam_data &dat, const vector<double> &alphaDerivs, const vector<double> &betaDerivs, const vector<double> &gammaDerivs, const vector<double> &etaDerivs, const vector<double> &thetaDerivs);
+		void updateDerivs( const sam_data &dat, const vector<double> &alphaDerivs, const vector<double> &betaDerivs, const vector<double> &etaDerivs, const vector<double> &gammaDerivs, const vector<double> &thetaDerivs);
 		void update( double *grArr, const sam_data &dat);
 		void getArray( double *grArr, const sam_data &dat);
 
         int getScoreFlag;	//Should the scores be calculated for empirical information
 		double 	*Alpha, //the derivatives of logl w.r.t. alpha
 				*Beta,	//the derivatives of logl w.r.t. beta
-				*Gamma,  //the derivatives of logl w.r.t. species specific parameters.
 				*Eta, 	//the derivatives of logl w.r.t. eta (transformed pi)
+				*Gamma,  //the derivatives of logl w.r.t. species specific parameters.
 				*Theta,  //the derivatives of logl w.r.t. dispersion parameters.
 				*Scores;//the score contribution for each site (for empirical information)
 	
@@ -141,8 +141,8 @@ class sam_cpp_all_classes {
 
 extern "C" SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na,
 								SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart,
-								SEXP Ralpha, SEXP Rbeta, SEXP Rgamma, SEXP Reta, SEXP Rtheta, 
-								SEXP RderivsAlpha, SEXP RderivsBeta,  SEXP RderivsGamma, SEXP RderivsEta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
+								SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rtheta, 
+								SEXP RderivsAlpha, SEXP RderivsBeta,  SEXP RderivsEta, SEXP RderivsGamma, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
 								SEXP Rpis, SEXP Rmus, SEXP logliS, SEXP logliSG,
 								SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
 								SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly);

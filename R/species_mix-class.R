@@ -611,6 +611,7 @@
     dumbOut <- capture.output(
       samp.object <- species_mix.fit(y=object$titbits$Y,
                                      X=object$titbits$X,
+                                     W=object$titbits$W,
                                      offset = object$titbits$offset,
                                      spp_weights = all.wts[dummy,,drop=TRUE],
                                      site_spp_weights = object$titbits$site_spp_weights,
@@ -873,11 +874,16 @@
                                    mc.cores = 1, ...){
   if (is.null(newdata)) {
     X <- object$titbits$X
+    W <- object$titbits$W
+    offset <- object$titbits$offset
   } else {
-    model.fm <- as.formula(object$titbits$archetype_formula)
-    if (length(model.fm) == 3) model.fm[[2]] <- NULL
-    X <- model.matrix(model.fm, as.data.frame(newdata))
-    offset <- model.frame(model.fm, data = newdata)
+    arch.fm <- as.formula(object$titbits$archetype_formula)
+    spp.fm <- as.formula(object$titbits$species_formula)
+    if (length(arch.fm) == 3) arch.fm[[2]] <- NULL
+    arch.fm <- update(arch.fm,~.-1)
+    X <- model.matrix(arch.fm, as.data.frame(newdata))
+    W <- model.matrix(spp.fm, as.data.frame(newdata))
+    offset <- model.frame(arch.fm, data = newdata)
     offset <- model.offset(offset)
   }
 
@@ -887,14 +893,14 @@
   S <- object$S
   G <- object$G
   n <- nrow(X)
-  np <- object$np
+  npx <- object$npx
+  npw <- object$npw
 
-  spp_wts <- rep(1,S)
-  site_spp_wts <- rep(1,S*n)
-
+  spp_wts <- object$titbits$spp_weights
+  site_spp_wts <- object$titbits$site_spp_weights
 
   disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
-  disty <- get_distribution_sam(disty_cases, object$titbits$distribution)
+  disty <- ecomix:::get_distribution_sam(disty_cases, object$titbits$distribution)
   taus <- object$taus
   if (is.null(object2)) {
     if (nboot > 0) {
@@ -1156,6 +1162,17 @@
   res <- cbind(res, res[, 1]/res[, 2])
   res <- cbind(res, 2 * (1 - pnorm(abs(res[, 3]))))
   colnames(res) <- c("Estimate", "SE", "z-score", "p")
+
+  # if(!is.null(object$names$Wvars))
+  #   rownames(res) <- c(object$names$spp,
+  #                    paste0(object$names$Xvars,"_",rep(object$names$SAMs,each=object$npx)),
+  #                    paste0(object$names$Wvars,"_",rep(object$names$spp,each=object$npw)),
+  #                    paste0("eta",(object$G-1)))
+  # else
+  #   rownames(res) <- c(object$names$spp,
+  #                      paste0(object$names$Xvars,"_",rep(object$names$SAMs,each=object$npx)),
+  #                      paste0("eta",(object$G-1)))
+
   return(res)
 }
 
@@ -1183,6 +1200,8 @@
     # if( Sys.info()['sysname'] == "Windows")
     X <- object$titbits$X
     W <- object$titbits$W
+    # if(ncol(W)==1) W <- -999999
+    # else W <- W[,-1,drop=FALSE]
     offy <- object$titbits$offset
     spp_wts <- object$titbits$spp_weights
     site_spp_wts <- object$titbits$site_spp_weights
@@ -1194,45 +1213,49 @@
     S <- object$S
     G <- object$G
     n <- object$n
+    npx <- object$npx
+    npw <- object$npw
     control <- object$titbits$control
 
     # values for optimisation.
     inits <- object$coefs
     start_vals <- ecomix:::setup_inits_sam(inits, S, G, X, W, disty, return_list = TRUE)
-    if(ncol(W)>1){
-      Wnew <- W[,-1,drop=FALSE]
-      npw <- ncol(W)
-    } else{
-      Wnew <- -999999
-      npw <- 0
-    }
 
     # parameters to optimise
     alpha <- as.numeric(start_vals$alpha)
     beta <- as.numeric(start_vals$beta)
-    gamma <- as.numeric(start_vals$gamma)
     eta <- as.numeric(start_vals$eta)
+    gamma <- as.numeric(start_vals$gamma)
     theta <- as.numeric(start_vals$theta)
 
     #scores
+    getscores <- 1
     alpha.score <- as.numeric(rep(NA, length(alpha)))
     beta.score <- as.numeric(rep(NA, length(beta)))
-    gamma.score <- as.numeric(matrix( NA, nrow=S, ncol=npw))
     eta.score <- as.numeric(rep(NA, length(eta)))
-    theta.score <- as.numeric(rep(NA,length(theta)))
+    if( npw > 0){
+      control$optiPart <- as.integer(1)
+      gamma.score <- as.numeric(rep(NA, length(gamma)))
+    } else {
+      control$optiPart <- as.integer(0)
+      gamma.score <- -999999
+    }
     if(disty%in%c(4,6)){
       control$optiDisp <- as.integer(1)
+      theta.score <- as.numeric(rep(NA, length(theta)))
     }else{
       control$optiDisp <- as.integer(0)
+      theta.score <- -999999
     }
-    scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,gamma.score,eta.score,theta.score))))
+    scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,gamma.score,theta.score))))
+    control$conv_cpp <- as.integer(0)
+
     #model quantities
     pis_out <- as.numeric(rep(NA, G))  #container for the fitted RCP model
-    mus <- as.numeric(array(NA, dim=c( Obs, S, G)))  #container for the fitted spp model
+    mus <- as.numeric(array( NA, dim=c(n, S, G)))  #container for the fitted spp model
     loglikeS <- as.numeric(rep(NA, S))
     loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
 
-    #c++ call to optimise the model (needs pretty good starting values)
 
     if (method %in% c("FiniteDifference")) {
       grad_fun <- function(x) {
@@ -1242,47 +1265,50 @@
         start <- start + S
         beta <- x[start + seq_len((G*npx))]
         start <- start + (G*npx)
-        if(ncol(W)>1) {
+        eta <- x[start + seq_len(G - 1)]
+        start <- start + (G-1)
+        if(npw>0) {
           gamma <- x[start + seq_len((S*npw))]
           start <- start + (S*npw)
         } else {
-          gamma <- rep(-999999,S)
-          start <- start + S
+          gamma <- -999999
+          # start <- start + 1
         }
-        eta <- x[start + seq_len(G - 1)]
-        start <- start + (G-1)
         if(disty%in%c(4,6)){
           theta <- x[start + seq_len(S)]
         } else {
-          theta <- rep(-999999,S)
+          theta <- -999999
         }
+        #c++ call to optimise the model (needs pretty good starting values)
         tmp <- .Call("species_mix_cpp",
-                     as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(Wnew)),
-                     as.numeric(offset), as.numeric(spp_weights), as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
+                     as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(offset), as.numeric(spp_weights),
+                     as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
                      # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
-                     as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n), as.integer(disty),as.integer(control$optiDisp),
+                     as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n),
+                     as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),
                      # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
-                     as.double(alpha), as.double(beta), as.double(gamma), as.double(eta), as.double(theta),
+                     as.double(alpha), as.double(beta), as.double(eta), as.double(gamma), as.double(theta),
                      # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
-                     alpha.score, beta.score, gamma.score, eta.score, theta.score, as.integer(1), scores,
+                     alpha.score, beta.score, eta.score, gamma.score, theta.score, as.integer(0), scores,
                      # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
                      pis_out, mus, loglikeS, loglikeSG,
                      # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
                      as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
-                     as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp), as.integer(1),
+                     as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp), as.integer(control$printparams_cpp),
                      # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
-                     as.integer(1), as.integer(0), as.integer(0),
+                     as.integer(0), as.integer(0), as.integer(1),
                      # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
                      PACKAGE = "ecomix")
 
-        # tmp1 <- c(alpha.score, beta.score, eta.score)
-        tmp1 <- c(alpha.score, beta.score, gamma.score, eta.score, theta.score)
-        # if(any(!is.null(object$coef$theta)))
-          # tmp1 <- c( tmp1, theta.score)
+        tmp1 <- c(alpha.score, beta.score, eta.score)
+        if( npw > 0)#class( object$titbits$species_formula) == "formula")
+          tmp1 <- c(tmp1, gamma.score)
+        if(disty%in%c(4,6))
+          tmp1 <- c( tmp1, disp.score)
         return(tmp1)
       }
-      mod_coefs <- ecomix:::setup_inits_sam(inits, S, G, X, W, disty, return_list = FALSE)
-      hess <- numDeriv::jacobian(grad_fun, mod_coefs)
+      mod_coefs <- setup_inits_sam(inits, S, G, X, W, disty, return_list = FALSE)
+      hess <- numDeriv::jacobian(grad_fun, mod_coefs[which(mod_coefs!=-999999)])
       vcov.mat <- try( -solve(hess))
       if( inherits( vcov.mat, 'try-error')){
         attr(vcov.mat, "hess") <- hess
@@ -2165,14 +2191,14 @@ starting values;\n starting values are generated using ',control$init_method,
   eta.score <- as.numeric(rep(NA, length(eta)))
   if( npw > 0){
     control$optiPart <- as.integer(1)
-    gamma.score <- as.numeric(matrix( NA, nrow=S, ncol=npw))
+    gamma.score <- as.numeric(rep(NA, length(gamma)))
   } else {
     control$optiPart <- as.integer(0)
     gamma.score <- -999999
   }
   if(disty%in%c(4,6)){
     control$optiDisp <- as.integer(1)
-    theta.score <- as.numeric(rep(NA, S))
+    theta.score <- as.numeric(rep(NA, length(theta)))
   }else{
     control$optiDisp <- as.integer(0)
     theta.score <- -999999
@@ -2205,9 +2231,9 @@ starting values;\n starting values are generated using ',control$init_method,
                as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n),
                as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),
                # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
-               as.double(alpha), as.double(beta), as.double(gamma), as.double(eta), as.double(theta),
+               as.double(alpha), as.double(beta), as.double(eta), as.double(gamma), as.double(theta),
                # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
-               alpha.score, beta.score, gamma.score, eta.score, theta.score, as.integer(control$getscores), scores,
+               alpha.score, beta.score, eta.score, gamma.score, theta.score, as.integer(control$getscores), scores,
                # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
                pis_out, mus, loglikeS, loglikeSG,
                # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
@@ -2614,26 +2640,25 @@ starting values;\n starting values are generated using ',control$init_method,
   if(is.null(inits))res<-NULL
 
   npx <- ncol(X)
-  if(ncol(W)>1) npw <- ncol(W[,-1]) else npw <- NULL
+  if(ncol(W)>1) npw <- ncol(W[,-1]) else npw <- 0
 
 
   if(is.list(inits)){
     alpha <- as.numeric(inits$alpha)
     beta <- as.numeric(inits$beta)
-    if(!is.null(npw)){
+    eta <- as.numeric(inits$eta)
+    if(npw>0){
       gamma <- as.numeric(inits$gamma)
     } else {
-      gamma <- rep(-99999,S)
+      gamma <- -999999
     }
-    eta <- as.numeric(inits$eta)
-
     if(disty%in%c(4,6)){
       theta <- as.numeric(inits$theta)
     } else {
-      theta <- rep(-99999,S)
+      theta <- -999999
     }
-    if(return_list) res <- list(alpha=alpha,beta=beta,gamma=gamma,eta=eta,theta=theta)
-    else res <- c(alpha,beta,gamma,eta,theta)
+    if(return_list) res <- list(alpha=alpha,beta=beta,eta=eta,gamma=gamma,theta=theta)
+    else res <- c(alpha,beta,eta,gamma,theta)
     }
 
   if(is.numeric(inits)){
@@ -2642,23 +2667,23 @@ starting values;\n starting values are generated using ',control$init_method,
     start <- start + S
     beta <- inits[start + 1:((G*npx))]
     start <- start + (G*npx)
-    if(!is.null(npw)){
+    eta <- inits[start + 1:(G - 1)]
+    start <- start + (G-1)
+    if(npw>0){
       gamma <- inits[start + 1:((S*npw))]
       start <- start + (G*npw)
     } else {
-      gamma <- rep(-99999,S)
-      start <- start + S
+      gamma <- -999999
+      # start <- start + S
     }
-    start <- start + (G*npw)
-    eta <- inits[start + 1:(G - 1)]
-    start <- start + (G-1)
-    if(disty%in%c(4,6))
+    if(disty%in%c(4,6)){
       theta <- inits[start + 1:S]
-    else
-      theta <- rep(-99999,S)
+    } else {
+      theta <- -999999
+    }
 
-    if(return_list) res <- list(alpha=alpha,beta=beta,gamma=gamma,eta=eta,theta=theta)
-    else res <- c(alpha,beta,gamma,eta,theta)
+    if(return_list) res <- list(alpha=alpha,beta=beta,eta=eta,gamma=gamma,theta=theta)
+    else res <- c(alpha,beta,eta,gamma,theta)
 
   }
 
