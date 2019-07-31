@@ -121,6 +121,8 @@ testthat::test_that('testing partial species mix bernoulli ', {
 
   summary(test_part_sam)
 
+  species_mix.bootstrap(test_part_sam,nboot = 10)
+
 })
 
 

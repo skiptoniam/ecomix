@@ -178,14 +178,16 @@
   w.means <- NULL
   w.sds <- NULL
   if (standardise == TRUE) {
-    stand.X <- standardise.X(X[, -1])
-    X <- as.matrix(cbind(1, stand.X$X))
-    stand.W <- standardise.X(W)
-    W <- as.matrix(stand.X$X)
+    stand.X <- standardise.X(X)
+    X <- as.matrix(stand.X$X)
+    if(ncol(W)>1){
+      stand.W <- ecomix:::standardise.W(W[,-1,drop=FALSE])
+      W <- as.matrix(cbind(1,stand.W$W))
+      w.means <- stand.W$dat.means
+      w.sds <- stand.W$dat.sds
+    }
     x.means <- stand.X$dat.means
     x.sds <- stand.X$dat.sds
-    w.means <- stand.W$dat.means
-    w.sds <- stand.W$dat.sds
   }
 
   #get distribution
@@ -848,12 +850,12 @@
     rownames(res$beta) <- object$names$SAMs
     colnames(res$beta) <- object$names$Xvars
   }
-  if( !is.null(object$coef$gamma)){
+  if((object$npw)>0){
     res$gamma <- matrix(object$coefs$gamma, nrow = object$S, ncol = object$npw)
     rownames(res$gamma) <- object$names$spp
     colnames(res$gamma) <- object$names$Wvars
   }
-  if(!is.null( object$coef$theta)){
+  if(fm1$dist%in%c('negative_binomial','gaussian')){
     res$theta <- object$coef$theta
     names(res$theta) <- object$names$spp
   }
@@ -922,7 +924,8 @@
     return(NULL)
 
   alphaBoot <- allCoBoot[, seq_len(S), drop=FALSE]
-  betaBoot <- allCoBoot[, S + seq_len((G*np)), drop=FALSE]
+  betaBoot <- allCoBoot[, S + seq_len((G*npx)), drop=FALSE]
+  gammaBoot <- allCoBoot[, S + (G-1) + (G*npx) + seq_len((S*npw)), drop=FALSE]
 
   alphaIn <- c(NA, as.numeric(object$coefs$alpha))
   alphaIn <- alphaIn[-1]
@@ -930,6 +933,14 @@
   betaIn <- betaIn[-1]
   etaIn <- c(NA, as.numeric(object$coef$eta))
   etaIn <- etaIn[-1]
+  if (npw>0) {
+    gammaIn <- c(NA, as.numeric(object$coef$gamma))
+    gammaIn <- gammaIn[-1]
+    usetheta <- 1
+  } else {
+    gammaIn <- -999999
+    usetheta <- 0
+  }
   if (disty%in%c(4,6)) {
     thetaIn <- c(NA, as.numeric(object$coef$theta))
     thetaIn <- thetaIn[-1]
@@ -949,15 +960,17 @@
       bootSampsToUse <- 1
       tmp <- sam_internal_pred(alpha = object$coefs$alpha,
                                beta = object$coefs$beta,
-                               taus = taus, G = G, S = S, X = X,
+                               gamma = object$coefs$gamma,
+                               taus = taus, G = G, S = S, X = X, W = W,
                                offset = offset, family = object$dist)
     } else {
       nboot <- segments[seg]
       bootSampsToUse <- (sum( segments[1:seg])-segments[seg]+1):sum(segments[1:seg])
 
       tmp <- lapply(bootSampsToUse,function(ii)sam_internal_pred(alpha = alphaBoot[ii,],
-                                                                 beta = matrix(betaBoot[ii,],G,np),
-                                                                 taus = taus, G = G, S = S, X = X,
+                                                                 beta = matrix(betaBoot[ii,],G,npx),
+                                                                 gamma = matrix(gammaBoot[ii,],S,npw),
+                                                                 taus = taus, G = G, S = S, X = X, W = W,
                                                                  offset = offset, family = object$dist))
 
     }
@@ -1304,11 +1317,11 @@
         if( npw > 0)#class( object$titbits$species_formula) == "formula")
           tmp1 <- c(tmp1, gamma.score)
         if(disty%in%c(4,6))
-          tmp1 <- c( tmp1, disp.score)
+          tmp1 <- c( tmp1, theta.score)
         return(tmp1)
       }
-      mod_coefs <- setup_inits_sam(inits, S, G, X, W, disty, return_list = FALSE)
-      hess <- numDeriv::jacobian(grad_fun, mod_coefs[which(mod_coefs!=-999999)])
+      mod_coefs <- ecomix:::setup_inits_sam(inits, S, G, X, W, disty, return_list = FALSE)
+      hess <- numDeriv::jacobian(grad_fun, mod_coefs)
       vcov.mat <- try( -solve(hess))
       if( inherits( vcov.mat, 'try-error')){
         attr(vcov.mat, "hess") <- hess
@@ -1388,11 +1401,11 @@
   ak <- exp( ak-am)
   sppLogls <- am + log( sum( ak))
 
-  pen.max <- theta.range[2]
-  pen.min <- theta.range[1]
-  shape1 <- shape2 <- 1.25
+  # pen.max <- theta.range[2]
+  # pen.min <- theta.range[1]
+  # shape1 <- shape2 <- 1.25
 
-  if(disty==4)  sppLogls <- sppLogls + dbeta( (theta-pen.min) / (pen.max-pen.min), shape1, shape2, log=TRUE)
+  # if(disty==4)  sppLogls <- sppLogls + dbeta( (theta-pen.min) / (pen.max-pen.min), shape1, shape2, log=TRUE)
 
   return(sppLogls)
 }
@@ -1431,20 +1444,20 @@
 
 
 
-"theta.logl1" <- function(x, ss, first_fit, fits, G,
-                          disty, taus, theta.range) {
-  out <- 0
-  for(gg in seq_len(G)) {
-    eta <- fits$alpha[ss] + first_fit$x%*%fits$beta[gg,] + first_fit$offset
-    if(ncol(first_fit$W)>1) eta <- eta + first_fit$W[,-1]%*%fits$gamma[ss,]
-    if(disty == 4)
-      out <- sum(taus[ss,gg]*dnbinom(first_fit$y[,ss], mu = exp(eta), size = exp(x), log = TRUE));
-    if(disty == 6)
-      out <- sum(taus[ss,gg]*dnorm(first_fit$y[,ss], mean = eta, sd = exp(x), log = TRUE))
-    out <- out + out
-  }
-  return(out)
-}
+# "theta.logl1" <- function(x, ss, first_fit, fits, G,
+#                           disty, taus, theta.range) {
+#   out <- 0
+#   for(gg in seq_len(G)) {
+#     eta <- fits$alpha[ss] + first_fit$x%*%fits$beta[gg,] + first_fit$offset
+#     if(ncol(first_fit$W)>1) eta <- eta + first_fit$W[,-1]%*%fits$gamma[ss,]
+#     if(disty == 4)
+#       out <- sum(taus[ss,gg]*dnbinom(first_fit$y[,ss], mu = exp(eta), size = exp(x), log = TRUE));
+#     if(disty == 6)
+#       out <- sum(taus[ss,gg]*dnorm(first_fit$y[,ss], mean = eta, sd = exp(x), log = TRUE))
+#     out <- out + out
+#   }
+#   return(out)
+# }
 
 ## function for starting values using penalities
 "apply_glmnet_sam_inits" <- function(ss, y, X, W, site_spp_weights,
@@ -1746,7 +1759,7 @@ starting values;\n starting values are generated using ',control$init_method,
         #lp is the same as log_lambda (linear predictor)
         lp <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
         if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[,-1,drop=FALSE]) %*% fits$gamma[ss,]
-        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=link$linkinv(lp),size = exp(fits$theta[ss]),log=TRUE))
+        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss], mu=link$linkinv(lp), size = exp(-fits$theta[ss]), log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -1917,7 +1930,7 @@ starting values;\n starting values are generated using ',control$init_method,
   # cat('start pis', pis,'\n')
   first_fit <- starting_values$first_fit
   logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-  init_steps <- 3
+  init_steps <- 1#3
 
   while(control$em_reltol(logl_new,logl_old) & ite <= control$em_steps){
     if(restart_ite>10){
@@ -2609,7 +2622,7 @@ starting values;\n starting values are generated using ',control$init_method,
                   else return(list(alpha,beta,gamma))
 }
 
-"sam_internal_pred" <- function(alpha, beta, taus, G, S, X, offset = NULL, family){
+"sam_internal_pred" <- function(alpha, beta, taus, gamma, G, S, X, W, offset = NULL, family){
 
   if (family == "bernoulli") link.fun <- make.link("logit")
   if (family %in% c("negative_binomial","poisson","ippm")) link.fun <- make.link("log")
@@ -2622,14 +2635,14 @@ starting values;\n starting values are generated using ',control$init_method,
   for (g in seq_len(G)) {
     s.outpred <- matrix(NA, dim(X)[1], length(alpha))
     for (s in seq_len(S)) {
-      lp <- as.numeric(X%*%c(alpha[s],beta[g, ]) + offset)
-      s.outpred[, s] <- link.fun$linkinv(lp)
+      etaMix <- as.numeric(X%*%beta[g, ])
+      if(ncol(W)>1) etaSpp <- as.numeric(W%*%c(alpha[s],gamma[s, ]))
+      else etaSpp <- alpha[s]
+      eta <- etaMix + etaSpp + offset
+      s.outpred[, s] <- link.fun$linkinv(eta)
     }
 
-    if(family == "bernoulli" )
-      outpred_arch[, g] <- apply(s.outpred*rep(taus[, g],each = dim(X)[1]), 1, sum)/sum(taus[, g])
-    else
-      outpred_arch[, g] <- apply(s.outpred*rep(taus[, g],each = dim(X)[1]), 1, sum)/sum(taus[, g])
+    outpred_arch[, g] <- apply(s.outpred*rep(taus[, g],each = dim(X)[1]), 1, sum)/sum(taus[, g])
   }
 
   return(outpred_arch)
@@ -2640,7 +2653,8 @@ starting values;\n starting values are generated using ',control$init_method,
   if(is.null(inits))res<-NULL
 
   npx <- ncol(X)
-  if(ncol(W)>1) npw <- ncol(W[,-1]) else npw <- 0
+  if(ncol(W)>1) npw <- ncol(W[,-1])
+  else npw <- 0
 
 
   if(is.list(inits)){
@@ -2767,6 +2781,13 @@ starting values;\n starting values are generated using ',control$init_method,
   dat.means = apply(as.matrix(mat), 2, mean, na.rm = TRUE)
   dat.sds = apply(as.matrix(mat), 2, sd, na.rm = TRUE)
   return(list(X = X, dat.means = dat.means, dat.sds = dat.sds))
+}
+
+"standardise.W" <- function (mat){
+  W = scale(as.matrix(mat))
+  dat.means = apply(as.matrix(mat), 2, mean, na.rm = TRUE)
+  dat.sds = apply(as.matrix(mat), 2, sd, na.rm = TRUE)
+  return(list(W = W, dat.means = dat.means, dat.sds = dat.sds))
 }
 
 "calc_info_crit_sam" <-  function(tmp) {

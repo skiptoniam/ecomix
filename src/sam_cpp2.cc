@@ -323,7 +323,7 @@ double log_ippm_deriv_sam( const double &y, const double &mu, const double &st_s
 }
 
 double log_negative_binomial_sam( const double &y, const double &mu, const double &od){
-	double tmp = 0.0, theta;
+	double tmp, theta;
 	theta = 1/exp( od);
 	tmp = dnbinom_mu(y, theta, mu, 1);
 	return( tmp);
@@ -348,7 +348,7 @@ double log_negative_binomial_deriv_theta_sam(const double &y, const double &mu, 
 
 
 double log_negative_binomial_deriv_mu_sam( const double &y, const double &mu, const double &od){
-	double tmp = 0.0, theta;
+	double tmp, theta;
 	theta = 1/exp( od);
 	tmp = -(theta+y)/(theta+mu);
 	tmp += y/mu;
@@ -658,6 +658,7 @@ void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llSG, vector<dou
 //// this should calculate the derivate w.r.t alpha.
 void calc_alpha_deriv( vector<double> &alphaDerivs, vector<double> const &dlogdalpha, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
 
+	//alphaDerivs.assign(alphaDerivs.size(), 0.0);
 	for(int g=0; g<(dat.nG); g++){
 		for(int s=0;s<(dat.nS);s++){
 			//calculate for alphas
@@ -670,6 +671,7 @@ void calc_alpha_deriv( vector<double> &alphaDerivs, vector<double> const &dlogda
 // this should calculate the derivate w.r.t beta.
 void calc_beta_deriv( vector<double> &betaDerivs, vector<double> const &dlogdbeta, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
 
+	//betaDerivs.assign(betaDerivs.size(), 0.0);
 	for(int g=0; g<(dat.nG); g++){
 	    for(int j=0; j<(dat.nPX); j++){
 			for(int s=0; s<(dat.nS); s++){
@@ -684,6 +686,7 @@ void calc_beta_deriv( vector<double> &betaDerivs, vector<double> const &dlogdbet
 // this should calculate the derivate w.r.t gamma.
 void calc_gamma_deriv( vector<double> &gammaDerivs, vector<double> const &dlogdgamma, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
 
+	//gammaDerivs.assign(gammaDerivs.size(), 0.0);
 	for(int g=0; g<(dat.nG); g++){
 		for(int s=0; s<(dat.nS); s++){
 			for(int j=0; j<(dat.nPW); j++){
@@ -698,6 +701,7 @@ void calc_gamma_deriv( vector<double> &gammaDerivs, vector<double> const &dlogdg
 //// this should calculate the derivate w.r.t dispersion parameter.
 void calc_theta_deriv( vector<double> &thetaDerivs, vector<double> const &dlogdtheta, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
 
+	//thetaaDerivs.assign(thetaDerivs.size(), 0.0);
 	for(int g=0; g<(dat.nG); g++){
 		for(int s=0;s<(dat.nS);s++){
 			//calculate for dispersion (thetas)

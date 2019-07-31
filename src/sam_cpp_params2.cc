@@ -48,12 +48,12 @@ void sam_params::getArray(double *parArr, const sam_data &dat){
 			kount++;
 		}
 	//}	
-	if( dat.isDispersion())
+	if( dat.isDispersion()){
 		for( int i=0; i<dat.nS; i++){
 				parArr[kount] = Theta[i];
 				kount++;
 		}
-
+	}
 }
 
 void sam_params::update( double *parArr, const sam_data &dat){
@@ -71,17 +71,17 @@ void sam_params::update( double *parArr, const sam_data &dat){
 		kount++;
 	}
 	//if( dat.isPartial() & dat.doOptiPart()){
-		for( int i=0; i<((dat.nS*dat.nPW)); i++){
-			Gamma[i] = parArr[kount];
-			kount++;
-		}
+	for( int i=0; i<((dat.nS*dat.nPW)); i++){
+		Gamma[i] = parArr[kount];
+		kount++;
+	}
 	//}	
-	if( dat.isDispersion() & dat.doOptiDisp())
+	if( dat.isDispersion() & dat.doOptiDisp()){
 		for( int i=0; i<dat.nS; i++){
 			Theta[i] = parArr[kount];
 			kount++;
 		}
-		
+	}	
 }
 
 void sam_params::printParms( const sam_data &dat){

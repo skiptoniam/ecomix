@@ -100,12 +100,12 @@ void sam_derivs::update( double *grArr, const sam_data &dat){
 		kount++;
 	}
 	//}
-	if( dat.isDispersion())
+	if( dat.isDispersion()){
 		for( int s=0; s<dat.nS; s++){
 			Theta[s] = grArr[kount];
 			kount++;
 		}
-
+	}
 }
 
 void sam_derivs::getArray( double *grArr, const sam_data &dat){
@@ -128,10 +128,10 @@ void sam_derivs::getArray( double *grArr, const sam_data &dat){
 		kount++;
 	}
 	//}
-	if( dat.isDispersion())
+	if( dat.isDispersion()){
 		for( int s=0; s<dat.nS; s++){
 			grArr[kount] = Theta[s];
 			kount++;
 		}
-
+	}
 }
