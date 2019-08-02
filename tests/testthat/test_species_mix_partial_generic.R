@@ -117,6 +117,8 @@ testthat::test_that('testing partial species mix bernoulli ', {
                                distribution = 'bernoulli',
                                control = species_mix.control(em_steps = 5))
 
+  object <- test_part_sam
+
   test_part_sam$vcov <- vcov(test_part_sam)
 
   summary(test_part_sam)

@@ -10,10 +10,10 @@
 \alias{AIC.species_mix}
 \alias{BIC.species_mix}
 \alias{coef.species_mix}
+\alias{plot.species_mix}
 \alias{predict.species_mix}
 \alias{print.species_mix}
 \alias{print.species_mix.multifit}
-\alias{residuals.species_mix}
 \alias{summary.species_mix}
 \alias{vcov.species_mix}
 \alias{species_mix_boot_parametric}
@@ -57,15 +57,16 @@ species_mix.simulate(archetype_formula, species_formula, dat,
 
 \method{coef}{species_mix}(object, ...)
 
+\method{plot}{species_mix}(object, ..., type = "RQR", nsim = 100,
+  alpha.conf = c(0.9, 0.95, 0.99), quiet = FALSE,
+  species = "AllSpecies", fitted.scale = "response")
+
 \method{predict}{species_mix}(object, object2 = NULL, newdata = NULL,
   offset = NULL, nboot = 0, alpha = 0.95, mc.cores = 1, ...)
 
 \method{print}{species_mix}(x, ...)
 
 \method{print}{species_mix.multifit}(x, ...)
-
-\method{residuals}{species_mix}(object, ..., type = "RQR",
-  quiet = FALSE)
 
 \method{summary}{species_mix}(object, ...)
 
@@ -205,11 +206,6 @@ responses, e.g: ~1}
 \description{
 Fits a finite mixture model to identify species archetype
 models (SAMs).
-
-The randomised quantile residuals ("
-RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution
-function (marginality is over #' other species observations within that site;
-see Woolley et al, in prep).
 }
 \details{
 species_mix is used to fit mixtures of glms to multivariate

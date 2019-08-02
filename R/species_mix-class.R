@@ -837,7 +837,6 @@
   return(star.ic)
 }
 
-
 #' @rdname species_mix
 #' @export
 
@@ -861,6 +860,70 @@
   }
   return(res)
 }
+
+#' @rdname species_mix
+#' @export
+
+"plot.species_mix" <- function (object, ..., type="RQR", nsim = 100,
+                                alpha.conf = c(0.9, 0.95, 0.99),
+                                quiet=FALSE, species="AllSpecies",
+                                fitted.scale="response"){
+  if( ! type %in% c("RQR"))
+    stop( "Unknown type of residuals. Options are 'RQR'.\n")
+  if( ! all( species %in% c("AllSpecies",object$names$spp)))
+    stop( "Unknown species.  Options are 'AllSpecies' or any one of the species names as supplied (and stored in object$names$spp)")
+
+  if( type=="RQR"){
+    obs.resid <- residuals(object, type="RQR", quiet=quiet)
+    S <- object$S
+    sppID <- rep( TRUE, S)
+    if( species != "AllSpecies"){
+      sppID <- object$names$spp %in% species
+      obs.resid <- obs.resid[,sppID, drop=FALSE]
+      S <- ncol( obs.resid)
+    }
+    if( sum( obs.resid==Inf | obs.resid==-Inf) > 0){
+      message( "Infinite residuals removed from residual plots: ", sum( obs.resid==Inf | obs.resid==-Inf), " in total.")
+      obs.resid[obs.resid==Inf | obs.resid==-Inf] <- NA
+    }
+    spp.cols <- rep( 1:S, each=object$n)
+    main <- match.call( expand.dots=TRUE)$main
+    if( is.null( main)){
+      if( species=="AllSpecies")
+        main <- "All Residuals"
+      else
+        if( length( species)==1)
+          main<-species
+        else
+          main<-""
+    }
+    sub <- match.call( expand.dots=TRUE)$sub
+    if( is.null( sub))
+      sub <- "Colours separate species"
+    par( mfrow=c(1,2))
+    qqnorm(obs.resid, col=spp.cols, pch=20, main=main, sub=sub)
+    #    qqline( obs.resid)  #this doesn't actually poduce a y=x line.  It is only(?) appropriate if the scales of the two sets are different.
+    abline( 0,1,lwd=2)
+
+    # preds <- matrix( NA, nrow=object$n, ncol=S)
+    # for( ii in 1:object$n){
+    #   preds[ii,] <- rowSums( object$mu[ii,sppID,] * matrix( rep( object$pi, each=S), nrow=S, ncol=object$G))
+    # }
+
+    preds <- ecomix:::sam_internal_pred_species(object$coef$alpha, object$coef$beta, object$taus,
+                              object$coef$gamma, object$G, object$S, object$titbits$X,
+                              object$titbits$W, object$titbits$offset, object$dist)
+
+    switch( fitted.scale,
+            log = { loggy <- "x"},
+            logit = { loggy <- ""; preds <- log( preds / (1-preds))},
+            {loggy <- ""})
+    plot( preds, obs.resid, xlab="Fitted", ylab="RQR", main="Residual versus Fitted", sub="Colours separate species", pch=20, col=rep( 1:S, each=object$n), log=loggy)
+    abline( h=0)
+
+  }
+}
+
 
 #'@rdname species_mix
 #'@param object is a matrix model returned from the species_mix model.
@@ -958,7 +1021,7 @@
     if (any(segments <= 1)) {
       nboot <- 0
       bootSampsToUse <- 1
-      tmp <- sam_internal_pred(alpha = object$coefs$alpha,
+      tmp <- sam_internal_pred_groups(alpha = object$coefs$alpha,
                                beta = object$coefs$beta,
                                gamma = object$coefs$gamma,
                                taus = taus, G = G, S = S, X = X, W = W,
@@ -967,7 +1030,7 @@
       nboot <- segments[seg]
       bootSampsToUse <- (sum( segments[1:seg])-segments[seg]+1):sum(segments[1:seg])
 
-      tmp <- lapply(bootSampsToUse,function(ii)sam_internal_pred(alpha = alphaBoot[ii,],
+      tmp <- lapply(bootSampsToUse,function(ii)sam_internal_pred_groups(alpha = alphaBoot[ii,],
                                                                  beta = matrix(betaBoot[ii,],G,npx),
                                                                  gamma = matrix(gammaBoot[ii,],S,npw),
                                                                  taus = taus, G = G, S = S, X = X, W = W,
@@ -1076,39 +1139,32 @@
 
 }
 
-#' @rdname species_mix
+#' @rdname species_mix.residuals
+#' @name species_mix.residuals
 #' @export
 #' @description  The randomised quantile residuals ("
 #' RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution
-#' function (marginality is over #' other species observations within that site;
+#' function (marginality is over other species observations within that site;
 #' see Woolley et al, in prep).
 
-"residuals.species_mix" <- function( object, ..., type="RQR", quiet=FALSE) {
-    if( ! type %in% c("deviance","RQR"))
+"residuals.species_mix" <- function( object, ..., type="RQR") {
+    if( ! type %in% c("RQR"))
       stop( "Unknown type of residual requested. Only deviance and RQR (for randomised quantile residuals) are implemented\n")
 
-    if( type=="deviance"){
-      resids <- sqrt( -2*object$loglikeS)
-      if( !quiet){
-        message( "The sign of the deviance residuals is unknown -- what does sign mean for multiple species? Their mean is also unknown -- what is a saturated model in a mixture model?")
-        message( "This is not a problem if you are just looking for an over-all fit diagnostic using simulation envelopes (cf normal and half normal plots).")
-        message( "It is a problem however, when you try to see how residuals vary with covariates etc.. but the meaning of these plots needs to be considered carefully as the residuals are for multiple species anyway.")
-      }
-    }
     if( type=="RQR"){
       resids <- matrix( NA, nrow=object$n, ncol=object$S)
       switch( object$dist,
-              bernoulli = { fn <- function(y,mu,logtheta,power) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
-              poisson = { fn <- function(y,mu,logtheta,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
-              ippm = { fn <- function(y,mu,logtheta,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
-              negative_binomial = { fn <- function(y,mu,logtheta,power) pnbinom( q=y, mu=mu, size=1/exp( logtheta), lower.tail=TRUE)},
-              gaussian = { fn <- function(y,mu,logtheta,power) pnorm( q=y, mean=mu, sd=exp( logtheta), lower.tail=TRUE)})
+              bernoulli = { fn <- function(y,mu,logtheta) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
+              poisson = { fn <- function(y,mu,logtheta) ppois( q=y, lambda=mu, lower.tail=TRUE)},
+              ippm = { fn <- function(y,mu,logtheta) ppois( q=y, lambda=mu, lower.tail=TRUE)},
+              negative_binomial = { fn <- function(y,mu,logtheta) pnbinom( q=y, mu=mu, size=1/exp( logtheta), lower.tail=TRUE)},
+              gaussian = { fn <- function(y,mu,logtheta) pnorm( q=y, mean=mu, sd=exp( logtheta), lower.tail=TRUE)})
+
 
       for( ss in 1:object$S){
-        if( all( object$titbits$power==-999999))  tmpPow <- NULL else tmpPow <- object$titbits$power[ss]
         if( object$dist %in% c("bernoulli","poisson","ippm","negative_binomial")){
-          tmpLower <- fn( object$titbits$Y[,ss]-1, object$mus[,ss,], object$coef$theta[ss], tmpPow)
-          tmpUpper <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$theta[ss], tmpPow)
+          tmpLower <- fn( object$titbits$Y[,ss]-1, object$mus[,ss,], object$coef$theta[ss])
+          tmpUpper <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$theta[ss])
           tmpLower <- rowSums( tmpLower * object$pis)
           tmpLower <- ifelse( tmpLower<0, 0, tmpLower) #get rid of numerical errors for really small negative values
           tmpLower <- ifelse( tmpLower>1, 1, tmpLower) #get rid of numerical errors for 1+epsilon.
@@ -1119,45 +1175,14 @@
           resids[,ss] <- qnorm( resids[,ss])
         }
         if( object$dist == "gaussian"){
-          tmp <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$theta[ss], object$titbits$power[ss])
+          tmp <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$theta[ss])
           tmp <- rowSums( tmp * object$pis)
           resids[,ss] <- qnorm( tmp)
         }
       }
-      if( !quiet & sum( resids==Inf | resids==-Inf)>0)
-        message( "Some residuals, well",sum( resids==Inf | resids==-Inf), "to be precise, are very large (infinite actually).\nThese observations lie right on the edge of the realistic range of the model for the data (maybe even over the edge).")
+      if( !control$quiet & sum( resids==Inf | resids==-Inf)>0)
+        message( "Some residuals, well ",sum( resids==Inf | resids==-Inf), " of ",object$n*object$S," observations are very large (infinite actually).\nThese observations lie right on the edge of the realistic range of the model for the data (maybe even over the edge).")
 
-    }
-    if( type=="RQR.sim"){
-      nsim <- 1000
-      if( is.null( mc.cores))
-        mc.cores <- getOption("mc.cores", 4)
-      resids <- matrix( NA, nrow=object$n, ncol=object$S)
-      RQR.fun <- function(ii){
-        if( !quiet)
-          setTxtProgressBar(pb, ii)
-        X1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$X[ii,,drop=FALSE])
-        W1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$W[ii,,drop=FALSE])
-        sims <- simRCPdata( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, theta=object$coef$theta, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,dist=object$dist)
-        sims <- sims[,1:object$S]
-        yi <- object$titbits$Y[ii,,drop=FALSE]
-        many_yi <- matrix( rep( yi, each=nsim), ncol=object$S)
-        F_i <- colMeans( sims <= many_yi)
-        F_i_minus <- colMeans( sims < many_yi)
-        r_i <- runif( object$S, min=F_i_minus, max=F_i)
-        return( qnorm( r_i))
-      }
-      if( !quiet)
-        pb <- txtProgressBar(min = 1, max = object$n, style = 3, char = "><(('> ")
-      if( Sys.info()['sysname'] == "Windows" | mc.cores==1)
-        resids <- lapply( 1:object$n, RQR.fun)
-      else
-        resids <- parallel::mclapply( 1:object$n, RQR.fun, mc.cores=mc.cores)
-      if( !quiet)
-        message("")
-      resids <- matrix( unlist( resids), nrow=object$n, ncol=object$S, byrow=TRUE)
-      if( !quiet & sum( resids==Inf | resids==-Inf)>0)
-        message( "Some residuals, well",sum( resids==Inf | resids==-Inf), "to be precise, are very large (infinite actually).\nThese observations lie right on the edge of the Monte Carlo approximation to the distribution function.\nThis may be remedied by getting a better approximation (increasing nsim).")
     }
     return( resids)
   }
@@ -2622,7 +2647,7 @@ starting values;\n starting values are generated using ',control$init_method,
                   else return(list(alpha,beta,gamma))
 }
 
-"sam_internal_pred" <- function(alpha, beta, taus, gamma, G, S, X, W, offset = NULL, family){
+"sam_internal_pred_groups" <- function(alpha, beta, taus, gamma, G, S, X, W, offset = NULL, family){
 
   if (family == "bernoulli") link.fun <- make.link("logit")
   if (family %in% c("negative_binomial","poisson","ippm")) link.fun <- make.link("log")
@@ -2647,6 +2672,30 @@ starting values;\n starting values are generated using ',control$init_method,
 
   return(outpred_arch)
 }
+
+"sam_internal_pred_species" <- function(alpha, beta, taus, gamma, G, S, X, W,
+                                        offset = NULL, family){
+
+  if (family == "bernoulli") link.fun <- make.link("logit")
+  if (family %in% c("negative_binomial","poisson","ippm")) link.fun <- make.link("log")
+  if (family == "gaussian")link.fun <- make.link("identity")
+  if (is.null(offset)) offset <- rep(0, nrow(X))
+
+  outpred_spp <- matrix(0, dim(X)[1], S)
+
+  for (g in seq_len(G)) {
+    etaMix <- matrix(as.numeric(X%*%beta[g, ]), nrow(X), S, byrow=FALSE)
+    if(ncol(W)>1) etaSpp <- W%*%t(cbind(alpha,gamma))
+    else etaSpp <- matrix(alpha, nrow(X), S, byrow=TRUE)
+    eta <- etaMix + etaSpp + offset
+    mug <- link.fun$linkinv(eta)
+    outpred_spp <- outpred_spp + mug*matrix(taus[,g], nrow(X), S, byrow=TRUE)
+    }
+
+  return(outpred_spp)
+
+}
+
 
 
 "setup_inits_sam" <- function(inits, S, G, X, W, disty, return_list=TRUE){
