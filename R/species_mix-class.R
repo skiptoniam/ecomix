@@ -1282,7 +1282,7 @@
 #'}
 
 "print.species_mix.multifit" <-  function (x,...){
-  cat(x[[1]]$titbits$distribution, "species_mix model\n")
+  cat(x[[1]]$titbits$distribution,"species_mix model\n")
   cat("\nMixing probabilities\n")
   print(x$pi)
   cat("\nCoefficents\n")
