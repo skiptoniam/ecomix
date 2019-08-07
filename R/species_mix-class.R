@@ -861,6 +861,164 @@
   return(res)
 }
 
+#'@title Calculates leave-some-out statistics for species_mix object
+#'@rdname cooks.distance
+#'@description Performs leave-some-out measures for a species_mix model. This
+#'includes a measure of how much effect leaving out an observation has on the
+#'probability of each species group membership (tau).  Also, this function can
+#'be used for cross-validation.
+#'@param object A species_mix object that you want to assess.
+#'@param \dots
+#'@param oosSize The size of the withheld paritions (out-of-sample size).
+#'@param times The number of tunes to perform the re-estimation. For each
+#'1:times a random partition of the data, of size oosSize, is taken and the
+#'model is fitted to one of the partitions. It is predicted to the other
+#'partition. The exception is when oosSize=1 and times=model$n (leave-one-out).
+#'In such cases (the default too), the observations are left out one-by-one and
+#' not randomly.
+#'@param mc.cores The number of cores to spread the workload over. Default is 1.
+#' Argument is useless on Windows machines ??? see ?parallel::mclapply
+#'@param quiet Should printing be suppressed? Default is no, it should not.
+#'Note that in either case, printing of the iteration trace etc is suppressed
+#'for each species_mix fit.
+"cooks.distance.species_mix" <- function(model, ..., oosSize=1, times=object$n,
+                                         mc.cores=1, quiet=FALSE){
+  if (oosSize > object$n %/% 2)
+    stop("Out of sample is more than half the size of the data!\n
+         This is almost certainly an error.\n
+         Please set `oosSize' to something smaller.")
+  if (is.null(object$titbits))
+    stop("Model doesn't contain all information required for cross validation.\n
+     Please supply model with titbits (from titbits=TRUE in species_mix call)")
+  if ( !quiet)
+    pb <- txtProgressBar(min = 1, max = times, style = 3, char = "><(('> ")
+
+  funny <- function(x) {
+    if (!quiet)
+      setTxtProgressBar(pb, x)
+    if( oosSize!=1 | times!=object$n) #do we need to sample?
+      OOBag <- sample(1:object$n, oosSize, replace = FALSE)
+    else
+      OOBag <- x
+    inBag <- (1:object$n)[!(1:object$n) %in% OOBag]
+    new.wts <- object$titbits$site_spp_weights
+    new.wts[OOBag,] <- 0
+    control <- object$titbits$control
+    control$quiet <- TRUE
+    control$trace <- 0
+    control$optimise_cpp <- TRUE
+    disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie",
+                     "gaussian")
+    disty <- get_distribution_sam(disty_cases,object$titbits$distribution)
+    tmpobject <- species_mix.fit(y = object$titbits$Y,
+                                X = object$titbits$X,
+                                W = object$titbits$W,
+                                G = object$G,
+                                S = object$S,
+                                site_spp_weights = new.wts,
+                                spp_weights = object$titbits$spp_weights,
+                                offset = object$titbits$offset,
+                                y_is_na = object$titbits$y_is_na,
+                                disty = disty,
+                                control = control,
+                                inits = object$coef)
+
+
+    tmptaus <- calc_post_probs_sam(additive_logistic(tmpobject$eta),tmpobject$loglikeSG)
+
+    OOSppPreds <- matrix(NA, nrow = tmpobject$n, ncol = tmpobject$S)
+    OOSppPreds[OOBag, ] <- sam_internal_pred_species(alpha=tmpobject$coefs$alpha,
+                                                     beta = tmpobject$coefs$beta,
+                                                     taus = tmptaus,
+                                                     gamma = tmpobject$coef$gamma,
+                                                     G = tmpobject$G,S = tmpobject$S,
+                                                     X = object$titbits$X[OOBag,],
+                                                     W = object$titbits$W[OOBag,],
+                                                     offset = object$titbits$offset[OOBag],
+                                                     family = object$dist)
+    newTaus <-  tmptaus
+    r.negi <- object$taus - newTaus
+    r.negi <- colMeans( r.negi, na.rm=TRUE)
+
+    ## calculated the loglikelihood
+    alpha <- as.numeric(tmpobject$alpha)
+    beta <- as.numeric(tmpobject$beta)
+    eta <- as.numeric(tmpobject$eta)
+    gamma <- as.numeric(tmpobject$gamma)
+    theta <- as.numeric(tmpobject$theta)
+
+    #scores
+    getscores <- 1
+    alpha.score <- as.numeric(rep(NA, length(alpha)))
+    beta.score <- as.numeric(rep(NA, length(beta)))
+    eta.score <- as.numeric(rep(NA, length(eta)))
+    if( object$npw > 0){
+      control$optiPart <- as.integer(1)
+      gamma.score <- as.numeric(rep(NA, length(gamma)))
+    } else {
+      control$optiPart <- as.integer(0)
+      gamma.score <- -999999
+    }
+    if(disty%in%c(4,6)){
+      control$optiDisp <- as.integer(1)
+      theta.score <- as.numeric(rep(NA, length(theta)))
+    }else{
+      control$optiDisp <- as.integer(0)
+      theta.score <- -999999
+    }
+    scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,gamma.score,theta.score))))
+    control$conv_cpp <- as.integer(0)
+
+    #model quantities
+    pis_out <- as.numeric(rep(NA, object$G))  #container for the fitted RCP model
+    mus <- as.numeric(array( NA, dim=c(object$n, object$S, object$G)))  #container for the fitted spp model
+    loglikeS <- as.numeric(rep(NA, object$S))
+    loglikeSG  <- as.numeric(matrix(NA, nrow = object$S, ncol = object$G))
+
+    #c++ call to optimise the model (needs pretty good starting values)
+    tmp <- .Call("species_mix_cpp",
+                 as.numeric(as.matrix(object$titbits$y)), as.numeric(as.matrix(object$titbits$X)), as.numeric(as.matrix(object$titbits$W[,-1,drop=FALSE])), as.numeric(object$titbits$offset), as.numeric(object$titbits$spp_weights),
+                 as.numeric(as.matrix(object$titbits$site_spp_weights)), as.integer(as.matrix(!object$titbits$y_is_na)),
+                 # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
+                 as.integer(object$S), as.integer(object$G), as.integer(object$npx), as.integer(object$npw), as.integer(object$n),
+                 as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),
+                 # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
+                 as.double(alpha), as.double(beta), as.double(eta), as.double(gamma), as.double(theta),
+                 # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
+                 alpha.score, beta.score, eta.score, gamma.score, theta.score, as.integer(control$getscores), scores,
+                 # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
+                 pis_out, mus, loglikeS, loglikeSG,
+                 # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
+                 as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
+                 as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp), as.integer(control$printparams_cpp),
+                 # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
+                 as.integer(FALSE), as.integer(TRUE), as.integer(FALSE),
+                 # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
+                 PACKAGE = "ecomix")
+
+    ret.logl <- rep( NA, object$n)
+    ret.logl[OOBag] <- tmp$logl[OOBag]
+
+    return( list( OOSppPreds=OOSppPreds, cooksDist=r.negi, predLogL=ret.logl))
+  }
+  if (!quiet & mc.cores>1 & Sys.info()['sysname'] != "Windows")
+    message("Progress bar may not be monotonic due to the vaguaries of parallelisation")
+  tmp <- parallel::mclapply(1:times, funny, mc.cores = mc.cores)
+  if (!quiet)
+    message("")
+  cooksD <- t( sapply( tmp, function(x) x$cooksDist))
+  OOpreds <- array(NA, dim = c(object$n, object$S, times), dimnames = list(rownames(object$titbits$X), colnames(object$titbits$Y), paste("CVset", 1:times, sep = "")))
+  for (bb in 1:times)
+    OOpreds[, , bb] <- tmp[[bb]]$OOSppPreds
+  logls <- sapply( tmp, function(x) x$predLogL)
+  colnames( logls) <- rownames( cooksD) <- paste( "OOS",1:times,sep="_")
+  ret <- list(Y = object$titbits$Y, CV = OOpreds, cooksD=cooksD, predLogL=logls)
+  class(ret) <- "samCooksD" # a change is gonna come
+
+  return(ret)
+}
+
+
 #' @rdname species_mix
 #' @export
 
@@ -902,14 +1060,7 @@
       sub <- "Colours separate species"
     par( mfrow=c(1,2))
     qqnorm(obs.resid, col=spp.cols, pch=20, main=main, sub=sub)
-    #    qqline( obs.resid)  #this doesn't actually poduce a y=x line.  It is only(?) appropriate if the scales of the two sets are different.
     abline( 0,1,lwd=2)
-
-    # preds <- matrix( NA, nrow=object$n, ncol=S)
-    # for( ii in 1:object$n){
-    #   preds[ii,] <- rowSums( object$mu[ii,sppID,] * matrix( rep( object$pi, each=S), nrow=S, ncol=object$G))
-    # }
-
     preds <- ecomix:::sam_internal_pred_species(object$coef$alpha, object$coef$beta, object$taus,
                               object$coef$gamma, object$G, object$S, object$titbits$X,
                               object$titbits$W, object$titbits$offset, object$dist)
@@ -1240,10 +1391,10 @@
     W <- object$titbits$W
     # if(ncol(W)==1) W <- -999999
     # else W <- W[,-1,drop=FALSE]
-    offy <- object$titbits$offset
+    offset <- object$titbits$offset
     spp_wts <- object$titbits$spp_weights
     site_spp_wts <- object$titbits$site_spp_weights
-    Y <- object$titbits$Y
+    y <- object$titbits$Y
     y_is_na <- object$titbits$y_is_na
     distribution <- object$titbits$distribution
     disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
@@ -1319,8 +1470,8 @@
         }
         #c++ call to optimise the model (needs pretty good starting values)
         tmp <- .Call("species_mix_cpp",
-                     as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(offset), as.numeric(spp_weights),
-                     as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
+                     as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(offset), as.numeric(spp_wts),
+                     as.numeric(as.matrix(site_spp_wts)), as.integer(as.matrix(!y_is_na)),
                      # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
                      as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n),
                      as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),
