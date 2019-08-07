@@ -1347,7 +1347,7 @@
     stop("No variance matrix has been supplied")
 
   }
-  res <- cbind(unlist(object$coefs), sqrt(diag(object$vcov)))
+  res <- cbind(unlist(object$coefs),  sqrt(diag(object$vcov)))
   res <- cbind(res, res[, 1]/res[, 2])
   res <- cbind(res, 2 * (1 - pnorm(abs(res[, 3]))))
   colnames(res) <- c("Estimate", "SE", "z-score", "p")
