@@ -15,7 +15,7 @@
 \alias{regional_mix_boot}
 \alias{regional_mix_bootParametric}
 \alias{residuals.regional_mix}
-\alias{simulate_regional_mix_data}
+\alias{regional_mix.simulate}
 \alias{stability.regional_mix}
 \alias{summary.regional_mix}
 \alias{vcov.regional_mix}
@@ -60,7 +60,7 @@ regional_mix_bootParametric(fm, mf, nboot)
 \method{residuals}{regional_mix}(object, ..., type = "RQR",
   quiet = FALSE)
 
-simulate_regional_mix_data(nRCP = 3, S = 20, n = 200, p.x = 3,
+regional_mix.simulate(nRCP = 3, S = 20, n = 200, p.x = 3,
   p.w = 0, alpha = NULL, tau = NULL, beta = NULL, gamma = NULL,
   logDisps = NULL, powers = NULL, X = NULL, W = NULL,
   offset = NULL, dist = "bernoulli")
@@ -144,7 +144,7 @@ normal variates. Within a site they are likely to be correlated (as they share a
 }
 \examples{
 \dontrun{
-simulated_data <- simulate_regional_mix_data() ## need to finishing generating this function.
+simulated_data <- regional_mix.simulate() ## need to finishing generating this function.
 rcp_form <- as.formula(paste0("cbind(",paste(colnames(simulated_data[,1:20]),collapse = ','),")~1+x1+x2+x3"))
 spp_form <- observations ~ 1 + w1 + w2
 data <- make_mixture_data(species_data = simulated_data$species_data,
@@ -180,7 +180,7 @@ beta <- 0.2 * matrix( c(-1.2, -2.6, 0.2, -23.4, -16.7, -18.7, -59.2, -76.0, -14.
 gamma <- matrix( rnorm( S*p.w), ncol=p.w, nrow=S)
 logDisp <- log( rexp( S, 1))
 set.seed(121)
-simDat <- simulate_regional_mix_data( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n, alpha=alpha, tau=tau,
+simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n, alpha=alpha, tau=tau,
                      beta=beta, gamma=gamma, X=X[,-(2:3)], W=W, dist=my.dist, logDisp=logDisp, offset=Offy)
 
 }

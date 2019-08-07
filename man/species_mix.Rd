@@ -2,7 +2,6 @@
 % Please edit documentation in R/species_mix-class.R
 \name{species_mix}
 \alias{species_mix}
-\alias{species_mix.fit}
 \alias{species_mix.multifit}
 \alias{control}
 \alias{species_mix.control}
@@ -11,10 +10,10 @@
 \alias{AIC.species_mix}
 \alias{BIC.species_mix}
 \alias{coef.species_mix}
+\alias{plot.species_mix}
 \alias{predict.species_mix}
 \alias{print.species_mix}
 \alias{print.species_mix.multifit}
-\alias{residuals.species_mix}
 \alias{summary.species_mix}
 \alias{vcov.species_mix}
 \alias{species_mix_boot_parametric}
@@ -25,9 +24,6 @@ species_mix(archetype_formula = NULL,
   distribution = "bernoulli", offset = NULL, weights = NULL,
   bb_weights = NULL, control = NULL, inits = NULL,
   standardise = FALSE, titbits = TRUE)
-
-species_mix.fit(y, X, G, S, spp_weights, site_spp_weights, offset, y_is_na,
-  disty, control, inits = NULL)
 
 species_mix.multifit(archetype_formula = NULL,
   species_formula = stats::as.formula(~1), data, n_mixtures = 3,
@@ -51,8 +47,9 @@ species_mix.control(maxit = 1000, quiet = FALSE, trace = 1,
 species_mix.bootstrap(object, nboot = 1000, type = "BayesBoot",
   mc.cores = 1, quiet = FALSE, orderSamps = FALSE, MLstart = TRUE)
 
-species_mix.simulate(archetype_formula, species_formula, dat, theta,
-  distribution = "bernoulli")
+species_mix.simulate(archetype_formula, species_formula, dat,
+  offset = NULL, n_mixtures = 3, alpha = NULL, beta = NULL,
+  gamma = NULL, theta = NULL, distribution = "bernoulli")
 
 \method{AIC}{species_mix}(object, ..., k = 2)
 
@@ -60,15 +57,16 @@ species_mix.simulate(archetype_formula, species_formula, dat, theta,
 
 \method{coef}{species_mix}(object, ...)
 
+\method{plot}{species_mix}(object, ..., type = "RQR", nsim = 100,
+  alpha.conf = c(0.9, 0.95, 0.99), quiet = FALSE,
+  species = "AllSpecies", fitted.scale = "response")
+
 \method{predict}{species_mix}(object, object2 = NULL, newdata = NULL,
   offset = NULL, nboot = 0, alpha = 0.95, mc.cores = 1, ...)
 
 \method{print}{species_mix}(x, ...)
 
 \method{print}{species_mix.multifit}(x, ...)
-
-\method{residuals}{species_mix}(object, ..., type = "RQR",
-  quiet = FALSE)
 
 \method{summary}{species_mix}(object, ...)
 
@@ -151,22 +149,6 @@ using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created
 for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then
 setting titbits=TRUE may give users problems with memory.}
 
-\item{y}{is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.}
-
-\item{X}{is a design matrix for the archetype_formula dimension n_sites * n_covariates.}
-
-\item{G}{is the number of species archetypes that are being estimated.}
-
-\item{S}{is the number of species to be modelled (this will be calculated internally in species_mix())}
-
-\item{spp_weights}{These are weights on the species logls and are specifically used in the Bayesian Boostrap.}
-
-\item{site_spp_weights}{These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.}
-
-\item{y_is_na}{This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!}
-
-\item{disty}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are avaliable - internal conversion of distribution to a integer.}
-
 \item{nstart}{for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
 \item{mc.cores}{for species_mix.multifit only. The number of cores to spread the re-fitting over.}
@@ -195,18 +177,18 @@ setting titbits=TRUE may give users problems with memory.}
 
 \item{dat}{a matrix of variables to simulate data from.}
 
-\item{theta}{coefficents for each species archetype. Matrix of G x number of
+\item{alpha}{coefficents for each species archetype. vector S long.}
+
+\item{beta}{coefficents for each species archetype. Matrix of G x number of
 parameters. Each row is a different species archetype.}
 
+\item{gamma}{coefficents for each species archetype. Matrix of S x number of
+parameters. Each row is a different species archetype.}
+
+\item{theta}{coefficents for the dispersion variables for negative_binomial
+and gaussian distributions - should be number of species long}
+
 \item{newdata}{a matrix of new observations for prediction.}
-
-\item{W}{is a design matrix for species_formula and will be implemented if species_formula has covariates.}
-
-\item{offset}{this is a vector of site specific offsets, this might be something like area sampled at sites.}
-
-\item{control}{this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.}
-
-\item{inits}{This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).}
 
 \item{reltol}{function that determines the relative tolernace for model convergence. Default is quiet strict.}
 
@@ -216,17 +198,14 @@ the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
 \item{species_formula}{formula to simulate species_mix species-specific
 responses, e.g: ~1}
 
+\item{n_mixtures}{number of groups to simulate.}
+
 \item{distribution}{Which statistical distribution to simulate data for.
 'bernoulli', 'gaussian', 'ippm', 'negative_binomial' and 'poisson'.}
 }
 \description{
 Fits a finite mixture model to identify species archetype
 models (SAMs).
-
-The randomised quantile residuals ("
-RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution
-function (marginality is over #' other species observations within that site;
-see Woolley et al, in prep).
 }
 \details{
 species_mix is used to fit mixtures of glms to multivariate
@@ -244,35 +223,36 @@ Minima is found using vmmin (BFGS). Currently 'bernoulli',
 library(ecomix)
 set.seed(42)
 sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
-collapse = ','),")~1+x1+x2"))
+collapse = ','),")~x1+x2"))
 sp_form <- ~ 1
-theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,1.9),3,3,byrow=TRUE)
+beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,1.9),3,2,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
 x2=stats::rnorm(100,0,2.5))
 dat[,-1] <- scale(dat[,-1])
 simulated_data <- species_mix.simulate(archetype_formula=sam_form,
- species_formula=sp_form, dat,theta,dist="bernoulli")
-data <- make_mixture_data(species_data = simulated_data$species_data,
-                          covariate_data = simulated_data$covariate_data[,-1])
-fm1 <- species_mix(sam_form, sp_form, data, distribution = 'bernoulli',
+ species_formula=sp_form, dat,beta=beta,dist="bernoulli")
+fm1 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'bernoulli',
  n_mixtures=3)
  }
 \dontrun{
-fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli', nstart = 10, n_mixtures=3)
+fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
+ distribution = 'bernoulli', nstart = 10, n_mixtures=3)
 }
 \dontrun{
 archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',
 1:20),collapse = ','),")~1+x1+x2"))
-theta <- matrix(c(-0.9,-0.6,0.5,
-                   1.0,-0.9,1.0,
-                   0.9,-0.9,2.9,
-                  -1.0,0.2,-0.4),
-                4,3,byrow=TRUE)
+species_formula <- stats::as.formula(~1)
+beta <- matrix(c(-3.6,0.5,
+                 -0.9,1.0,
+                  0.9,-2.9,
+                  2.2,5.4),
+                4,2,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),
                   x1=stats::runif(100,0,2.5),
                   x2=stats::rnorm(100,0,2.5))
-simulated_data <- species_mix.simulate(archetype_formula,~1,
-                                            dat,theta,dist="bernoulli")
+simulated_data <- species_mix.simulate(archetype_formula,species_formula,
+                                       dat, n_mixtures = 4, beta=beta,
+                                       dist="bernoulli")
 }
 \dontrun{
 preds_fm1 <- predict(fm1)

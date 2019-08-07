@@ -1,4 +1,4 @@
-#include"sam_cpp.h"
+#include"sam_cpp2.h"
 
 sam_opt_contr::sam_opt_contr(){};
 sam_opt_contr::~sam_opt_contr(){};

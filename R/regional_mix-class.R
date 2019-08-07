@@ -25,7 +25,7 @@
 #' @export
 #' @examples
 #' \dontrun{
-#' simulated_data <- simulate_regional_mix_data() ## need to finishing generating this function.
+#' simulated_data <- regional_mix.simulate() ## need to finishing generating this function.
 #' rcp_form <- as.formula(paste0("cbind(",paste(colnames(simulated_data[,1:20]),collapse = ','),")~1+x1+x2+x3"))
 #' spp_form <- observations ~ 1 + w1 + w2
 #' data <- make_mixture_data(species_data = simulated_data$species_data,
@@ -773,7 +773,7 @@ function( site.logls, outcomes, dist, coef, nRCP, type="deviance", powers=NULL, 
     ii <- 1
     X1 <- kronecker( rep( 1, nsim), X[ii,])
     W1 <- kronecker( rep( 1, nsim), W[ii,])
-    sims <- simRCPdata( nRCP=nRCP, S=length( coef$alpha), n=n.sim, p.x=ncol( X), p.w=ncol( W), alpha=coef$alpha, tau=coef$tau, beta=coef$beta, gamma=coef$gamma, logDisps=coef$disp, powers=pwers, X=X1, W=W1, offset=offy,dist=dist)
+    sims <- regional_mix.simulate( nRCP=nRCP, S=length( coef$alpha), n=n.sim, p.x=ncol( X), p.w=ncol( W), alpha=coef$alpha, tau=coef$tau, beta=coef$beta, gamma=coef$gamma, logDisps=coef$disp, powers=pwers, X=X1, W=W1, offset=offy,dist=dist)
 
   }
 
@@ -1443,7 +1443,7 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
     for (s in 1:nsim) {
       if( !quiet)
         setTxtProgressBar(pb, s)
-      newy <- as.matrix( simRCPdata( nRCP=nRCP, S=S, n=n, p.x=p.x, p.w=p.w, alpha=alpha, tau=tau, beta=beta, gamma=gamma, logDisps=disp, powers=power, X=X, W=W, offset=offy, dist=x$dist))
+      newy <- as.matrix( regional_mix.simulate( nRCP=nRCP, S=S, n=n, p.x=p.x, p.w=p.w, alpha=alpha, tau=tau, beta=beta, gamma=gamma, logDisps=disp, powers=power, X=X, W=W, offset=offy, dist=x$dist))
       tmp <- .Call("RCP_C", as.numeric(newy[, 1:S]), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
           as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
           alpha, tau, beta, gamma, disp, power,
@@ -1926,7 +1926,7 @@ function (x, ...)
         setTxtProgressBar(pb, ii)
       X1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$X[ii,,drop=FALSE])
       W1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$W[ii,,drop=FALSE])
-      sims <- simRCPdata( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, logDisps=object$coef$disp, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,dist=object$dist)
+      sims <- regional_mix.simulate( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, logDisps=object$coef$disp, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,dist=object$dist)
       sims <- sims[,1:object$S]
       yi <- object$titbits$Y[ii,,drop=FALSE]
       many_yi <- matrix( rep( yi, each=nsim), ncol=object$S)
@@ -2019,7 +2019,7 @@ function(control)
 }
 
 #' @rdname regional_mix
-#' @name simulate_regional_mix_data
+#' @name regional_mix.simulate
 #' @param nRCP Integer giving the number of RCPs
 #' @param S Integer giving the number of species
 #' @param n Integer giving the number of observations (sites)
@@ -2067,11 +2067,11 @@ function(control)
 #'gamma <- matrix( rnorm( S*p.w), ncol=p.w, nrow=S)
 #'logDisp <- log( rexp( S, 1))
 #'set.seed(121)
-#'simDat <- simulate_regional_mix_data( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n, alpha=alpha, tau=tau,
+#'simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n, alpha=alpha, tau=tau,
 #'                      beta=beta, gamma=gamma, X=X[,-(2:3)], W=W, dist=my.dist, logDisp=logDisp, offset=Offy)
 #'
 #' }
-"simulate_regional_mix_data" <- function (nRCP=3, S=20, n=200, p.x=3, p.w=0, alpha=NULL,
+"regional_mix.simulate" <- function (nRCP=3, S=20, n=200, p.x=3, p.w=0, alpha=NULL,
                           tau=NULL, beta=NULL, gamma=NULL, logDisps=NULL,
                           powers=NULL, X=NULL, W=NULL, offset=NULL, dist="bernoulli")
 {
@@ -2104,14 +2104,6 @@ function(control)
       message( "Random values for overdispersions")
       logDisps <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
     }
-    # if( dist=="tweedie" & (is.null( logDisps) | length( logDisps) != S)){
-    #   message( "Random values for species' dispersion parameters")
-    #   logDisps <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
-    # }
-    # if( dist=="tweedie" & (is.null( powers) | length( powers) != S)) {
-    #   message( "Power parameter assigned to 1.6 for each species")
-    #   powers <- rep( 1.6, S)
-    # }
     if( dist=="gaussian" & (is.null( logDisps) | length( logDisps) != S)){
       message( "Random values for species' variance parameters")
       logDisps <- log( 1 + rgamma( n+S, shape=1, scale=0.75))
@@ -2171,8 +2163,6 @@ function(control)
       outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
     if( dist=="negative_binomial")
       outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp( logDisps), each=n)), nrow = n, ncol = S)
-    # if( dist=="tweedie")
-    #   outcomes <- matrix( fishMod::rTweedie( n * S, mu=as.numeric( fitted), phi=rep( exp( logDisps), each=n), p=rep( powers, each=n)), nrow=n, ncol=S)
     if( dist=="gaussian")
       outcomes <- matrix( rnorm( n=n*S, mean=as.numeric( fitted), sd=rep( exp( logDisps), each=n)), nrow=n, ncol=S)
 
