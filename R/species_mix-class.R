@@ -1300,7 +1300,7 @@
 
 "residuals.species_mix" <- function( object, ..., type="RQR", control=species_mix.control()) {
     if( ! type %in% c("RQR"))
-      stop( "Unknown type of residual requested. Only deviance and RQR (for randomised quantile residuals) are implemented\n")
+      stop( "Unknown type of residual requested.\n Only deviance and RQR (for randomised quantile residuals) are implemented\n")
 
     if( type=="RQR"){
       resids <- matrix( NA, nrow=object$n, ncol=object$S)
