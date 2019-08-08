@@ -116,7 +116,7 @@
     archetype_formula <- stats::as.formula(archetype_formula)
   } else{
     if(!control$quiet)
-      message("There is no SAM model! Please provide a model (intercept at least) -- exitting now")
+      message("There is no SAM model! Please provide an archetype_formula -- exitting now")
     return(NULL)
   }
 
