@@ -478,7 +478,7 @@
 
   #    require( parallel)
   if( !control$quiet & nstart>1)
-    pb <- txtProgressBar(min = 1, max = nstart, style = 3, char = "-^^,--,~ ")
+    pb <- txtProgressBar(min = 1, max = nstart, style = 3, char = "c[_] ")
 
    #Fit the model many times
    many_starts <- surveillance::plapply(seq_len(nstart), tmp_fun,
@@ -490,24 +490,36 @@
    return(many_starts)
 }
 
-#'@rdname species_mix
-#'@name control
+#'@title Controls for species_mix model.
+#'@rdname species_mix.control
+#'@name species_mix.control
 #'@param quiet Should any reporting be performed? Default is FALSE, for reporting.
-#'@param trace int 1=model will report parameter estimates and loglikelihood at each iteration. 0=quiet.
-#'@param reltol function that determines the relative tolernace for model convergence. Default is quiet strict.
-#'@param maxit Maximum number of evaluations of the objective function allowed. Defaults to 500.
-#'@param cores The number of cores to use in fitting of species mix models. These will be largely used to model the species-specific parameteres.
+#'@param cores The number of cores to use in fitting of species_mix models. These will be largely used to model the species-specific parameteres.
 #'@param init_method The method to use for initialisation. The options are "random2", "kmeans", "kmed". The default uses random2, which is a kmeans with noise added to the cluster.
 #'@param init_sd The amount of noise to add to the initailisation the default is 1.
 #'@param minimum_sites_occurrence a integer which determins the number of minimum sites present for any species for it to be included in the initialisation step. This removes rare species from initial groupings. They are then included in the overall analysis.
 #'@param em_prefit Logical if TRUE the model will run a slower EM algorithim fit to find starting values.
 #'@param em_steps int Default is 3, the number of EM iterations to get to starting values.
 #'@param em_refit int Default is 1, number of times to refit using EM.
+#'@param em_reltol A function or value which gives the tolerance in the EM loglikeihood estimation.
+#'@param en_maxtau A cap on the maximum value of the species' taus in the first E-step of the EM algorithm, not used for subsequent iterations.
+#'@param theta_range Two positive values use as penalities for estimating the dispersion parameters (theta) in a negative_binomial SAM or PSAM.
+#'@param update_kappa Penalities for how fast parameters update during each EM step.
+#'@param print_cpp_start_vals A call to check what parameter estimates are being passed to C++ for optimisation.
+#'@param maxit_cpp The number of iterations to run in C++. Default is 1000.
+#'@param trace_cpp Non-negative integer. If positive, tracing information on the progress of the optimization is produced. Higher values may produce more tracing information.
+#'@param nreport_cpp The number of iterations to report the loglikelihood. Default is 10.
+#'@param abstol_cpp Absolute tolerance. Defaults to 0 so the absolute convergence test is not used. If the objective function is known to be non-negative, the previous default of 1e-20 would be more appropriate.
+#'@param reltol_cpp Relative convergence tolerance. The algorithm stops if it is unable to reduce the value by a factor of reltol * (abs(val) + reltol) at a step. Defaults to sqrt(.Machine$double.eps), typically about 1e-8.
+#'@param conv_cpp Has the model convered previously.
+#'@param printparams_cpp Print the parameter estimates within C++.
+#'@param optimise_cpp Should optimisation for estimation occur? If TRUE (default) optimisation will occur. If FALSE no optimisation is performed.
+#'@param loglOnly_cpp Should the log-likelihood be caulcated? If TRUE (default) then log-likelihood is calculated and returned. If FALSE then the log-likelihood is not calculated for return.
+#'@param derivOnly_cpp Should the scores be evaluated at the (final) parameter values. If TRUE (default) then they are calculated. If FALSE then they are not calculated.
+#'@param getscores_cpp Return scores.
 
 #'@export
-"species_mix.control" <- function(maxit = 1000,
-                                  quiet = FALSE,
-                                  trace = 1,
+"species_mix.control" <- function(quiet = FALSE,
                                   cores = 1,
                                   ## intialisation controls
                                   init_method = 'random2',
@@ -517,7 +529,6 @@
                                   em_prefit = TRUE,
                                   em_steps = 5,
                                   em_refit = 2,
-                                  em_abstol = sqrt(.Machine$double.eps),
                                   em_reltol = reltol_fun,
                                   em_maxtau = 0.8,
                                   ## partial mixture penalities
@@ -528,7 +539,7 @@
                                   print_cpp_start_vals = FALSE,
                                   maxit_cpp = 1000,
                                   trace_cpp = 1,
-                                  nreport_cpp = 1,
+                                  nreport_cpp = 10,
                                   abstol_cpp = sqrt(.Machine$double.eps),
                                   reltol_cpp = sqrt(.Machine$double.eps),
                                   conv_cpp = 1,
@@ -868,7 +879,7 @@
 #'probability of each species group membership (tau).  Also, this function can
 #'be used for cross-validation.
 #'@param object A species_mix object that you want to assess.
-#'@param \dots
+#'@param \dots Not used.
 #'@param oosSize The size of the withheld paritions (out-of-sample size).
 #'@param times The number of tunes to perform the re-estimation. For each
 #'1:times a random partition of the data, of size oosSize, is taken and the
@@ -1290,8 +1301,12 @@
 
 }
 
+#' @title Estimate residuals for a species_mix object
 #' @rdname species_mix.residuals
 #' @name species_mix.residuals
+#' @param object A returned species_mix model object.
+#' @param \dots additional calls for residual function
+#' @param type The type of residuals to estimate. Default is "RQR" (Random Quantile Residuals). But you can also simulate many Random Quantile Residuals using "SimRQR".
 #' @export
 #' @description  The randomised quantile residuals ("
 #' RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution
