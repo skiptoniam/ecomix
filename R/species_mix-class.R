@@ -550,15 +550,13 @@
                                   getscores_cpp = 0,
                                   ...){
                #general controls
-  rval <- list(maxit = maxit, quiet = quiet, trace = trace,
-               cores = cores,
+  rval <- list(quiet = quiet, cores = cores,
                #initialisation controls
                init_method = init_method, init_sd = init_sd,
                minimum_sites_occurrence = minimum_sites_occurrence,
                #em controls
                em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps,
-               em_abstol = em_abstol, em_reltol = em_reltol,
-               em_maxtau = em_maxtau,
+               em_reltol = em_reltol, em_maxtau = em_maxtau,
                # partial controls
                theta_range = theta_range,
                pen_param = pen_param,
