@@ -267,6 +267,173 @@
   }
 
 ##### S3 Class exports #####
+#' @rdname regional_mix
+#' @export
+"AIC.regional_mix" <- function (object, ..., k = 2){
+  p <- length(unlist(object$coefs))
+  if (is.null(k))
+    k <- 2
+  star.ic <- -2 * object$logl + k * p
+  return(star.ic)
+}
+#' @rdname regional_mix
+#' @export
+#' @importFrom stats BIC
+"BIC.regional_mix" <- function (object, ...){
+  p <- length(unlist(object$coefs))
+  k <- log(object$n)
+  star.ic <- -2 * object$logl + k * p
+  return(star.ic)
+}
+
+"coef.regional_mix" <- function (object, ...){
+  res <- list()
+  res$alpha <- object$coefs$alpha
+  names( res$alpha) <- object$names$spp
+  if( !is.null( object$coef$tau)){
+    res$tau <- matrix(object$coefs$tau, nrow = object$nRCP - 1, ncol = object$S)
+    colnames( res$tau) <- object$names$spp
+  }
+  if( !is.null( object$coef$beta)){
+    res$beta <- matrix(object$coefs$beta, nrow = object$nRCP - 1, ncol = object$p.x)
+    colnames( res$beta) <- object$names$Xvars
+  }
+  if( !is.null( object$coef$gamma)){
+    res$gamma <- matrix( object$coef$gamma, nrow=object$S, ncol=object$p.w)
+    colnames( res$gamma) <- object$names$Wvars
+    rownames( res$gamma) <- object$names$spp
+  }
+  if( !is.null( object$coef$disp)){
+    res$logDisp <- object$coef$disp
+    names( res$logDisp) <- object$names$spp
+  }
+
+  return(res)
+}
+
+#'@title cooks.distance
+#'@rdname cooks.distance
+#'@description Performs leave-some-out measures for a regional_mix model. This includes a measure of how much effect leaving out an observation has on the probability of each site's RCP label. Also, this function can be used as a cross-validation workhorse.
+
+#'@param model A regional_mix object whose fit you want to assess
+#'@param ... ignored
+#'@param oosSize The size of the with held partitions (out-of-sample size). Use 1 (default) for leave-one-out statistics, such as Cook's distance and leave-one-out validation.
+#'@param times The number of times to perform the re-estimation (the number of leave out groups). For each 1:times a random partition of the data, of size oosSize, is taken and the model is fitted to one of the partitions. It is predicted to the other partition. The exception is when oosSize=1 and times=model$n (leave-one-out). In such cases (the default too), the observations are left out one-by-one and not randomly.
+#'@param mc.cores The number of cores to spread the workload over. Default is 1. Argument is useless on Windows machines ??? see ?parallel::mclapply
+#'@param quiet Should printing be suppressed? Default is no, it should not. Note that in either case, printing of the iteration trace etc is suppressed for each regional_mix fit.
+
+#'@return An object of class regiCooksD. It is a list of 4 elements:
+#'@return Y the species data,
+#'@return CV the model$n by model$S by times array of out-of-sample predictions (this array contains a lot of NAs for where predictions would in-sample),
+#'@return cooksD a model$n by model$nRCP matrix of statistics that resemble Cook's distance. The statistic is the change in the prediction of RCP probability from the model with all the data to the model with only the in-sample data, and predLogL the predictive log-likelihood of each point in each withheld sample (log-likelihood contributions of withheld observations, again there will be many NAs).
+#'@export
+#'@examples
+#' \dontrun{
+#' #not run as R CMD check complains about the time taken.
+#' #This code will take a little while to run (<1 minute on my computer)
+#' #For leave-one-out cooks distance, use oosSize=1
+#' #for serious use times will need to be larger.
+#' system.time({
+#'   example( regional_mix);
+#'   cooksD <- cooks.distance( fm, oosSize=10, times=25)
+#' })
+#' #For leave-one-out cooks distance, use oosSize=1
+#' cooksD <- cooks.distance( fm, oosSize=10, times=5)
+#' }
+
+
+"cooks.distance.regional_mix" <- function( model, ..., oosSize=1, times=model$n, mc.cores=1, quiet=FALSE){
+  if (oosSize > model$n %/% 2)
+    stop("Out of sample is more than half the size of the data! This is almost certainly an error.  Please set `oosSize' to something smaller.")
+  if (is.null(model$titbits))
+    stop("Model doesn't contain all information required for cross validation.  Please supply model with titbits (from titbits=TRUE in regional_mix call)")
+  if ( !quiet)
+    pb <- txtProgressBar(min = 1, max = times, style = 3, char = "><(('> ")
+
+  funny <- function(x) {
+    if (!quiet)
+      setTxtProgressBar(pb, x)
+    if( oosSize!=1 | times!=model$n) #do we need to sample?
+      OOBag <- sample(1:model$n, oosSize, replace = FALSE)
+    else
+      OOBag <- x
+    inBag <- (1:model$n)[!(1:model$n) %in% OOBag]
+    new.wts <- model$titbits$wts
+    new.wts[OOBag] <- 0
+    control <- model$titbits$control
+    control$quiet <- TRUE
+    control$trace <- 0
+    control$optimise <- TRUE
+    tmpmodel <- regional_mix.fit(outcomes = model$titbits$Y,
+                                 W = model$titbits$W, X = model$titbits$X, offy = model$titbits$offset,
+                                 wts = new.wts, disty = model$titbits$disty, nRCP = model$nRCP,
+                                 power = model$titbits$power, inits = unlist(model$coef),
+                                 control = control, n = model$n, S = model$S, p.x = model$p.x,
+                                 p.w = model$p.w)
+    OOSppPreds <- matrix(NA, nrow = tmpmodel$n, ncol = tmpmodel$S)
+    for (ss in 1:tmpmodel$S)
+      OOSppPreds[OOBag, ss] <- rowSums(tmpmodel$mus[OOBag, ss,] * tmpmodel$pis[OOBag, , drop=FALSE])
+    newPis <- tmpmodel$pis
+    r.negi <- model$pis - newPis
+    r.negi[OOBag,] <- NA
+    r.negi <- colMeans( r.negi, na.rm=TRUE)
+    #great lengths to calc pred logl...
+    #great lengths indeed...
+    alpha.score <- as.numeric(rep(NA, model$S))
+    tau.score <- as.numeric(matrix(NA, ncol = model$S, nrow = model$nRCP - 1))
+    beta.score <- as.numeric(matrix(NA, ncol = ncol(model$titbits$X), nrow = model$nRCP - 1))
+    if( model$p.w > 0){
+      gamma.score <- as.numeric(matrix( NA, nrow=model$S, ncol=model$p.w))
+      gamma <- tmpmodel$coef$gamma
+      W <- model$titbits$W
+    }
+    else
+      gamma.score <- W <- gamma <- -999999
+    if( model$titbits$disty %in% 3:5){
+      disp.score <- as.numeric( rep( NA, model$S))
+      disp <- stats::coef(model)$logDisp
+    }
+    else
+      disp.score <- -999999
+    scoreContri <- -999999
+    #model quantities
+    #    pis <- as.numeric(matrix(NA, nrow = n, ncol = nRCP))  #container for the fitted RCP model
+    #    mus <- as.numeric(array( NA, dim=c( n, S, nRCP)))  #container for the fitted spp model
+    logCondDens <- as.numeric(matrix(NA, nrow = model$n, ncol = model$nRCP))
+    logls <- as.numeric(rep(NA, model$n))
+    conv <- as.integer(0)
+    tmplogl <- .Call("RCP_C", as.numeric( model$titbits$Y), as.numeric(model$titbits$X), as.numeric( model$titbits$W), as.numeric(model$titbits$offset), as.numeric(model$titbits$wts),
+                     as.integer(model$S), as.integer(model$nRCP), as.integer(model$p.x), as.integer(model$p.w), as.integer(model$n), as.integer( model$titbits$disty),
+                     as.numeric( tmpmodel$coef$alpha), as.numeric( tmpmodel$coef$tau), as.numeric( tmpmodel$coef$beta), as.numeric( gamma), as.numeric( tmpmodel$coef$disp), as.numeric( model$titbits$power),
+                     as.numeric(model$titbits$control$penalty), as.numeric(model$titbits$control$penalty.tau), as.numeric(model$titbits$control$penalty.gamma), as.numeric(model$titbits$control$penalty.disp[1]), as.numeric(model$titbits$control$penalty.disp[2]),
+                     alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
+                     as.numeric( tmpmodel$pis), as.numeric( tmpmodel$mus), logCondDens, logls,
+                     as.integer(model$titbits$control$maxit), as.integer(model$titbits$control$trace), as.integer(model$titbits$control$nreport), as.numeric(model$titbits$control$abstol), as.numeric(model$titbits$control$reltol), as.integer(conv),
+                     as.integer(FALSE), as.integer(TRUE), as.integer(FALSE), as.integer(FALSE), as.integer(FALSE), PACKAGE = "ecomix")
+    ret.logl <- rep( NA, model$n)
+    ret.logl[OOBag] <- logls[OOBag]
+
+    return( list( OOSppPreds=OOSppPreds, cooksDist=r.negi, predLogL=ret.logl))
+  }
+  if (!quiet & mc.cores>1 & Sys.info()['sysname'] != "Windows")
+    message("Progress bar may not be monotonic due to the vaguaries of parallelisation")
+  tmp <- parallel::mclapply(1:times, funny, mc.cores = mc.cores)
+  if (!quiet)
+    message("")
+  cooksD <- t( sapply( tmp, function(x) x$cooksDist))
+  OOpreds <- array(NA, dim = c(model$n, model$S, times), dimnames = list(rownames(model$titbits$X), colnames(model$titbits$Y), paste("CVset", 1:times, sep = "")))
+  for (bb in 1:times)
+    OOpreds[, , bb] <- tmp[[bb]]$OOSppPreds
+  logls <- sapply( tmp, function(x) x$predLogL)
+  colnames( logls) <- rownames( cooksD) <- paste( "OOS",1:times,sep="_")
+  ret <- list(Y = model$titbits$Y, CV = OOpreds, cooksD=cooksD, predLogL=logls)
+  class(ret) <- "regiCooksD"
+
+  return(ret)
+}
+
+
+
 
 #' @rdname regional_mix
 #' @name regional_mix.simulate
@@ -438,16 +605,19 @@
 
 
 
-
+#'@title What is the average species membership per RCP.
 #'@rdname regional_mix
 #'@name regional_mix.species_membership
 #'@param object A RCP model
+#'@param boot_object A RCP model bootstrap object
+#'@param CI The confidence intervals to report the range of
+#'values form bootstrap
 #'@export
 #'@description Extracts the average species' each RCP.
 #'@examples
-#' species_membership.regional_mix(fm)
+#' regional_mix.species_membership(fm)
 
-"species_membership.regional_mix" <- function(object, object2=NULL,
+"regional_mix.species_membership" <- function(object, object2=NULL,
                                               CI=c(0.025,0.975), ...){
 
 
@@ -638,27 +808,6 @@ partial_mus_from_boostrap  <- function(object, object2, CI=c(0.025,0.975)){
   }
 }
 
-
-#' @rdname regional_mix
-#' @export
-"AIC.regional_mix" <- function (object, ..., k = 2){
-    p <- length(unlist(object$coefs))
-    if (is.null(k))
-        k <- 2
-    star.ic <- -2 * object$logl + k * p
-    return(star.ic)
-}
-#' @rdname regional_mix
-#' @export
-#' @importFrom stats BIC
-"BIC.regional_mix" <- function (object, ...){
-    p <- length(unlist(object$coefs))
-    k <- log(object$n)
-    star.ic <- -2 * object$logl + k * p
-    return(star.ic)
-}
-
-
 "calcInfoCrit" <- function( ret){
   k <- length(unlist(ret$coefs))
   ret$BIC <- -2 * ret$logl + log(ret$n) * k
@@ -714,154 +863,6 @@ partial_mus_from_boostrap  <- function(object, object2, CI=c(0.025,0.975)){
 #'
 #' @export
 #'
-
-"coef.regional_mix" <- function (object, ...)
-{
-    res <- list()
-    res$alpha <- object$coefs$alpha
-    names( res$alpha) <- object$names$spp
-    if( !is.null( object$coef$tau)){
-      res$tau <- matrix(object$coefs$tau, nrow = object$nRCP - 1, ncol = object$S)
-      colnames( res$tau) <- object$names$spp
-    }
-    if( !is.null( object$coef$beta)){
-      res$beta <- matrix(object$coefs$beta, nrow = object$nRCP - 1, ncol = object$p.x)
-      colnames( res$beta) <- object$names$Xvars
-    }
-    if( !is.null( object$coef$gamma)){
-      res$gamma <- matrix( object$coef$gamma, nrow=object$S, ncol=object$p.w)
-      colnames( res$gamma) <- object$names$Wvars
-      rownames( res$gamma) <- object$names$spp
-    }
-    if( !is.null( object$coef$disp)){
-      res$logDisp <- object$coef$disp
-      names( res$logDisp) <- object$names$spp
-    }
-
-    return(res)
-}
-
-#'@title cooks.distance
-#'@rdname cooks.distance
-#'@description Performs leave-some-out measures for a regional_mix model. This includes a measure of how much effect leaving out an observation has on the probability of each site's RCP label. Also, this function can be used as a cross-validation workhorse.
-
-#'@param model A regional_mix object whose fit you want to assess
-#'@param ... ignored
-#'@param oosSize The size of the with held partitions (out-of-sample size). Use 1 (default) for leave-one-out statistics, such as Cook's distance and leave-one-out validation.
-#'@param times The number of times to perform the re-estimation (the number of leave out groups). For each 1:times a random partition of the data, of size oosSize, is taken and the model is fitted to one of the partitions. It is predicted to the other partition. The exception is when oosSize=1 and times=model$n (leave-one-out). In such cases (the default too), the observations are left out one-by-one and not randomly.
-#'@param mc.cores The number of cores to spread the workload over. Default is 1. Argument is useless on Windows machines ??? see ?parallel::mclapply
-#'@param quiet Should printing be suppressed? Default is no, it should not. Note that in either case, printing of the iteration trace etc is suppressed for each regional_mix fit.
-
-#'@return An object of class regiCooksD. It is a list of 4 elements:
-#'@return Y the species data,
-#'@return CV the model$n by model$S by times array of out-of-sample predictions (this array contains a lot of NAs for where predictions would in-sample),
-#'@return cooksD a model$n by model$nRCP matrix of statistics that resemble Cook's distance. The statistic is the change in the prediction of RCP probability from the model with all the data to the model with only the in-sample data, and predLogL the predictive log-likelihood of each point in each withheld sample (log-likelihood contributions of withheld observations, again there will be many NAs).
-#'@export
-#'@examples
-#' \dontrun{
-#' #not run as R CMD check complains about the time taken.
-#' #This code will take a little while to run (<1 minute on my computer)
-#' #For leave-one-out cooks distance, use oosSize=1
-#' #for serious use times will need to be larger.
-#' system.time({
-#'   example( regional_mix);
-#'   cooksD <- cooks.distance( fm, oosSize=10, times=25)
-#' })
-#' #For leave-one-out cooks distance, use oosSize=1
-#' cooksD <- cooks.distance( fm, oosSize=10, times=5)
-#' }
-
-
-"cooks.distance.regional_mix" <- function( model, ..., oosSize=1, times=model$n, mc.cores=1, quiet=FALSE){
-  if (oosSize > model$n %/% 2)
-    stop("Out of sample is more than half the size of the data! This is almost certainly an error.  Please set `oosSize' to something smaller.")
-  if (is.null(model$titbits))
-    stop("Model doesn't contain all information required for cross validation.  Please supply model with titbits (from titbits=TRUE in regional_mix call)")
-  if ( !quiet)
-    pb <- txtProgressBar(min = 1, max = times, style = 3, char = "><(('> ")
-
-  funny <- function(x) {
-    if (!quiet)
-        setTxtProgressBar(pb, x)
-    if( oosSize!=1 | times!=model$n) #do we need to sample?
-      OOBag <- sample(1:model$n, oosSize, replace = FALSE)
-    else
-      OOBag <- x
-    inBag <- (1:model$n)[!(1:model$n) %in% OOBag]
-    new.wts <- model$titbits$wts
-    new.wts[OOBag] <- 0
-    control <- model$titbits$control
-    control$quiet <- TRUE
-    control$trace <- 0
-    control$optimise <- TRUE
-    tmpmodel <- regional_mix.fit(outcomes = model$titbits$Y,
-      W = model$titbits$W, X = model$titbits$X, offy = model$titbits$offset,
-      wts = new.wts, disty = model$titbits$disty, nRCP = model$nRCP,
-      power = model$titbits$power, inits = unlist(model$coef),
-      control = control, n = model$n, S = model$S, p.x = model$p.x,
-      p.w = model$p.w)
-    OOSppPreds <- matrix(NA, nrow = tmpmodel$n, ncol = tmpmodel$S)
-    for (ss in 1:tmpmodel$S)
-      OOSppPreds[OOBag, ss] <- rowSums(tmpmodel$mus[OOBag, ss,] * tmpmodel$pis[OOBag, , drop=FALSE])
-    newPis <- tmpmodel$pis
-    r.negi <- model$pis - newPis
-    r.negi[OOBag,] <- NA
-    r.negi <- colMeans( r.negi, na.rm=TRUE)
-    #great lengths to calc pred logl...
-    #great lengths indeed...
-    alpha.score <- as.numeric(rep(NA, model$S))
-    tau.score <- as.numeric(matrix(NA, ncol = model$S, nrow = model$nRCP - 1))
-    beta.score <- as.numeric(matrix(NA, ncol = ncol(model$titbits$X), nrow = model$nRCP - 1))
-    if( model$p.w > 0){
-      gamma.score <- as.numeric(matrix( NA, nrow=model$S, ncol=model$p.w))
-      gamma <- tmpmodel$coef$gamma
-      W <- model$titbits$W
-    }
-    else
-      gamma.score <- W <- gamma <- -999999
-    if( model$titbits$disty %in% 3:5){
-      disp.score <- as.numeric( rep( NA, model$S))
-      disp <- stats::coef(model)$logDisp
-    }
-    else
-      disp.score <- -999999
-    scoreContri <- -999999
-    #model quantities
-#    pis <- as.numeric(matrix(NA, nrow = n, ncol = nRCP))  #container for the fitted RCP model
-#    mus <- as.numeric(array( NA, dim=c( n, S, nRCP)))  #container for the fitted spp model
-    logCondDens <- as.numeric(matrix(NA, nrow = model$n, ncol = model$nRCP))
-    logls <- as.numeric(rep(NA, model$n))
-    conv <- as.integer(0)
-    tmplogl <- .Call("RCP_C", as.numeric( model$titbits$Y), as.numeric(model$titbits$X), as.numeric( model$titbits$W), as.numeric(model$titbits$offset), as.numeric(model$titbits$wts),
-          as.integer(model$S), as.integer(model$nRCP), as.integer(model$p.x), as.integer(model$p.w), as.integer(model$n), as.integer( model$titbits$disty),
-          as.numeric( tmpmodel$coef$alpha), as.numeric( tmpmodel$coef$tau), as.numeric( tmpmodel$coef$beta), as.numeric( gamma), as.numeric( tmpmodel$coef$disp), as.numeric( model$titbits$power),
-          as.numeric(model$titbits$control$penalty), as.numeric(model$titbits$control$penalty.tau), as.numeric(model$titbits$control$penalty.gamma), as.numeric(model$titbits$control$penalty.disp[1]), as.numeric(model$titbits$control$penalty.disp[2]),
-          alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
-          as.numeric( tmpmodel$pis), as.numeric( tmpmodel$mus), logCondDens, logls,
-          as.integer(model$titbits$control$maxit), as.integer(model$titbits$control$trace), as.integer(model$titbits$control$nreport), as.numeric(model$titbits$control$abstol), as.numeric(model$titbits$control$reltol), as.integer(conv),
-          as.integer(FALSE), as.integer(TRUE), as.integer(FALSE), as.integer(FALSE), as.integer(FALSE), PACKAGE = "ecomix")
-    ret.logl <- rep( NA, model$n)
-    ret.logl[OOBag] <- logls[OOBag]
-
-    return( list( OOSppPreds=OOSppPreds, cooksDist=r.negi, predLogL=ret.logl))
-  }
-  if (!quiet & mc.cores>1 & Sys.info()['sysname'] != "Windows")
-    message("Progress bar may not be monotonic due to the vaguaries of parallelisation")
-  tmp <- parallel::mclapply(1:times, funny, mc.cores = mc.cores)
-  if (!quiet)
-    message("")
-  cooksD <- t( sapply( tmp, function(x) x$cooksDist))
-  OOpreds <- array(NA, dim = c(model$n, model$S, times), dimnames = list(rownames(model$titbits$X), colnames(model$titbits$Y), paste("CVset", 1:times, sep = "")))
-  for (bb in 1:times)
-    OOpreds[, , bb] <- tmp[[bb]]$OOSppPreds
-  logls <- sapply( tmp, function(x) x$predLogL)
-  colnames( logls) <- rownames( cooksD) <- paste( "OOS",1:times,sep="_")
-  ret <- list(Y = model$titbits$Y, CV = OOpreds, cooksD=cooksD, predLogL=logls)
-  class(ret) <- "regiCooksD"
-
-  return(ret)
-}
-
 
 "extractAIC.regional_mix" <- function (fit, scale = 1, k = 2, ...){
     n <- object$n
