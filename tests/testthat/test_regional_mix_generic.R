@@ -1,8 +1,8 @@
 context('regional_mix generic functions')
-library(ecomix)
-
 
 testthat::test_that('testing regional mix function', {
+
+rm(list = ls())
 
 set.seed( 151)
 n <- 100
@@ -31,8 +31,10 @@ beta <- 0.2 * matrix( c(-1.2, -2.6, 0.2, -23.4, -16.7, -18.7, -59.2, -76.0, -14.
 gamma <- matrix( rnorm( S*p.w), ncol=p.w, nrow=S)
 logDisp <- log( rexp( S, 1))
 set.seed(121)
-simDat <- simulate_regional_mix_data( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n, alpha=alpha, tau=tau,
-                      beta=beta, gamma=gamma, X=X[,-(2:3)], W=W, dist=my.dist, logDisp=logDisp, offset=Offy)
+simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n,
+                                 alpha=alpha, tau=tau, beta=beta, gamma=gamma,
+                                 X=X[,-(2:3)], W=W, distribution=my.dist,
+                                 logDisp=logDisp, offset=Offy)
 
 #fit the model
 my.form.RCP <- paste( paste( paste(
@@ -40,37 +42,49 @@ my.form.RCP <- paste( paste( paste(
   ')',sep=''),
   '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
 my.form.spp <- ~w.1+w.2+w.3
-fm <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp,
+fm1 <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp,
                    data = simDat, distribution =  "negative_binomial", nRCP = 3, inits = "random2")
 
-testthat::expect_s3_class(fm,'regional_mix')
+testthat::expect_s3_class(fm1,'regional_mix')
 
-## Not run:
-#fit the model using multiple starting values
-fm <- regional_mix.multifit(rcp_formula = my.form.RCP, species_formula = my.form.spp, data = simDat,
-                        dist="negative_binomial", nRCP = 3, inits = "random2", offset=offset, nstart=10, titbits=FALSE,
-                        mc.cores=1)
+my.form.RCP <- paste( paste( paste(
+  'cbind(', paste( paste( 'spp', 1:S, sep=''), collapse=','), sep=''),
+  ')',sep=''),
+  '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
+my.form.spp <- ~1
+fm2 <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp,
+                   data = simDat, distribution =  "negative_binomial", nRCP = 3, inits = "random2")
+testthat::expect_s3_class(fm2,'regional_mix')
 
-#sometimes the model 'mis-fits' and one or more of the RCP groups has no sites associated
-#with it.  These need to be removed (based on the colSums of the posterior probabilities)
+my.form.RCP <- paste( paste( paste(
+  'cbind(', paste( paste( 'spp', 1:S, sep=''), collapse=','), sep=''),
+  ')',sep=''),
+  '~1',sep='')
+my.form.spp <- ~w.1+w.2+w.3
+fm3 <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp,
+                    data = simDat, distribution =  "negative_binomial", nRCP = 3, inits = "random2")
+testthat::expect_s3_class(fm3,'regional_mix')
+
+
+fmm <- regional_mix.multifit(rcp_formula = my.form.RCP,
+                            species_formula = my.form.spp,
+                            data = simDat, distribution = "negative_binomial",
+                            nRCP = 3, inits = "random2", offset=offset,
+                            nstart=10, titbits=FALSE, mc.cores=1)
+testthat::expect_is(fmm,'list')
+
 postProbSums <- t( sapply( fm, function(x) colSums( x$postProbs)))
-#Identify those models with zero posterior prob classes
 allGoodUns <- apply( postProbSums, 1, function(x) all(x!=0))
-#subset the fits
 fm.clean <- fm[allGoodUns]
-#choose the model with the lowest BIC
 goodUn <- which.min(sapply(fm.clean, ecomix:::BIC.regional_mix))
-#Using the 'best' model, use regimix(qv) again to additional model output needed for other
-#functions (e.g. plot.regimix(qv), predict.regimix(qv) and regiboot(qv)). Note that the
-#model is not estimated again (see control argument of the following regimix(qv) call.
 fm.final <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp, data = simDat,
-                     dist="negative_binomial", nRCP = 3, inits = unlist( fm.clean[[goodUn]]$coef),
+                     distribution = "negative_binomial", nRCP = 3, inits = unlist( fm.clean[[goodUn]]$coef),
                      control=list(optimise=FALSE), offset=offset)
 testthat::expect_s3_class(fm.final,'regional_mix')
 
 # test if null formula
 testthat::expect_null(regional_mix(rcp_formula = NULL, species_formula = my.form.spp, data = simDat,
-                                   dist="negative_binomial", nRCP = 3, inits = unlist( fm.clean[[goodUn]]$coef),
+                                   distribution = "negative_binomial", nRCP = 3, inits = unlist( fm.clean[[goodUn]]$coef),
                                    control=list(optimise=FALSE), offset=offset))
 
 #test two spp have the same name.
@@ -80,7 +94,7 @@ my.form.RCP <- paste( paste( paste(
   '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
 
 testthat::expect_null(regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp, data = simDat,
-                                   dist="negative_binomial", nRCP = 3, inits = unlist( fm.clean[[goodUn]]$coef),
+                                   distribution = "negative_binomial", nRCP = 3, inits = unlist( fm.clean[[goodUn]]$coef),
                                    control=list(optimise=FALSE), offset=offset))
 
 # test one rcp
@@ -89,7 +103,7 @@ my.form.RCP <- paste( paste( paste(
   ')',sep=''),
   '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
 regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp, data = simDat,
-                                   dist="negative_binomial", nRCP = 1, inits = unlist( fm.clean[[goodUn]]$coef),
+                                   distribution = "negative_binomial", nRCP = 1, inits = unlist( fm.clean[[goodUn]]$coef),
                                    control=list(optimise=FALSE), offset=offset)
 
 # test one rcp
@@ -98,7 +112,7 @@ my.form.RCP <- paste( paste( paste(
   ')',sep=''),
   '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
 regional_mix(rcp_formula = my.form.RCP, species_formula = NULL, data = simDat,
-             dist="negative_binomial", nRCP = 1, inits = unlist( fm.clean[[goodUn]]$coef),
+             distribution = "negative_binomial", nRCP = 1, inits = unlist( fm.clean[[goodUn]]$coef),
              control=list(optimise=FALSE), offset=offset)
 
 testthat::expect_s3_class(cooks.distance(fm.final, times = 2),'regiCooksD')

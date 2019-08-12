@@ -3,6 +3,7 @@
 \name{regional_mix}
 \alias{regional_mix}
 \alias{regional_mix.multifit}
+\alias{regional_mix.simulate}
 \alias{regional_mix.species_membership}
 \alias{species_membership.regional_mix}
 \alias{AIC.regional_mix}
@@ -15,7 +16,6 @@
 \alias{regional_mix_boot}
 \alias{regional_mix_bootParametric}
 \alias{residuals.regional_mix}
-\alias{regional_mix.simulate}
 \alias{stability.regional_mix}
 \alias{summary.regional_mix}
 \alias{vcov.regional_mix}
@@ -30,6 +30,11 @@ regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
   nRCP = 3, distribution = "bernoulli", offset = NULL,
   weights = NULL, control = list(), inits = "random2",
   titbits = FALSE, power = 1.6, nstart = 10, mc.cores = 1)
+
+regional_mix.simulate(nRCP = 3, S = 20, n = 200, p.x = 3,
+  p.w = 0, alpha = NULL, tau = NULL, beta = NULL, gamma = NULL,
+  logDisps = NULL, powers = NULL, X = NULL, W = NULL,
+  offset = NULL, distribution = "bernoulli")
 
 species_membership.regional_mix(object, object2 = NULL, CI = c(0.025,
   0.975), ...)
@@ -60,11 +65,6 @@ regional_mix_bootParametric(fm, mf, nboot)
 \method{residuals}{regional_mix}(object, ..., type = "RQR",
   quiet = FALSE)
 
-regional_mix.simulate(nRCP = 3, S = 20, n = 200, p.x = 3,
-  p.w = 0, alpha = NULL, tau = NULL, beta = NULL, gamma = NULL,
-  logDisps = NULL, powers = NULL, X = NULL, W = NULL,
-  offset = NULL, dist = "bernoulli")
-
 stability.regional_mix(model, oosSizeRange = NULL, times = model$n,
   mc.cores = 1, quiet = FALSE, doPlot = TRUE)
 
@@ -93,17 +93,13 @@ stability.regional_mix(model, oosSizeRange = NULL, times = model$n,
 
 \item{inits}{a characture string which defines the method used to initialise finite mixture model clustering. #Will have to synergise this function call across RCP and SpeciesMix. Looks like SpeciesMix uses a em.prefit to setup initialisations. regional_mix has a number of methods. This seems like a good place to setup the bivariate clusting step - cobra function.}
 
-\item{titbits}{either a boolean or a vector of characters. If TRUE (default for regional_mix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regional_mix(qv) and predict.regional_mix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for regional_mix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "W" for the model matrix for the species-specific model, "offset" for the offset in the model, "wts" for the model weights, "form.RCP" for the formula for the RCPs, "form.spp" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "dist" for the conditional distribution of the species data, and "power" for the power parameters used (only used in Tweedie models). Care needs to be taken when using titbits=TRUE in regional_mix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory. It is more efficient, from a memory perspective, to refit the "best" model using regional_mix(qv) after identifying it with regional_mix.multifit(qv). See examples for illustration about how to do this.}
+\item{titbits}{either a boolean or a vector of characters. If TRUE (default for regional_mix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regional_mix(qv) and predict.regional_mix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for regional_mix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "W" for the model matrix for the species-specific model, "offset" for the offset in the model, "wts" for the model weights, "form.RCP" for the formula for the RCPs, "form.spp" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "distribution" for the conditional distribution of the species data, and "power" for the power parameters used (only used in Tweedie models). Care needs to be taken when using titbits=TRUE in regional_mix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory. It is more efficient, from a memory perspective, to refit the "best" model using regional_mix(qv) after identifying it with regional_mix.multifit(qv). See examples for illustration about how to do this.}
 
 \item{power}{a numeric vector (length either 1 or the number of species) defining the power parameter to use in the Tweedie models. If length(power)==1, then the same power parameter is used for all species. If length(power)==No_species, then each species gets its own power parameter. Power values must be between 1 and 2, for computational reasons they should be well away from the boundary. The default is 1.6 as this has proved to be a good ball-park value for the fisheries data that the developer has previously analysed.}
 
 \item{nstart}{for regional_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
 \item{mc.cores}{for regional_mix.multifit only. The number of cores to spread the re-fitting over.}
-
-\item{object}{A RCP model}
-
-\item{alpha}{Numeric vector of length S. Specifies the mean prevalence for each species, on the logit scale}
 
 \item{S}{Integer giving the number of species}
 
@@ -112,6 +108,8 @@ stability.regional_mix(model, oosSizeRange = NULL, times = model$n,
 \item{p.x}{Integer giving the number of covariates (including the intercept) for the model for the latent RCP types}
 
 \item{p.w}{Integer giving the number of covariates (excluding the intercept) for the model for the species data}
+
+\item{alpha}{Numeric vector of length S. Specifies the mean prevalence for each species, on the logit scale}
 
 \item{tau}{Numeric matrix of dimension c(nRCP-1,S). Specifies each species difference from the mean to each RCPs mean for the first nRCP-1 RCPs. The last RCP means are calculated using the sum-to-zero constraints}
 
@@ -127,11 +125,13 @@ stability.regional_mix(model, oosSizeRange = NULL, times = model$n,
 
 \item{W}{Numeric matrix of dimension c(n,p.w). Specifies the covariates for the species model. Must not include the intercept. Unless you want it included twice. Default is to give random levels of a two-level factor.}
 
-\item{dist}{Text string. Specifies the distribution of the species data. Current options are "bernoulli" (default), "poisson", "negative_binomial", "tweedie" and "gaussian.}
+\item{object}{A RCP model}
 
 \item{nRCP}{Integer giving the number of RCPs}
 
 \item{offset}{Numeric vector of size n. Specifies any offset to be included into the species level model.}
+
+\item{distribution}{Text string. Specifies the distribution of the species data. Current options are "bernoulli" (default), "poisson", "negative_binomial", "tweedie" and "gaussian.}
 }
 \description{
 creates an \code{regional_mix} model.
@@ -144,28 +144,30 @@ normal variates. Within a site they are likely to be correlated (as they share a
 }
 \examples{
 \dontrun{
-simulated_data <- regional_mix.simulate() ## need to finishing generating this function.
-rcp_form <- as.formula(paste0("cbind(",paste(colnames(simulated_data[,1:20]),collapse = ','),")~1+x1+x2+x3"))
+simulated_data <- regional_mix.simulate()
+rcp_form <- as.formula(paste0("cbind(",paste(colnames(simulated_data[,1:20]),
+collapse = ','),")~1+x1+x2+x3"))
 spp_form <- observations ~ 1 + w1 + w2
 data <- make_mixture_data(species_data = simulated_data$species_data,
                           covariate_data = simulated_data$covariate_data[,-1])
 fm_regional_mix <- regional_mix(rcp_form,spp_form,data=data,distribution='bernoulli',n_mixtures=5)
 }
-species_membership.regional_mix(fm)
 \dontrun{
 #generates synthetic data
 set.seed( 151)
 n <- 100
 S <- 10
 nRCP <- 3
-my.dist <- "NegBin"
-X <- as.data.frame( cbind( x1=runif( n, min=-10, max=10), x2=runif( n, min=-10, max=10)))
+my.dist <- "negative_binomial"
+X <- as.data.frame( cbind( x1=runif( n, min=-10, max=10),
+                          x2=runif( n, min=-10, max=10)))
 Offy <- log( runif( n, min=30, max=60))
 pols <- list()
 pols[[1]] <- poly( X$x1, degree=3)
 pols[[2]] <- poly( X$x2, degree=3)
 X <- as.matrix( cbind( 1, X, pols[[1]], pols[[2]]))
-colnames( X) <- c("const", 'x1', 'x2', paste( "x1",1:3,sep='.'), paste( "x2",1:3,sep='.'))
+colnames( X) <- c("const", 'x1', 'x2', paste( "x1",1:3,sep='.'),
+paste( "x2",1:3,sep='.'))
 p.x <- ncol( X[,-(2:3)])
 p.w <- 3
 W <- matrix(sample( c(0,1), size=(n*p.w), replace=TRUE), nrow=n, ncol=p.w)
@@ -175,13 +177,15 @@ tau.var <- 0.5
 b <- sqrt( tau.var/2)
 tau <- matrix( rexp( n=(nRCP-1)*S,
 rate=1/b) - rexp( n=(nRCP-1)*S, rate=1/b), nrow=nRCP-1, ncol=S)
-beta <- 0.2 * matrix( c(-1.2, -2.6, 0.2, -23.4, -16.7, -18.7, -59.2, -76.0, -14.2, -28.3,
-                       -36.8, -17.8, -92.9,-2.7), nrow=nRCP-1, ncol=p.x)
+beta <- 0.2 * matrix( c(-1.2, -2.6, 0.2, -23.4, -16.7, -18.7, -59.2, -76.0,
+-14.2, -28.3, -36.8, -17.8, -92.9,-2.7), nrow=nRCP-1, ncol=p.x)
 gamma <- matrix( rnorm( S*p.w), ncol=p.w, nrow=S)
 logDisp <- log( rexp( S, 1))
 set.seed(121)
-simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n, alpha=alpha, tau=tau,
-                     beta=beta, gamma=gamma, X=X[,-(2:3)], W=W, dist=my.dist, logDisp=logDisp, offset=Offy)
+simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n,
+alpha=alpha, tau=tau, beta=beta, gamma=gamma, X=X[,-(2:3)], W=W,
+distribution=my.dist, logDisp=logDisp, offset=Offy)
 
 }
+species_membership.regional_mix(fm)
 }

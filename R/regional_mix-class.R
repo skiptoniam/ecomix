@@ -13,7 +13,7 @@
 #' @param weights a numeric vector of length nrow( data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1.
 #' @param control a list of control parameters for optimisation and calculation. See details. From \code{control} control.
 #' @param inits a characture string which defines the method used to initialise finite mixture model clustering. #Will have to synergise this function call across RCP and SpeciesMix. Looks like SpeciesMix uses a em.prefit to setup initialisations. regional_mix has a number of methods. This seems like a good place to setup the bivariate clusting step - cobra function.
-#' @param titbits either a boolean or a vector of characters. If TRUE (default for regional_mix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regional_mix(qv) and predict.regional_mix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for regional_mix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "W" for the model matrix for the species-specific model, "offset" for the offset in the model, "wts" for the model weights, "form.RCP" for the formula for the RCPs, "form.spp" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "dist" for the conditional distribution of the species data, and "power" for the power parameters used (only used in Tweedie models). Care needs to be taken when using titbits=TRUE in regional_mix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory. It is more efficient, from a memory perspective, to refit the "best" model using regional_mix(qv) after identifying it with regional_mix.multifit(qv). See examples for illustration about how to do this.
+#' @param titbits either a boolean or a vector of characters. If TRUE (default for regional_mix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regional_mix(qv) and predict.regional_mix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for regional_mix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "W" for the model matrix for the species-specific model, "offset" for the offset in the model, "wts" for the model weights, "form.RCP" for the formula for the RCPs, "form.spp" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "distribution" for the conditional distribution of the species data, and "power" for the power parameters used (only used in Tweedie models). Care needs to be taken when using titbits=TRUE in regional_mix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory. It is more efficient, from a memory perspective, to refit the "best" model using regional_mix(qv) after identifying it with regional_mix.multifit(qv). See examples for illustration about how to do this.
 #' @param power a numeric vector (length either 1 or the number of species) defining the power parameter to use in the Tweedie models. If length(power)==1, then the same power parameter is used for all species. If length(power)==No_species, then each species gets its own power parameter. Power values must be between 1 and 2, for computational reasons they should be well away from the boundary. The default is 1.6 as this has proved to be a good ball-park value for the fisheries data that the developer has previously analysed.
 #' @importFrom graphics abline hist legend lines matplot par plot points polygon rect
 #' @importFrom stats as.formula binomial cooks.distance cov cutree dbinom dist dnbinom dnorm dpois
@@ -25,8 +25,9 @@
 #' @export
 #' @examples
 #' \dontrun{
-#' simulated_data <- regional_mix.simulate() ## need to finishing generating this function.
-#' rcp_form <- as.formula(paste0("cbind(",paste(colnames(simulated_data[,1:20]),collapse = ','),")~1+x1+x2+x3"))
+#' simulated_data <- regional_mix.simulate()
+#' rcp_form <- as.formula(paste0("cbind(",paste(colnames(simulated_data[,1:20]),
+#' collapse = ','),")~1+x1+x2+x3"))
 #' spp_form <- observations ~ 1 + w1 + w2
 #' data <- make_mixture_data(species_data = simulated_data$species_data,
 #'                           covariate_data = simulated_data$covariate_data[,-1])
@@ -99,7 +100,7 @@
   tmp <- regional_mix.fit( outcomes, W, X, offy, wts, disty, nRCP, power, inits,
                            control, nrow( X), S, p.x, p.w)
 
-  tmp$dist <- disty.cases[disty]
+  tmp$distribution <- disty.cases[disty]
   #calculate the posterior probs
   if( nRCP>1)
     tmp$postProbs <- calcPostProbs( tmp$pis, tmp$logCondDens)
@@ -233,7 +234,7 @@
                                                           power, inits, control,
                                                           nrow(X), S, p.x, p.w))
       control$quiet <- tmpQuiet
-      tmp$dist <- disty.cases[disty]
+      tmp$distribution <- disty.cases[disty]
       #calculate the posterior probs
       if( nRCP>1)
         tmp$postProbs <- calcPostProbs( tmp$pis, tmp$logCondDens)
@@ -266,6 +267,177 @@
   }
 
 ##### S3 Class exports #####
+
+#' @rdname regional_mix
+#' @name regional_mix.simulate
+#' @param nRCP Integer giving the number of RCPs
+#' @param S Integer giving the number of species
+#' @param n Integer giving the number of observations (sites)
+#' @param p.x Integer giving the number of covariates (including the intercept) for the model for the latent RCP types
+#' @param p.w Integer giving the number of covariates (excluding the intercept) for the model for the species data
+#' @param alpha Numeric vector of length S. Specifies the mean prevalence for each species, on the logit scale
+#' @param tau Numeric matrix of dimension c(nRCP-1,S). Specifies each species difference from the mean to each RCPs mean for the first nRCP-1 RCPs. The last RCP means are calculated using the sum-to-zero constraints
+#' @param beta Numeric matrix of dimension c(nRCP-1,p.x). Specifies the RCP's dependence on the covariates (in X)
+#' @param gamma Numeric matrix of dimension c(n,p.w). Specifies the species' dependence on the covariates (in W)
+#' @param logDisps Logartihm of the (over-)dispersion parameters for each species for negative binomial, Tweedie and Normal models
+#' @param powers Power parameters for each species for Tweedie model
+#' @param X Numeric matrix of dimension c(n,p.x). Specifies the covariates for the RCP model. Must include the intercept, if one is wanted. Default is random numbers in a matrix of the right size.
+#' @param W Numeric matrix of dimension c(n,p.w). Specifies the covariates for the species model. Must not include the intercept. Unless you want it included twice. Default is to give random levels of a two-level factor.
+#' @param offset Numeric vector of size n. Specifies any offset to be included into the species level model.
+#' @param distribution Text string. Specifies the distribution of the species data. Current options are "bernoulli" (default), "poisson", "negative_binomial", "tweedie" and "gaussian.
+#' @export
+#' @examples
+#' \dontrun{
+#' #generates synthetic data
+#'set.seed( 151)
+#'n <- 100
+#'S <- 10
+#'nRCP <- 3
+#'my.dist <- "negative_binomial"
+#'X <- as.data.frame( cbind( x1=runif( n, min=-10, max=10),
+#'                           x2=runif( n, min=-10, max=10)))
+#'Offy <- log( runif( n, min=30, max=60))
+#'pols <- list()
+#'pols[[1]] <- poly( X$x1, degree=3)
+# Scale covariates so that regional_mix can get decent starting values
+#'pols[[2]] <- poly( X$x2, degree=3)
+#'X <- as.matrix( cbind( 1, X, pols[[1]], pols[[2]]))
+#'colnames( X) <- c("const", 'x1', 'x2', paste( "x1",1:3,sep='.'),
+#' paste( "x2",1:3,sep='.'))
+#'p.x <- ncol( X[,-(2:3)])
+#'p.w <- 3
+#'W <- matrix(sample( c(0,1), size=(n*p.w), replace=TRUE), nrow=n, ncol=p.w)
+#'colnames( W) <- paste( "w",1:3,sep=".")
+#'alpha <- rnorm( S)
+#'tau.var <- 0.5
+#'b <- sqrt( tau.var/2)
+#a double exponential for RCP effects
+#'tau <- matrix( rexp( n=(nRCP-1)*S,
+#' rate=1/b) - rexp( n=(nRCP-1)*S, rate=1/b), nrow=nRCP-1, ncol=S)
+#'beta <- 0.2 * matrix( c(-1.2, -2.6, 0.2, -23.4, -16.7, -18.7, -59.2, -76.0,
+#' -14.2, -28.3, -36.8, -17.8, -92.9,-2.7), nrow=nRCP-1, ncol=p.x)
+#'gamma <- matrix( rnorm( S*p.w), ncol=p.w, nrow=S)
+#'logDisp <- log( rexp( S, 1))
+#'set.seed(121)
+#'simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n,
+#' alpha=alpha, tau=tau, beta=beta, gamma=gamma, X=X[,-(2:3)], W=W,
+#' distribution=my.dist, logDisp=logDisp, offset=Offy)
+#'
+#' }
+"regional_mix.simulate" <- function(nRCP=3, S=20, n=200, p.x=3, p.w=0,
+                                    alpha=NULL, tau=NULL, beta=NULL, gamma=NULL,
+                                    logDisps=NULL, powers=NULL, X=NULL, W=NULL,
+                                    offset=NULL, distribution="bernoulli")
+{
+  if (is.null(alpha) | length(alpha) != S) {
+    message("Random alpha from normal (-1,0.5) distribution")
+    alpha <- rnorm(S,-1,0.5)
+  }
+  if (is.null(tau) | length(tau) != (nRCP - 1) * S) {
+    message("Random tau from standard normal")
+    tau <- rnorm( (nRCP-1)*S)
+  }
+  tau <- matrix(as.numeric(tau), nrow = nRCP - 1)
+  if (is.null(beta) | length(beta) != (nRCP - 1) * p.x) {
+    message("Random values for beta")
+    beta <- rnorm( p.x*(nRCP-1))#as.numeric(c(0, 0, 0.4, 0, -0.2, 1))
+  }
+  beta <- matrix(as.numeric(beta), nrow = nRCP - 1)
+  if( ( is.null(gamma) | length( gamma) != S * p.w)){
+    if( p.w != 0){
+      message("Random values for gamma")
+      gamma <- rnorm( p.w*S)
+      gamma <- matrix( as.numeric( gamma), nrow=S, ncol=p.w)
+    }
+    else
+      gamma <- NULL
+  }
+  else
+    gamma <- matrix( as.numeric( gamma), nrow=S)
+  if( distribution == "negative_binomial" & (is.null( logDisps) | length( logDisps) != S)){
+    message( "Random values for overdispersions")
+    logDisps <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
+  }
+  if( distribution=="gaussian" & (is.null( logDisps) | length( logDisps) != S)){
+    message( "Random values for species' variance parameters")
+    logDisps <- log( 1 + rgamma( n+S, shape=1, scale=0.75))
+  }
+  sppNames <- paste("spp", 1:S, sep = "")
+  if (is.null(X)) {
+    message("creating a RCP-level design matrix with random numbers")
+    X <- cbind(1, matrix(runif(n * (p.x - 1), min = -10, max = 10), nrow = n))
+    if( p.x > 1)
+      colnames(X) <- c("intercept", paste("x", 1:(p.x - 1), sep = ""))
+    else
+      colnames(X) <- "intercept"
+  }
+  if( p.w>0)
+    if( is.null( W)){
+      message("Creating a species-level design matrix with random factor levels")
+      W <- matrix(sample( c(0,1), size=(n*p.w), replace=TRUE), nrow=n, ncol=p.w)
+      colnames(W) <- c(paste("w", 1:p.w, sep = ""))
+    }
+  if( is.null( offset))
+    offset <- rep( 0, n)
+  if( !distribution%in%c("bernoulli","poisson","negative_binomial","tweedie","gaussian")){
+    message( "Distribution not found, please choose from c('bernoulli','poisson','negative_binomial','tweedie','gaussian')")
+    return( NA)
+  }
+
+  etaPi <- X %*% t(beta)
+  pis <- t(apply(etaPi, 1, additive_logistic))
+  habis <- apply(pis, 1, function(x) sample(1:nRCP, 1, FALSE, x))
+
+  tau <- rbind(tau, -colSums(tau))
+  etaMu <- tau + rep(alpha, each = nRCP)
+  etaMu1 <- array( rep( offset, each=nRCP*S), dim=c(nRCP,S,n))
+  if( p.w > 0){
+    etaMu2 <- W %*% t( gamma)
+    for( hh in 1:nRCP)
+      etaMu1[hh,,] <- etaMu1[hh,,] + t( etaMu2)
+  }
+  for( hh in 1:nRCP)
+    etaMu1[hh,,] <- etaMu1[hh,,] + rep( etaMu[hh,], times=n)
+  etaMu <- etaMu1
+
+  if( distribution=="bernoulli")
+    mu <- inv.logit(etaMu)
+  if( distribution %in% c("poisson","negative_binomial"))#,"tweedie"))
+    mu <- exp( etaMu)
+  if( distribution == "gaussian")
+    mu <- etaMu
+
+  fitted <- matrix( NA, nrow=n, ncol=S)
+  for( ii in 1:n)
+    fitted[ii,] <- mu[habis[ii], ,ii]
+
+  if( distribution=="bernoulli")
+    outcomes <- matrix(rbinom(n * S, 1, as.numeric( fitted)), nrow = n, ncol = S)
+  if( distribution=="poisson")
+    outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
+  if( distribution=="negative_binomial")
+    outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp( logDisps), each=n)), nrow = n, ncol = S)
+  if( distribution=="gaussian")
+    outcomes <- matrix( rnorm( n=n*S, mean=as.numeric( fitted), sd=rep( exp( logDisps), each=n)), nrow=n, ncol=S)
+
+  colnames(outcomes) <- paste("spp", 1:S, sep = "")
+  if( !all( offset==0))
+    res <- as.data.frame(cbind(outcomes, X, W, offset))
+  else
+    res <- as.data.frame(cbind(outcomes, X, W))
+  attr(res, "RCPs") <- habis
+  attr(res, "pis") <- pis
+  attr(res, "alpha") <- alpha
+  attr(res, "tau") <- tau[-nRCP, ]
+  attr(res, "beta") <- beta
+  attr(res, "gamma") <- gamma
+  attr(res, "logDisps") <- logDisps
+  attr(res, "mu") <- mu
+  return(res)
+}
+
+
+
 
 #'@rdname regional_mix
 #'@name regional_mix.species_membership
@@ -306,10 +478,10 @@ partial_mus_no_species_form <- function(object, ...){
   eta <- sweep(tau, 2, coef(object)$alpha, "+") + mean(offy)
 
   ## what is the link function of appropriate distribution?
-  if(object$dist=="bernoulli") link.fun <- make.link('logit')
-  if(object$dist%in%c("poisson","negative_binomial")) link.fun <- make.link('log')
-  if(object$dist=='negative_binomial') link.fun <- make.link('log')
-  if(object$dist=='guassian') link.fun <- make.link('identity')
+  if(object$distribution=="bernoulli") link.fun <- make.link('logit')
+  if(object$distribution%in%c("poisson","negative_binomial")) link.fun <- make.link('log')
+  if(object$distribution=='negative_binomial') link.fun <- make.link('log')
+  if(object$distribution=='guassian') link.fun <- make.link('identity')
 
   ## what are the partial mus: dim[nRCPs,nSpp]
   partial_mus <- link.fun$linkinv(eta)
@@ -334,10 +506,10 @@ partial_mus_with_species_form <- function(object, ... ){
   eta <- sweep(tau, 2, coef(object)$alpha, "+") + mean(offy)
 
   ## what is the link function of appropriate distribution?
-  if(object$dist=="bernoulli") link.fun <- make.link('logit')
-  if(object$dist%in%c("poisson","negative_binomial")) link.fun <- make.link('log')
-  if(object$dist=='negative_binomial') link.fun <- make.link('log')
-  if(object$dist=='guassian') link.fun <- make.link('identity')
+  if(object$distribution=="bernoulli") link.fun <- make.link('logit')
+  if(object$distribution%in%c("poisson","negative_binomial")) link.fun <- make.link('log')
+  if(object$distribution=='negative_binomial') link.fun <- make.link('log')
+  if(object$distribution=='guassian') link.fun <- make.link('identity')
 
   #probabilities for all other levels of same sampling var
   res<- lapply(seq_along(object$names$Wvars),function(jj){
@@ -360,10 +532,10 @@ partial_mus_from_boostrap  <- function(object, object2, CI=c(0.025,0.975)){
   alphas<-grepl("alpha",dimnames(object2)[[2]])
 
   ## what is the link function of appropriate distribution?
-  if(object$dist=="bernoulli") link.fun <- make.link('logit')
-  if(object$dist%in%c("poisson","negative_binomial")) link.fun <- make.link('log')
-  if(object$dist=='negative_binomial') link.fun <- make.link('log')
-  if(object$dist=='guassian') link.fun <- make.link('identity')
+  if(object$distribution=="bernoulli") link.fun <- make.link('logit')
+  if(object$distribution%in%c("poisson","negative_binomial")) link.fun <- make.link('log')
+  if(object$distribution=='negative_binomial') link.fun <- make.link('log')
+  if(object$distribution=='guassian') link.fun <- make.link('identity')
 
   if(!check_if_sampling(object)){
 
@@ -756,7 +928,7 @@ function( disty, power, S)
 
 
 "get_residuals_rcp" <-
-function( site.logls, outcomes, dist, coef, nRCP, type="deviance", powers=NULL, quiet=FALSE, nsim=1000, X, W, offy)
+function( site.logls, outcomes, distribution, coef, nRCP, type="deviance", powers=NULL, quiet=FALSE, nsim=1000, X, W, offy)
 {
   if( ! type %in% c("deviance","RQR"))
     stop( "Unknown type of residual requested. Only deviance and RQR (for randomised quantile residuals) are implemented\n")
@@ -773,7 +945,7 @@ function( site.logls, outcomes, dist, coef, nRCP, type="deviance", powers=NULL, 
     ii <- 1
     X1 <- kronecker( rep( 1, nsim), X[ii,])
     W1 <- kronecker( rep( 1, nsim), W[ii,])
-    sims <- regional_mix.simulate( nRCP=nRCP, S=length( coef$alpha), n=n.sim, p.x=ncol( X), p.w=ncol( W), alpha=coef$alpha, tau=coef$tau, beta=coef$beta, gamma=coef$gamma, logDisps=coef$disp, powers=pwers, X=X1, W=W1, offset=offy,dist=dist)
+    sims <- regional_mix.simulate( nRCP=nRCP, S=length( coef$alpha), n=n.sim, p.x=ncol( X), p.w=ncol( W), alpha=coef$alpha, tau=coef$tau, beta=coef$beta, gamma=coef$gamma, logDisps=coef$disp, powers=pwers, X=X1, W=W1, offset=offy,distribution=distribution)
 
   }
 
@@ -790,7 +962,10 @@ function( outcomes, W, X, offy, wts, disty, G, S, power, inits, quiet=FALSE)
 
   alpha <- rep( -999999, S)
   tau <- matrix( -999999, nrow=G, ncol=S)
-  if( length( W) != 1 & !is.null( W)) gamma <- matrix( -999999, nrow=S, ncol=ncol( W)) else gamma <- -999999
+  if( length( W) != 1 & !is.null( W))
+    gamma <- matrix( -999999, nrow=S, ncol=ncol( W))
+  else
+    gamma <- -999999
   beta <- matrix( -999999, nrow=G-1, ncol=ncol( X))
   if( disty>2) disp <- rep( -999999, S) else disp <- -999999
 
@@ -935,10 +1110,10 @@ function( outcomes, W, X, offy, wts, disty, G, S, power, inits, quiet=FALSE)
 
 
 "get_titbits_rcp" <-
-function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, control, dist, p.w, power)
+function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, control, distribution, p.w, power)
 {
   if( titbits==TRUE)
-    titbits <- list( Y = outcomes, X = X, W = W, offset = offset, wts=wts, rcp_formula = rcp_formula, species_formula = species_formula, control = control, dist = dist, power=power)
+    titbits <- list( Y = outcomes, X = X, W = W, offset = offset, wts=wts, rcp_formula = rcp_formula, species_formula = species_formula, control = control, distribution = distribution, power=power)
   else{
     titbits <- list()
     if( "Y" %in% titbits)
@@ -957,8 +1132,8 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
       titbits$species_formula <- species_formula
     if( "control" %in% titbits)
       titbits$control <- control
-    if( "dist" %in% titbits)
-      titbits$dist <- dist
+    if( "distribution" %in% titbits)
+      titbits$distribution <- distribution
     if( "power" %in% titbits)
       titbits$power <- power
   }
@@ -1443,7 +1618,7 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
     for (s in 1:nsim) {
       if( !quiet)
         setTxtProgressBar(pb, s)
-      newy <- as.matrix( regional_mix.simulate( nRCP=nRCP, S=S, n=n, p.x=p.x, p.w=p.w, alpha=alpha, tau=tau, beta=beta, gamma=gamma, logDisps=disp, powers=power, X=X, W=W, offset=offy, dist=x$dist))
+      newy <- as.matrix( regional_mix.simulate( nRCP=nRCP, S=S, n=n, p.x=p.x, p.w=p.w, alpha=alpha, tau=tau, beta=beta, gamma=gamma, logDisps=disp, powers=power, X=X, W=W, offset=offy, distribution=x$distribution))
       tmp <- .Call("RCP_C", as.numeric(newy[, 1:S]), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
           as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
           alpha, tau, beta, gamma, disp, power,
@@ -1453,7 +1628,7 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
           as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
           as.integer( FALSE), as.integer( TRUE), as.integer( FALSE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "ecomix")
 
-          allResids[, s] <- get_residuals_rcp(logls, Y, x$dist, x$coef, nRCP, type="deviance", powers=power, quiet=TRUE)
+          allResids[, s] <- get_residuals_rcp(logls, Y, x$distribution, x$coef, nRCP, type="deviance", powers=power, quiet=TRUE)
       }
     if( !quiet)
       message("")
@@ -1757,7 +1932,7 @@ function (x, ...)
 {
     ret <- list()
     ret$Call <- x$call
-    ret$Distribution <- x$dist
+    ret$Distribution <- x$distribution
     ret$coef <- stats::coef(x)
     print( ret)
 
@@ -1875,7 +2050,7 @@ function (x, ...)
   }
   if( type=="RQR"){
     resids <- matrix( NA, nrow=object$n, ncol=object$S)
-    switch( object$dist,
+    switch( object$distribution,
       bernoulli = { fn <- function(y,mu,logdisp,power) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
       poisson = { fn <- function(y,mu,logdisp,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
       negative_binomial = { fn <- function(y,mu,logdisp,power) pnbinom( q=y, mu=mu, size=1/exp( logdisp), lower.tail=TRUE)},
@@ -1884,7 +2059,7 @@ function (x, ...)
 
     for( ss in 1:object$S){
       if( all( object$titbits$power==-999999))  tmpPow <- NULL else tmpPow <- object$titbits$power[ss]
-      if( object$dist %in% c("bernoulli","poisson","negative_binomial")){
+      if( object$distribution %in% c("bernoulli","poisson","negative_binomial")){
         tmpLower <- fn( object$titbits$Y[,ss]-1, object$mus[,ss,], object$coef$disp[ss], tmpPow)
         tmpUpper <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$disp[ss], tmpPow)
         tmpLower <- rowSums( tmpLower * object$pis)
@@ -1896,7 +2071,7 @@ function (x, ...)
         resids[,ss] <- runif( object$n, min=tmpLower, max=tmpUpper)
         resids[,ss] <- qnorm( resids[,ss])
       }
-      # if( object$dist == "tweedie"){
+      # if( object$distribution == "tweedie"){
       #   nonzero <- object$titbits$Y[,ss]>0
       #   tmpObs <- matrix( rep( object$titbits$Y[,ss], object$nRCP), ncol=object$nRCP)
       #   tmp <- matrix( fn( as.numeric( tmpObs[nonzero,]), as.numeric( object$mus[nonzero,ss,]), object$coefs$disp[ss], object$titbits$power[ss]), ncol=object$nRCP)
@@ -1906,7 +2081,7 @@ function (x, ...)
       #   tmp <- rowSums( tmp * object$pis[!nonzero,])
       #   resids[!nonzero,ss] <- qnorm( runif( sum( !nonzero), min=0, max=tmp))
       # }
-      if( object$dist == "gaussian"){
+      if( object$distribution == "gaussian"){
         tmp <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$disp[ss], object$titbits$power[ss])
         tmp <- rowSums( tmp * object$pis)
         resids[,ss] <- qnorm( tmp)
@@ -1926,7 +2101,7 @@ function (x, ...)
         setTxtProgressBar(pb, ii)
       X1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$X[ii,,drop=FALSE])
       W1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$W[ii,,drop=FALSE])
-      sims <- regional_mix.simulate( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, logDisps=object$coef$disp, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,dist=object$dist)
+      sims <- regional_mix.simulate( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, logDisps=object$coef$disp, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,distribution=object$distribution)
       sims <- sims[,1:object$S]
       yi <- object$titbits$Y[ii,,drop=FALSE]
       many_yi <- matrix( rep( yi, each=nsim), ncol=object$S)
@@ -2016,170 +2191,6 @@ function(control)
 
   return( control)
 
-}
-
-#' @rdname regional_mix
-#' @name regional_mix.simulate
-#' @param nRCP Integer giving the number of RCPs
-#' @param S Integer giving the number of species
-#' @param n Integer giving the number of observations (sites)
-#' @param p.x Integer giving the number of covariates (including the intercept) for the model for the latent RCP types
-#' @param p.w Integer giving the number of covariates (excluding the intercept) for the model for the species data
-#' @param alpha Numeric vector of length S. Specifies the mean prevalence for each species, on the logit scale
-#' @param tau Numeric matrix of dimension c(nRCP-1,S). Specifies each species difference from the mean to each RCPs mean for the first nRCP-1 RCPs. The last RCP means are calculated using the sum-to-zero constraints
-#' @param beta Numeric matrix of dimension c(nRCP-1,p.x). Specifies the RCP's dependence on the covariates (in X)
-#' @param gamma Numeric matrix of dimension c(n,p.w). Specifies the species' dependence on the covariates (in W)
-#' @param logDisps Logartihm of the (over-)dispersion parameters for each species for negative binomial, Tweedie and Normal models
-#' @param powers Power parameters for each species for Tweedie model
-#' @param X Numeric matrix of dimension c(n,p.x). Specifies the covariates for the RCP model. Must include the intercept, if one is wanted. Default is random numbers in a matrix of the right size.
-#' @param W Numeric matrix of dimension c(n,p.w). Specifies the covariates for the species model. Must not include the intercept. Unless you want it included twice. Default is to give random levels of a two-level factor.
-#' @param offset Numeric vector of size n. Specifies any offset to be included into the species level model.
-#' @param dist Text string. Specifies the distribution of the species data. Current options are "bernoulli" (default), "poisson", "negative_binomial", "tweedie" and "gaussian.
-#' @export
-#' @examples
-#' \dontrun{
-#' #generates synthetic data
-#'set.seed( 151)
-#'n <- 100
-#'S <- 10
-#'nRCP <- 3
-#'my.dist <- "NegBin"
-#'X <- as.data.frame( cbind( x1=runif( n, min=-10, max=10), x2=runif( n, min=-10, max=10)))
-#'Offy <- log( runif( n, min=30, max=60))
-#'pols <- list()
-#'pols[[1]] <- poly( X$x1, degree=3)
-#important to scale covariates so that regional_mix can get half-way decent starting values
-#'pols[[2]] <- poly( X$x2, degree=3)
-#'X <- as.matrix( cbind( 1, X, pols[[1]], pols[[2]]))
-#'colnames( X) <- c("const", 'x1', 'x2', paste( "x1",1:3,sep='.'), paste( "x2",1:3,sep='.'))
-#'p.x <- ncol( X[,-(2:3)])
-#'p.w <- 3
-#'W <- matrix(sample( c(0,1), size=(n*p.w), replace=TRUE), nrow=n, ncol=p.w)
-#'colnames( W) <- paste( "w",1:3,sep=".")
-#'alpha <- rnorm( S)
-#'tau.var <- 0.5
-#'b <- sqrt( tau.var/2)
-#a double exponential for RCP effects
-#'tau <- matrix( rexp( n=(nRCP-1)*S,
-#' rate=1/b) - rexp( n=(nRCP-1)*S, rate=1/b), nrow=nRCP-1, ncol=S)
-#'beta <- 0.2 * matrix( c(-1.2, -2.6, 0.2, -23.4, -16.7, -18.7, -59.2, -76.0, -14.2, -28.3,
-#'                        -36.8, -17.8, -92.9,-2.7), nrow=nRCP-1, ncol=p.x)
-#'gamma <- matrix( rnorm( S*p.w), ncol=p.w, nrow=S)
-#'logDisp <- log( rexp( S, 1))
-#'set.seed(121)
-#'simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n, alpha=alpha, tau=tau,
-#'                      beta=beta, gamma=gamma, X=X[,-(2:3)], W=W, dist=my.dist, logDisp=logDisp, offset=Offy)
-#'
-#' }
-"regional_mix.simulate" <- function (nRCP=3, S=20, n=200, p.x=3, p.w=0, alpha=NULL,
-                          tau=NULL, beta=NULL, gamma=NULL, logDisps=NULL,
-                          powers=NULL, X=NULL, W=NULL, offset=NULL, dist="bernoulli")
-{
-    if (is.null(alpha) | length(alpha) != S) {
-        message("Random alpha from normal (-1,0.5) distribution")
-        alpha <- rnorm(S,-1,0.5)
-    }
-    if (is.null(tau) | length(tau) != (nRCP - 1) * S) {
-        message("Random tau from standard normal")
-        tau <- rnorm( (nRCP-1)*S)
-    }
-    tau <- matrix(as.numeric(tau), nrow = nRCP - 1)
-    if (is.null(beta) | length(beta) != (nRCP - 1) * p.x) {
-        message("Random values for beta")
-        beta <- rnorm( p.x*(nRCP-1))#as.numeric(c(0, 0, 0.4, 0, -0.2, 1))
-    }
-    beta <- matrix(as.numeric(beta), nrow = nRCP - 1)
-    if( ( is.null(gamma) | length( gamma) != S * p.w)){
-      if( p.w != 0){
-        message("Random values for gamma")
-        gamma <- rnorm( p.w*S)
-        gamma <- matrix( as.numeric( gamma), nrow=S, ncol=p.w)
-      }
-      else
-        gamma <- NULL
-    }
-    else
-      gamma <- matrix( as.numeric( gamma), nrow=S)
-    if( dist == "negative_binomial" & (is.null( logDisps) | length( logDisps) != S)){
-      message( "Random values for overdispersions")
-      logDisps <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
-    }
-    if( dist=="gaussian" & (is.null( logDisps) | length( logDisps) != S)){
-      message( "Random values for species' variance parameters")
-      logDisps <- log( 1 + rgamma( n+S, shape=1, scale=0.75))
-    }
-    sppNames <- paste("spp", 1:S, sep = "")
-    if (is.null(X)) {
-      message("creating a RCP-level design matrix with random numbers")
-      X <- cbind(1, matrix(runif(n * (p.x - 1), min = -10, max = 10), nrow = n))
-      if( p.x > 1)
-        colnames(X) <- c("intercept", paste("x", 1:(p.x - 1), sep = ""))
-      else
-        colnames(X) <- "intercept"
-    }
-    if( p.w>0)
-      if( is.null( W)){
-        message("Creating a species-level design matrix with random factor levels")
-        W <- matrix(sample( c(0,1), size=(n*p.w), replace=TRUE), nrow=n, ncol=p.w)
-        colnames(W) <- c(paste("w", 1:p.w, sep = ""))
-      }
-    if( is.null( offset))
-      offset <- rep( 0, n)
-    if( !dist%in%c("bernoulli","poisson","negative_binomial","tweedie","gaussian")){
-      message( "Distribution not found, please choose from c('bernoulli','poisson','negative_binomial','tweedie','gaussian')")
-      return( NA)
-    }
-
-    etaPi <- X %*% t(beta)
-    pis <- t(apply(etaPi, 1, additive_logistic))
-    habis <- apply(pis, 1, function(x) sample(1:nRCP, 1, FALSE, x))
-
-    tau <- rbind(tau, -colSums(tau))
-    etaMu <- tau + rep(alpha, each = nRCP)
-    etaMu1 <- array( rep( offset, each=nRCP*S), dim=c(nRCP,S,n))
-    if( p.w > 0){
-      etaMu2 <- W %*% t( gamma)
-      for( hh in 1:nRCP)
-        etaMu1[hh,,] <- etaMu1[hh,,] + t( etaMu2)
-    }
-    for( hh in 1:nRCP)
-      etaMu1[hh,,] <- etaMu1[hh,,] + rep( etaMu[hh,], times=n)
-    etaMu <- etaMu1
-
-    if( dist=="bernoulli")
-      mu <- inv.logit(etaMu)
-    if( dist %in% c("poisson","negative_binomial"))#,"tweedie"))
-      mu <- exp( etaMu)
-    if( dist == "gaussian")
-      mu <- etaMu
-
-    fitted <- matrix( NA, nrow=n, ncol=S)
-    for( ii in 1:n)
-      fitted[ii,] <- mu[habis[ii], ,ii]
-
-    if( dist=="bernoulli")
-      outcomes <- matrix(rbinom(n * S, 1, as.numeric( fitted)), nrow = n, ncol = S)
-    if( dist=="poisson")
-      outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
-    if( dist=="negative_binomial")
-      outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp( logDisps), each=n)), nrow = n, ncol = S)
-    if( dist=="gaussian")
-      outcomes <- matrix( rnorm( n=n*S, mean=as.numeric( fitted), sd=rep( exp( logDisps), each=n)), nrow=n, ncol=S)
-
-    colnames(outcomes) <- paste("spp", 1:S, sep = "")
-    if( !all( offset==0))
-      res <- as.data.frame(cbind(outcomes, X, W, offset))
-    else
-      res <- as.data.frame(cbind(outcomes, X, W))
-    attr(res, "RCPs") <- habis
-    attr(res, "pis") <- pis
-    attr(res, "alpha") <- alpha
-    attr(res, "tau") <- tau[-nRCP, ]
-    attr(res, "beta") <- beta
-    attr(res, "gamma") <- gamma
-    attr(res, "logDisps") <- logDisps
-    attr(res, "mu") <- mu
-    return(res)
 }
 
 #'@rdname regional_mix
