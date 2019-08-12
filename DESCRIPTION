@@ -15,6 +15,7 @@ Imports:
     glmnet,
     fishMod,
     MASS,
+    mgcv,
     gtools,
     parallel,
     stats,

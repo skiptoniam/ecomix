@@ -26,6 +26,8 @@
 
 \item{object}{A species_mix object that you want to assess.}
 
+\item{\dots}{Not used.}
+
 \item{oosSize}{The size of the withheld paritions (out-of-sample size).}
 
 \item{times}{The number of tunes to perform the re-estimation. For each

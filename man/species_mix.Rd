@@ -3,8 +3,6 @@
 \name{species_mix}
 \alias{species_mix}
 \alias{species_mix.multifit}
-\alias{control}
-\alias{species_mix.control}
 \alias{species_mix.bootstrap}
 \alias{species_mix.simulate}
 \alias{AIC.species_mix}
@@ -31,18 +29,6 @@ species_mix.multifit(archetype_formula = NULL,
   offset = NULL, weights = NULL, bb_weights = NULL,
   control = species_mix.control(), inits = NULL, standardise = TRUE,
   titbits = TRUE)
-
-species_mix.control(maxit = 1000, quiet = FALSE, trace = 1,
-  cores = 1, init_method = "random2", init_sd = 1,
-  minimum_sites_occurrence = 10, em_prefit = TRUE, em_steps = 5,
-  em_refit = 2, em_abstol = sqrt(.Machine$double.eps),
-  em_reltol = reltol_fun, em_maxtau = 0.8, theta_range = c(0.001,
-  10), pen_param = 1.25, update_kappa = c(1, 0.5, 1),
-  print_cpp_start_vals = FALSE, maxit_cpp = 1000, trace_cpp = 1,
-  nreport_cpp = 1, abstol_cpp = sqrt(.Machine$double.eps),
-  reltol_cpp = sqrt(.Machine$double.eps), conv_cpp = 1,
-  printparams_cpp = 0, optimise_cpp = 1, loglOnly_cpp = 0,
-  derivOnly_cpp = 0, getscores_cpp = 0, ...)
 
 species_mix.bootstrap(object, nboot = 1000, type = "BayesBoot",
   mc.cores = 1, quiet = FALSE, orderSamps = FALSE, MLstart = TRUE)
@@ -153,26 +139,6 @@ setting titbits=TRUE may give users problems with memory.}
 
 \item{mc.cores}{for species_mix.multifit only. The number of cores to spread the re-fitting over.}
 
-\item{maxit}{Maximum number of evaluations of the objective function allowed. Defaults to 500.}
-
-\item{quiet}{Should any reporting be performed? Default is FALSE, for reporting.}
-
-\item{trace}{int 1=model will report parameter estimates and loglikelihood at each iteration. 0=quiet.}
-
-\item{cores}{The number of cores to use in fitting of species mix models. These will be largely used to model the species-specific parameteres.}
-
-\item{init_method}{The method to use for initialisation. The options are "random2", "kmeans", "kmed". The default uses random2, which is a kmeans with noise added to the cluster.}
-
-\item{init_sd}{The amount of noise to add to the initailisation the default is 1.}
-
-\item{minimum_sites_occurrence}{a integer which determins the number of minimum sites present for any species for it to be included in the initialisation step. This removes rare species from initial groupings. They are then included in the overall analysis.}
-
-\item{em_prefit}{Logical if TRUE the model will run a slower EM algorithim fit to find starting values.}
-
-\item{em_steps}{int Default is 3, the number of EM iterations to get to starting values.}
-
-\item{em_refit}{int Default is 1, number of times to refit using EM.}
-
 \item{object}{is a matrix model returned from the species_mix model.}
 
 \item{dat}{a matrix of variables to simulate data from.}
@@ -189,8 +155,6 @@ parameters. Each row is a different species archetype.}
 and gaussian distributions - should be number of species long}
 
 \item{newdata}{a matrix of new observations for prediction.}
-
-\item{reltol}{function that determines the relative tolernace for model convergence. Default is quiet strict.}
 
 \item{archtype_formula}{formula to simulate species_mix data, needs to have
 the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
@@ -231,8 +195,8 @@ x2=stats::rnorm(100,0,2.5))
 dat[,-1] <- scale(dat[,-1])
 simulated_data <- species_mix.simulate(archetype_formula=sam_form,
  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
-fm1 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'bernoulli',
- n_mixtures=3)
+fm1 <- species_mix(sam_form, sp_form, simulated_data,
+ distribution = 'bernoulli',  n_mixtures=3)
  }
 \dontrun{
 fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
