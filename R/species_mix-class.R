@@ -163,7 +163,7 @@
     return(NULL)
   }
   if( !control$quiet)
-    message( "There are ", n_mixtures, " archtypes to group the species into")
+    message( "There are ", n_mixtures, " archetypes to group the species into")
 
   # get archetype model matrix
   X <- get_X_sam(archetype_formula = archetype_formula, mf.X = dat$mf.X)
@@ -380,7 +380,7 @@
     return(NULL)
   }
   if( !control$quiet)
-    message( "There are ", n_mixtures, " archtypes to group the species into")
+    message( "There are ", n_mixtures, " archetypes to group the species into")
 
   # get archetype model matrix
   X <- get_X_sam(archetype_formula = archetype_formula, mf.X = dat$mf.X)
@@ -499,8 +499,9 @@
 #'@param em_steps int Default is 3, the number of EM iterations to get to starting values.
 #'@param em_refit int Default is 1, number of times to refit using EM.
 #'@param em_reltol A function or value which gives the tolerance in the EM loglikeihood estimation.
-#'@param en_maxtau A cap on the maximum value of the species' taus in the first E-step of the EM algorithm, not used for subsequent iterations.
+#'@param em_maxtau A cap on the maximum value of the species' taus in the first E-step of the EM algorithm, not used for subsequent iterations.
 #'@param theta_range Two positive values use as penalities for estimating the dispersion parameters (theta) in a negative_binomial SAM or PSAM.
+#'@param pen_param A penality for the em fitting.
 #'@param update_kappa Penalities for how fast parameters update during each EM step.
 #'@param print_cpp_start_vals A call to check what parameter estimates are being passed to C++ for optimisation.
 #'@param maxit_cpp The number of iterations to run in C++. Default is 1000.
@@ -514,6 +515,7 @@
 #'@param loglOnly_cpp Should the log-likelihood be caulcated? If TRUE (default) then log-likelihood is calculated and returned. If FALSE then the log-likelihood is not calculated for return.
 #'@param derivOnly_cpp Should the scores be evaluated at the (final) parameter values. If TRUE (default) then they are calculated. If FALSE then they are not calculated.
 #'@param getscores_cpp Return scores.
+#'@paran \dots Other control calls.
 
 #'@export
 "species_mix.control" <- function(quiet = FALSE,
@@ -657,7 +659,7 @@
 
 #' @rdname species_mix
 #' @name species_mix.simulate
-#' @param archtype_formula formula to simulate species_mix data, needs to have
+#' @param archetype_formula formula to simulate species_mix data, needs to have
 #' the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2
 #' @param species_formula formula to simulate species_mix species-specific
 #' responses, e.g: ~1
@@ -2665,66 +2667,6 @@ starting values;\n starting values are generated using ',control$init_method,
 
   return(site_spp_weights)
 }
-
-#'@export
-
-"glm.nbinom" <- function(form, data, weights=NULL, offset=NULL, mustart=NULL, est_var=FALSE){
-  X <- stats::model.matrix(form, data)
-  t1 <- stats::model.frame(form, data)
-  y <- stats::model.response(t1)
-  if(is.null(offset)) offset <- stats::model.offset(t1)
-  if(is.null(offset)) offset <- rep(0,length(y))
-  if(is.null(weights)) weights <- stats::model.weights(t1)
-  if(is.null(weights)) weights <- rep(1,length(y))
-
-  fit <- glm.fit.nbinom(X, y, offset, weights, mustart, est_var)
-
-  return(fit)
-
-}
-
-#'@export
-
-"glm.fit.nbinom" <- function(x, y, offset = NULL, weights = NULL,
-                             mustart = NULL, est_var = FALSE){
-  X <- x
-  if (is.null(offset))
-    offset <- 0
-  if (is.null(weights))
-    weights <- rep(1, length(y))
-  gradient <- rep(0, ncol(X) + 1)
-  if (is.null(mustart)) {
-    pars <- gradient + 1
-  }
-  else {
-    pars <- mustart
-  }
-  fitted.values <- rep(0, length(y))
-  logl <- .Call("Neg_Bin", pars, X, y, weights, offset, gradient,
-                fitted.values, PACKAGE = "ecomix")
-  vcov <- 0
-  se <- rep(0, length(pars))
-  if (est_var) {
-    calc_deriv <- function(p) {
-      gradient <- rep(0, length(pars))
-      ll <- .Call("Neg_Bin_Gradient", p, X, y, weights,
-                  offset, gradient, PACKAGE = "ecomix")
-      return(gradient)
-    }
-    hes <- numDeriv::jacobian(calc_deriv,pars)
-    # hes <- nd2(pars, calc.deriv)
-    dim(hes) <- rep(length(pars), 2)
-    vcov <- try(solve(hes))
-    se <- try(sqrt(diag(vcov)))
-    colnames(vcov) <- rownames(vcov) <- c("theta", colnames(X))
-  }
-  names(pars) <- names(se) <- names(gradient) <- c("theta",
-                                                   colnames(X))
-  return(list(logl = logl, coef = pars[-1], theta = pars[1],
-              se = se[-1], se.theta = se[1], fitted = fitted.values,
-              gradient = gradient, vcov = vcov))
-}
-
 
 "check_spp_weights" <- function(bb_weights, nS){
 

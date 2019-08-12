@@ -962,8 +962,7 @@
 "regional_mix.simulate" <- function(nRCP=3, S=20, n=200, p.x=3, p.w=0,
                                     alpha=NULL, tau=NULL, beta=NULL, gamma=NULL,
                                     logDisps=NULL, powers=NULL, X=NULL, W=NULL,
-                                    offset=NULL, distribution="bernoulli")
-{
+                                    offset=NULL, distribution="bernoulli"){
   if (is.null(alpha) | length(alpha) != S) {
     message("Random alpha from normal (-1,0.5) distribution")
     alpha <- rnorm(S,-1,0.5)
@@ -1071,8 +1070,6 @@
   return(res)
 }
 
-
-
 #'@title What is the average species membership per RCP.
 #'@rdname regional_mix
 #'@name regional_mix.species_membership
@@ -1081,13 +1078,10 @@
 #'@param CI The confidence intervals to report the range of
 #'values form bootstrap
 #'@export
-#'@description Extracts the average species' each RCP.
-#'@examples
-#' regional_mix.species_membership(fm)
+#'@description Extracts the average species' membership for each RCP.
 
 "regional_mix.species_membership" <- function(object, object2=NULL,
                                               CI=c(0.025,0.975), ...){
-
 
   if(is.null(object2)){
     if(!check_if_sampling(object)) type <- "single_no_sp_results"
@@ -1103,6 +1097,8 @@
   return(partial_mus)
 }
 
+check_if_sampling <-function(object){all(!is.na(object$names$Wvars))}
+
 partial_mus_no_species_form <- function(object, ...){
 
   ## what are the species taus?
@@ -1116,10 +1112,12 @@ partial_mus_no_species_form <- function(object, ...){
   eta <- sweep(tau, 2, coef(object)$alpha, "+") + mean(offy)
 
   ## what is the link function of appropriate distribution?
-  if(object$distribution=="bernoulli") link.fun <- make.link('logit')
-  if(object$distribution%in%c("poisson","negative_binomial")) link.fun <- make.link('log')
-  if(object$distribution=='negative_binomial') link.fun <- make.link('log')
-  if(object$distribution=='guassian') link.fun <- make.link('identity')
+  if(object$distribution=="bernoulli")
+    link.fun <- stats::make.link('logit')
+  if(object$distribution%in%c("poisson","negative_binomial"))
+    link.fun <- stats::make.link('log')
+  if(object$distribution=='guassian')
+    link.fun <- stats::make.link('identity')
 
   ## what are the partial mus: dim[nRCPs,nSpp]
   partial_mus <- link.fun$linkinv(eta)
@@ -1127,7 +1125,7 @@ partial_mus_no_species_form <- function(object, ...){
   dimnames(partial_mus)[[1]] <- object$names$RCPs
 
   ## return the partial mus if their is no sampling artifacts (species formula).
-  return((partial_mus))
+  return(partial_mus)
 }
 
 
@@ -1144,10 +1142,12 @@ partial_mus_with_species_form <- function(object, ... ){
   eta <- sweep(tau, 2, coef(object)$alpha, "+") + mean(offy)
 
   ## what is the link function of appropriate distribution?
-  if(object$distribution=="bernoulli") link.fun <- make.link('logit')
-  if(object$distribution%in%c("poisson","negative_binomial")) link.fun <- make.link('log')
-  if(object$distribution=='negative_binomial') link.fun <- make.link('log')
-  if(object$distribution=='guassian') link.fun <- make.link('identity')
+  if(object$distribution=="bernoulli")
+    link.fun <- stats::make.link('logit')
+  if(object$distribution%in%c("poisson","negative_binomial"))
+    link.fun <- stats::make.link('log')
+  if(object$distribution=='guassian')
+    link.fun <- stats::make.link('identity')
 
   #probabilities for all other levels of same sampling var
   res<- lapply(seq_along(object$names$Wvars),function(jj){
@@ -1159,10 +1159,6 @@ partial_mus_with_species_form <- function(object, ... ){
   return(res)
 }
 
-## quick function to echk if model output has sampling artifacts (species formula)
-
-check_if_sampling <-function(object){all(!is.na(object$names$Wvars))}
-
 partial_mus_from_boostrap  <- function(object, object2, CI=c(0.025,0.975)){
 
   #set up coefficient extraction
@@ -1170,10 +1166,10 @@ partial_mus_from_boostrap  <- function(object, object2, CI=c(0.025,0.975)){
   alphas<-grepl("alpha",dimnames(object2)[[2]])
 
   ## what is the link function of appropriate distribution?
-  if(object$distribution=="bernoulli") link.fun <- make.link('logit')
-  if(object$distribution%in%c("poisson","negative_binomial")) link.fun <- make.link('log')
-  if(object$distribution=='negative_binomial') link.fun <- make.link('log')
-  if(object$distribution=='guassian') link.fun <- make.link('identity')
+  if(object$distribution=="bernoulli") link.fun <- stats::make.link('logit')
+  if(object$distribution%in%c("poisson","negative_binomial")) link.fun <- stats::make.link('log')
+  if(object$distribution=='negative_binomial') link.fun <- stats::make.link('log')
+  if(object$distribution=='guassian') link.fun <- stats::make.link('identity')
 
   if(!check_if_sampling(object)){
 
