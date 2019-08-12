@@ -3,19 +3,18 @@
 \name{regional_mix}
 \alias{regional_mix}
 \alias{regional_mix.multifit}
-\alias{regional_mix.simulate}
-\alias{regional_mix.species_membership}
-\alias{species_membership.regional_mix}
 \alias{AIC.regional_mix}
 \alias{BIC.regional_mix}
-\alias{coef.regional_mix}
 \alias{plot.regional_mix}
 \alias{plot.regional_mix_stab}
 \alias{predict.regional_mix}
 \alias{print.regional_mix}
+\alias{residuals.regional_mix}
+\alias{regional_mix.simulate}
+\alias{regional_mix.species_membership}
+\alias{extractAIC.regional_mix}
 \alias{regional_mix_boot}
 \alias{regional_mix_bootParametric}
-\alias{residuals.regional_mix}
 \alias{stability.regional_mix}
 \alias{summary.regional_mix}
 \alias{vcov.regional_mix}
@@ -31,19 +30,9 @@ regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
   weights = NULL, control = list(), inits = "random2",
   titbits = FALSE, power = 1.6, nstart = 10, mc.cores = 1)
 
-regional_mix.simulate(nRCP = 3, S = 20, n = 200, p.x = 3,
-  p.w = 0, alpha = NULL, tau = NULL, beta = NULL, gamma = NULL,
-  logDisps = NULL, powers = NULL, X = NULL, W = NULL,
-  offset = NULL, distribution = "bernoulli")
-
-species_membership.regional_mix(object, object2 = NULL, CI = c(0.025,
-  0.975), ...)
-
 \method{AIC}{regional_mix}(object, ..., k = 2)
 
 \method{BIC}{regional_mix}(object, ...)
-
-\method{coef}{regional_mix}(object, ...)
 
 \method{plot}{regional_mix}(x, ..., type = "RQR", nsim = 100,
   alpha.conf = c(0.9, 0.95, 0.99), quiet = FALSE,
@@ -57,13 +46,23 @@ species_membership.regional_mix(object, object2 = NULL, CI = c(0.025,
 
 \method{print}{regional_mix}(x, ...)
 
+\method{residuals}{regional_mix}(object, ..., type = "RQR",
+  quiet = FALSE)
+
+regional_mix.simulate(nRCP = 3, S = 20, n = 200, p.x = 3,
+  p.w = 0, alpha = NULL, tau = NULL, beta = NULL, gamma = NULL,
+  logDisps = NULL, powers = NULL, X = NULL, W = NULL,
+  offset = NULL, distribution = "bernoulli")
+
+regional_mix.species_membership(object, object2 = NULL, CI = c(0.025,
+  0.975), ...)
+
+\method{extractAIC}{regional_mix}(fit, scale = 1, k = 2, ...)
+
 regional_mix_boot(object, nboot = 1000, type = "BayesBoot",
   mc.cores = 1, quiet = FALSE, orderSamps = FALSE, MLstart = TRUE)
 
 regional_mix_bootParametric(fm, mf, nboot)
-
-\method{residuals}{regional_mix}(object, ..., type = "RQR",
-  quiet = FALSE)
 
 stability.regional_mix(model, oosSizeRange = NULL, times = model$n,
   mc.cores = 1, quiet = FALSE, doPlot = TRUE)
@@ -101,6 +100,10 @@ stability.regional_mix(model, oosSizeRange = NULL, times = model$n,
 
 \item{mc.cores}{for regional_mix.multifit only. The number of cores to spread the re-fitting over.}
 
+\item{object}{A RCP model}
+
+\item{alpha}{Numeric vector of length S. Specifies the mean prevalence for each species, on the logit scale}
+
 \item{S}{Integer giving the number of species}
 
 \item{n}{Integer giving the number of observations (sites)}
@@ -108,8 +111,6 @@ stability.regional_mix(model, oosSizeRange = NULL, times = model$n,
 \item{p.x}{Integer giving the number of covariates (including the intercept) for the model for the latent RCP types}
 
 \item{p.w}{Integer giving the number of covariates (excluding the intercept) for the model for the species data}
-
-\item{alpha}{Numeric vector of length S. Specifies the mean prevalence for each species, on the logit scale}
 
 \item{tau}{Numeric matrix of dimension c(nRCP-1,S). Specifies each species difference from the mean to each RCPs mean for the first nRCP-1 RCPs. The last RCP means are calculated using the sum-to-zero constraints}
 
@@ -125,22 +126,25 @@ stability.regional_mix(model, oosSizeRange = NULL, times = model$n,
 
 \item{W}{Numeric matrix of dimension c(n,p.w). Specifies the covariates for the species model. Must not include the intercept. Unless you want it included twice. Default is to give random levels of a two-level factor.}
 
-\item{object}{A RCP model}
+\item{CI}{The confidence intervals to report the range of
+values form bootstrap}
 
 \item{nRCP}{Integer giving the number of RCPs}
 
 \item{offset}{Numeric vector of size n. Specifies any offset to be included into the species level model.}
 
 \item{distribution}{Text string. Specifies the distribution of the species data. Current options are "bernoulli" (default), "poisson", "negative_binomial", "tweedie" and "gaussian.}
+
+\item{boot_object}{A RCP model bootstrap object}
 }
 \description{
 creates an \code{regional_mix} model.
 
-Extracts the average species' each RCP.
-
 The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep). The result is one residual per species per site and they all should be standard
 normal variates. Within a site they are likely to be correlated (as they share a common latent factor), but across sampling locations they will be independent.
  The deviance residuals (as used here), are actually just square root of minus two times the log-likelihood contribution for each sampling location. We do #' not subtract the log-likelihood of the saturated model as, at the time of writing, we are unsure what this log-likelihood should be (latent factors confuse #' things here). This implies that the residuals will not have mean zero and their variance might also be heteroskedastic. This was not realised when writing #' the original RCP paper (Foster et al, 2013), obviously. We still believe that these residuals have some utility, but we are unsure where that utility stops. #' For general useage, the "RQR" residuals should probably be preferred.
+
+Extracts the average species' membership for each RCP.
 }
 \examples{
 \dontrun{
@@ -187,5 +191,4 @@ alpha=alpha, tau=tau, beta=beta, gamma=gamma, X=X[,-(2:3)], W=W,
 distribution=my.dist, logDisp=logDisp, offset=Offy)
 
 }
-species_membership.regional_mix(fm)
 }

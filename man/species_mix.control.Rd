@@ -35,7 +35,11 @@ species_mix.control(quiet = FALSE, cores = 1,
 
 \item{em_reltol}{A function or value which gives the tolerance in the EM loglikeihood estimation.}
 
+\item{em_maxtau}{A cap on the maximum value of the species' taus in the first E-step of the EM algorithm, not used for subsequent iterations.}
+
 \item{theta_range}{Two positive values use as penalities for estimating the dispersion parameters (theta) in a negative_binomial SAM or PSAM.}
+
+\item{pen_param}{A penality for the em fitting.}
 
 \item{update_kappa}{Penalities for how fast parameters update during each EM step.}
 
@@ -62,8 +66,6 @@ species_mix.control(quiet = FALSE, cores = 1,
 \item{derivOnly_cpp}{Should the scores be evaluated at the (final) parameter values. If TRUE (default) then they are calculated. If FALSE then they are not calculated.}
 
 \item{getscores_cpp}{Return scores.}
-
-\item{en_maxtau}{A cap on the maximum value of the species' taus in the first E-step of the EM algorithm, not used for subsequent iterations.}
 }
 \description{
 Controls for species_mix model.

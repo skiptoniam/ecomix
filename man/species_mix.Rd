@@ -156,7 +156,7 @@ and gaussian distributions - should be number of species long}
 
 \item{newdata}{a matrix of new observations for prediction.}
 
-\item{archtype_formula}{formula to simulate species_mix data, needs to have
+\item{archetype_formula}{formula to simulate species_mix data, needs to have
 the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
 
 \item{species_formula}{formula to simulate species_mix species-specific
