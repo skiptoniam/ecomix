@@ -174,5 +174,4 @@ testthat::test_that('testing regional mix S3 functions', {
   resres <- residuals(fm)
   testthat::expect_is(resres,'matrix')
 
-
 })
