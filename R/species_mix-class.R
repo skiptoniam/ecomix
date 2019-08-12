@@ -860,7 +860,7 @@
     rownames(res$gamma) <- object$names$spp
     colnames(res$gamma) <- object$names$Wvars
   }
-  if(fm1$dist%in%c('negative_binomial','gaussian')){
+  if(object$dist%in%c('negative_binomial','gaussian')){
     res$theta <- object$coef$theta
     names(res$theta) <- object$names$spp
   }
