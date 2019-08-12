@@ -150,7 +150,7 @@ testthat::test_that('species mix generic vcov functions', {
   # testthat::expect_true(all(is.finite(sqrt(diag(vcv_mat)))))
 
   vcv_mat_bb <- vcov(object = fm1,method = 'BayesBoot', nboot = 10)
-  testthat::expect_equal(nrow(vcv_mat),nrow(vcv_mat))
+  # testthat::expect_equal(nrow(vcv_mat),nrow(vcv_mat))
   testthat::expect_is(vcv_mat_bb,'matrix')
   testthat::expect_true(all(is.finite(sqrt(diag(vcv_mat_bb)))))
 
@@ -221,6 +221,7 @@ testthat::test_that('species mix predict functions', {
 
 testthat::test_that('species mix gaussian', {
 
+  rm(list=ls())
   set.seed(42)
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~x1+x2"))
   alpha <- runif(50,10,100)
@@ -273,8 +274,11 @@ testthat::test_that('species mix gaussian', {
   tmp <- ecomix:::sam_optimise(y, X, W, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, start_vals = sv, control)
   testthat::expect_length(tmp,19)
 
-  fm1 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'gaussian',
+  sp_form <- ~1
+  fm1 <- species_mix(sam_form, sp_form, simulated_data,
+                     distribution = 'gaussian',
                      n_mixtures=4)
+
   testthat::expect_s3_class(fm1,'species_mix')
 
   fm2 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'gaussian',
@@ -319,12 +323,11 @@ testthat::test_that('species mix poisson', {
 
   # test a single gaussian model
   i <- 1
-  # for(i in 1:S)
   testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W, site_spp_weights, offset, y_is_na, disty),4)
   fm_poissonint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam_inits,
                                           y, X, W, site_spp_weights, offset,
                                           y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
-  testthat::expect_length(do.call(cbind,fm_gaussianint)[1,],S)
+  testthat::expect_length(do.call(cbind,fm_poissonint)[1,],S)
 
   #get the taus
   starting_values <- ecomix:::initiate_fit_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
@@ -346,6 +349,7 @@ testthat::test_that('species mix poisson', {
   tmp <- ecomix:::sam_optimise(y, X, W, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, start_vals = sv, control)
   testthat::expect_length(tmp,19)
 
+  sp_form <- ~1
   fm1 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'poisson',
                      n_mixtures=4)
   testthat::expect_s3_class(fm1,'species_mix')
@@ -385,12 +389,11 @@ testthat::test_that('species mix bernoulli', {
 
   # test a single bernoulli model
   i <- 1
-  # for(i in 1:S)
   testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W, site_spp_weights, offset, y_is_na, disty),4)
   fm_bernoulliint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam_inits,
                                          y, X, W, site_spp_weights, offset,
                                          y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
-  testthat::expect_length(do.call(cbind,fm_gaussianint)[1,],S)
+  testthat::expect_length(do.call(cbind,fm_bernoulliint)[1,],S)
 
   #get the taus
   starting_values <- ecomix:::initiate_fit_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
@@ -510,9 +513,9 @@ testthat::test_that('species mix one covariate and one group', {
 
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~x1"))
   sp_form <- ~ 1
-  fm1 <- species_mix(sam_form, sp_form, simulated_data,
+  expect_warning(fm1 <- species_mix(sam_form, sp_form, simulated_data,
                      distribution = 'bernoulli',
-                     n_mixtures = 4)
+                     n_mixtures = 4))
 
   # test with one group
   set.seed(42)
