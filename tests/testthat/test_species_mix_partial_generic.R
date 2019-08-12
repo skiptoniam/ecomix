@@ -117,7 +117,7 @@ testthat::test_that('testing partial species mix bernoulli ', {
 
   object <- test_part_sam
 
-  test_part_sam$vcov <- vcov(test_part_sam)
+  test_part_sam$vcov <- vcov(test_part_sam,method = "BayesBoot")
 
   summary(test_part_sam)
 
