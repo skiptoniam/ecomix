@@ -73,9 +73,9 @@ fmm <- regional_mix.multifit(rcp_formula = my.form.RCP,
                             nstart=10, titbits=FALSE, mc.cores=1)
 testthat::expect_is(fmm,'list')
 
-postProbSums <- t( sapply( fm, function(x) colSums( x$postProbs)))
+postProbSums <- t( sapply( fmm, function(x) colSums( x$postProbs)))
 allGoodUns <- apply( postProbSums, 1, function(x) all(x!=0))
-fm.clean <- fm[allGoodUns]
+fm.clean <- fmm[allGoodUns]
 goodUn <- which.min(sapply(fm.clean, ecomix:::BIC.regional_mix))
 fm.final <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp, data = simDat,
                      distribution = "negative_binomial", nRCP = 3, inits = unlist( fm.clean[[goodUn]]$coef),
@@ -105,17 +105,6 @@ my.form.RCP <- paste( paste( paste(
 regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp, data = simDat,
                                    distribution = "negative_binomial", nRCP = 1, inits = unlist( fm.clean[[goodUn]]$coef),
                                    control=list(optimise=FALSE), offset=offset)
-
-# test one rcp
-my.form.RCP <- paste( paste( paste(
-  'cbind(', paste( paste( 'spp', c(1:S), sep=''), collapse=','), sep=''),
-  ')',sep=''),
-  '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
-regional_mix(rcp_formula = my.form.RCP, species_formula = NULL, data = simDat,
-             distribution = "negative_binomial", nRCP = 1, inits = unlist( fm.clean[[goodUn]]$coef),
-             control=list(optimise=FALSE), offset=offset)
-
-testthat::expect_s3_class(cooks.distance(fm.final, times = 2),'regiCooksD')
 
 })
 
@@ -180,7 +169,10 @@ testthat::test_that('testing regional mix S3 functions', {
   plot(fm, type = "deviance" , alpha.conf = c(0.75))
   plot(fm, type = "deviance" , species = fm$names$spp[1:10])
 
+  print(fm)
 
-  regional_mix.species_membership()
+  resres <- residuals(fm)
+  testthat::expect_is(resres,'matrix')
+
 
 })
