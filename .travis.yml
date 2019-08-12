@@ -16,5 +16,5 @@ notifications:
 
 env:
   global:
-    - R_BUILD_ARGS="--no-build-vignettes"
-    - R_CHECK_ARGS="--no-build-vignettes --as-cran"
+    - travis_wait 40 R_BUILD_ARGS="--no-build-vignettes"
+    - travis_wait 40 R_CHECK_ARGS="--no-build-vignettes --as-cran"
