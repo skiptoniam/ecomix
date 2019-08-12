@@ -2,7 +2,7 @@ context('regional_mix generic functions')
 library(ecomix)
 
 
-testthat::test_that('regional mix generic', {
+testthat::test_that('testing regional mix function', {
 
 set.seed( 151)
 n <- 100
@@ -67,4 +67,42 @@ fm.final <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.sp
                      dist="negative_binomial", nRCP = 3, inits = unlist( fm.clean[[goodUn]]$coef),
                      control=list(optimise=FALSE), offset=offset)
 testthat::expect_s3_class(fm.final,'regional_mix')
+
+# test if null formula
+testthat::expect_null(regional_mix(rcp_formula = NULL, species_formula = my.form.spp, data = simDat,
+                                   dist="negative_binomial", nRCP = 3, inits = unlist( fm.clean[[goodUn]]$coef),
+                                   control=list(optimise=FALSE), offset=offset))
+
+#test two spp have the same name.
+my.form.RCP <- paste( paste( paste(
+  'cbind(', paste( paste( 'spp', c(1,1:S), sep=''), collapse=','), sep=''),
+  ')',sep=''),
+  '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
+
+testthat::expect_null(regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp, data = simDat,
+                                   dist="negative_binomial", nRCP = 3, inits = unlist( fm.clean[[goodUn]]$coef),
+                                   control=list(optimise=FALSE), offset=offset))
+
+# test one rcp
+my.form.RCP <- paste( paste( paste(
+  'cbind(', paste( paste( 'spp', c(1:S), sep=''), collapse=','), sep=''),
+  ')',sep=''),
+  '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
+regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp, data = simDat,
+                                   dist="negative_binomial", nRCP = 1, inits = unlist( fm.clean[[goodUn]]$coef),
+                                   control=list(optimise=FALSE), offset=offset)
+
+# test one rcp
+my.form.RCP <- paste( paste( paste(
+  'cbind(', paste( paste( 'spp', c(1:S), sep=''), collapse=','), sep=''),
+  ')',sep=''),
+  '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
+regional_mix(rcp_formula = my.form.RCP, species_formula = NULL, data = simDat,
+             dist="negative_binomial", nRCP = 1, inits = unlist( fm.clean[[goodUn]]$coef),
+             control=list(optimise=FALSE), offset=offset)
+
+testthat::expect_s3_class(cooks.distance(fm.final, times = 2),'regiCooksD')
+
 })
+
+

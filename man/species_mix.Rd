@@ -2,66 +2,69 @@
 % Please edit documentation in R/species_mix-class.R
 \name{species_mix}
 \alias{species_mix}
-\alias{species_mix.fit}
 \alias{species_mix.multifit}
-\alias{control}
-\alias{species_mix.control}
-\alias{simulate_species_mix_data}
-\alias{coef.species_mix}
-\alias{print.species_mix}
-\alias{vcov.species_mix}
+\alias{species_mix.bootstrap}
+\alias{species_mix.simulate}
 \alias{AIC.species_mix}
 \alias{BIC.species_mix}
-\alias{summary.species_mix}
+\alias{coef.species_mix}
+\alias{plot.species_mix}
 \alias{predict.species_mix}
+\alias{print.species_mix}
+\alias{print.species_mix.multifit}
+\alias{summary.species_mix}
+\alias{vcov.species_mix}
+\alias{species_mix_boot_parametric}
 \title{species_mix objects}
 \usage{
 species_mix(archetype_formula = NULL,
   species_formula = stats::as.formula(~1), data, n_mixtures = 3,
   distribution = "bernoulli", offset = NULL, weights = NULL,
-  bb_weights = NULL, control = NULL, inits = NULL, standardise = TRUE,
-  titbits = TRUE)
-
-species_mix.fit(y, X, G, S, spp_weights, site_spp_weights, offset,
-  y_is_na = NULL, disty, control, inits = NULL)
+  bb_weights = NULL, control = NULL, inits = NULL,
+  standardise = FALSE, titbits = TRUE)
 
 species_mix.multifit(archetype_formula = NULL,
   species_formula = stats::as.formula(~1), data, n_mixtures = 3,
-  nstart = 10, mc.cores = 1, distribution = "bernoulli", offset = NULL,
-  weights = NULL, bb_weights = NULL, control = species_mix.control(),
-  inits = NULL, standardise = TRUE, titbits = TRUE)
+  nstart = 10, mc.cores = 1, distribution = "bernoulli",
+  offset = NULL, weights = NULL, bb_weights = NULL,
+  control = species_mix.control(), inits = NULL, standardise = TRUE,
+  titbits = TRUE)
 
-species_mix.control(maxit = 1000, quiet = FALSE, trace = 1, cores = 1,
-  init_method = "kmeans", init_sd = 1, minimum_sites_prevelance = 0.1,
-  em_prefit = TRUE, em_steps = 5, em_refit = 2,
-  em_abstol = sqrt(.Machine$double.eps), em_reltol = reltol_fun,
-  em_maxtau = 0.8, maxit_cpp = 1000, trace_cpp = 1, nreport_cpp = 1,
-  abstol_cpp = sqrt(.Machine$double.eps),
-  reltol_cpp = sqrt(.Machine$double.eps), conv_cpp = 1,
-  printparams_cpp = 0, optimise_cpp = 1, loglOnly_cpp = 0,
-  derivOnly_cpp = 0, getscores_cpp = 0, ...)
+species_mix.bootstrap(object, nboot = 1000, type = "BayesBoot",
+  mc.cores = 1, quiet = FALSE, orderSamps = FALSE, MLstart = TRUE)
 
-simulate_species_mix_data(archetype_formula, species_formula, dat, theta,
-  distribution = "bernoulli")
-
-\method{coef}{species_mix}(object, ...)
-
-\method{print}{species_mix}(x, ...)
-
-\method{vcov}{species_mix}(object, ..., object2 = NULL,
-  method = "FiniteDifference", nboot = 10, mc.cores = 1, D.accuracy = 2)
+species_mix.simulate(archetype_formula, species_formula, dat,
+  offset = NULL, n_mixtures = 3, alpha = NULL, beta = NULL,
+  gamma = NULL, theta = NULL, distribution = "bernoulli")
 
 \method{AIC}{species_mix}(object, ..., k = 2)
 
 \method{BIC}{species_mix}(object, ...)
 
+\method{coef}{species_mix}(object, ...)
+
+\method{plot}{species_mix}(object, ..., type = "RQR", nsim = 100,
+  alpha.conf = c(0.9, 0.95, 0.99), quiet = FALSE,
+  species = "AllSpecies", fitted.scale = "response")
+
+\method{predict}{species_mix}(object, object2 = NULL, newdata = NULL,
+  offset = NULL, nboot = 0, alpha = 0.95, mc.cores = 1, ...)
+
+\method{print}{species_mix}(x, ...)
+
+\method{print}{species_mix.multifit}(x, ...)
+
 \method{summary}{species_mix}(object, ...)
 
-\method{predict}{species_mix}(object, newobs = NULL, ...)
+\method{vcov}{species_mix}(object, ..., object2 = NULL,
+  method = "FiniteDifference", nboot = 10, mc.cores = 1,
+  D.accuracy = 2)
+
+species_mix_boot_parametric(fm, mf, nboot)
 }
 \arguments{
-\item{archetype_formula}{an object of class "formula" (or an object that can be
-coerced to that class). The response variable (left hand side of the
+\item{archetype_formula}{an object of class "formula" (or an object that can
+be coerced to that class). The response variable (left hand side of the
 formula) needs to be either 'occurrence', 'abundance',
 'biomass' or 'quantity' data. The type of reponse data will help specify
 the type of error distribution to be used. The dependent variables
@@ -72,12 +75,12 @@ cbind(spp1,spp2,spp3)~1+temperature+rainfall}
 
 \item{species_formula}{an object of class "formula" (or an object that can be
 coerced to that class). The right hand side of this formula specifies the
-dependence of the species"'" data on covariates (typically different covariates
-to \code{archetype_formula} to avoid confusing confounding). Current the formula
-is set at ~ 1 by default for species-specific intercepts for the archetype models.
-If you include a species specific formula which has more than an intercept you
-will be fitting a partial species archetype model which has species
-specific covariates and archetype specific covariates.}
+dependence of the species"'" data on covariates (typically different
+covariates to \code{archetype_formula} to avoid confusing confounding).
+Current the formula is set at ~ 1 by default for species-specific intercepts
+for the archetype models. If you include a species specific formula which has
+more than an intercept you will be fitting a partial species archetype model
+which has species specific covariates and archetype specific covariates.}
 
 \item{data}{a matrix of dataframe which contains the 'species_data'
 matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
@@ -87,22 +90,22 @@ nsites*(nspecies+const+covariates).}
 \item{n_mixtures}{The number of mixing components (groups) to fit.}
 
 \item{distribution}{The family of statistical distribution to use within
-the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial", "tweedie"
-and "gaussian" distributions are possible and applicable to specific types
-of data.}
+the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
+"negative_binomial" and "gaussian" distributions are possible and applicable
+to specific types of data.}
 
-\item{offset}{a numeric vector of length nrow(data) (n sites) that is included into
-the model as an offset. It is included into the conditional part of the model
-where conditioning is performed on the SAM.}
+\item{offset}{a numeric vector of length nrow(data) (n sites) that is
+included into the model as an offset. It is included into the conditional
+part of the model where conditioning is performed on the SAM.}
 
-\item{weights}{a numeric vector of length ncol(Y) (n species) that is used as weights
-in the log-likelihood calculations. If NULL (default) then all weights are
-assumed to be identically 1. Because we are estimating the log-likelihood
-over species (rather than sites), the weights should be a vector n species
-long.}
+\item{weights}{a numeric vector of length ncol(Y) (n species) that is used
+as weights in the log-likelihood calculations. If NULL (default) then all
+weights are assumed to be identically 1. Because we are estimating the
+log-likelihood over species (rather than sites), the weights should be a
+vector n species long.}
 
-\item{bb_weights}{a numeric vector of n species long. This is used for undertaking
-a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
+\item{bb_weights}{a numeric vector of n species long. This is used for
+undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
 
 \item{control}{a list of control parameters for optimisation and calculation.
 See details. From \code{species_mix.control} for details on optimistaion
@@ -115,65 +118,54 @@ minimum you will need pis (additive_logitic transformed), alpha
 
 \item{standardise}{Booliean. If TRUE, standarise the covariate data.}
 
-\item{titbits}{either a boolean or a vector of characters. If TRUE (default for species_mix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regimix(qv) and predict.regimix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for species_mix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "offset" for the offset in the model, "site_spp_weights" for the model weights, "archetype_formula" for the formula for the SAMs, "species_formula" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "dist" for the conditional distribution of the species data. Care needs to be taken when using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory.}
-
-\item{y}{is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.}
-
-\item{X}{is a design matrix for the archetype_formula dimension n_sites * n_covariates.}
-
-\item{G}{is the number of species archetypes that are being estimated.}
-
-\item{S}{is the number of species to be modelled (this will be calculated internally in species_mix())}
-
-\item{spp_weights}{These are weights on the species logls and are specifically used in the Bayesian Boostrap.}
-
-\item{site_spp_weights}{These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.}
-
-\item{y_is_na}{This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!}
-
-\item{disty}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are avaliable - internal conversion of distribution to a integer.}
+\item{titbits}{either a boolean or a vector of characters. If TRUE
+(default for species_mix(qv)), then some objects used in the estimation of
+the model"'"s parameters are returned in a list entitled "titbits" in the
+model object. Some functions, for example plot.species_mix(qv) and
+predict.species_mix(qv), will require some or all of these pieces of
+information. If titbits=FALSE (default for species_mix.multifit(qv)),
+then an empty list is returned. If a character vector, then just those
+objects are returned. Possible values are:"Y" for the outcome matrix, "X"
+for the model matrix for the SAM model, "offset" for the offset in the model,
+"site_spp_weights" for the model weights, "archetype_formula" for the formula
+for the SAMs, "species_formula" for the formula for the species-specific
+model, "control" for the control arguments used in model fitting, "dist" for
+the conditional distribution of the species data. Care needs to be taken when
+using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created
+for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then
+setting titbits=TRUE may give users problems with memory.}
 
 \item{nstart}{for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
 \item{mc.cores}{for species_mix.multifit only. The number of cores to spread the re-fitting over.}
 
-\item{maxit}{Maximum number of evaluations of the objective function allowed. Defaults to 500.}
-
-\item{trace}{int 1=model will report parameter estimates and loglikelihood at each iteration. 0=quite.}
-
-\item{cores}{The number of cores to use in fitting of species mix models. These will be largely used to model the species-specific parameteres.}
-
-\item{em_prefit}{Logical if TRUE the model will run a slower EM algorithim fit to find starting values.}
-
-\item{em_steps}{int Default is 3, the number of EM iterations to get to starting values.}
-
-\item{em_refit}{int Default is 1, number of times to refit using EM.}
+\item{object}{is a matrix model returned from the species_mix model.}
 
 \item{dat}{a matrix of variables to simulate data from.}
 
-\item{theta}{coefficents for each species archetype. Matrix of G x number of parameters. Each row is a different species archetype.}
+\item{alpha}{coefficents for each species archetype. vector S long.}
 
-\item{object}{is a matrix model returned from the species_mix model.}
+\item{beta}{coefficents for each species archetype. Matrix of G x number of
+parameters. Each row is a different species archetype.}
 
-\item{newobs}{a matrix of new observations for prediction.}
+\item{gamma}{coefficents for each species archetype. Matrix of S x number of
+parameters. Each row is a different species archetype.}
 
-\item{W}{is a design matrix for species_formula and will be implemented if species_formula has covariates.}
+\item{theta}{coefficents for the dispersion variables for negative_binomial
+and gaussian distributions - should be number of species long}
 
-\item{offset}{this is a vector of site specific offsets, this might be something like area sampled at sites.}
+\item{newdata}{a matrix of new observations for prediction.}
 
-\item{control}{this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.}
+\item{archtype_formula}{formula to simulate species_mix data, needs to have
+the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
 
-\item{inits}{This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).}
+\item{species_formula}{formula to simulate species_mix species-specific
+responses, e.g: ~1}
 
-\item{quite}{Should any reporting be performed? Default is FALSE, for reporting.}
+\item{n_mixtures}{number of groups to simulate.}
 
-\item{reltol}{function that determines the relative tolernace for model convergence. Default is quite strict.}
-
-\item{archtype_formula}{formula to simulate species_mix data, needs to have the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
-
-\item{species_formula}{formula to simulate species_mix species-specific responses, e.g: ~1}
-
-\item{distribution}{Which statistical distribution to simulate data for. 'bernoulli', 'gaussian', 'ippm', 'negative_binomial','poisson' and 'tweedie'.}
+\item{distribution}{Which statistical distribution to simulate data for.
+'bernoulli', 'gaussian', 'ippm', 'negative_binomial' and 'poisson'.}
 }
 \description{
 Fits a finite mixture model to identify species archetype
@@ -182,53 +174,66 @@ models (SAMs).
 \details{
 species_mix is used to fit mixtures of glms to multivariate
 species data. The function uses BFGS to optimise the mixture likelihood.
-There is the option to use EM algorithm to get appropriate starting parameters.
-`species_mix` acts as a wrapper for fitmix.cpp that allows for easier data
-input. The data frames are merged into the appropriate format for the use
-in fitmix.cpp. Minima is found using vmmin (BFGS). Currently 'bernoulli',
+There is the option to use EM algorithm to get appropriate starting
+parameters. `species_mix` acts as a wrapper for species_mix.fit
+that allows for easier data input. The data frames are merged into
+the appropriate format for the use in species_mix.fit.
+Minima is found using vmmin (BFGS). Currently 'bernoulli',
 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative_binomial'
- and 'tweedie' distributions can be fitted using the species_mix function.
+ and 'normal' distributions can be fitted using the species_mix function.
 }
 \examples{
+\dontrun{
 library(ecomix)
 set.seed(42)
-sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
+collapse = ','),")~x1+x2"))
 sp_form <- ~ 1
-theta <- matrix(c(1,-2.9,-3.6,1,-0.9,1,1,.9,1.9),3,3,byrow=TRUE)
-dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),x2=stats::rnorm(100,0,2.5))
+beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,1.9),3,2,byrow=TRUE)
+dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
+x2=stats::rnorm(100,0,2.5))
 dat[,-1] <- scale(dat[,-1])
-simulated_data <- simulate_species_mix_data(archetype_formula=sam_form, species_formula=sp_form,
-                                            dat,theta,dist="bernoulli")
-data <- make_mixture_data(species_data = simulated_data$species_data,
-                                covariate_data = simulated_data$covariate_data[,-1])
-fm1 <- species_mix(sam_form, sp_form, data, distribution = 'bernoulli',
- n_mixtures=3)
+simulated_data <- species_mix.simulate(archetype_formula=sam_form,
+ species_formula=sp_form, dat,beta=beta,dist="bernoulli")
+fm1 <- species_mix(sam_form, sp_form, simulated_data,
+ distribution = 'bernoulli',  n_mixtures=3)
+ }
 \dontrun{
-fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli', nstart = 10, n_mixtures=3)
+fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
+ distribution = 'bernoulli', nstart = 10, n_mixtures=3)
 }
 \dontrun{
-archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
-theta <- matrix(c(-0.9,-0.6,0.5,
-                   1.0,-0.9,1.0,
-                   0.9,-0.9,2.9,
-                  -1.0,0.2,-0.4),
-                4,3,byrow=TRUE)
+archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',
+1:20),collapse = ','),")~1+x1+x2"))
+species_formula <- stats::as.formula(~1)
+beta <- matrix(c(-3.6,0.5,
+                 -0.9,1.0,
+                  0.9,-2.9,
+                  2.2,5.4),
+                4,2,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),
                   x1=stats::runif(100,0,2.5),
                   x2=stats::rnorm(100,0,2.5))
-simulated_data <- simulate_species_mix_data(archetype_formula,~1,
-                                            dat,theta,dist="bernoulli")
+simulated_data <- species_mix.simulate(archetype_formula,species_formula,
+                                       dat, n_mixtures = 4, beta=beta,
+                                       dist="bernoulli")
+}
+\dontrun{
+preds_fm1 <- predict(fm1)
 }
 
 #Print information about a species_mix model
 \dontrun{
 print(fm1)}
 
+#Print information about a species_mix model
+\dontrun{
+fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli', nstart = 10, n_mixtures=3)
+print(fmods)
+}
+
 # Estimate the variance-covariance matrix.
 # This will provide estimates of uncertainty for model parameters.
 \dontrun{
 vcov(fm1)}
-\dontrun{
-preds_fm1 <- predict(fm1, newdata)
-}
 }
