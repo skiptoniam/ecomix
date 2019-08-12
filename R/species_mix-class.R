@@ -97,8 +97,8 @@
 #' dat[,-1] <- scale(dat[,-1])
 #' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
 #'  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
-#' fm1 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'bernoulli',
-#'  n_mixtures=3)
+#' fm1 <- species_mix(sam_form, sp_form, simulated_data,
+#'  distribution = 'bernoulli',  n_mixtures=3)
 #'  }
 
 "species_mix" <- function(archetype_formula = NULL,
@@ -116,15 +116,14 @@
     archetype_formula <- stats::as.formula(archetype_formula)
   } else{
     if(!control$quiet)
-      message("There is no SAM model! Please provide an archetype_formula -- exitting now")
+      message("There is no SAM model!\n
+              Please provide an archetype_formula -- exitting now")
     return(NULL)
   }
 
-  # check the species formula, if 0 make 1, if 1 use species mix, if 2 use partial mixtures.
   which_mix <- check_species_formula(species_formula)
   if(!is.null(species_formula))
     species_formula <- stats::as.formula(species_formula)
-
 
   mf <- match.call(expand.dots = FALSE)
   if(distribution=="ippm"){
@@ -181,7 +180,7 @@
     stand.X <- standardise.X(X)
     X <- as.matrix(stand.X$X)
     if(ncol(W)>1){
-      stand.W <- ecomix:::standardise.W(W[,-1,drop=FALSE])
+      stand.W <- standardise.W(W[,-1,drop=FALSE])
       W <- as.matrix(cbind(1,stand.W$W))
       w.means <- stand.W$dat.means
       w.sds <- stand.W$dat.sds
@@ -761,7 +760,7 @@
   if(distribution %in% c('poisson','ippm','negative_binomial')) link <- make.link('log')
   if(distribution %in% c('gaussian')) link <- make.link('identity')
   if(distribution %in% 'ippm') {
-    grid <- ecomix:::simulate_ippm_grid(X,W)
+    grid <- simulate_ippm_grid(X,W)
     grid2D <- grid$grid2D
     X <- grid$X
     W <- grid$W
@@ -1070,7 +1069,7 @@
     par( mfrow=c(1,2))
     qqnorm(obs.resid, col=spp.cols, pch=20, main=main, sub=sub)
     abline( 0,1,lwd=2)
-    preds <- ecomix:::sam_internal_pred_species(object$coef$alpha, object$coef$beta, object$taus,
+    preds <- sam_internal_pred_species(object$coef$alpha, object$coef$beta, object$taus,
                               object$coef$gamma, object$G, object$S, object$titbits$X,
                               object$titbits$W, object$titbits$offset, object$dist)
 
@@ -1125,7 +1124,7 @@
   site_spp_wts <- object$titbits$site_spp_weights
 
   disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
-  disty <- ecomix:::get_distribution_sam(disty_cases, object$titbits$distribution)
+  disty <- get_distribution_sam(disty_cases, object$titbits$distribution)
   taus <- object$taus
   if (is.null(object2)) {
     if (nboot > 0) {
@@ -1411,7 +1410,7 @@
     y_is_na <- object$titbits$y_is_na
     distribution <- object$titbits$distribution
     disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
-    disty <- ecomix:::get_distribution_sam(disty_cases, distribution)
+    disty <- get_distribution_sam(disty_cases, distribution)
     S <- object$S
     G <- object$G
     n <- object$n
@@ -1421,7 +1420,7 @@
 
     # values for optimisation.
     inits <- object$coefs
-    start_vals <- ecomix:::setup_inits_sam(inits, S, G, X, W, disty, return_list = TRUE)
+    start_vals <- setup_inits_sam(inits, S, G, X, W, disty, return_list = TRUE)
 
     # parameters to optimise
     alpha <- as.numeric(start_vals$alpha)
@@ -1509,7 +1508,7 @@
           tmp1 <- c( tmp1, theta.score)
         return(tmp1)
       }
-      mod_coefs <- ecomix:::setup_inits_sam(inits, S, G, X, W, disty, return_list = FALSE)
+      mod_coefs <- setup_inits_sam(inits, S, G, X, W, disty, return_list = FALSE)
       hess <- numDeriv::jacobian(grad_fun, mod_coefs)
       vcov.mat <- try( -solve(hess))
       if( inherits( vcov.mat, 'try-error')){
@@ -1668,6 +1667,10 @@
     outcomes <- as.matrix(y[ids_i,ss])
   }
 
+  if(ncol(X)==1){
+    X<-cbind(1,X[ids_i,,drop=FALSE])
+  }
+
   if(ncol(W) > 1){
     df <- cbind(X[ids_i,,drop=FALSE],W[ids_i,-1,drop=FALSE])
   } else {
@@ -1695,8 +1698,9 @@
     }
     if (any(class(ft_sp) %in% 'try-error')){
       my_coefs <- rep(NA, ncol(X[ids_i,]))
-      names(my_coefs) <- colnames(cbind(W[ids_i,,drop=FALSE],X[ids_i,,drop=FALSE]))
+      names(my_coefs) <- colnames(cbind(X[ids_i,,drop=FALSE],W[ids_i,,drop=FALSE]))
     } else {
+      if(ncol(X)==1) my_coefs <- t(as.matrix(my.coefs[-1]))
       my_coefs <- t(as.matrix(my.coefs))
     }
 
@@ -1731,8 +1735,8 @@
 
 #get the conditional maxima for species specific parameters.
 "apply_glm_spp_coefs_sams" <- function(ss, y, X, W, G, taus,
-                                               site_spp_weights,
-                                               offset, y_is_na, disty, fits){
+                                       site_spp_weights,
+                                       offset, y_is_na, disty, fits){
 
   if(disty == 1)
     fam <- binomial()
@@ -1769,7 +1773,7 @@
       # print(paste0(ss,"\n"))
       my_coefs <- rep(NA, ncol(W1))
     } else {
-      my_coefs <- coef(ft_sp)
+      my_coefs <- stats::coef(ft_sp)
       names(my_coefs) <- c(colnames(y)[ss],colnames(W[,-1,drop=FALSE]))
     }
   }
@@ -1904,9 +1908,9 @@ starting values;\n starting values are generated using ',control$init_method,
     link <- stats::make.link(link = "logit")
     for(ss in 1:S){
       for(gg in 1:G){
-        lp <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
-        logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, link$linkinv(lp),log = TRUE))
+        eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
+        logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, link$linkinv(eta),log = TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -1917,9 +1921,9 @@ starting values;\n starting values are generated using ',control$init_method,
     link <- stats::make.link(link = "log")
     for(ss in 1:S){
       for(gg in 1:G){
-        lp <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[,-1,drop=FALSE]) %*% fits$gamma[ss,]
-        logl_sp[ss,gg] <- sum(dpois(first_fit$y[,ss], lambda = link$linkinv(lp),log = TRUE))
+        eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1,drop=FALSE]) %*% fits$gamma[ss,]
+        logl_sp[ss,gg] <- sum(dpois(first_fit$y[,ss], lambda = link$linkinv(eta),log = TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -1931,10 +1935,10 @@ starting values;\n starting values are generated using ',control$init_method,
     for(ss in 1:S){
       sp_idx<-!first_fit$y_is_na[,ss]
       for(gg in 1:G){
-        #lp is the same as log_lambda (linear predictor)
-        lp <- fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
-        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[sp_idx,-1,drop=FALSE]) %*% fits$gamma[ss,]
-        logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% lp - first_fit$site_spp_weights[sp_idx,ss] %*% exp(lp)
+        #eta is the same as log_lambda (linear predictor)
+        eta <- fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
+        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[sp_idx,-1,drop=FALSE]) %*% fits$gamma[ss,]
+        logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$site_spp_weights[sp_idx,ss] %*% exp(eta)
       }
     }
   }
@@ -1945,10 +1949,10 @@ starting values;\n starting values are generated using ',control$init_method,
     logl_sp <- matrix(NA, nrow=S, ncol=G)
     for(ss in 1:S){
       for(gg in 1:G){
-        #lp is the same as log_lambda (linear predictor)
-        lp <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[,-1,drop=FALSE]) %*% fits$gamma[ss,]
-        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss], mu=link$linkinv(lp), size = exp(-fits$theta[ss]), log=TRUE))
+        #eta is the same as log_lambda (linear predictor)
+        eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1,drop=FALSE]) %*% fits$gamma[ss,]
+        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss], mu=link$linkinv(eta), size = exp(-fits$theta[ss]), log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -1958,10 +1962,10 @@ starting values;\n starting values are generated using ',control$init_method,
     logl_sp <- matrix(NA, nrow=S, ncol=G)
     for(ss in 1:S){
       for(gg in 1:G){
-        #lp is the same as log_lambda (linear predictor)
-        lp <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[,-1,drop=FALSE]) %*% fits$gamma[ss,]
-        logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=lp,sd=exp(fits$theta[ss]),log=TRUE))
+        #eta is the same as log_lambda (linear predictor)
+        eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1,drop=FALSE]) %*% fits$gamma[ss,]
+        logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=eta,sd=exp(fits$theta[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -2020,10 +2024,11 @@ starting values;\n starting values are generated using ',control$init_method,
     link <- stats::make.link(link = "logit")
     for(ss in 1:S){
       for(gg in 1:G){
-        lp <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
-        if(get_fitted) fitted_values[gg,,ss] <- link$linkinv(lp)
-        logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, link$linkinv(lp),log = TRUE))
+        if(ncol(first_fit$x)==1) eta <- rep(fits$alpha[ss],nrow(first_fit$x)) + first_fit$offset
+        else eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
+        if(get_fitted) fitted_values[gg,,ss] <- link$linkinv(eta)
+        logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, link$linkinv(eta),log = TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -2034,11 +2039,11 @@ starting values;\n starting values are generated using ',control$init_method,
     logl_sp <- matrix(NA, nrow=S, ncol=G)
     for(ss in 1:S){
       for(gg in 1:G){
-        #lp is the same as log_lambda (linear predictor)
-        lp <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
-        if(get_fitted) fitted_values[gg,,ss] <- exp(lp)
-        logl_sp[ss,gg] <- sum(dpois(first_fit$y[,ss],exp(lp),log=TRUE))
+        if(ncol(first_fit$x)==1) eta <- rep(fits$alpha[ss],nrow(first_fit$x)) + first_fit$offset
+        else eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
+        if(get_fitted) fitted_values[gg,,ss] <- exp(eta)
+        logl_sp[ss,gg] <- sum(dpois(first_fit$y[,ss],exp(eta),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -2050,14 +2055,12 @@ starting values;\n starting values are generated using ',control$init_method,
     for(ss in 1:S){
       sp_idx<-!first_fit$y_is_na[,ss]
       for(gg in 1:G){
-        #lp is the same as log_lambda (linear predictor)
-        # eta <- first_fit$x[sp_idx,1] * fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,-1]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
-        # mu <- eta_to_mu(eta,poisson())
-        lp <- fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
-        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[sp_idx,-1]) %*% fits$gamma[ss,]
-        if(get_fitted) fitted_values[gg,sp_idx,ss] <- exp(lp)
+        if(ncol(first_fit$x)==1) eta <- rep(fits$alpha[ss],nrow(first_fit$x[sp_idx,])) + first_fit$offset[sp_idx,]
+        else eta <- fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
+        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[sp_idx,-1]) %*% fits$gamma[ss,]
+        if(get_fitted) fitted_values[gg,sp_idx,ss] <- exp(eta)
         # logl_sp[ss,gg] <- sum(first_fit$site_spp_weights[sp_idx,ss] * (first_fit$y[sp_idx,ss] * log(mu) - mu))
-        logl_sp[ss,gg] <- (first_fit$y[sp_idx,ss] %*% lp - first_fit$site_spp_weights[sp_idx,ss] %*% exp(lp))
+        logl_sp[ss,gg] <- (first_fit$y[sp_idx,ss] %*% eta - first_fit$site_spp_weights[sp_idx,ss] %*% exp(eta))
       }
     }
   }
@@ -2067,11 +2070,12 @@ starting values;\n starting values are generated using ',control$init_method,
     logl_sp <- matrix(NA, nrow=S, ncol=G)
     for(ss in 1:S){
       for(gg in 1:G){
-        #lp is the same as log_lambda (linear predictor)
-        lp <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
-        if(get_fitted) fitted_values[gg,,ss] <- exp(lp)
-        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(lp),size=exp(-fits$theta[ss]),log=TRUE))
+        #eta is the same as log_lambda (linear predictor)
+        if(ncol(first_fit$x)==1) eta <- rep(fits$alpha[ss],nrow(first_fit$x)) + first_fit$offset
+        else eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
+        if(get_fitted) fitted_values[gg,,ss] <- exp(eta)
+        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(eta),size=exp(-fits$theta[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -2082,11 +2086,12 @@ starting values;\n starting values are generated using ',control$init_method,
     logl_sp <- matrix(NA, nrow=S, ncol=G)
     for(ss in 1:S){
       for(gg in 1:G){
-        #lp is the same as log_lambda (linear predictor)
-        lp <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(first_fit$W)>1) lp <- lp + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
-        if(get_fitted) fitted_values[gg,,ss] <- lp
-        logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=lp,sd=exp(fits$theta[ss]),log=TRUE))
+        #eta is the same as log_lambda (linear predictor)
+        if(ncol(first_fit$x)==1) eta <- rep(fits$alpha[ss],nrow(first_fit$x)) + first_fit$offset
+        else eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
+        if(get_fitted) fitted_values[gg,,ss] <- eta
+        logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=eta,sd=exp(fits$theta[ss]),log=TRUE))
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
@@ -2119,7 +2124,7 @@ starting values;\n starting values are generated using ',control$init_method,
   # cat('start pis', pis,'\n')
   first_fit <- starting_values$first_fit
   logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-  init_steps <- 1#3
+  init_steps <- 3
 
   while(control$em_reltol(logl_new,logl_old) & ite <= control$em_steps){
     if(restart_ite>10){
@@ -2206,7 +2211,7 @@ starting values;\n starting values are generated using ',control$init_method,
         theta <- unlist(lapply(fm_theta, `[[`, 1))
         theta <- log(1/theta)
         # fits$theta <- log(theta)
-        fits$theta <- ecomix:::update_coefs(log(1/fits$theta),theta,control$update_kappa[2])
+        fits$theta <- update_coefs(log(1/fits$theta),theta,control$update_kappa[2])
       }
 
       if(disty%in%c(6)){
@@ -2257,7 +2262,13 @@ starting values;\n starting values are generated using ',control$init_method,
                                       .parallel = control$cores, .verbose = FALSE)
 
   alpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
-  beta <- do.call(rbind,lapply(fm_sp_mods, `[[`, 2))
+  if(ncol(X)==1){
+    beta <- do.call(rbind,lapply(fm_sp_mods, `[[`, 2))[,-1,drop=FALSE]
+    } else {
+    beta <- do.call(rbind,lapply(fm_sp_mods, `[[`, 2))
+  }
+  if(ncol(X)==0) beta <- rep(-999999,G)
+
   if(ncol(W)>1){
     gamma <- do.call(rbind,lapply(fm_sp_mods, `[[`, 3))
   } else {

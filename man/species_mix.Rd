@@ -195,8 +195,8 @@ x2=stats::rnorm(100,0,2.5))
 dat[,-1] <- scale(dat[,-1])
 simulated_data <- species_mix.simulate(archetype_formula=sam_form,
  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
-fm1 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'bernoulli',
- n_mixtures=3)
+fm1 <- species_mix(sam_form, sp_form, simulated_data,
+ distribution = 'bernoulli',  n_mixtures=3)
  }
 \dontrun{
 fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
