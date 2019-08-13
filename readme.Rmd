@@ -4,7 +4,7 @@ output:
     variant: markdown_github
 ---
 
-[![Travis-CI Build Status](https://travis-ci.org/skiptoniam/ecomix.svg?branch=master)](https://travis-ci.org/skiptoniam/ecomix.svg?branch=master)
+[![Build Status](https://travis-ci.org/skiptoniam/ecomix.svg?branch=master)](https://travis-ci.org/skiptoniam/ecomix)
 [![Coverage Status](https://img.shields.io/codecov/c/github/skiptoniam/ecomix/master.svg)](https://codecov.io/github/skiptoniam/ecomix?branch=master)
 
 ## ecomix
