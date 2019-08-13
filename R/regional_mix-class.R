@@ -286,6 +286,9 @@
   return(star.ic)
 }
 
+#'@rdname regional_mix
+#'@export
+
 "coef.regional_mix" <- function (object, ...){
   res <- list()
   res$alpha <- object$coefs$alpha
@@ -431,6 +434,19 @@
 
   return(ret)
 }
+
+#' @rdname regional_mix
+#' @export
+
+"extractAIC.regional_mix" <- function (fit, scale = 1, k = 2, ...){
+  n <- object$n
+  edf <- length(unlist(stats::coef( fit)))
+  if (is.null(k))
+    k <- 2
+  aic <- -2 * logLik( fit) + k * edf
+  return(c(edf, aic))
+}
+
 
 #' @rdname regional_mix
 #' @export
@@ -1326,27 +1342,11 @@ partial_mus_from_boostrap  <- function(object, object2, CI=c(0.025,0.975)){
     return( res)
 }
 
-#' @rdname regional_mix
-#'
-#' @export
-#'
-
-"extractAIC.regional_mix" <- function (fit, scale = 1, k = 2, ...){
-    n <- object$n
-    edf <- length(unlist(stats::coef( fit)))
-    if (is.null(k))
-        k <- 2
-    aic <- -2 * logLik( fit) + k * edf
-    return(c(edf, aic))
-}
-
-
 "get_dist_rcp" <- function( disty.cases, dist1){
   error.msg <- paste( c( "Distribution not implemented. Options are: ", disty.cases, "-- Exitting Now"), collapse=" ")
   disty <- switch( dist1, "bernoulli" = 1,"poisson" = 2,"negative_binomial" = 3,"tweedie" = 4,"gaussian" = 5,{stop( error.msg)} )
   return( disty)
 }
-
 
 "get_long_names_rcp" <- function( object){
 #function to get the names of columns for the vcov matrix or the regional_mix_boot matrix
