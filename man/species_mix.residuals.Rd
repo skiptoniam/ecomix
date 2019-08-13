@@ -14,6 +14,8 @@
 \item{\dots}{additional calls for residual function}
 
 \item{type}{The type of residuals to estimate. Default is "RQR" (Random Quantile Residuals). But you can also simulate many Random Quantile Residuals using "SimRQR".}
+
+\item{control}{Default uses species_mix.control()}
 }
 \description{
 The randomised quantile residuals ("

@@ -5,6 +5,8 @@
 \alias{regional_mix.multifit}
 \alias{AIC.regional_mix}
 \alias{BIC.regional_mix}
+\alias{coef.regional_mix}
+\alias{extractAIC.regional_mix}
 \alias{plot.regional_mix}
 \alias{plot.regional_mix_stab}
 \alias{predict.regional_mix}
@@ -12,7 +14,6 @@
 \alias{residuals.regional_mix}
 \alias{regional_mix.simulate}
 \alias{regional_mix.species_membership}
-\alias{extractAIC.regional_mix}
 \alias{regional_mix_boot}
 \alias{regional_mix_bootParametric}
 \alias{stability.regional_mix}
@@ -33,6 +34,10 @@ regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
 \method{AIC}{regional_mix}(object, ..., k = 2)
 
 \method{BIC}{regional_mix}(object, ...)
+
+\method{coef}{regional_mix}(object, ...)
+
+\method{extractAIC}{regional_mix}(fit, scale = 1, k = 2, ...)
 
 \method{plot}{regional_mix}(x, ..., type = "RQR", nsim = 100,
   alpha.conf = c(0.9, 0.95, 0.99), quiet = FALSE,
@@ -56,8 +61,6 @@ regional_mix.simulate(nRCP = 3, S = 20, n = 200, p.x = 3,
 
 regional_mix.species_membership(object, object2 = NULL, CI = c(0.025,
   0.975), ...)
-
-\method{extractAIC}{regional_mix}(fit, scale = 1, k = 2, ...)
 
 regional_mix_boot(object, nboot = 1000, type = "BayesBoot",
   mc.cores = 1, quiet = FALSE, orderSamps = FALSE, MLstart = TRUE)

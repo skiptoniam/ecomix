@@ -7,7 +7,7 @@ r_packages:
   - covr
 
 after_success:
-  - travis_wait 40 Rscript -e "covr::codecov(type='tests')""
+  - travis_wait 40 Rscript -e "covr::codecov()""
 
 warnings_are_errors: false
 notifications:

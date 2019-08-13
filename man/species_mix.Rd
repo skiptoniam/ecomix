@@ -4,7 +4,6 @@
 \alias{species_mix}
 \alias{species_mix.multifit}
 \alias{species_mix.bootstrap}
-\alias{species_mix.simulate}
 \alias{AIC.species_mix}
 \alias{BIC.species_mix}
 \alias{coef.species_mix}
@@ -33,17 +32,13 @@ species_mix.multifit(archetype_formula = NULL,
 species_mix.bootstrap(object, nboot = 1000, type = "BayesBoot",
   mc.cores = 1, quiet = FALSE, orderSamps = FALSE, MLstart = TRUE)
 
-species_mix.simulate(archetype_formula, species_formula, dat,
-  offset = NULL, n_mixtures = 3, alpha = NULL, beta = NULL,
-  gamma = NULL, theta = NULL, distribution = "bernoulli")
-
 \method{AIC}{species_mix}(object, ..., k = 2)
 
 \method{BIC}{species_mix}(object, ...)
 
 \method{coef}{species_mix}(object, ...)
 
-\method{plot}{species_mix}(object, ..., type = "RQR", nsim = 100,
+\method{plot}{species_mix}(x, ..., type = "RQR", nsim = 100,
   alpha.conf = c(0.9, 0.95, 0.99), quiet = FALSE,
   species = "AllSpecies", fitted.scale = "response")
 
@@ -141,31 +136,7 @@ setting titbits=TRUE may give users problems with memory.}
 
 \item{object}{is a matrix model returned from the species_mix model.}
 
-\item{dat}{a matrix of variables to simulate data from.}
-
-\item{alpha}{coefficents for each species archetype. vector S long.}
-
-\item{beta}{coefficents for each species archetype. Matrix of G x number of
-parameters. Each row is a different species archetype.}
-
-\item{gamma}{coefficents for each species archetype. Matrix of S x number of
-parameters. Each row is a different species archetype.}
-
-\item{theta}{coefficents for the dispersion variables for negative_binomial
-and gaussian distributions - should be number of species long}
-
 \item{newdata}{a matrix of new observations for prediction.}
-
-\item{archetype_formula}{formula to simulate species_mix data, needs to have
-the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
-
-\item{species_formula}{formula to simulate species_mix species-specific
-responses, e.g: ~1}
-
-\item{n_mixtures}{number of groups to simulate.}
-
-\item{distribution}{Which statistical distribution to simulate data for.
-'bernoulli', 'gaussian', 'ippm', 'negative_binomial' and 'poisson'.}
 }
 \description{
 Fits a finite mixture model to identify species archetype
@@ -200,23 +171,7 @@ fm1 <- species_mix(sam_form, sp_form, simulated_data,
  }
 \dontrun{
 fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
- distribution = 'bernoulli', nstart = 10, n_mixtures=3)
-}
-\dontrun{
-archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',
-1:20),collapse = ','),")~1+x1+x2"))
-species_formula <- stats::as.formula(~1)
-beta <- matrix(c(-3.6,0.5,
-                 -0.9,1.0,
-                  0.9,-2.9,
-                  2.2,5.4),
-                4,2,byrow=TRUE)
-dat <- data.frame(y=rep(1,100),
-                  x1=stats::runif(100,0,2.5),
-                  x2=stats::rnorm(100,0,2.5))
-simulated_data <- species_mix.simulate(archetype_formula,species_formula,
-                                       dat, n_mixtures = 4, beta=beta,
-                                       dist="bernoulli")
+distribution = 'bernoulli', nstart = 10, n_mixtures=3)
 }
 \dontrun{
 preds_fm1 <- predict(fm1)

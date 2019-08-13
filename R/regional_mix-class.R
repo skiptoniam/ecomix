@@ -1086,7 +1086,9 @@
   return(res)
 }
 
-#'@title What is the average species membership per RCP.
+
+#### Non S3 Class objects ####
+#'@title What is the average species membership per RCP?
 #'@rdname regional_mix
 #'@name regional_mix.species_membership
 #'@param object A RCP model
@@ -1287,9 +1289,6 @@ partial_mus_from_boostrap  <- function(object, object2, CI=c(0.025,0.975)){
     return(samp_res)
   }
 }
-
-#### Non S3 Class objects ####
-
 
 "calcInfoCrit" <- function( ret){
   k <- length(unlist(ret$coefs))

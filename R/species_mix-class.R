@@ -76,13 +76,7 @@
 #' setting titbits=TRUE may give users problems with memory.
 #' @importFrom graphics abline hist legend lines matplot par plot points polygon
 #'  rect
-#' @importFrom stats as.formula binomial cooks.distance cov cutree dbinom dist
-#'  dnbinom dnorm dpois
-#' fitted gaussian glm hclust lm logLik model.matrix model.offset model.response
-#' model.weights pbinom pnbinom pnorm poisson
-#' ppois predict qnorm qqnorm quantile rbinom
-#' residuals rgamma rnbinom rnorm rpois runif
-#' sd uniroot update update.formula
+#' @importFrom stats as.formula binomial cooks.distance cov cutree dbinom dist dnbinom dnorm dpois make.link coef glm.fit fitted gaussian glm hclust lm logLik model.matrix model.frame model.offset model.response model.weights pbinom pnbinom pnorm poisson ppois predict qnorm qqnorm quantile rbinom residuals rgamma rnbinom rnorm rpois runif sd uniroot update update.formula nlminb optimise
 #' @export
 #' @examples
 #' \dontrun{
@@ -315,7 +309,7 @@
 #'@examples
 #' \dontrun{
 #' fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
-#'  distribution = 'bernoulli', nstart = 10, n_mixtures=3)
+#' distribution = 'bernoulli', nstart = 10, n_mixtures=3)
 #' }
 "species_mix.multifit" <- function(archetype_formula = NULL,
                                    species_formula = stats::as.formula(~1),
@@ -659,8 +653,8 @@
   return( boot.estis)
 }
 
-
-#' @rdname species_mix
+#' @title Simulate species mix data for model fitting.
+#' @rdname species_mix.simulate
 #' @name species_mix.simulate
 #' @param archetype_formula formula to simulate species_mix data, needs to have
 #' the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2
@@ -1033,21 +1027,21 @@
 #' @rdname species_mix
 #' @export
 
-"plot.species_mix" <- function (object, ..., type="RQR", nsim = 100,
+"plot.species_mix" <- function (x, ..., type="RQR", nsim = 100,
                                 alpha.conf = c(0.9, 0.95, 0.99),
                                 quiet=FALSE, species="AllSpecies",
                                 fitted.scale="response"){
   if( ! type %in% c("RQR"))
     stop( "Unknown type of residuals. Options are 'RQR'.\n")
-  if( ! all( species %in% c("AllSpecies",object$names$spp)))
-    stop( "Unknown species.  Options are 'AllSpecies' or any one of the species names as supplied (and stored in object$names$spp)")
+  if( ! all( species %in% c("AllSpecies",x$names$spp)))
+    stop( "Unknown species.  Options are 'AllSpecies' or any one of the species names as supplied (and stored in x$names$spp)")
 
   if( type=="RQR"){
-    obs.resid <- residuals(object, type="RQR", quiet=quiet)
-    S <- object$S
+    obs.resid <- residuals(x, type="RQR", quiet=quiet)
+    S <- x$S
     sppID <- rep( TRUE, S)
     if( species != "AllSpecies"){
-      sppID <- object$names$spp %in% species
+      sppID <- x$names$spp %in% species
       obs.resid <- obs.resid[,sppID, drop=FALSE]
       S <- ncol( obs.resid)
     }
@@ -1055,7 +1049,7 @@
       message( "Infinite residuals removed from residual plots: ", sum( obs.resid==Inf | obs.resid==-Inf), " in total.")
       obs.resid[obs.resid==Inf | obs.resid==-Inf] <- NA
     }
-    spp.cols <- rep( 1:S, each=object$n)
+    spp.cols <- rep( 1:S, each=x$n)
     main <- match.call( expand.dots=TRUE)$main
     if( is.null( main)){
       if( species=="AllSpecies")
@@ -1072,15 +1066,15 @@
     par( mfrow=c(1,2))
     qqnorm(obs.resid, col=spp.cols, pch=20, main=main, sub=sub)
     abline( 0,1,lwd=2)
-    preds <- sam_internal_pred_species(object$coef$alpha, object$coef$beta, object$taus,
-                              object$coef$gamma, object$G, object$S, object$titbits$X,
-                              object$titbits$W, object$titbits$offset, object$dist)
+    preds <- sam_internal_pred_species(x$coef$alpha, x$coef$beta, x$taus,
+                              x$coef$gamma, x$G, x$S, x$titbits$X,
+                              x$titbits$W, x$titbits$offset, x$dist)
 
     switch( fitted.scale,
             log = { loggy <- "x"},
             logit = { loggy <- ""; preds <- log( preds / (1-preds))},
             {loggy <- ""})
-    plot( preds, obs.resid, xlab="Fitted", ylab="RQR", main="Residual versus Fitted", sub="Colours separate species", pch=20, col=rep( 1:S, each=object$n), log=loggy)
+    plot( preds, obs.resid, xlab="Fitted", ylab="RQR", main="Residual versus Fitted", sub="Colours separate species", pch=20, col=rep( 1:S, each=x$n), log=loggy)
     abline( h=0)
 
   }
@@ -1307,6 +1301,7 @@
 #' @param object A returned species_mix model object.
 #' @param \dots additional calls for residual function
 #' @param type The type of residuals to estimate. Default is "RQR" (Random Quantile Residuals). But you can also simulate many Random Quantile Residuals using "SimRQR".
+#' @param control Default uses species_mix.control()
 #' @export
 #' @description  The randomised quantile residuals ("
 #' RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution
