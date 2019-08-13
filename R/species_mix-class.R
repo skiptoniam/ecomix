@@ -515,7 +515,7 @@
 #'@param loglOnly_cpp Should the log-likelihood be caulcated? If TRUE (default) then log-likelihood is calculated and returned. If FALSE then the log-likelihood is not calculated for return.
 #'@param derivOnly_cpp Should the scores be evaluated at the (final) parameter values. If TRUE (default) then they are calculated. If FALSE then they are not calculated.
 #'@param getscores_cpp Return scores.
-#'@paran \dots Other control calls.
+#'@param \dots Other control calls.
 
 #'@export
 "species_mix.control" <- function(quiet = FALSE,

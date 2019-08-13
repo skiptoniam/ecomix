@@ -66,6 +66,8 @@ species_mix.control(quiet = FALSE, cores = 1,
 \item{derivOnly_cpp}{Should the scores be evaluated at the (final) parameter values. If TRUE (default) then they are calculated. If FALSE then they are not calculated.}
 
 \item{getscores_cpp}{Return scores.}
+
+\item{\dots}{Other control calls.}
 }
 \description{
 Controls for species_mix model.
