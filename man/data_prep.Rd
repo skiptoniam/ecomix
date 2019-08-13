@@ -6,8 +6,7 @@
 \title{data_preperation-class}
 \usage{
 table_to_species_data(observation_data, site_id = "site_id",
-  species_id = "species_id", distribution = "bernoulli",
-  measurement_id = NULL)
+  species_id = "species_id", measurement_id = NULL)
 
 make_mixture_data(species_data, covariate_data)
 }
@@ -17,8 +16,6 @@ make_mixture_data(species_data, covariate_data)
 \item{site_id}{Name of column that contains site names /IDs.}
 
 \item{species_id}{Name of column that contains species information/ID.}
-
-\item{distribution}{The family of statistical distribution to use within the ecomix models. A choice between "bernoulli", "poisson", "ippm", "negative_binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data. The data perp will try to match distribution with the data.}
 
 \item{measurement_id}{Name of column that contains species observational data. eg, 'occurrence', 'abundance' or 'biomass'.}
 
