@@ -56,7 +56,7 @@ p.x <- ncol( X[,-(2:3)])
 p.w <- 3
 W <- matrix(sample( c(0,1), size=(n*p.w), replace=TRUE), nrow=n, ncol=p.w)
 colnames( W) <- paste( "w",1:3,sep=".")
-alpha <- rnorm( S,0)
+alpha <- rnorm( S,-1,0.5)
 tau.var <- 0.5
 b <- sqrt( tau.var/2)
 # a double exponential for RCP effects
@@ -76,7 +76,8 @@ my.form.RCP <- paste( paste( paste(
   '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
 
 my.form.spp <- ~w.1+w.2+w.3
-testthat::expect_warning(fm2 <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp,
+testthat::expect_warning(fm2 <- regional_mix(rcp_formula = my.form.RCP,
+                                             species_formula = my.form.spp,
                    data = simDatBern2, distribution =  "bernoulli",
                    nRCP = 3, inits = "random2"))
 testthat::expect_s3_class(fm2,'regional_mix')

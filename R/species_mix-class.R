@@ -334,11 +334,11 @@
     archetype_formula <- stats::as.formula(archetype_formula)
   } else{
     if(!control$quiet)
-      message("There is no SAM model! Please provide a model (intercept at least) -- exitting now")
+      message("There is no SAM model!\n
+              Please provide an archetype_formula -- exitting now")
     return(NULL)
   }
 
-    # check the species formula, if 0 make 1, if 1 use species mix, if 2 use partial mixtures.
   which_mix <- check_species_formula(species_formula)
   if(!is.null(species_formula))
     species_formula <- stats::as.formula(species_formula)
@@ -361,6 +361,7 @@
 
   mf[[1L]] <- quote(stats::model.frame)
   mf <- eval(mf, parent.frame())
+
   # need this for the na.omit step
   rownames(mf)<-seq_len(nrow(mf))
   dat <- clean_data_sam(mf, archetype_formula, species_formula, distribution)
@@ -394,14 +395,16 @@
   w.means <- NULL
   w.sds <- NULL
   if (standardise == TRUE) {
-    stand.X <- standardise.X(X[, -1])
-    X <- as.matrix(cbind(1, stand.X$X))
-    stand.W <- standardise.X(W)
-    W <- as.matrix(stand.X$X)
+    stand.X <- standardise.X(X)
+    X <- as.matrix(stand.X$X)
+    if(ncol(W)>1){
+      stand.W <- standardise.W(W[,-1,drop=FALSE])
+      W <- as.matrix(cbind(1,stand.W$W))
+      w.means <- stand.W$dat.means
+      w.sds <- stand.W$dat.sds
+    }
     x.means <- stand.X$dat.means
     x.sds <- stand.X$dat.sds
-    w.means <- stand.W$dat.means
-    w.sds <- stand.W$dat.sds
   }
 
   #get distribution
@@ -444,31 +447,31 @@
         tmpQuiet <- control$quiet
         control$quiet <- TRUE
       # fit species mix.
-      tmp <- species_mix.fit(y=y, X=X, W=W, G=n_mixtures, S=S,
-                             spp_weights=spp_weights,
-                             site_spp_weights=site_spp_weights,
-                             offset=offset, disty=disty, y_is_na=y_is_na,
-                             control=control, inits=inits)
+        tmp <- species_mix.fit(y=y, X=X, W=W, G=n_mixtures, S=S,
+                               spp_weights=spp_weights,
+                               site_spp_weights=site_spp_weights,
+                               offset=offset, disty=disty, y_is_na=y_is_na,
+                               control=control, inits=inits)
 
-      tmp$dist <- disty_cases[disty]
+        tmp$dist <- disty_cases[disty]
 
-      if(n_mixtures==1) tmp$pis <- tmp$pis
-      else tmp$pis <- additive_logistic(tmp$eta)
+        if(n_mixtures==1) tmp$pis <- tmp$pis
+        else tmp$pis <- additive_logistic(tmp$eta)
 
-      #calc posterior porbs and pis.
-      if(n_mixtures>1)
-        tmp$taus <- calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
+        #calc posterior porbs and pis.
+        if(n_mixtures>1)
+          tmp$taus <- calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
 
-      tmp$pis <- colSums(tmp$taus)/S
+        tmp$pis <- colSums(tmp$taus)/S
 
-      #Information criteria
-      tmp <- calc_info_crit_sam(tmp)
+        #Information criteria
+        tmp <- calc_info_crit_sam(tmp)
 
-      #titbits object, if wanted/needed.
-      tmp$titbits <- get_titbits_sam(titbits, y, X, W, spp_weights,
-                                     site_spp_weights, offset, y_is_na,
-                                     archetype_formula, species_formula, control,
-                                     disty_cases[disty], tmp$removed_species)
+        #titbits object, if wanted/needed.
+        tmp$titbits <- get_titbits_sam(titbits, y, X, W, spp_weights,
+                                       site_spp_weights, offset, y_is_na,
+                                       archetype_formula, species_formula, control,
+                                       disty_cases[disty], tmp$removed_species)
       class(tmp) <- c("species_mix")
       return( tmp)
    }
@@ -2550,8 +2553,8 @@ starting values;\n starting values are generated using ',control$init_method,
   message("The model for the archetype (grouping) is ", Reduce( "paste", deparse(archetype_formula)))
   if(!is.null(species_formula))
   message("The model for the species is ", Reduce( "paste", deparse(species_formula)))
-  if(is.null(W)) message("You are implementing a ", distribution, " Species Archetype Model.")
-  if(!is.null(W)) message("You are implementing a ", distribution, " Partial Species Archetype Model.")
+  if(ncol(W)<2) message("You are implementing a ", distribution, " Species Archetype Model.")
+  else message("You are implementing a ", distribution, " Partial Species Archetype Model.")
 }
 
 "get_distribution_sam" <- function( disty_cases, dist1) {
