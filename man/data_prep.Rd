@@ -11,27 +11,31 @@ table_to_species_data(observation_data, site_id = "site_id",
 make_mixture_data(species_data, covariate_data)
 }
 \arguments{
-\item{observation_data}{data to be imported into R. A table of species occurrences and site records.}
+\item{observation_data}{data to be imported into R. A table of species
+occurrences and site records.}
 
 \item{site_id}{Name of column that contains site names /IDs.}
 
 \item{species_id}{Name of column that contains species information/ID.}
 
-\item{measurement_id}{Name of column that contains species observational data. eg, 'occurrence', 'abundance' or 'biomass'.}
+\item{measurement_id}{Name of column that contains species observational
+data. eg, 'occurrence', 'abundance' or 'biomass'.}
 
 \item{species_data}{A character string providing the name of the column in \verb{data} that contains the counts}
 
 \item{covariate_data}{A character string providing the name of the column in \verb{data} that contains the binary occurence data}
 }
 \value{
-A sites x species matrix to used as species_data in \code{ecomix} models.
+A sites x species matrix to used as species_data in \code{ecomix}
+models.
 
 A list containing the following elements:
 \item{species_data}{A matrix of occurrence, counts, biomass, or...}
 \item{covariate_data}{The design matrix for the global covariates}
 }
 \description{
-prepares table of observational records into a sites x species matrix for use in \code{ecomix}.
+prepares table of observational records into a sites x
+species matrix for use in \code{ecomix}.
 }
 \author{
 Skipton Woolley
