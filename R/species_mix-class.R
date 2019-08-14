@@ -2898,7 +2898,7 @@ starting values;\n starting values are generated using ',control$init_method,
     presence_data <- data.frame(po_matrix,const=1,po_covariatesX)
     bkdata <- cbind(absence_data,const=1,X)
   }
-  cat(colnames(presence_data),colnames(bkdata))
+  # cat(colnames(presence_data),colnames(bkdata))
   mm <- rbind(presence_data,bkdata)
 
   ## calculate out the weights for ippm
@@ -2913,7 +2913,7 @@ starting values;\n starting values are generated using ',control$init_method,
   presence_sites <- data.frame(presence_sites)
   background_sites <- data.frame(cell_id=1:ncol(X),
                                  matrix(rep(grid2D$cellArea,S),nrow(grid2D),S))
-  cat(colnames(presence_sites),colnames(background_sites))
+  # cat(colnames(presence_sites),colnames(background_sites))
   wts <- rbind(presence_sites[,-1],background_sites[,-1])
 
   return(list(mm=mm,weights=wts))
