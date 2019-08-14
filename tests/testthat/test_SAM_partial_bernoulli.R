@@ -117,7 +117,8 @@ testthat::test_that('testing partial species mix bernoulli ', {
 
   test_part_sam <- species_mix(sam_form,spp_form,simulated_data,4,
                                distribution = 'bernoulli',
-                               control = species_mix.control(em_steps = 2, getscores_cpp = TRUE))
+                               control = species_mix.control(em_steps = 2,
+                                                             getscores_cpp = TRUE))
 
   object <- test_part_sam
 
