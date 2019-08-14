@@ -1,12 +1,16 @@
 #' @title data_preperation-class
 #' @rdname data_prep
 #' @name table_to_species_data
-#' @description prepares table of observational records into a sites x species matrix for use in \code{ecomix}.
-#' @param observation_data data to be imported into R. A table of species occurrences and site records.
+#' @description prepares table of observational records into a sites x
+#' species matrix for use in \code{ecomix}.
+#' @param observation_data data to be imported into R. A table of species
+#' occurrences and site records.
 #' @param site_id Name of column that contains site names /IDs.
 #' @param species_id Name of column that contains species information/ID.
-#' @param measurement_id Name of column that contains species observational data. eg, 'occurrence', 'abundance' or 'biomass'.
-#' @return A sites x species matrix to used as species_data in \code{ecomix} models.
+#' @param measurement_id Name of column that contains species observational
+#' data. eg, 'occurrence', 'abundance' or 'biomass'.
+#' @return A sites x species matrix to used as species_data in \code{ecomix}
+#' models.
 #' @export
 
 table_to_species_data <- function(observation_data, site_id = "site_id", species_id = "species_id", measurement_id = NULL) {
