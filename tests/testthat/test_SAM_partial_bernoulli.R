@@ -115,6 +115,10 @@ testthat::test_that('testing partial species mix bernoulli ', {
                                distribution = 'bernoulli',
                                control = species_mix.control(em_steps = 5))
 
+  test_part_sam <- species_mix(sam_form,spp_form,simulated_data,4,
+                               distribution = 'bernoulli',
+                               control = species_mix.control(em_steps = 2, getscores_cpp = TRUE))
+
   object <- test_part_sam
 
   test_part_sam$vcov <- vcov(test_part_sam,method = "BayesBoot", nboot=5)
