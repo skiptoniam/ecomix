@@ -61,5 +61,15 @@ testthat::test_that('species_mix negative binomial', {
                      n_mixtures=4,control=species_mix.control(em_prefit = FALSE),
                      standardise = FALSE)
   testthat::expect_s3_class(fm2,'species_mix')
+
+  fm3 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'negative_binomial',
+                     n_mixtures=4,control=species_mix.control(em_prefit = FALSE,getscores_cpp = TRUE),
+                     standardise = FALSE)
+  testthat::expect_s3_class(fm3,'species_mix')
+
+  fm4 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'negative_binomial',
+                     n_mixtures=4,control=species_mix.control(em_prefit = FALSE),
+                     standardise = TRUE)
+  testthat::expect_s3_class(fm4,'species_mix')
 })
 
