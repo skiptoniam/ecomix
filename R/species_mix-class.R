@@ -1337,8 +1337,8 @@
           resids[,ss] <- qnorm( tmp)
         }
       }
-      if( !control$quiet & sum( resids==Inf | resids==-Inf)>0)
-        message( "Some residuals, well ",sum( resids==Inf | resids==-Inf), " of ",object$n*object$S," observations are very large (infinite actually).\nThese observations lie right on the edge of the realistic range of the model for the data (maybe even over the edge).")
+      if( !control$quiet & sum( resids==Inf | resids==-Inf | is.na(resids))>0)
+        message( "Some residuals, well ",sum( resids==Inf | resids==-Inf| is.na(resids)), " of ",object$n*object$S," observations are very large (infinite actually).\nThese observations lie right on the edge of the realistic range of the model for the data (maybe even over the edge).")
 
     }
     return( resids)
