@@ -30,7 +30,7 @@ species_mix.multifit(archetype_formula = NULL,
   titbits = TRUE)
 
 species_mix.bootstrap(object, nboot = 1000, type = "BayesBoot",
-  mc.cores = 1, quiet = FALSE, orderSamps = FALSE, MLstart = TRUE)
+  mc.cores = 1, quiet = FALSE)
 
 \method{AIC}{species_mix}(object, ..., k = 2)
 
@@ -38,8 +38,7 @@ species_mix.bootstrap(object, nboot = 1000, type = "BayesBoot",
 
 \method{coef}{species_mix}(object, ...)
 
-\method{plot}{species_mix}(x, ..., type = "RQR", nsim = 100,
-  alpha.conf = c(0.9, 0.95, 0.99), quiet = FALSE,
+\method{plot}{species_mix}(x, ..., quiet = FALSE,
   species = "AllSpecies", fitted.scale = "response")
 
 \method{predict}{species_mix}(object, object2 = NULL, newdata = NULL,

@@ -576,8 +576,8 @@
 #' @name species_mix.bootstrap
 #' @export
 
-"species_mix.bootstrap" <-function (object, nboot=1000, type="BayesBoot", mc.cores=1,
-                                    quiet=FALSE, orderSamps=FALSE, MLstart=TRUE){
+"species_mix.bootstrap" <-function (object, nboot=1000, type="BayesBoot",
+                                    mc.cores=1, quiet=FALSE){
   if (nboot < 1)
     stop( "No Boostrap samples requested.  Please set nboot to something > 1.")
   if( ! type %in% c("BayesBoot","SimpleBoot"))
@@ -601,12 +601,7 @@
   }
   if( type == "BayesBoot")
     all.wts <- object$S * gtools::rdirichlet( nboot, rep( 1, object$S))
-  if(MLstart)
     my.inits <- object$coef
-  else{
-    my.inits <- "random"
-    orderSamps <- TRUE
-  }
 
   tmpOldQuiet <- object$titbits$control$quiet
   object$titbits$control$quiet <- TRUE
@@ -628,8 +623,6 @@
                                      disty = disty,
                                      control = object$titbits$control,
                                      inits = my.inits))
-    if( orderSamps)
-      samp.object <- orderPost( samp.object, object)
     return( unlist( samp.object$coef))
   }
 
@@ -1027,16 +1020,17 @@
 #' @rdname species_mix
 #' @export
 
-"plot.species_mix" <- function (x, ..., type="RQR", nsim = 100,
-                                alpha.conf = c(0.9, 0.95, 0.99),
-                                quiet=FALSE, species="AllSpecies",
+"plot.species_mix" <- function (x, ...,
+                                # alpha.conf = c(0.9, 0.95, 0.99),
+                                quiet=FALSE,
+                                species="AllSpecies",
                                 fitted.scale="response"){
-  if( ! type %in% c("RQR"))
-    stop( "Unknown type of residuals. Options are 'RQR'.\n")
+  # if( ! type %in% c("RQR"))
+    # stop( "Unknown type of residuals. Options are 'RQR'.\n")
   if( ! all( species %in% c("AllSpecies",x$names$spp)))
     stop( "Unknown species.  Options are 'AllSpecies' or any one of the species names as supplied (and stored in x$names$spp)")
 
-  if( type=="RQR"){
+  # if( type=="RQR"){
     obs.resid <- residuals(x, type="RQR", quiet=quiet)
     S <- x$S
     sppID <- rep( TRUE, S)
@@ -1070,6 +1064,8 @@
                               x$coef$gamma, x$G, x$S, x$titbits$X,
                               x$titbits$W, x$titbits$offset, x$dist)
 
+    preds <- preds[,sppID]
+
     switch( fitted.scale,
             log = { loggy <- "x"},
             logit = { loggy <- ""; preds <- log( preds / (1-preds))},
@@ -1077,7 +1073,7 @@
     plot( preds, obs.resid, xlab="Fitted", ylab="RQR", main="Residual versus Fitted", sub="Colours separate species", pch=20, col=rep( 1:S, each=x$n), log=loggy)
     abline( h=0)
 
-  }
+  # }
 }
 
 
@@ -1517,7 +1513,7 @@
     if( method %in% c( "BayesBoot","SimpleBoot")){
       object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
       if( is.null( object2))
-        coefMat <- species_mix.bootstrap(object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE, orderSamps=FALSE)
+        coefMat <- species_mix.bootstrap(object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE)
       else
         coefMat <- object2
       vcov.mat <- cov( coefMat)
@@ -1534,20 +1530,20 @@
 ## offset is an offset
 ## disty is the distribution
 
-"predict.glm.fit" <- function(glmfit, newmatrix, offset, disty){
-
-  if(disty == 1)
-    fam <- binomial()
-  if(disty == 2 | disty == 3 | disty == 4)
-    fam <- poisson()
-  if(disty == 6)
-    fam <- gaussian()
-
-  coefs <- as.matrix(glmfit$coef)
-  eta <- as.numeric(as.matrix(newmatrix) %*% as.numeric(coefs)) + offset
-  preds <- fam$linkinv(eta)
-  return(preds)
-}
+# "predict.glm.fit" <- function(glmfit, newmatrix, offset, disty){
+#
+#   if(disty == 1)
+#     fam <- binomial()
+#   if(disty == 2 | disty == 3 | disty == 4)
+#     fam <- poisson()
+#   if(disty == 6)
+#     fam <- gaussian()
+#
+#   coefs <- as.matrix(glmfit$coef)
+#   eta <- as.numeric(as.matrix(newmatrix) %*% as.numeric(coefs)) + offset
+#   preds <- fam$linkinv(eta)
+#   return(preds)
+# }
 
 "apply_optimise_spp_theta" <- function(ss, first_fit, fits,
                                        G, disty, pis,
@@ -2334,22 +2330,6 @@ starting values;\n starting values are generated using ',control$init_method,
   results$species_to_remove <- species_to_remove
 
   return(results)
-}
-
-"incom_logl_mix_coefs" <- function(x, eta, first_fit, fits, spp_weights, G, S, disty){
-
-  fits$beta <- matrix(x,nrow=nrow(fits$beta),ncol=ncol(fits$beta))
-  tmp <- get_incomplete_logl_sam(eta, first_fit, fits, spp_weights, G, S, disty)
-  return(-tmp)
-}
-
-"lambda_penalisation_fun" <- function(x,lambda,kappa=0.1){
-  min.effective.penalty <- min( which( abs( x-tail( x, 1)) < 0.01 * abs( tail( x, 1))))    #the first that lambda that gives a coef close to the last lambda's corresponding coef
-  min.effective.penalty <- lambda[min.effective.penalty]
-  target.penalty <- kappa * min.effective.penalty
-  res.pos <- which.min( (lambda-target.penalty)^2)
-  res <- x[res.pos]
-  return( res)
 }
 
 "sam_optimise" <- function(y, X, W, offset, spp_weights, site_spp_weights, y_is_na,

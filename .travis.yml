@@ -17,4 +17,4 @@ env:
     - R_CHECK_ARGS="--no-build-vignettes --as-cran"
 
 after_success:
-  - Rscript -e "covr::codecov()""
+  - Rscript -e "covr::codecov()"
