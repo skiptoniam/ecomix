@@ -251,12 +251,12 @@ testthat::test_that("RCP membership",{
                       data = simDat2, distribution =  "poisson",
                       nRCP = 3, inits = "random2")
 
-
+  tmpboot1 <- regional_mix_boot(fm1,nboot = 10)
   regional_mix.species_membership(fm1)
-  tmpboot <- regional_mix_boot(fm2,nboot = 10)
+  regional_mix.species_membership(fm1,tmpboot1)
+
+  tmpboot2 <- regional_mix_boot(fm2,nboot = 10)
   regional_mix.species_membership(fm2)
-  regional_mix.species_membership(fm2,tmpboot)
-
-
+  regional_mix.species_membership(fm2,tmpboot2)
 
 })
