@@ -37,7 +37,7 @@ regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
 
 \method{coef}{regional_mix}(object, ...)
 
-\method{extractAIC}{regional_mix}(fit, scale = 1, k = 2, ...)
+\method{extractAIC}{regional_mix}(object, scale = 1, k = 2, ...)
 
 \method{plot}{regional_mix}(x, ..., type = "RQR", nsim = 100,
   alpha.conf = c(0.9, 0.95, 0.99), quiet = FALSE,
@@ -52,7 +52,7 @@ regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
 \method{print}{regional_mix}(x, ...)
 
 \method{residuals}{regional_mix}(object, ..., type = "RQR",
-  quiet = FALSE)
+  quiet = FALSE, mc.cores = 1)
 
 regional_mix.simulate(nRCP = 3, S = 20, n = 200, p.x = 3,
   p.w = 0, alpha = NULL, tau = NULL, beta = NULL, gamma = NULL,
@@ -63,7 +63,7 @@ regional_mix.species_membership(object, object2 = NULL, CI = c(0.025,
   0.975), ...)
 
 regional_mix_boot(object, nboot = 1000, type = "BayesBoot",
-  mc.cores = 1, quiet = FALSE, orderSamps = FALSE, MLstart = TRUE)
+  mc.cores = 1, quiet = FALSE, MLstart = TRUE)
 
 regional_mix_bootParametric(fm, mf, nboot)
 

@@ -438,12 +438,12 @@
 #' @rdname regional_mix
 #' @export
 
-"extractAIC.regional_mix" <- function (fit, scale = 1, k = 2, ...){
+"extractAIC.regional_mix" <- function (object, scale = 1, k = 2, ...){
   n <- object$n
-  edf <- length(unlist(stats::coef( fit)))
+  edf <- length(unlist(stats::coef( object)))
   if (is.null(k))
     k <- 2
-  aic <- -2 * logLik( fit) + k * edf
+  aic <- -2 * logLik( object) + k * edf
   return(c(edf, aic))
 }
 
@@ -829,8 +829,8 @@
 #' normal variates. Within a site they are likely to be correlated (as they share a common latent factor), but across sampling locations they will be independent.
 
 #'  The deviance residuals (as used here), are actually just square root of minus two times the log-likelihood contribution for each sampling location. We do #' not subtract the log-likelihood of the saturated model as, at the time of writing, we are unsure what this log-likelihood should be (latent factors confuse #' things here). This implies that the residuals will not have mean zero and their variance might also be heteroskedastic. This was not realised when writing #' the original RCP paper (Foster et al, 2013), obviously. We still believe that these residuals have some utility, but we are unsure where that utility stops. #' For general useage, the "RQR" residuals should probably be preferred.
-"residuals.regional_mix" <- function( object, ..., type="RQR", quiet=FALSE){
-  if( ! type %in% c("deviance","RQR"))
+"residuals.regional_mix" <- function( object, ..., type="RQR", quiet=FALSE, mc.cores=1){
+  if( ! type %in% c("deviance","RQR","RQR.sim"))
     stop( "Unknown type of residual requested. Only deviance and RQR (for randomised quantile residuals) are implemented\n")
   if( type=="deviance"){
     resids <- sqrt( -2*object$logl.sites)
@@ -883,37 +883,37 @@
       message( "Some residuals, well",sum( resids==Inf | resids==-Inf), "to be precise, are very large (infinite actually).\nThese observations lie right on the edge of the realistic range of the model for the data (maybe even over the edge).")
 
   }
-  if( type=="RQR.sim"){
-    nsim <- 1000
-    if( is.null( mc.cores))
-      mc.cores <- getOption("mc.cores", 4)
-    resids <- matrix( NA, nrow=object$n, ncol=object$S)
-    RQR.fun <- function(ii){
-      if( !quiet)
-        setTxtProgressBar(pb, ii)
-      X1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$X[ii,,drop=FALSE])
-      W1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$W[ii,,drop=FALSE])
-      sims <- regional_mix.simulate( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, logDisps=object$coef$disp, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,distribution=object$distribution)
-      sims <- sims[,1:object$S]
-      yi <- object$titbits$Y[ii,,drop=FALSE]
-      many_yi <- matrix( rep( yi, each=nsim), ncol=object$S)
-      F_i <- colMeans( sims <= many_yi)
-      F_i_minus <- colMeans( sims < many_yi)
-      r_i <- runif( object$S, min=F_i_minus, max=F_i)
-      return( qnorm( r_i))
-    }
-    if( !quiet)
-      pb <- txtProgressBar(min = 1, max = object$n, style = 3, char = "><(('> ")
-    if( Sys.info()['sysname'] == "Windows" | mc.cores==1)
-      resids <- lapply( 1:object$n, RQR.fun)
-    else
-      resids <- parallel::mclapply( 1:object$n, RQR.fun, mc.cores=mc.cores)
-    if( !quiet)
-      message("")
-    resids <- matrix( unlist( resids), nrow=object$n, ncol=object$S, byrow=TRUE)
-    if( !quiet & sum( resids==Inf | resids==-Inf)>0)
-      message( "Some residuals, well",sum( resids==Inf | resids==-Inf), "to be precise, are very large (infinite actually).\nThese observations lie right on the edge of the Monte Carlo approximation to the distribution function.\nThis may be remedied by getting a better approximation (increasing nsim).")
-  }
+  # if( type=="RQR.sim"){
+  #   nsim <- 1000
+  #   if( is.null( mc.cores))
+  #     mc.cores <- getOption("mc.cores", 4)
+  #   resids <- matrix( NA, nrow=object$n, ncol=object$S)
+  #   RQR.fun <- function(ii){
+  #     if( !quiet)
+  #       setTxtProgressBar(pb, ii)
+  #     X1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$X[ii,,drop=FALSE])
+  #     W1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$W[ii,,drop=FALSE])
+  #     sims <- regional_mix.simulate( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, logDisps=object$coef$disp, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,distribution=object$distribution)
+  #     sims <- sims[,1:object$S]
+  #     yi <- object$titbits$Y[ii,,drop=FALSE]
+  #     many_yi <- matrix( rep( yi, each=nsim), ncol=object$S)
+  #     F_i <- colMeans( sims <= many_yi)
+  #     F_i_minus <- colMeans( sims < many_yi)
+  #     r_i <- runif( object$S, min=F_i_minus, max=F_i)
+  #     return( qnorm( r_i))
+  #   }
+  #   if( !quiet)
+  #     pb <- txtProgressBar(min = 1, max = object$n, style = 3, char = "><(('> ")
+  #   if( Sys.info()['sysname'] == "Windows" | mc.cores==1)
+  #     resids <- lapply( 1:object$n, RQR.fun)
+  #   else
+  #     resids <- parallel::mclapply( 1:object$n, RQR.fun, mc.cores=mc.cores)
+  #   if( !quiet)
+  #     message("")
+  #   resids <- matrix( unlist( resids), nrow=object$n, ncol=object$S, byrow=TRUE)
+  #   if( !quiet & sum( resids==Inf | resids==-Inf)>0)
+  #     message( "Some residuals, well",sum( resids==Inf | resids==-Inf), "to be precise, are very large (infinite actually).\nThese observations lie right on the edge of the Monte Carlo approximation to the distribution function.\nThis may be remedied by getting a better approximation (increasing nsim).")
+  # }
   return( resids)
 }
 
@@ -1911,108 +1911,108 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
 
 }
 
+#
+# "orderFitted" <- function( fm, simDat){
+# 	RCPs <- attr( simDat, "RCP")
+# 	posts <- fm$postProbs
+#
+# 	perms <- gtools::permutations( length( unique( RCPs)), length( unique( RCPs)))
+# 	classErr <- rep( NA, ncol( perms))
+# 	classErrRunnerUp <- classErr
+# 	for( ii in seq_len(nrow(perms))){
+# 		postsTMP <- posts[,perms[ii,]]
+# 		postsTMP <- apply( postsTMP, 1, which.max)
+# 		my.tab <- table( RCPs, postsTMP)
+# 		classErr[ii] <- sum( diag( my.tab)) / sum( my.tab)
+# 	}
+# 	perms <- perms[which.max( classErr),]
+# 	#coefs
+# 	tau <- matrix( fm$coefs$tau, nrow=fm$nRCP-1, ncol=fm$S)
+# 	tau <- rbind( tau, -colSums( tau))
+# 	tau <- tau[perms,]
+# 	beta <- matrix( fm$coefs$beta, nrow=fm$nRCP-1, ncol=fm$p.x)
+# 	beta <- rbind( beta, 0)
+# 	beta <- beta[perms,]
+# 	beta <- beta - rep( beta[fm$nRCP,], each=fm$nRCP)
+# 	fm$coefs$tau <- as.numeric( tau[-fm$nRCP,])
+#   fm$coef$beta <- as.numeric( beta[-fm$nRCP,])
+# 	#scores
+# 	fm$scores <- NULL
+# 	#pis
+# 	fm$pis <- fm$pis[,perms]
+# 	#postProbs
+# 	fm$postProbs <- fm$postProbs[,perms]
+# 	#mus
+# 	fm$mus <- fm$mus[,,perms]
+# 	#vcov
+# 	fm$vcov <- NULL
+# 	#order
+# 	fm$perm <- perms
+# 	#classification error
+# 	fm$classErr <- max( classErr)
+# 	fm$classErrRunnerUp <- max( classErr[-(which.max( classErr))])
+#
+# 	return( fm)
+#
+# }
+#
 
-"orderFitted" <- function( fm, simDat){
-	RCPs <- attr( simDat, "RCP")
-	posts <- fm$postProbs
-
-	perms <- gtools::permutations( length( unique( RCPs)), length( unique( RCPs)))
-	classErr <- rep( NA, ncol( perms))
-	classErrRunnerUp <- classErr
-	for( ii in seq_len(nrow(perms))){
-		postsTMP <- posts[,perms[ii,]]
-		postsTMP <- apply( postsTMP, 1, which.max)
-		my.tab <- table( RCPs, postsTMP)
-		classErr[ii] <- sum( diag( my.tab)) / sum( my.tab)
-	}
-	perms <- perms[which.max( classErr),]
-	#coefs
-	tau <- matrix( fm$coefs$tau, nrow=fm$nRCP-1, ncol=fm$S)
-	tau <- rbind( tau, -colSums( tau))
-	tau <- tau[perms,]
-	beta <- matrix( fm$coefs$beta, nrow=fm$nRCP-1, ncol=fm$p.x)
-	beta <- rbind( beta, 0)
-	beta <- beta[perms,]
-	beta <- beta - rep( beta[fm$nRCP,], each=fm$nRCP)
-	fm$coefs$tau <- as.numeric( tau[-fm$nRCP,])
-  fm$coef$beta <- as.numeric( beta[-fm$nRCP,])
-	#scores
-	fm$scores <- NULL
-	#pis
-	fm$pis <- fm$pis[,perms]
-	#postProbs
-	fm$postProbs <- fm$postProbs[,perms]
-	#mus
-	fm$mus <- fm$mus[,,perms]
-	#vcov
-	fm$vcov <- NULL
-	#order
-	fm$perm <- perms
-	#classification error
-	fm$classErr <- max( classErr)
-	fm$classErrRunnerUp <- max( classErr[-(which.max( classErr))])
-
-	return( fm)
-
-}
-
-
-"orderPost" <- function( new.fm=NULL, fm, RCPs=NULL, sample=NULL){
-	G1 <- G2 <- NULL
-	if( !is.null( new.fm))
-		G <- G1 <- new.fm$nRCP
-	if( !is.null( RCPs))
-		G <- G2 <- length( unique( RCPs))
-	if( sum( !is.null( c(G1,G2))) != 1){
-		message( "Problem with ordering -- provide new.fm *or* RCPs, but not both!")
-		return( NULL)
-	}
-	perms <- gtools::permutations( G, G)
-
-	if( !is.null( RCPs)){
-		fm$postProbs <- matrix( 0, nrow=nrow( fm$postProbs), ncol=ncol( fm$postProbs))
-		for( ii in 1:fm$nRCP)
-			fm$postProbs[,ii] <- ifelse( RCPs==ii, 1, 0)
-	}
-	if( !is.null( sample))
-		fm$postProbs <- fm$postProbs[sample,]
-	classErr <- rep( NA, ncol( perms))
-	for( ii in seq_len(nrow(perms))){
-		my.tab <- t(fm$postProbs) %*% new.fm$postProbs[,perms[ii,]]
-		classErr[ii] <- sum( diag( my.tab)) / sum( my.tab)
-	}
-	perms <- perms[which.max( classErr),]
-	#coefs
-  alpha <- new.fm$coefs$alpha
-  gamma <- new.fm$coefs$gamma
-  disp <- new.fm$coef$disp
-	tau <- matrix( new.fm$coefs$tau, nrow=new.fm$nRCP-1, ncol=new.fm$S)
-	tau <- rbind( tau, -colSums( tau))
-	tau <- tau[perms,]
-  new.fm$coefs$tau <- as.numeric( tau[-new.fm$nRCP,])
-	beta <- matrix( new.fm$coefs$beta, nrow=new.fm$nRCP-1, ncol=new.fm$p.x)
-	beta <- rbind( beta, 0)
-	beta <- beta[perms,]
-	beta <- beta - rep( beta[new.fm$nRCP,], each=3)
-  new.fm$coefs$beta <- as.numeric( beta[-new.fm$nRCP,])
-	#scores
-	new.fm$scores <- NULL
-	#pis
-	new.fm$pis <- new.fm$pis[,perms]
-	#postProbs
-	new.fm$postProbs <- new.fm$postProbs[,perms]
-	#mus
-	new.fm$mus <- new.fm$mus[,,perms]
-	#vcov
-	new.fm$vcov <- NULL
-	#order
-	new.fm$perm <- perms
-	#classification error
-	new.fm$classErr <- max( classErr)
-	new.fm$classErrRunnerUp <- max( classErr[-(which.max( classErr))])
-
-	return( new.fm)
-}
+# "orderPost" <- function( new.fm=NULL, fm, RCPs=NULL, sample=NULL){
+# 	G1 <- G2 <- NULL
+# 	if( !is.null( new.fm))
+# 		G <- G1 <- new.fm$nRCP
+# 	if( !is.null( RCPs))
+# 		G <- G2 <- length( unique( RCPs))
+# 	if( sum( !is.null( c(G1,G2))) != 1){
+# 		message( "Problem with ordering -- provide new.fm *or* RCPs, but not both!")
+# 		return( NULL)
+# 	}
+# 	perms <- gtools::permutations( G, G)
+#
+# 	if( !is.null( RCPs)){
+# 		fm$postProbs <- matrix( 0, nrow=nrow( fm$postProbs), ncol=ncol( fm$postProbs))
+# 		for( ii in 1:fm$nRCP)
+# 			fm$postProbs[,ii] <- ifelse( RCPs==ii, 1, 0)
+# 	}
+# 	if( !is.null( sample))
+# 		fm$postProbs <- fm$postProbs[sample,]
+# 	classErr <- rep( NA, ncol( perms))
+# 	for( ii in seq_len(nrow(perms))){
+# 		my.tab <- t(fm$postProbs) %*% new.fm$postProbs[,perms[ii,]]
+# 		classErr[ii] <- sum( diag( my.tab)) / sum( my.tab)
+# 	}
+# 	perms <- perms[which.max( classErr),]
+# 	#coefs
+#   alpha <- new.fm$coefs$alpha
+#   gamma <- new.fm$coefs$gamma
+#   disp <- new.fm$coef$disp
+# 	tau <- matrix( new.fm$coefs$tau, nrow=new.fm$nRCP-1, ncol=new.fm$S)
+# 	tau <- rbind( tau, -colSums( tau))
+# 	tau <- tau[perms,]
+#   new.fm$coefs$tau <- as.numeric( tau[-new.fm$nRCP,])
+# 	beta <- matrix( new.fm$coefs$beta, nrow=new.fm$nRCP-1, ncol=new.fm$p.x)
+# 	beta <- rbind( beta, 0)
+# 	beta <- beta[perms,]
+# 	beta <- beta - rep( beta[new.fm$nRCP,], each=3)
+#   new.fm$coefs$beta <- as.numeric( beta[-new.fm$nRCP,])
+# 	#scores
+# 	new.fm$scores <- NULL
+# 	#pis
+# 	new.fm$pis <- new.fm$pis[,perms]
+# 	#postProbs
+# 	new.fm$postProbs <- new.fm$postProbs[,perms]
+# 	#mus
+# 	new.fm$mus <- new.fm$mus[,,perms]
+# 	#vcov
+# 	new.fm$vcov <- NULL
+# 	#order
+# 	new.fm$perm <- perms
+# 	#classification error
+# 	new.fm$classErr <- max( classErr)
+# 	new.fm$classErrRunnerUp <- max( classErr[-(which.max( classErr))])
+#
+# 	return( new.fm)
+# }
 
 "print.data.summ" <- function( data, dat, S, rcp_formula, species_formula, disty.cases, disty, quiet=FALSE){
   if( quiet)
@@ -2033,7 +2033,13 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
 #' @rdname regional_mix
 #' @export
 
-"regional_mix_boot" <-function (object, nboot=1000, type="BayesBoot", mc.cores=1, quiet=FALSE, orderSamps=FALSE, MLstart=TRUE){
+"regional_mix_boot" <-function (object,
+                                nboot=1000,
+                                type="BayesBoot",
+                                mc.cores=1,
+                                quiet=FALSE,
+                                # orderSamps=FALSE,
+                                MLstart=TRUE){
   if (nboot < 1)
     stop( "No Boostrap samples requested.  Please set nboot to something > 1.")
   if( ! type %in% c("BayesBoot","SimpleBoot"))
@@ -2069,8 +2075,8 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
       setTxtProgressBar(pb, dummy)
     dumbOut <- capture.output(
       samp.object <- regional_mix.fit( outcomes=object$titbits$Y, W=object$titbits$W, X=object$titbits$X, offy=object$titbits$offset, wts=object$titbits$wts * all.wts[dummy,,drop=TRUE], disty=object$titbits$disty, nRCP=object$nRCP, power=object$titbits$power, inits=my.inits, control=object$titbits$control, n=object$n, S=object$S, p.x=object$p.x, p.w=object$p.w))
-    if( orderSamps)
-      samp.object <- orderPost( samp.object, object)
+    # if( orderSamps)
+    #   samp.object <- orderPost( samp.object, object)
     return( unlist( samp.object$coef))
   }
 
