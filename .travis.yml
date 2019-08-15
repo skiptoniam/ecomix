@@ -6,9 +6,6 @@ cache: packages
 r_packages:
   - covr
 
-after_success:
-  - travis_wait 40 Rscript -e "covr::codecov()""
-
 warnings_are_errors: false
 notifications:
   on_success: always
@@ -18,3 +15,6 @@ env:
   global:
     - R_BUILD_ARGS="--no-build-vignettes"
     - R_CHECK_ARGS="--no-build-vignettes --as-cran"
+
+after_success:
+  - Rscript -e "covr::codecov()""
