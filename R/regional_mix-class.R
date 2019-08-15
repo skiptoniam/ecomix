@@ -1189,7 +1189,7 @@ partial_mus_from_boostrap  <- function(object, object2, CI=c(0.025,0.975)){
   if(object$distribution=='negative_binomial') link.fun <- stats::make.link('log')
   if(object$distribution=='guassian') link.fun <- stats::make.link('identity')
 
-  if(!check_if_sampling(object)){
+  if(check_if_sampling(object)){
 
     res_all <- list()
     for(i in seq_len(dim(object2)[1])){
