@@ -301,7 +301,7 @@
     res$beta <- matrix(object$coefs$beta, nrow = object$nRCP - 1, ncol = object$p.x)
     colnames( res$beta) <- object$names$Xvars
   }
-  if( !is.null( object$coef$gamma)){
+  if( !any(is.null( object$coef$gamma),length( object$coef$gamma)==0)){
     res$gamma <- matrix( object$coef$gamma, nrow=object$S, ncol=object$p.w)
     colnames( res$gamma) <- object$names$Wvars
     rownames( res$gamma) <- object$names$spp
@@ -1102,7 +1102,7 @@
                                               CI=c(0.025,0.975), ...){
 
   if(is.null(object2)){
-    if(!check_if_sampling(object)) type <- "single_no_sp_results"
+    if(check_if_sampling(object)) type <- "single_no_sp_results"
     else type <- "single_results"
   } else {
     type <- "bootstrap_results"
@@ -1115,7 +1115,7 @@
   return(partial_mus)
 }
 
-check_if_sampling <-function(object){all(!is.na(object$names$Wvars))}
+check_if_sampling <-function(object){object$p.w<1}
 
 partial_mus_no_species_form <- function(object, ...){
 
@@ -1127,7 +1127,7 @@ partial_mus_no_species_form <- function(object, ...){
   offy <- object$titbits$offset
 
   ## what is the linear predictor (eta)
-  eta <- sweep(tau, 2, coef(object)$alpha, "+") + mean(offy)
+  eta <- sweep(tau, 2, object$coefs$alpha, "+") + mean(offy)
 
   ## what is the link function of appropriate distribution?
   if(object$distribution=="bernoulli")

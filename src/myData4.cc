@@ -39,25 +39,25 @@ bool myData::isDispersion() const{
 	return( false);
 }
 
-void myData::printVals( int printX=0, int printW = 0, int printy = 0){
-	if( printy == 1)
-		for( int i=0; i<nObs; i++){
-			for( int j=0; j<nS; j++)
-				Rprintf( "%3.2f\t", y[MATREF2D(i,j,nObs)]);
-			Rprintf( "\n");
-		}
-	
-	if( printX == 1)
-		for( int i=0; i<nObs; i++){
-			for( int j=0; j<np; j++)
-				Rprintf( "%3.2f\t", X[MATREF2D(i,j,nObs)]);
-			Rprintf( "\n");
-		}
-
-	if( printW == 1)
-		for( int i=0; i<nObs; i++){
-			for( int j=0; j<npw; j++)
-				Rprintf( "%3.2f\t", W[MATREF2D(i,j,nObs)]);
-			Rprintf( "\n");
-		}
-}
+// void myData::printVals( int printX=0, int printW = 0, int printy = 0){
+// 	if( printy == 1)
+// 		for( int i=0; i<nObs; i++){
+// 			for( int j=0; j<nS; j++)
+// 				Rprintf( "%3.2f\t", y[MATREF2D(i,j,nObs)]);
+// 			Rprintf( "\n");
+// 		}
+//
+// 	if( printX == 1)
+// 		for( int i=0; i<nObs; i++){
+// 			for( int j=0; j<np; j++)
+// 				Rprintf( "%3.2f\t", X[MATREF2D(i,j,nObs)]);
+// 			Rprintf( "\n");
+// 		}
+//
+// 	if( printW == 1)
+// 		for( int i=0; i<nObs; i++){
+// 			for( int j=0; j<npw; j++)
+// 				Rprintf( "%3.2f\t", W[MATREF2D(i,j,nObs)]);
+// 			Rprintf( "\n");
+// 		}
+// }
