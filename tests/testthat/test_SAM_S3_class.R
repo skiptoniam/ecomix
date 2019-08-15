@@ -49,6 +49,11 @@ testthat::test_that('species mix generic vcov functions', {
                                          beta = beta, distribution = "bernoulli")
   fm1 <- species_mix(sam_form, species_formula = ~1, simulated_data,
                      distribution = 'bernoulli', n_mixtures=4)
+  fm <- species_mix(sam_form, species_formula = ~1, simulated_data,
+                     distribution = 'bernoulli', n_mixtures=4, titbits = FALSE)
+  fm <- species_mix(sam_form, species_formula = ~1, simulated_data,
+                    distribution = 'bernoulli', n_mixtures=4,standardise = TRUE,
+                    titbits = FALSE)
 
   vcv_mat_bb <- vcov(object = fm1,method = 'BayesBoot', nboot = 10)
   # testthat::expect_equal(nrow(vcv_mat),nrow(vcv_mat))
@@ -125,6 +130,7 @@ testthat::test_that('species mix predict functions', {
 
   predict(fm4,newdata=rbind(dat,dat))
 
+
 })
 
 
@@ -147,6 +153,8 @@ testthat::test_that("test bootstrap",{
   testthat::expect_error(species_mix.bootstrap(fm2))
   species_mix.bootstrap(fm1, type="SimpleBoot",nboot=10)
 
+  samboot <- species_mix.bootstrap(fm1, nboot = 10)
+  predict(fm1,samboot)
 
 })
 

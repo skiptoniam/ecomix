@@ -51,8 +51,7 @@ species_mix.bootstrap(object, nboot = 1000, type = "BayesBoot",
 \method{summary}{species_mix}(object, ...)
 
 \method{vcov}{species_mix}(object, ..., object2 = NULL,
-  method = "FiniteDifference", nboot = 10, mc.cores = 1,
-  D.accuracy = 2)
+  method = "BayesBoot", nboot = 10, mc.cores = 1, D.accuracy = 2)
 
 species_mix_boot_parametric(fm, mf, nboot)
 }

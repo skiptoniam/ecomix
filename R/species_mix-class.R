@@ -1382,7 +1382,7 @@
 #'# This will provide estimates of uncertainty for model parameters.
 #'\dontrun{
 #' vcov(fm1)}
-"vcov.species_mix" <- function (object, ..., object2=NULL, method = "FiniteDifference",
+"vcov.species_mix" <- function (object, ..., object2=NULL, method = "BayesBoot",
                                 nboot = 10, mc.cores = 1, D.accuracy=2){
     if( method %in% c("simple","Richardson"))
       method <- "FiniteDifference"
@@ -1449,67 +1449,67 @@
     loglikeS <- as.numeric(rep(NA, S))
     loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
 
-
-    if (method %in% c("FiniteDifference")) {
-      grad_fun <- function(x) {
-        #x is a vector of first order derivates to optimise using numDeriv in order to find second order derivates.
-        start <- 0
-        alpha <- x[start + seq_len(S)]
-        start <- start + S
-        beta <- x[start + seq_len((G*npx))]
-        start <- start + (G*npx)
-        eta <- x[start + seq_len(G - 1)]
-        start <- start + (G-1)
-        if(npw>0) {
-          gamma <- x[start + seq_len((S*npw))]
-          start <- start + (S*npw)
-        } else {
-          gamma <- -999999
-          # start <- start + 1
-        }
-        if(disty%in%c(4,6)){
-          theta <- x[start + seq_len(S)]
-        } else {
-          theta <- -999999
-        }
-        #c++ call to optimise the model (needs pretty good starting values)
-        tmp <- .Call("species_mix_cpp",
-                     as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(offset), as.numeric(spp_wts),
-                     as.numeric(as.matrix(site_spp_wts)), as.integer(as.matrix(!y_is_na)),
-                     # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
-                     as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n),
-                     as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),
-                     # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
-                     as.double(alpha), as.double(beta), as.double(eta), as.double(gamma), as.double(theta),
-                     # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
-                     alpha.score, beta.score, eta.score, gamma.score, theta.score, as.integer(0), scores,
-                     # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
-                     pis_out, mus, loglikeS, loglikeSG,
-                     # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
-                     as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
-                     as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp), as.integer(control$printparams_cpp),
-                     # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
-                     as.integer(0), as.integer(0), as.integer(1),
-                     # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
-                     PACKAGE = "ecomix")
-
-        tmp1 <- c(alpha.score, beta.score, eta.score)
-        if( npw > 0)#class( object$titbits$species_formula) == "formula")
-          tmp1 <- c(tmp1, gamma.score)
-        if(disty%in%c(4,6))
-          tmp1 <- c( tmp1, theta.score)
-        return(tmp1)
-      }
-      mod_coefs <- setup_inits_sam(inits, S, G, X, W, disty, return_list = FALSE)
-      hess <- numDeriv::jacobian(grad_fun, mod_coefs)
-      vcov.mat <- try( -solve(hess))
-      if( inherits( vcov.mat, 'try-error')){
-        attr(vcov.mat, "hess") <- hess
-        warning( "Hessian appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe Hessian is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data.")
-      }
-      else
-        vcov.mat <- ( vcov.mat + t(vcov.mat)) / 2 #to ensure symmetry
-    }
+    #remove finite for now, as we only need it for ippm
+    # if (method %in% c("FiniteDifference")) {
+    #   grad_fun <- function(x) {
+    #     #x is a vector of first order derivates to optimise using numDeriv in order to find second order derivates.
+    #     start <- 0
+    #     alpha <- x[start + seq_len(S)]
+    #     start <- start + S
+    #     beta <- x[start + seq_len((G*npx))]
+    #     start <- start + (G*npx)
+    #     eta <- x[start + seq_len(G - 1)]
+    #     start <- start + (G-1)
+    #     if(npw>0) {
+    #       gamma <- x[start + seq_len((S*npw))]
+    #       start <- start + (S*npw)
+    #     } else {
+    #       gamma <- -999999
+    #       # start <- start + 1
+    #     }
+    #     if(disty%in%c(4,6)){
+    #       theta <- x[start + seq_len(S)]
+    #     } else {
+    #       theta <- -999999
+    #     }
+    #     #c++ call to optimise the model (needs pretty good starting values)
+    #     tmp <- .Call("species_mix_cpp",
+    #                  as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(offset), as.numeric(spp_wts),
+    #                  as.numeric(as.matrix(site_spp_wts)), as.integer(as.matrix(!y_is_na)),
+    #                  # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
+    #                  as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n),
+    #                  as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),
+    #                  # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
+    #                  as.double(alpha), as.double(beta), as.double(eta), as.double(gamma), as.double(theta),
+    #                  # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
+    #                  alpha.score, beta.score, eta.score, gamma.score, theta.score, as.integer(0), scores,
+    #                  # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
+    #                  pis_out, mus, loglikeS, loglikeSG,
+    #                  # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
+    #                  as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
+    #                  as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp), as.integer(control$printparams_cpp),
+    #                  # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
+    #                  as.integer(0), as.integer(0), as.integer(1),
+    #                  # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
+    #                  PACKAGE = "ecomix")
+    #
+    #     tmp1 <- c(alpha.score, beta.score, eta.score)
+    #     if( npw > 0)#class( object$titbits$species_formula) == "formula")
+    #       tmp1 <- c(tmp1, gamma.score)
+    #     if(disty%in%c(4,6))
+    #       tmp1 <- c( tmp1, theta.score)
+    #     return(tmp1)
+    #   }
+    #   mod_coefs <- setup_inits_sam(inits, S, G, X, W, disty, return_list = FALSE)
+    #   hess <- numDeriv::jacobian(grad_fun, mod_coefs)
+    #   vcov.mat <- try( -solve(hess))
+    #   if( inherits( vcov.mat, 'try-error')){
+    #     attr(vcov.mat, "hess") <- hess
+    #     warning( "Hessian appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe Hessian is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data.")
+    #   }
+    #   else
+    #     vcov.mat <- ( vcov.mat + t(vcov.mat)) / 2 #to ensure symmetry
+    # }
     if( method %in% c( "BayesBoot","SimpleBoot")){
       object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
       if( is.null( object2))
@@ -2419,11 +2419,11 @@ starting values;\n starting values are generated using ',control$init_method,
   if(npw>0){
     if(!disty%in%c(4,6))
       ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
-                      gamma = matrix(ret$gamma,S,npw), eta = ret$eta)
+                        eta = ret$eta,gamma = matrix(ret$gamma,S,npw))
     else
       ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
-                      gamma = matrix(ret$gamma,S,npw), eta = ret$eta,
-                      theta = ret$theta)
+                        eta = ret$eta,gamma = matrix(ret$gamma,S,npw),
+                        theta = ret$theta)
   } else {
     if(!disty%in%c(4,6))
       ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
@@ -2437,10 +2437,10 @@ starting values;\n starting values are generated using ',control$init_method,
 
   if(!disty%in%c(4,6))
     ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score,
-                       gamma.scores = gamma.score, eta.scores=eta.score)
+                       eta.scores=eta.score,gamma.scores = gamma.score)
   else
     ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score,
-                       gamma.scores = gamma.score, eta.scores=eta.score,
+                       eta.scores=eta.score,gamma.scores = gamma.score,
                        theta.scores=theta.score)
 
   ret$S <- S; ret$G <- G; ret$npx <- npx; ret$npw <- npw; ret$n <- n;
