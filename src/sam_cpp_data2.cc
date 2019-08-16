@@ -29,11 +29,11 @@ void sam_data::setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &Roffset,
 
 }
 
-bool sam_data::doOptiPart() const{
-	if( optiPart == 1)
-		return( TRUE);
-	return( FALSE);
-}
+// bool sam_data::doOptiPart() const{
+// 	if( optiPart == 1)
+// 		return( TRUE);
+// 	return( FALSE);
+// }
 
 bool sam_data::isDispersion() const{ // currently just check if negative binomial.
 	if((disty == 4) | (disty == 5) | (disty == 6) )
@@ -47,11 +47,11 @@ bool sam_data::doOptiDisp() const{
 	return( FALSE);
 }
 
-bool sam_data::isPartial() const{ // currently just check if negative binomial.
-	if(optiPart==1)
-		return( true);
-	return( false);
-}
+// bool sam_data::isPartial() const{ // currently just check if negative binomial.
+// 	if(optiPart==1)
+// 		return( true);
+// 	return( false);
+// }
 
 
 // void sam_data::printVals( int printX=0, int printW=0, int printy = 0){
