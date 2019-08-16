@@ -17,6 +17,8 @@ responses, e.g: ~1}
 
 \item{dat}{a matrix of variables to simulate data from.}
 
+\item{offset}{used to offset sampling effort for abundance data (log link function).}
+
 \item{n_mixtures}{number of groups to simulate.}
 
 \item{alpha}{coefficents for each species archetype. vector S long.}

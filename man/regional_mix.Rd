@@ -37,7 +37,7 @@ regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
 
 \method{coef}{regional_mix}(object, ...)
 
-\method{extractAIC}{regional_mix}(object, scale = 1, k = 2, ...)
+\method{extractAIC}{regional_mix}(fit, scale = 1, k = 2, ...)
 
 \method{plot}{regional_mix}(x, ..., type = "RQR", nsim = 100,
   alpha.conf = c(0.9, 0.95, 0.99), quiet = FALSE,
