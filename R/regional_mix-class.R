@@ -438,12 +438,12 @@
 #' @rdname regional_mix
 #' @export
 
-"extractAIC.regional_mix" <- function (object, scale = 1, k = 2, ...){
-  n <- object$n
-  edf <- length(unlist(stats::coef( object)))
+"extractAIC.regional_mix" <- function (fit, scale = 1, k = 2, ...){
+  n <- fit$n
+  edf <- length(unlist(stats::coef( fit)))
   if (is.null(k))
     k <- 2
-  aic <- -2 * logLik( object) + k * edf
+  aic <- -2 * logLik( fit) + k * edf
   return(c(edf, aic))
 }
 

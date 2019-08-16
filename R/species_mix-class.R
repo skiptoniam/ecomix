@@ -664,6 +664,7 @@
 #' and gaussian distributions - should be number of species long
 #' @param distribution Which statistical distribution to simulate data for.
 #'  'bernoulli', 'gaussian', 'ippm', 'negative_binomial' and 'poisson'.
+#' @param offset used to offset sampling effort for abundance data (log link function).
 #' @export
 #' @examples
 #' \dontrun{
