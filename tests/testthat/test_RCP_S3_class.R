@@ -248,9 +248,7 @@ testthat::test_that("RCP membership",{
                       data = simDat1, distribution =  "poisson",
                       nRCP = 3, inits = "random2")
   my.form.spp <- ~w.1+w.2+w.3
-  fm2 <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp,
-                      data = simDat2, distribution =  "poisson",
-                      nRCP = 3, inits = "random")
+
 
   my.form.RCP <- paste( paste( paste(
     'cbind(', paste( paste( 'spp', c(1,1:S), sep=''), collapse=','), sep=''),
@@ -263,18 +261,20 @@ testthat::test_that("RCP membership",{
                                                      data = simDat2, distribution =  "poisson",
                                                      nRCP = 3, inits = "random"))
 
-
+  fm2 <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp,
+                      data = simDat2, distribution =  "poisson",
+                      nRCP = 3, inits = "random2")
 
   tmpboot1 <- regional_mix_boot(fm1,nboot = 10)
   regional_mix.species_membership(fm1)
   regional_mix.species_membership(fm1,tmpboot1)
 
-  tmpboot2 <- regional_mix_boot(fm2,nboot = 10)
-  regional_mix.species_membership(fm2)
-  regional_mix.species_membership(fm2,tmpboot2)
+  # tmpboot2 <- regional_mix_boot(fm2,nboot = 10)
+  # regional_mix.species_membership(fm2)
+  # regional_mix.species_membership(fm2,tmpboot2)
 
-  AIC(fm2,k=NULL)
-  extractAIC(fm2,k=NULL)
+  AIC(fm1,k=NULL)
+  extractAIC(fm1,k=NULL)
 
   predict(fm1)
   plot(fm1)
