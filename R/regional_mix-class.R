@@ -2463,7 +2463,7 @@ function (object, ...)
   if( method %in% c( "BayesBoot","SimpleBoot")){
     object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
     if( is.null( object2))
-      coefMat <- regional_mix_boot( object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE, orderSamps=FALSE)
+      coefMat <- regional_mix_boot( object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE)#, orderSamps=FALSE)
     else
       coefMat <- object2
     vcov.mat <- cov( coefMat)
@@ -2781,7 +2781,7 @@ globalVariables( package="ecomix",
     ,"all.wts"
     ,"MLstart"
     ,"my.inits"
-    ,"orderSamps"
+    # ,"orderSamps"
     ,"my.fun"
     ,"dummy"
     ,"dumbOut"
