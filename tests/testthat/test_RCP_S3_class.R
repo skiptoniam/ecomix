@@ -250,7 +250,20 @@ testthat::test_that("RCP membership",{
   my.form.spp <- ~w.1+w.2+w.3
   fm2 <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp,
                       data = simDat2, distribution =  "poisson",
-                      nRCP = 3, inits = "random2")
+                      nRCP = 3, inits = "random")
+
+  my.form.RCP <- paste( paste( paste(
+    'cbind(', paste( paste( 'spp', c(1,1:S), sep=''), collapse=','), sep=''),
+    ')',sep=''),
+    '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
+  testthat::expect_null(fm2 <- regional_mix.multifit(rcp_formula = my.form.RCP, species_formula = my.form.spp,
+                      data = simDat2, distribution =  "poisson",
+                      nRCP = 3, inits = "random"))
+  testthat::expect_null(fm2 <- regional_mix.multifit(rcp_formula = NULL, species_formula = my.form.spp,
+                                                     data = simDat2, distribution =  "poisson",
+                                                     nRCP = 3, inits = "random"))
+
+
 
   tmpboot1 <- regional_mix_boot(fm1,nboot = 10)
   regional_mix.species_membership(fm1)
@@ -259,5 +272,14 @@ testthat::test_that("RCP membership",{
   tmpboot2 <- regional_mix_boot(fm2,nboot = 10)
   regional_mix.species_membership(fm2)
   regional_mix.species_membership(fm2,tmpboot2)
+
+  AIC(fm2,k=NULL)
+  extractAIC(fm2,k=NULL)
+
+  predict(fm1)
+  plot(fm1)
+  plot(fm1,species = fm1$names$spp[1])
+  testthat::expect_error(plot(fm1,type='blah'))
+  testthat::expect_error(plot(fm1,species='blah'))
 
 })

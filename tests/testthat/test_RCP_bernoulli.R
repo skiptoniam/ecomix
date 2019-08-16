@@ -81,6 +81,9 @@ testthat::expect_warning(fm2 <- regional_mix(rcp_formula = my.form.RCP,
                    data = simDatBern2, distribution =  "bernoulli",
                    nRCP = 3, inits = "random2"))
 testthat::expect_s3_class(fm2,'regional_mix')
+plot(fm2,fitted.scale = 'logit')
+
+
 
 fmm <- regional_mix.multifit(rcp_formula = my.form.RCP,
                             species_formula = my.form.spp,
