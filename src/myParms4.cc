@@ -100,37 +100,37 @@ void myParms::getAllTaus( vector<double> &newTau, const myData &dat) const
 
 }
 
-void myParms::printParms( const myData &dat){
-	Rprintf( "ALPHA:\n");
-	for( int i=0; i<dat.nS; i++)
-		Rprintf( "%3.2f\t", Alpha[i]);
-	Rprintf( "\n");
-	Rprintf( "TAU:\n");
-	for( int g=0; g<(dat.nG-1); g++){
-		for( int i=0; i<dat.nS; i++)
-			Rprintf( "%3.2f\t", Tau[MATREF2D(g,i,(dat.nG-1))]);
-		Rprintf( "\n");
-	}
-	Rprintf( "BETA:\n");
-	for( int g=0; g<(dat.nG-1); g++){
-		for( int i=0; i<dat.np; i++)
-			Rprintf( "%3.2f\t", Beta[MATREF2D(g,i,(dat.nG-1))]);
-		Rprintf( "\n");
-	}
-	if( dat.npw > 0){
-		Rprintf( "GAMMA:\n");
-		for( int g=0; g<dat.nS; g++){
-			for( int i=0; i<dat.npw; i++)
-				Rprintf( "%3.2f\t", Gamma[MATREF2D(g,i,dat.nS)]);
-			Rprintf( "\n");
-		}
-	}
-	if( dat.isDispersion()==true){
-		Rprintf("DISPERSION:\n");
-		for( int i=0; i<dat.nS; i++)
-			Rprintf( "%3.2f\t", Disp[i]);
-		Rprintf( "\n");
-	}
+//void myParms::printParms( const myData &dat){
+	//Rprintf( "ALPHA:\n");
+	//for( int i=0; i<dat.nS; i++)
+		//Rprintf( "%3.2f\t", Alpha[i]);
+	//Rprintf( "\n");
+	//Rprintf( "TAU:\n");
+	//for( int g=0; g<(dat.nG-1); g++){
+		//for( int i=0; i<dat.nS; i++)
+			//Rprintf( "%3.2f\t", Tau[MATREF2D(g,i,(dat.nG-1))]);
+		//Rprintf( "\n");
+	//}
+	//Rprintf( "BETA:\n");
+	//for( int g=0; g<(dat.nG-1); g++){
+		//for( int i=0; i<dat.np; i++)
+			//Rprintf( "%3.2f\t", Beta[MATREF2D(g,i,(dat.nG-1))]);
+		//Rprintf( "\n");
+	//}
+	//if( dat.npw > 0){
+		//Rprintf( "GAMMA:\n");
+		//for( int g=0; g<dat.nS; g++){
+			//for( int i=0; i<dat.npw; i++)
+				//Rprintf( "%3.2f\t", Gamma[MATREF2D(g,i,dat.nS)]);
+			//Rprintf( "\n");
+		//}
+	//}
+	//if( dat.isDispersion()==true){
+		//Rprintf("DISPERSION:\n");
+		//for( int i=0; i<dat.nS; i++)
+			//Rprintf( "%3.2f\t", Disp[i]);
+		//Rprintf( "\n");
+	//}
 		
 		
-}
+//}

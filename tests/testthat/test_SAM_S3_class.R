@@ -20,6 +20,11 @@ testthat::test_that('testing species mix S3 class functions', {
                      distribution = 'bernoulli',
                      n_mixtures=3)
 
+  fm1 <- species_mix(sam_form, sp_form, model_data,
+                     distribution = 'bernoulli',
+                     n_mixtures=3,
+                     control=species_mix.control(printparams_cpp = TRUE))
+
   coef(fm1)
   print(fm1)
   testthat::expect_error(summary(fm1))
