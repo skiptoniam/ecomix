@@ -3,9 +3,9 @@
 sam_data::sam_data(){};
 sam_data::~sam_data(){};
 
-void sam_data::setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &Roffset, 
+void sam_data::setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &Roffset,
 						SEXP &Rspp_wts, SEXP &Rsite_spp_wts, SEXP &Ry_not_na,
-						SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw, 
+						SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw,
 						SEXP &RnObs, SEXP &Rdisty, SEXP &RoptiDisp, SEXP &RoptiPart){
 
 	nS = *(INTEGER( RS));
@@ -17,7 +17,7 @@ void sam_data::setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &Roffset,
 	optiDisp = *(INTEGER( RoptiDisp));
 	optiPart = *(INTEGER( RoptiPart));
 	NAnum = -999999;
-	
+
 	y = REAL( Ry);
 	X = REAL( RX);
 	W = REAL( RW);
@@ -25,7 +25,7 @@ void sam_data::setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &Roffset,
 	spp_wts = REAL( Rspp_wts); // this is for the bayesian bootstrap
 	site_spp_wts = REAL( Rsite_spp_wts); //this is for the ippm
 	y_not_na = INTEGER(Ry_not_na);
-	
+
 
 }
 
@@ -54,25 +54,25 @@ bool sam_data::isPartial() const{ // currently just check if negative binomial.
 }
 
 
-void sam_data::printVals( int printX=0, int printW=0, int printy = 0){
-	if( printy == 1)
-		for( int i=0; i<nObs; i++){
-			for( int j=0; j<nS; j++)
-				Rprintf( "%3.2f\t", y[MATREF2D(i,j,nObs)]);
-				Rprintf( "\n");
-		}
-
-	if( printX == 1)
-		for( int i=0; i<nObs; i++){
-			for( int j=0; j<nPX; j++)
-				Rprintf( "%3.2f\t", X[MATREF2D(i,j,nObs)]);
-				Rprintf( "\n");
-		}
-		
-	if( printW == 1)
-		for( int i=0; i<nObs; i++){
-			for( int j=0; j<nPW; j++)
-				Rprintf( "%3.2f\t", W[MATREF2D(i,j,nObs)]);
-				Rprintf( "\n");
-		}	
-}
+// void sam_data::printVals( int printX=0, int printW=0, int printy = 0){
+// 	if( printy == 1)
+// 		for( int i=0; i<nObs; i++){
+// 			for( int j=0; j<nS; j++)
+// 				Rprintf( "%3.2f\t", y[MATREF2D(i,j,nObs)]);
+// 				Rprintf( "\n");
+// 		}
+//
+// 	if( printX == 1)
+// 		for( int i=0; i<nObs; i++){
+// 			for( int j=0; j<nPX; j++)
+// 				Rprintf( "%3.2f\t", X[MATREF2D(i,j,nObs)]);
+// 				Rprintf( "\n");
+// 		}
+//
+// 	if( printW == 1)
+// 		for( int i=0; i<nObs; i++){
+// 			for( int j=0; j<nPW; j++)
+// 				Rprintf( "%3.2f\t", W[MATREF2D(i,j,nObs)]);
+// 				Rprintf( "\n");
+// 		}
+// }
