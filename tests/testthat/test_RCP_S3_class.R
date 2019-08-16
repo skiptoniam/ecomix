@@ -185,13 +185,14 @@ testthat::test_that('stability',{
   # testthat::expect_is(test_res,"matrix")
 
   vcov(fm2)
-  tmp <- vcov(fm2,"FiniteDifference")
-  vcov(fm2,"BayesBoot",nboot=10)
-  vcov(fm2,"SimpleBoot",nboot=10)
-  vcov(fm2,"EmpiricalInfo")
+  tmp <- vcov(fm2,method="FiniteDifference")
+  vcov(fm2,method="BayesBoot",nboot=10)
+  vcov(fm2,method="SimpleBoot",nboot=10)
+  vcov(fm2,method="EmpiricalInfo")
 
   fm2$vcov <- tmp
   regional_mix_bootParametric(fm2, nboot = 10)
+  summary(fm2)
 
 })
 
