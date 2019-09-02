@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/skiptoniam/ecomix.svg?branch=master)](https://travis-ci.org/skiptoniam/ecomix) [![Coverage Status](https://img.shields.io/codecov/c/github/skiptoniam/ecomix/master.svg)](https://codecov.io/github/skiptoniam/ecomix?branch=master)
+[![Build Status](https://travis-ci.org/skiptoniam/ecomix.svg?branch=master)](https://travis-ci.org/skiptoniam/ecomix) [![Coverage Status](https://img.shields.io/codecov/c/github/skiptoniam/ecomix/master.svg)](https://codecov.io/github/skiptoniam/ecomix?branch=master) [![Project Status: Active ??? The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
 ecomix
 ------
