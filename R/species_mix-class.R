@@ -226,12 +226,25 @@
 
   tmp$dist <- disty_cases[disty]
 
-  if(n_mixtures==1) tmp$pis <- tmp$pis
-  else tmp$pis <- additive_logistic(tmp$eta)
+  if(n_mixtures==1){
+    tmp$pis <- tmp$pis
+  }else{
+    tmp$pis <- ecomix:::additive_logistic(tmp$eta)
+  }
+
+  # get logls from parameters
+  fits <- tmp$coefs
+  first_fit <- list(y = y, x = X, W = W,
+                     spp_weights = spp_weights,
+                     site_spp_weights = site_spp_weights,
+                     offset = offset,
+                     y_is_na = y_is_na)
+  logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S,
+                                      disty, get_fitted = FALSE)
 
   #calc posterior porbs and pis.
   if(n_mixtures>1)
-    tmp$taus <- calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
+    tmp$taus <- ecomix:::get_taus(tmp$pis,logls_mus$logl_sp,G,S)
 
   tmp$pis <- colSums(tmp$taus)/S
 
@@ -1403,7 +1416,7 @@
     y_is_na <- object$titbits$y_is_na
     distribution <- object$titbits$distribution
     disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
-    disty <- get_distribution_sam(disty_cases, distribution)
+    disty <- ecomix:::get_distribution_sam(disty_cases, distribution)
     S <- object$S
     G <- object$G
     n <- object$n
@@ -1413,7 +1426,7 @@
 
     # values for optimisation.
     inits <- object$coefs
-    start_vals <- setup_inits_sam(inits, S, G, X, W, disty, return_list = TRUE)
+    start_vals <- ecomix:::setup_inits_sam(inits, S, G, X, W, disty, return_list = TRUE)
 
     # parameters to optimise
     alpha <- as.numeric(start_vals$alpha)
@@ -1442,7 +1455,7 @@
       theta.score <- -999999
     }
     scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,gamma.score,theta.score))))
-    control$conv_cpp <- as.integer(0)
+    conv <- FALSE
 
     #model quantities
     pis_out <- as.numeric(rep(NA, G))  #container for the fitted RCP model
@@ -1451,66 +1464,67 @@
     loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
 
     #remove finite for now, as we only need it for ippm
-    # if (method %in% c("FiniteDifference")) {
-    #   grad_fun <- function(x) {
-    #     #x is a vector of first order derivates to optimise using numDeriv in order to find second order derivates.
-    #     start <- 0
-    #     alpha <- x[start + seq_len(S)]
-    #     start <- start + S
-    #     beta <- x[start + seq_len((G*npx))]
-    #     start <- start + (G*npx)
-    #     eta <- x[start + seq_len(G - 1)]
-    #     start <- start + (G-1)
-    #     if(npw>0) {
-    #       gamma <- x[start + seq_len((S*npw))]
-    #       start <- start + (S*npw)
-    #     } else {
-    #       gamma <- -999999
-    #       # start <- start + 1
-    #     }
-    #     if(disty%in%c(4,6)){
-    #       theta <- x[start + seq_len(S)]
-    #     } else {
-    #       theta <- -999999
-    #     }
-    #     #c++ call to optimise the model (needs pretty good starting values)
-    #     tmp <- .Call("species_mix_cpp",
-    #                  as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(offset), as.numeric(spp_wts),
-    #                  as.numeric(as.matrix(site_spp_wts)), as.integer(as.matrix(!y_is_na)),
-    #                  # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
-    #                  as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n),
-    #                  as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),
-    #                  # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
-    #                  as.double(alpha), as.double(beta), as.double(eta), as.double(gamma), as.double(theta),
-    #                  # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
-    #                  alpha.score, beta.score, eta.score, gamma.score, theta.score, as.integer(0), scores,
-    #                  # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
-    #                  pis_out, mus, loglikeS, loglikeSG,
-    #                  # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
-    #                  as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
-    #                  as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp), as.integer(control$printparams_cpp),
-    #                  # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
-    #                  as.integer(0), as.integer(0), as.integer(1),
-    #                  # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
-    #                  PACKAGE = "ecomix")
-    #
-    #     tmp1 <- c(alpha.score, beta.score, eta.score)
-    #     if( npw > 0)#class( object$titbits$species_formula) == "formula")
-    #       tmp1 <- c(tmp1, gamma.score)
-    #     if(disty%in%c(4,6))
-    #       tmp1 <- c( tmp1, theta.score)
-    #     return(tmp1)
-    #   }
-    #   mod_coefs <- setup_inits_sam(inits, S, G, X, W, disty, return_list = FALSE)
-    #   hess <- numDeriv::jacobian(grad_fun, mod_coefs)
-    #   vcov.mat <- try( -solve(hess))
-    #   if( inherits( vcov.mat, 'try-error')){
-    #     attr(vcov.mat, "hess") <- hess
-    #     warning( "Hessian appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe Hessian is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data.")
-    #   }
-    #   else
-    #     vcov.mat <- ( vcov.mat + t(vcov.mat)) / 2 #to ensure symmetry
-    # }
+    if (method %in% c("FiniteDifference")) {
+      grad_fun <- function(x) {
+        #x is a vector of first order derivates to optimise using numDeriv in order to find second order derivates.
+        start <- 0
+        alpha <- x[start + seq_len(S)]
+        start <- start + S
+        beta <- x[start + seq_len((G*npx))]
+        start <- start + (G*npx)
+        eta <- x[start + seq_len(G - 1)]
+        start <- start + (G-1)
+        if(npw>0) {
+          gamma <- x[start + seq_len((S*npw))]
+          start <- start + (S*npw)
+        } else {
+          gamma <- -999999
+          # start <- start + 1
+        }
+        if(disty%in%c(4,6)){
+          theta <- x[start + seq_len(S)]
+        } else {
+          theta <- -999999
+        }
+        #c++ call to optimise the model (needs pretty good starting values)
+        tmp <- .Call("species_mix_cpp",
+                     as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(offset), as.numeric(spp_wts),
+                     as.numeric(as.matrix(site_spp_wts)), as.integer(as.matrix(!y_is_na)),
+                     # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
+                     as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n),
+                     as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),
+                     # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
+                     as.double(alpha), as.double(beta), as.double(eta), as.double(gamma), as.double(theta),
+                     # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
+                     alpha.score, beta.score, eta.score, gamma.score, theta.score, as.integer(0), scores,
+                     # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
+                     pis_out, mus, loglikeS, loglikeSG,
+                     # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
+                     as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
+                     as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp),  as.integer(conv), as.integer(control$printparams_cpp),
+                     # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
+                     as.integer(0), as.integer(0), as.integer(1),
+                     # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
+                     PACKAGE = "ecomix")
+
+        tmp1 <- c(alpha.score, beta.score, eta.score)
+        if( npw > 0)#class( object$titbits$species_formula) == "formula")
+          tmp1 <- c(tmp1, gamma.score)
+        if(disty%in%c(4,6))
+          tmp1 <- c( tmp1, theta.score)
+        return(tmp1)
+      }
+      # mod_coefs <- ecomix:::setup_inits_sam(inits, S, G, X, W, disty, return_list = FALSE)
+      hess <- numDeriv::jacobian(grad_fun, x=unlist(object$coefs),method="simple")
+      # hess <- ecomix:::nd2(x0=unlist( object$coefs), f=grad_fun, mc.cores=mc.cores, D.accur=D.accuracy)
+      vcov.mat <- try(-solve(hess))
+      if( inherits( vcov.mat, 'try-error')){
+        attr(vcov.mat, "hess") <- hess
+        warning( "Hessian appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe Hessian is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data.")
+      } else {
+        vcov.mat <- ( vcov.mat + t(vcov.mat)) / 2 #to ensure symmetry
+      }
+    }
     if( method %in% c( "BayesBoot","SimpleBoot")){
       object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
       if( is.null( object2))
@@ -1726,8 +1740,8 @@
     outcomes <- as.numeric(y[ids_i,ss])
   }
   out1 <- kronecker(rep( 1, G), outcomes)
-  X1 <- kronecker(rep( 1, G), X[ids_i,])
-  W1 <- kronecker(rep( 1, G), W[ids_i,])
+  X1 <- kronecker(rep( 1, G), X[ids_i,,drop=FALSE])
+  W1 <- kronecker(rep( 1, G), W[ids_i,,drop=FALSE])
   wts1 <- kronecker(rep( 1, G),
                     as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,],
                                                                 each=length(site_spp_weights[ids_i,ss]))
@@ -2214,7 +2228,7 @@ starting values;\n starting values are generated using ',control$init_method,
   taus <- data.frame(taus)
   names(taus) <- paste("grp.", 1:G, sep = "")
   names(pis) <- paste("G", 1:G, sep = ".")
-  eta <- additive_logistic(pis, TRUE)[-1]
+  eta <- additive_logistic(pis, TRUE)[-G]
 
   return(list(logl = logl_new, alpha = fits$alpha, beta = fits$beta,
               gamma = fits$gamma, theta = fits$theta,
@@ -2502,6 +2516,7 @@ starting values;\n starting values are generated using ',control$init_method,
   log_denom <- a_m + log( rowSums( tmp))
   return( exp( a_k - log_denom))
 }
+
 
 "shrink_taus" <- function( taus, max_tau=0.8, G){
   if( G==1)

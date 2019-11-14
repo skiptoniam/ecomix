@@ -76,6 +76,16 @@ testthat::test_that('species mix ippm', {
   taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
   taus <- ecomix:::shrink_taus(taus, max_tau=1/G + 0.1, G)
 
+  sv <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control=species_mix.control(em_prefit = FALSE))
+  tmp <- ecomix:::sam_optimise(y, X, W, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, start_vals = sv, control)
+  testthat::expect_length(tmp,19)
+
+  tmp <- ecomix:::species_mix.fit(y=y, X=X, W=W, G=G, S=S,
+                         spp_weights=spp_weights,
+                         site_spp_weights=site_spp_weights,
+                         offset=offset, disty=disty, y_is_na=y_is_na,
+                         control=control, inits=inits)
+
   # ## now let's try and fit the optimisation
   sp_form <- ~1
   fm1 <- species_mix(sam_form, sp_form, simulated_data,

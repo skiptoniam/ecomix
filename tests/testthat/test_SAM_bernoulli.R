@@ -80,8 +80,51 @@ testthat::test_that('species mix bernoulli', {
 
   # ## now let's try and fit the optimisation
   sv <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
-  tmp <- ecomix:::sam_optimise(y, X, W, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, start_vals = sv, control)
+  # tmp <- ecomix:::sam_optimise(y, X, W, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, start_vals = sv, control)
   testthat::expect_length(tmp,19)
+
+  ## test species mix fit
+  inits <- NULL
+  # tmp <- ecomix:::species_mix.fit(y=y, X=X, W=W, G=G, S=S,
+  #                        spp_weights=spp_weights,
+  #                        site_spp_weights=site_spp_weights,
+  #                        offset=offset, disty=disty, y_is_na=y_is_na,
+  #                        control=control, inits=inits)
+  set.seed(123)
+  tmp1 <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights,
+                                           offset, y_is_na, G, S, disty,
+                                           control=species_mix.control(em_refit = 1, em_steps = 100))
+  set.seed(123)
+  tmp2 <- ecomix:::fitmix_ECM_sam(y=y, X=X, W=W, G=G, S=S,
+                         spp_weights=spp_weights,
+                         site_spp_weights=site_spp_weights,
+                         offset=offset, disty=disty, y_is_na=y_is_na,
+                         control=species_mix.control(em_refit = 1, em_steps = 100))
+  set.seed(123)
+  tmp3 <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights,
+                                           offset, y_is_na, G, S, disty,
+                                           control = species_mix.control(em_prefit = FALSE))
+  set.seed(123)
+  tmp <- ecomix:::species_mix.fit(y=y, X=X, W=W, G=G, S=S,
+                         spp_weights=spp_weights,
+                         site_spp_weights=site_spp_weights,
+                         offset=offset, disty=disty, y_is_na=y_is_na,
+                         control=species_mix.control(print_cpp_start_vals = TRUE), inits=inits)
+  tmp1$eta
+  tmp2$eta
+  tmp3$eta
+  ecomix:::additive_logistic(tmp1$pis, TRUE)[-G]
+  ecomix:::additive_logistic(tmp2$pis, TRUE)[-G]
+  ecomix:::additive_logistic(tmp3$pis, TRUE)[-G]
+  if(n_mixtures==1) tmp$pis <- tmp$pis
+  else tmp$pis <- ecomix:::additive_logistic(tmp$eta)
+
+  #calc posterior porbs and pis.
+  if(n_mixtures>1)
+    tmp$taus <- calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
+  tmp$pis <- colSums(tmp$taus)/S
+
+
 
   sp_form <- ~1
   fm1 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'bernoulli',
