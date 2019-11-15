@@ -218,7 +218,8 @@
                                      quiet=control$quiet)
 
   # fit species mix.
-  tmp <- species_mix.fit(y=y, X=X, W=W, G=n_mixtures, S=S,
+  G <- n_mixtures
+  tmp <- species_mix.fit(y=y, X=X, W=W, G=G, S=S,
                          spp_weights=spp_weights,
                          site_spp_weights=site_spp_weights,
                          offset=offset, disty=disty, y_is_na=y_is_na,
@@ -233,20 +234,20 @@
   }
 
   # get logls from parameters
-  fits <- tmp$coefs
-  first_fit <- list(y = y, x = X, W = W,
-                     spp_weights = spp_weights,
-                     site_spp_weights = site_spp_weights,
-                     offset = offset,
-                     y_is_na = y_is_na)
-  logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S,
-                                      disty, get_fitted = FALSE)
 
   #calc posterior porbs and pis.
-  if(n_mixtures>1)
+  if(n_mixtures>1){
+    fits <- tmp$coefs
+    first_fit <- list(y = y, x = X, W = W,
+                      spp_weights = spp_weights,
+                      site_spp_weights = site_spp_weights,
+                      offset = offset,
+                      y_is_na = y_is_na)
+    logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S,
+                                        disty, get_fitted = FALSE)
     tmp$taus <- ecomix:::get_taus(tmp$pis,logls_mus$logl_sp,G,S)
-
-  tmp$pis <- colSums(tmp$taus)/S
+    tmp$pis <- colSums(tmp$taus)/S
+  }
 
   #Information criteria
   tmp <- calc_info_crit_sam(tmp)
@@ -256,6 +257,11 @@
                                  site_spp_weights, offset, y_is_na,
                                  archetype_formula, species_formula, control,
                                  disty_cases[disty], tmp$removed_species)
+
+  # remove large annoying object if titbits == FALSE
+  if(!titbits)
+    tmp <- titbit_cleanup(tmp)
+
   class(tmp) <- c("species_mix")
   return(tmp)
 }
@@ -2598,6 +2604,24 @@ starting values;\n starting values are generated using ',control$init_method,
     return(offset)
   offset <- rep(0, nrow(mf))
   return(offset)
+}
+
+#this will remove large annoying data stuctures for big models.
+
+"titbit_cleanup" <- function(samfit){
+
+  if(!is.null(samfit$mus))
+    samfit$mus <- NULL
+  if(!is.null(samfit$scores))
+    samfit$scores <- NULL
+  if(!is.null(samfit$loglikeSG))
+    samfit$loglikeSG <- NULL
+  if(!is.null(samfit$loglikeS))
+    samfit$loglikeS <- NULL
+  if(!is.null(samfit$loglikeSG))
+    samfit$loglikeSG <- NULL
+
+  return(samfit)
 }
 
 "get_titbits_sam" <- function(titbits, y, X, W, spp_weights, site_spp_weights, offset,
