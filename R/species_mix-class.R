@@ -597,6 +597,19 @@
 
 "species_mix.bootstrap" <-function (object, nboot=1000, type="BayesBoot",
                                     mc.cores=1, quiet=FALSE){
+
+  if(object$dist=='ippm'){
+    message('Using parameteric bootstrap to distribution of parameters for IPPM model\n')
+    if(is.null(object$vcov)){
+      message('Variance-Covariance matrix is missing, will attempt to calculate now, this will be slow...')
+      object$vcov <- vcov(object)
+    }
+
+    ## this will do a parameteric bootstrap and return a matrix boots*params
+    boot.estis <- mvtnorm::rmvnorm(nboot,unlist(object$coefs),object$vcov)
+
+  } else {
+
   if (nboot < 1)
     stop( "No Boostrap samples requested.  Please set nboot to something > 1.")
   if( ! type %in% c("BayesBoot","SimpleBoot"))
@@ -659,6 +672,7 @@
   if( flag){
     tmp <- surveillance::plapply(seq_len(nboot), my.fun, .parallel = mc.cores)
     boot.estis <- do.call( "rbind", tmp)
+  }
   }
   object$titbits$control$quiet <- tmpOldQuiet
   class( boot.estis) <- "species_mix.bootstrap"
