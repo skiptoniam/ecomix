@@ -1,4 +1,4 @@
-testthat::test_that('testing partial species mix bernoulli ', {
+testthat::test_that('testing partial species mix negative binomial ', {
 
   library(ecomix)
   set.seed(42)
@@ -15,7 +15,7 @@ testthat::test_that('testing partial species mix bernoulli ', {
   simulated_data <- species_mix.simulate(sam_form, spp_form, dat = dat,
                                          beta = beta, gamma = gamma,
                                          n_mixtures = 4,
-                                         distribution = "bernoulli")
+                                         distribution = "negative_binomial")
 
   archetype_formula <- sam_form
   species_formula <- spp_form
@@ -32,7 +32,7 @@ testthat::test_that('testing partial species mix bernoulli ', {
   S <- ncol(y)
   spp_weights <- rep(1,S)
   site_spp_weights <- matrix(1,nrow(y),S)
-  disty <- 1
+  disty <- 4
   y_is_na <- is.na(y)
   inits <- NULL
   control <- species_mix.control(quiet = FALSE)
@@ -106,36 +106,36 @@ testthat::test_that('testing partial species mix bernoulli ', {
 
   tmp <- ecomix:::sam_optimise(y,X,W,offset,spp_weights,site_spp_weights,y_is_na,
                                S,G,disty,start_vals,
-                               control=ecomix:::species_mix.control(optimise_cpp = 0,derivOnly_cpp = 1))
+                               control=ecomix:::species_mix.control(optimise_cpp = 0,derivOnly_cpp = 1,getscores_cpp = 1))
 
   tmp <- ecomix:::sam_optimise(y,X,W,offset,spp_weights,site_spp_weights,y_is_na,
                                S,G,disty,start_vals,
                                control=ecomix:::species_mix.control())
 
   test_part_sam <- species_mix(sam_form,spp_form,simulated_data,4,
-                               distribution = 'bernoulli',
+                               distribution = 'negative_binomial',
                                control = species_mix.control(em_steps = 5))
 
-  test_part_sam <- species_mix(sam_form,spp_form,simulated_data,4,
-                               distribution = 'bernoulli',
-                               control = species_mix.control(em_steps = 2,
-                                                             getscores_cpp = TRUE))
+  # test_part_sam <- species_mix(sam_form,spp_form,simulated_data,4,
+                               # distribution = 'negative_binomial',
+                               # control = species_mix.control(em_steps = 2,
+                                                             # getscores_cpp = TRUE))
   fm <- species_mix(sam_form,spp_form,simulated_data,4,
-                               distribution = 'bernoulli',
-                               standardise = TRUE,
-                               # inits = unlist(coef(test_part_sam)),
-                               control = species_mix.control(em_steps = 2,
-                                                             getscores_cpp = TRUE))
-
-  fm <- species_mix(sam_form,spp_form,simulated_data,4,
-                    distribution = 'bernoulli',
+                    distribution = 'negative_binomial',
                     # standardise = TRUE,
-                    inits = unlist(test_part_sam$coefs),
-                    control = species_mix.control(em_steps = 2,
+                    # inits = unlist(coef(test_part_sam)),
+                    control = species_mix.control(em_steps = 5,
                                                   getscores_cpp = TRUE))
+
+  fm2 <- species_mix(sam_form,spp_form,simulated_data,4,
+                    distribution = 'negative_binomial',
+                    # standardise = TRUE,
+                    inits = unlist(fm$coefs),
+                    control = species_mix.control(em_prefit = FALSE))
 
 
   test_part_sam$vcov <- vcov(test_part_sam,method = "BayesBoot", nboot=10)
+
   summary(test_part_sam)
 
   boots <- species_mix.bootstrap(test_part_sam, nboot = 10)
