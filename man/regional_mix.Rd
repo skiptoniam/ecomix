@@ -21,15 +21,35 @@
 \alias{vcov.regional_mix}
 \title{regional_mix objects}
 \usage{
-regional_mix(rcp_formula = NULL, species_formula = NULL, data,
-  nRCP = 3, distribution = "bernoulli", offset = NULL,
-  weights = NULL, control = list(), inits = "random2",
-  titbits = TRUE, power = 1.6)
+regional_mix(
+  rcp_formula = NULL,
+  species_formula = NULL,
+  data,
+  nRCP = 3,
+  distribution = "bernoulli",
+  offset = NULL,
+  weights = NULL,
+  control = list(),
+  inits = "random2",
+  titbits = TRUE,
+  power = 1.6
+)
 
-regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
-  nRCP = 3, distribution = "bernoulli", offset = NULL,
-  weights = NULL, control = list(), inits = "random2",
-  titbits = FALSE, power = 1.6, nstart = 10, mc.cores = 1)
+regional_mix.multifit(
+  rcp_formula = NULL,
+  species_formula = NULL,
+  data,
+  nRCP = 3,
+  distribution = "bernoulli",
+  offset = NULL,
+  weights = NULL,
+  control = list(),
+  inits = "random2",
+  titbits = FALSE,
+  power = 1.6,
+  nstart = 10,
+  mc.cores = 1
+)
 
 \method{AIC}{regional_mix}(object, ..., k = 2)
 
@@ -39,42 +59,89 @@ regional_mix.multifit(rcp_formula = NULL, species_formula = NULL, data,
 
 \method{extractAIC}{regional_mix}(fit, scale = 1, k = 2, ...)
 
-\method{plot}{regional_mix}(x, ..., type = "RQR", nsim = 100,
-  alpha.conf = c(0.9, 0.95, 0.99), quiet = FALSE,
-  species = "AllSpecies", fitted.scale = "response")
+\method{plot}{regional_mix}(
+  x,
+  ...,
+  type = "RQR",
+  nsim = 100,
+  alpha.conf = c(0.9, 0.95, 0.99),
+  quiet = FALSE,
+  species = "AllSpecies",
+  fitted.scale = "response"
+)
 
-\method{plot}{regional_mix_stab}(x, y, minWidth = 1, ncuts = 111,
-  ylimmo = NULL, ...)
+\method{plot}{regional_mix_stab}(x, y, minWidth = 1, ncuts = 111, ylimmo = NULL, ...)
 
-\method{predict}{regional_mix}(object, object2 = NULL, ...,
-  newdata = NULL, nboot = 0, alpha = 0.95, mc.cores = 1)
+\method{predict}{regional_mix}(
+  object,
+  object2 = NULL,
+  ...,
+  newdata = NULL,
+  nboot = 0,
+  alpha = 0.95,
+  mc.cores = 1
+)
 
 \method{print}{regional_mix}(x, ...)
 
-\method{residuals}{regional_mix}(object, ..., type = "RQR",
-  quiet = FALSE, mc.cores = 1)
+\method{residuals}{regional_mix}(object, ..., type = "RQR", quiet = FALSE, mc.cores = 1)
 
-regional_mix.simulate(nRCP = 3, S = 20, n = 200, p.x = 3,
-  p.w = 0, alpha = NULL, tau = NULL, beta = NULL, gamma = NULL,
-  logDisps = NULL, powers = NULL, X = NULL, W = NULL,
-  offset = NULL, distribution = "bernoulli")
+regional_mix.simulate(
+  nRCP = 3,
+  S = 20,
+  n = 200,
+  p.x = 3,
+  p.w = 0,
+  alpha = NULL,
+  tau = NULL,
+  beta = NULL,
+  gamma = NULL,
+  logDisps = NULL,
+  powers = NULL,
+  X = NULL,
+  W = NULL,
+  offset = NULL,
+  distribution = "bernoulli"
+)
 
-regional_mix.species_membership(object, object2 = NULL, CI = c(0.025,
-  0.975), ...)
+regional_mix.species_membership(
+  object,
+  object2 = NULL,
+  CI = c(0.025, 0.975),
+  ...
+)
 
-regional_mix_boot(object, nboot = 1000, type = "BayesBoot",
-  mc.cores = 1, quiet = FALSE, MLstart = TRUE)
+regional_mix_boot(
+  object,
+  nboot = 1000,
+  type = "BayesBoot",
+  mc.cores = 1,
+  quiet = FALSE,
+  MLstart = TRUE
+)
 
 regional_mix_bootParametric(fm, mf, nboot)
 
-stability.regional_mix(model, oosSizeRange = NULL, times = model$n,
-  mc.cores = 1, quiet = FALSE, doPlot = TRUE)
+stability.regional_mix(
+  model,
+  oosSizeRange = NULL,
+  times = model$n,
+  mc.cores = 1,
+  quiet = FALSE,
+  doPlot = TRUE
+)
 
 \method{summary}{regional_mix}(object, ...)
 
-\method{vcov}{regional_mix}(object, ..., object2 = NULL,
-  method = "FiniteDifference", nboot = 1000, mc.cores = 1,
-  D.accuracy = 2)
+\method{vcov}{regional_mix}(
+  object,
+  ...,
+  object2 = NULL,
+  method = "FiniteDifference",
+  nboot = 1000,
+  mc.cores = 1,
+  D.accuracy = 2
+)
 }
 \arguments{
 \item{rcp_formula}{an object of class "formula" (or an object that can be coerced to that class). The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the region of common profile (rcp) probabilities on covariates.}
@@ -83,11 +150,11 @@ stability.regional_mix(model, oosSizeRange = NULL, times = model$n,
 
 \item{data}{a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containng the covariate data for each site. Names of columns must match that given in \code{rcp_formula} and \code{species_formula}.}
 
-\item{nRCP}{The number of mixing components (groups) to fit.}
+\item{nRCP}{Integer giving the number of RCPs}
 
-\item{distribution}{The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial" and "gaussian" distributions are possible and applicable to specific types of data.}
+\item{distribution}{Text string. Specifies the distribution of the species data. Current options are "bernoulli" (default), "poisson", "negative_binomial", "tweedie" and "gaussian.}
 
-\item{offset}{a numeric vector of length nrow( data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the unobserved RCP type. Note that offsets cannot be included as part of the rcp_formula or species_formula arguments ??? only through this argument.}
+\item{offset}{Numeric vector of size n. Specifies any offset to be included into the species level model.}
 
 \item{weights}{a numeric vector of length nrow( data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1.}
 
@@ -131,12 +198,6 @@ stability.regional_mix(model, oosSizeRange = NULL, times = model$n,
 
 \item{CI}{The confidence intervals to report the range of
 values form bootstrap}
-
-\item{nRCP}{Integer giving the number of RCPs}
-
-\item{offset}{Numeric vector of size n. Specifies any offset to be included into the species level model.}
-
-\item{distribution}{Text string. Specifies the distribution of the species data. Current options are "bernoulli" (default), "poisson", "negative_binomial", "tweedie" and "gaussian.}
 
 \item{boot_object}{A RCP model bootstrap object}
 }

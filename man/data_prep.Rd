@@ -5,8 +5,12 @@
 \alias{make_mixture_data}
 \title{data_preperation-class}
 \usage{
-table_to_species_data(observation_data, site_id = "site_id",
-  species_id = "species_id", measurement_id = NULL)
+table_to_species_data(
+  observation_data,
+  site_id = "site_id",
+  species_id = "species_id",
+  measurement_id = NULL
+)
 
 make_mixture_data(species_data, covariate_data)
 }

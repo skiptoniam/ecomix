@@ -3,7 +3,6 @@
 \docType{package}
 \name{ecomix}
 \alias{ecomix}
-\alias{ecomix-package}
 \title{package file}
 \description{
 ecomix is a package for implementing species archetype models (SAM) and region of

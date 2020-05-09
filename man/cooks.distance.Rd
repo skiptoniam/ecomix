@@ -4,8 +4,14 @@
 \alias{cooks.distance.regional_mix}
 \title{cooks.distance}
 \usage{
-\method{cooks.distance}{regional_mix}(model, ..., oosSize = 1,
-  times = model$n, mc.cores = 1, quiet = FALSE)
+\method{cooks.distance}{regional_mix}(
+  model,
+  ...,
+  oosSize = 1,
+  times = model$n,
+  mc.cores = 1,
+  quiet = FALSE
+)
 }
 \arguments{
 \item{model}{A regional_mix object whose fit you want to assess}

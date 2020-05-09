@@ -4,9 +4,18 @@
 \alias{species_mix.simulate}
 \title{Simulate species mix data for model fitting.}
 \usage{
-species_mix.simulate(archetype_formula, species_formula, dat,
-  offset = NULL, n_mixtures = 3, alpha = NULL, beta = NULL,
-  gamma = NULL, theta = NULL, distribution = "bernoulli")
+species_mix.simulate(
+  archetype_formula,
+  species_formula,
+  dat,
+  offset = NULL,
+  n_mixtures = 3,
+  alpha = NULL,
+  beta = NULL,
+  gamma = NULL,
+  theta = NULL,
+  distribution = "bernoulli"
+)
 }
 \arguments{
 \item{archetype_formula}{formula to simulate species_mix data, needs to have

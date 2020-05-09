@@ -16,21 +16,45 @@
 \alias{species_mix_boot_parametric}
 \title{species_mix objects}
 \usage{
-species_mix(archetype_formula = NULL,
-  species_formula = stats::as.formula(~1), data, n_mixtures = 3,
-  distribution = "bernoulli", offset = NULL, weights = NULL,
-  bb_weights = NULL, control = NULL, inits = NULL,
-  standardise = FALSE, titbits = TRUE)
+species_mix(
+  archetype_formula = NULL,
+  species_formula = stats::as.formula(~1),
+  data,
+  n_mixtures = 3,
+  distribution = "bernoulli",
+  offset = NULL,
+  weights = NULL,
+  bb_weights = NULL,
+  control = NULL,
+  inits = NULL,
+  standardise = FALSE,
+  titbits = TRUE
+)
 
-species_mix.multifit(archetype_formula = NULL,
-  species_formula = stats::as.formula(~1), data, n_mixtures = 3,
-  nstart = 10, mc.cores = 1, distribution = "bernoulli",
-  offset = NULL, weights = NULL, bb_weights = NULL,
-  control = species_mix.control(), inits = NULL, standardise = TRUE,
-  titbits = TRUE)
+species_mix.multifit(
+  archetype_formula = NULL,
+  species_formula = stats::as.formula(~1),
+  data,
+  n_mixtures = 3,
+  nstart = 10,
+  mc.cores = 1,
+  distribution = "bernoulli",
+  offset = NULL,
+  weights = NULL,
+  bb_weights = NULL,
+  control = species_mix.control(),
+  inits = NULL,
+  standardise = TRUE,
+  titbits = TRUE
+)
 
-species_mix.bootstrap(object, nboot = 1000, type = "BayesBoot",
-  mc.cores = 1, quiet = FALSE)
+species_mix.bootstrap(
+  object,
+  nboot = 1000,
+  type = "BayesBoot",
+  mc.cores = 1,
+  quiet = FALSE
+)
 
 \method{AIC}{species_mix}(object, ..., k = 2)
 
@@ -38,11 +62,19 @@ species_mix.bootstrap(object, nboot = 1000, type = "BayesBoot",
 
 \method{coef}{species_mix}(object, ...)
 
-\method{plot}{species_mix}(x, ..., quiet = FALSE,
-  species = "AllSpecies", fitted.scale = "response")
+\method{plot}{species_mix}(x, ..., quiet = FALSE, species = "AllSpecies", fitted.scale = "response")
 
-\method{predict}{species_mix}(object, object2 = NULL, newdata = NULL,
-  offset = NULL, nboot = 0, alpha = 0.95, mc.cores = 1, ...)
+\method{predict}{species_mix}(
+  object,
+  object2 = NULL,
+  newdata = NULL,
+  offset = NULL,
+  nboot = 0,
+  alpha = 0.95,
+  mc.cores = 1,
+  prediction_type = "archetype",
+  ...
+)
 
 \method{print}{species_mix}(x, ...)
 
@@ -50,8 +82,15 @@ species_mix.bootstrap(object, nboot = 1000, type = "BayesBoot",
 
 \method{summary}{species_mix}(object, ...)
 
-\method{vcov}{species_mix}(object, ..., object2 = NULL,
-  method = "BayesBoot", nboot = 10, mc.cores = 1, D.accuracy = 2)
+\method{vcov}{species_mix}(
+  object,
+  ...,
+  object2 = NULL,
+  method = "BayesBoot",
+  nboot = 10,
+  mc.cores = 1,
+  D.accuracy = 2
+)
 
 species_mix_boot_parametric(fm, mf, nboot)
 }
@@ -87,9 +126,7 @@ the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
 "negative_binomial" and "gaussian" distributions are possible and applicable
 to specific types of data.}
 
-\item{offset}{a numeric vector of length nrow(data) (n sites) that is
-included into the model as an offset. It is included into the conditional
-part of the model where conditioning is performed on the SAM.}
+\item{offset}{an offset for prediction}
 
 \item{weights}{a numeric vector of length ncol(Y) (n species) that is used
 as weights in the log-likelihood calculations. If NULL (default) then all
@@ -130,11 +167,19 @@ setting titbits=TRUE may give users problems with memory.}
 
 \item{nstart}{for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
-\item{mc.cores}{for species_mix.multifit only. The number of cores to spread the re-fitting over.}
+\item{mc.cores}{number of cores to use in prediction. default is 1.}
 
 \item{object}{is a matrix model returned from the species_mix model.}
 
+\item{nboot}{Number of bootstraps (or simulations if using IPPM) to run if no object2 is provided.}
+
+\item{object2}{is a species mix bootstrap object.}
+
 \item{newdata}{a matrix of new observations for prediction.}
+
+\item{alpha}{confidence level. default is 0.95}
+
+\item{prediction_type}{Do you want to produce 'archetype' or 'species' level predictions. default is 'archetype'.}
 }
 \description{
 Fits a finite mixture model to identify species archetype

@@ -4,8 +4,20 @@
 \alias{species_mix.fit}
 \title{species_mix.fit}
 \usage{
-species_mix.fit(y, X, W, G, S, spp_weights, site_spp_weights, offset,
-  y_is_na, disty, control, inits = NULL)
+species_mix.fit(
+  y,
+  X,
+  W,
+  G,
+  S,
+  spp_weights,
+  site_spp_weights,
+  offset,
+  y_is_na,
+  disty,
+  control,
+  inits = NULL
+)
 }
 \arguments{
 \item{y}{is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.}

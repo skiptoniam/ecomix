@@ -5,8 +5,7 @@
 \alias{residuals.species_mix}
 \title{Estimate residuals for a species_mix object}
 \usage{
-\method{residuals}{species_mix}(object, ..., type = "RQR",
-  control = species_mix.control())
+\method{residuals}{species_mix}(object, ..., type = "RQR", control = species_mix.control())
 }
 \arguments{
 \item{object}{A returned species_mix model object.}

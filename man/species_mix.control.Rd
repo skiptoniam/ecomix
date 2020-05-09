@@ -4,17 +4,34 @@
 \alias{species_mix.control}
 \title{Controls for species_mix model.}
 \usage{
-species_mix.control(quiet = FALSE, cores = 1,
-  init_method = "random2", init_sd = 1,
-  minimum_sites_occurrence = 10, em_prefit = TRUE, em_steps = 5,
-  em_refit = 2, em_reltol = reltol_fun, em_maxtau = 0.8,
-  theta_range = c(0.001, 10), pen_param = 1.25, update_kappa = c(1,
-  0.5, 1), print_cpp_start_vals = FALSE, maxit_cpp = 1000,
-  trace_cpp = 1, nreport_cpp = 10,
+species_mix.control(
+  quiet = FALSE,
+  cores = 1,
+  init_method = "random2",
+  init_sd = 1,
+  minimum_sites_occurrence = 10,
+  em_prefit = TRUE,
+  em_steps = 5,
+  em_refit = 2,
+  em_reltol = reltol_fun,
+  em_maxtau = 0.8,
+  theta_range = c(0.001, 10),
+  pen_param = 1.25,
+  update_kappa = c(1, 0.5, 1),
+  print_cpp_start_vals = FALSE,
+  maxit_cpp = 1000,
+  trace_cpp = 1,
+  nreport_cpp = 10,
   abstol_cpp = sqrt(.Machine$double.eps),
-  reltol_cpp = sqrt(.Machine$double.eps), conv_cpp = 1,
-  printparams_cpp = 0, optimise_cpp = 1, loglOnly_cpp = 0,
-  derivOnly_cpp = 0, getscores_cpp = 0, ...)
+  reltol_cpp = sqrt(.Machine$double.eps),
+  conv_cpp = 1,
+  printparams_cpp = 0,
+  optimise_cpp = 1,
+  loglOnly_cpp = 0,
+  derivOnly_cpp = 0,
+  getscores_cpp = 0,
+  ...
+)
 }
 \arguments{
 \item{quiet}{Should any reporting be performed? Default is FALSE, for reporting.}
