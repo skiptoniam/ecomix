@@ -1,7 +1,7 @@
 Package: ecomix
 Type: Package
 Title: Fits finite mixture models to ecological data.
-Version: 0.0.1
+Version: 0.0.2
 Authors@R: c(person("Skipton", "Woolley", email = "skip.woolley@csiro.au", role = c("aut", "cre")),
              person("Scott", "Foster", email = "scott.foster@csiro.au", role = c("aut")),
              person("Piers", "Dunstan", email = "Piers.Dunstan@csiro.au",  role = c("aut")))
@@ -25,7 +25,8 @@ Imports:
     numDeriv,
     surveillance,
     progress,
-    kmed
+    kmed,
+    mvtnorm
 Suggests:
     knitr,
     rmarkdown,
@@ -36,5 +37,5 @@ Depends:
 License: MIT
 SystemRequirements: C++11
 NeedsCompilation: yes
-RoxygenNote: 6.1.1
+RoxygenNote: 7.1.0
 VignetteBuilder: knitr
