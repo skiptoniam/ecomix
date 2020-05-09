@@ -607,6 +607,7 @@
 
     ## this will do a parameteric bootstrap and return a matrix boots*params
     boot.estis <- mvtnorm::rmvnorm(nboot,unlist(object$coefs),object$vcov)
+    tmpOldQuiet <- object$titbits$control$quiet
 
   } else {
 
@@ -1113,7 +1114,13 @@
 
 #'@rdname species_mix
 #'@param object is a matrix model returned from the species_mix model.
+#'@param object2 is a species mix bootstrap object.
 #'@param newdata a matrix of new observations for prediction.
+#'@param offset an offset for prediction
+#'@param nboot Number of bootstraps (or simulations if using IPPM) to run if no object2 is provided.
+#'@param alpha confidence level. default is 0.95
+#'@param mc.cores number of cores to use in prediction. default is 1.
+#'@param prediction_type Do you want to produce 'archetype' or 'species' level predictions. default is 'archetype'.
 #'@export
 #'@examples
 #'\dontrun{
@@ -1122,7 +1129,7 @@
 
 "predict.species_mix" <- function (object, object2 = NULL, newdata = NULL,
                                    offset = NULL, nboot = 0, alpha = 0.95,
-                                   mc.cores = 1, ...){
+                                   mc.cores = 1, prediction_type='archetype', ...){
   if (is.null(newdata)) {
     X <- object$titbits$X
     W <- object$titbits$W
@@ -1180,8 +1187,8 @@
   alphaIn <- alphaIn[-1]
   betaIn <- c(NA, as.numeric(object$coef$beta))
   betaIn <- betaIn[-1]
-  etaIn <- c(NA, as.numeric(object$coef$eta))
-  etaIn <- etaIn[-1]
+  # etaIn <- c(NA, as.numeric(object$coef$eta))
+  # etaIn <- etaIn[-1]
   if (npw>0) {
     gammaIn <- c(NA, as.numeric(object$coef$gamma))
     gammaIn <- gammaIn[-1]
@@ -1207,30 +1214,49 @@
     if (any(segments <= 1)) {
       nboot <- 0
       bootSampsToUse <- 1
-      tmp <- sam_internal_pred_groups(alpha = object$coefs$alpha,
+      tmp <- switch (prediction_type,
+                     archetype = sam_internal_pred_groups(alpha = object$coefs$alpha,
                                beta = object$coefs$beta,
                                gamma = object$coefs$gamma,
                                taus = taus, G = G, S = S, X = X, W = W,
-                               offset = offset, family = object$dist)
+                               offset = offset, family = object$dist),
+                     species = sam_internal_pred_species(alpha = object$coefs$alpha,
+                                                        beta = object$coefs$beta,
+                                                        gamma = object$coefs$gamma,
+                                                        taus = taus, G = G, S = S, X = X, W = W,
+                                                        offset = offset, family = object$dist))
     } else {
       nboot <- segments[seg]
       bootSampsToUse <- (sum( segments[1:seg])-segments[seg]+1):sum(segments[1:seg])
 
-      tmp <- lapply(bootSampsToUse,function(ii)sam_internal_pred_groups(alpha = alphaBoot[ii,],
+      # add in species level preds.
+      tmp <- lapply(bootSampsToUse,function(ii)switch (prediction_type,
+                                                       archetype = sam_internal_pred_groups(alpha = alphaBoot[ii,],
                                                                  beta = matrix(betaBoot[ii,],G,npx),
                                                                  gamma = matrix(gammaBoot[ii,],S,npw),
                                                                  taus = taus, G = G, S = S, X = X, W = W,
-                                                                 offset = offset, family = object$dist))
+                                                                 offset = offset, family = object$dist),
+                                                       species = sam_internal_pred_species(alpha = alphaBoot[ii,],
+                                                                                           beta = matrix(betaBoot[ii,],G,npx),
+                                                                                           gamma = matrix(gammaBoot[ii,],S,npw),
+                                                                                           taus = taus, G = G, S = S, X = X, W = W,
+                                                                                           offset = offset, family = object$dist)))
 
     }
 
     if (nboot == 0) {
       ret_grp <- tmp
-      colnames(ret_grp) <- object$names$SAMs
+      if(prediction_type%in%"archetype")colnames(ret_grp) <- object$names$SAMs
+      if(prediction_type%in%"species")colnames(ret_grp) <- object$names$spp
       return(ret_grp)
     }
 
-    bootPreds <- matrix(do.call("cbind",lapply(tmp,c)), nrow = nrow(X) * G,  ncol = nboot)
+    if(prediction_type%in%"archetype"){
+      bootPreds <- matrix(do.call("cbind",lapply(tmp,c)), nrow = nrow(X) * G,  ncol = nboot)
+    }
+    if(prediction_type%in%"species"){
+      bootPreds <- matrix(do.call("cbind",lapply(tmp,c)), nrow = nrow(X) * S,  ncol = nboot)
+    }
     return(bootPreds)
   }
 
@@ -1251,24 +1277,37 @@
     bootPreds <- do.call("cbind", tmp)
     bPreds <- list()
     row.exp <- rowMeans(bootPreds)
-    tmp <- matrix(row.exp, nrow = nrow(X), ncol = G)
+    if(prediction_type%in%"archetype") tmp <- matrix(row.exp, nrow = nrow(X), ncol = G)
+    if(prediction_type%in%"species") tmp <- matrix(row.exp, nrow = nrow(X), ncol = S)
     bPreds$fit <- tmp
     tmp.grp <- sweep(bootPreds, 1, row.exp, "-")
     tmp.grp <- tmp.grp^2
     tmp.grp <- sqrt(rowSums(tmp.grp)/(nboot - 1))
-    tmp.grp <- matrix(tmp.grp, nrow = nrow(X), ncol = G)
+    if(prediction_type%in%"archetype") tmp.grp <- matrix(tmp.grp, nrow = nrow(X), ncol = G)
+    if(prediction_type%in%"species") tmp.grp <- matrix(tmp.grp, nrow = nrow(X), ncol = S)
     bPreds$ses <- tmp.grp
-    colnames(bPreds$fit) <- colnames(bPreds$ses) <- object$names$SAMs
+    if(prediction_type%in%"archetype") colnames(bPreds$fit) <- colnames(bPreds$ses) <- object$names$SAMs
+    if(prediction_type%in%"species") colnames(bPreds$fit) <- colnames(bPreds$ses) <- object$names$spp
     tmp.fun <- function(x) return(quantile(bootPreds[x, ],
                                            probs = c(0, alpha) + (1 - alpha)/2,
                                            na.rm = TRUE))
     tmp1 <- parallel::mclapply(seq_len(nrow(bootPreds)), tmp.fun,
                                mc.cores = mc.cores)
     tmp1 <- do.call("rbind", tmp1)
-    tmp1 <- array(tmp1, c(nrow(X), G, 2), dimnames = list(NULL,
+    if(prediction_type%in%"archetype"){
+      tmp1 <- array(tmp1, c(nrow(X), G, 2), dimnames = list(NULL,
                                                           NULL, NULL))
-    bPreds$cis <- tmp1[, 1:G, ]
-    dimnames(bPreds$cis) <- list(NULL, nam, c("lower", "upper"))
+      bPreds$cis <- tmp1[, 1:G, ]
+      dimnames(bPreds$cis) <- list(NULL, object$names$SAMs, c("lower", "upper"))
+    }
+    if(prediction_type%in%"species"){
+      tmp1 <- array(tmp1, c(nrow(X), S, 2), dimnames = list(NULL,
+                                                            NULL, NULL))
+      bPreds$cis <- tmp1[, 1:S, ]
+      dimnames(bPreds$cis) <- list(NULL, object$names$spp, c("lower", "upper"))
+    }
+
+    # dimnames(bPreds$cis) <- list(NULL, nam, c("lower", "upper"))
     ret <- list(ptPreds = ptPreds, bootPreds = bPreds$fit,
                 bootSEs = bPreds$ses, bootCIs = bPreds$cis)
 
@@ -1277,10 +1316,18 @@
     tmp1 <- parallel::mclapply(seq_len(nrow(bootPreds)), tmp.fun.grp,
                                mc.cores = mc.cores)
     tmp1 <- do.call("rbind", tmp1)
-    tmp1 <- array(tmp1, c(nrow(X), G, 2), dimnames = list(NULL,
+    if(prediction_type%in%"archetype"){
+      tmp1 <- array(tmp1, c(nrow(X), G, 2), dimnames = list(NULL,
                                                           NULL, NULL))
     bPreds$fit_cis <- tmp1[, 1:G, ]
     dimnames(bPreds$fit_cis) <- list(NULL, object$names$SAMs, c("lower", "upper"))
+    }
+    if(prediction_type%in%"species"){
+      tmp1 <- array(tmp1, c(nrow(X), S, 2), dimnames = list(NULL,
+                                                            NULL, NULL))
+      bPreds$fit_cis <- tmp1[, 1:S, ]
+      dimnames(bPreds$fit_cis) <- list(NULL, object$names$spp, c("lower", "upper"))
+    }
     ret <- list(ptPreds = ptPreds, bootPreds = bPreds$fit,
                 bootSEs = bPreds$ses, bootCIs = bPreds$cis)
   }
@@ -1339,9 +1386,11 @@
 #' see Woolley et al, in prep).
 
 "residuals.species_mix" <- function( object, ..., type="RQR", control=species_mix.control()) {
-    if( ! type %in% c("RQR"))
+    if( ! type %in% c("RQR","deviance","pearson"))
       stop( "Unknown type of residual requested.\n Only deviance and RQR (for randomised quantile residuals) are implemented\n")
-
+    if(type=="pearson"){
+      stop("pearson residuals not implemented yet.")
+    }
     if( type=="RQR"){
       resids <- matrix( NA, nrow=object$n, ncol=object$S)
       switch( object$dist,
@@ -1516,7 +1565,7 @@
                      # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
                      as.double(alpha), as.double(beta), as.double(eta), as.double(gamma), as.double(theta),
                      # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
-                     alpha.score, beta.score, eta.score, gamma.score, theta.score, as.integer(0), scores,
+                     alpha.score, beta.score, eta.score, gamma.score, theta.score, as.integer(getscores), scores,
                      # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
                      pis_out, mus, loglikeS, loglikeSG,
                      # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
@@ -1534,9 +1583,7 @@
           tmp1 <- c( tmp1, theta.score)
         return(tmp1)
       }
-      # mod_coefs <- ecomix:::setup_inits_sam(inits, S, G, X, W, disty, return_list = FALSE)
       hess <- numDeriv::jacobian(grad_fun, x=unlist(object$coefs),method="simple")
-      # hess <- ecomix:::nd2(x0=unlist( object$coefs), f=grad_fun, mc.cores=mc.cores, D.accur=D.accuracy)
       vcov.mat <- try(-solve(hess))
       if( inherits( vcov.mat, 'try-error')){
         attr(vcov.mat, "hess") <- hess
@@ -1618,7 +1665,6 @@
   # pen.max <- theta.range[2]
   # pen.min <- theta.range[1]
   # shape1 <- shape2 <- 1.25
-
   # if(disty==4)  sppLogls <- sppLogls + dbeta( (theta-pen.min) / (pen.max-pen.min), shape1, shape2, log=TRUE)
 
   return(sppLogls)
@@ -1979,6 +2025,8 @@ starting values;\n starting values are generated using ',control$init_method,
   am <- apply( ak, 1, max)
   ak <- exp( ak-am)
   sppLogls <- am + log( rowSums( ak))
+  # theta.range=c(0.001, 10); pen.parm=1.25
+  # if(disty==4)  sppLogls <- sppLogls  + dbeta((exp(-fits$theta[ss])-theta.range[1]) / (theta.range[2]- theta.range[1]), pen.parm, pen.parm, log=TRUE)
   logl <- sum( sppLogls)
   return(logl)
 }
@@ -2378,7 +2426,6 @@ starting values;\n starting values are generated using ',control$init_method,
   # parameters to optimise
   alpha <- as.numeric(start_vals$alpha)
   beta <- as.numeric(start_vals$beta)
-  gamma <- as.numeric(start_vals$gamma)
   eta <- as.numeric(start_vals$eta)
   gamma <- as.numeric(start_vals$gamma)
   theta <- as.numeric(start_vals$theta)
@@ -2387,12 +2434,12 @@ starting values;\n starting values are generated using ',control$init_method,
   getscores <- 1
   alpha.score <- as.numeric(rep(NA, length(alpha)))
   beta.score <- as.numeric(rep(NA, length(beta)))
+  eta.score <- as.numeric(rep(NA, length(eta)))
   if( npw > 0){
     gamma.score <- as.numeric(matrix( NA, nrow=S, ncol=ncol(W)))
   } else {
     gamma.score <- -999999
   }
-  eta.score <- as.numeric(rep(NA, length(eta)))
   if( npw > 0){
     control$optiPart <- as.integer(1)
     gamma.score <- as.numeric(rep(NA, length(gamma)))
@@ -2423,14 +2470,14 @@ starting values;\n starting values are generated using ',control$init_method,
                                                         as.integer(n),
                                                         as.double(alpha),
                                                         as.double(beta),
-                                                        as.double(gamma),
                                                         as.double(eta),
+                                                        as.double(gamma),
                                                         as.double(theta))
 
   #c++ call to optimise the model (needs pretty good starting values)
   tmp <- .Call("species_mix_cpp",
-               as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(offset), as.numeric(spp_weights),
-               as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
+               as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(offset),
+               as.numeric(spp_weights), as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
                # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
                as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n),
                as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),
@@ -2741,8 +2788,8 @@ starting values;\n starting values are generated using ',control$init_method,
   cat(n,"sites.\n")
   cat("starting species intercepts:\n",alpha,"\n")
   cat("starting archetype parameters:\n",beta,"\n")
-  cat("starting species parameters:\n",gamma,"\n")
   cat("starting archetype membership:\n",additive_logistic(eta),"\n")
+  cat("starting species parameters:\n",gamma,"\n")
   cat("starting species specific dispersion parameters:\n",theta,"\n")
 }
 
