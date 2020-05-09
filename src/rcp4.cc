@@ -266,6 +266,14 @@ double logBernoulli( const double &y, const double &mu)
 	return( tmp);
 }
 
+//double logBinomial( const double &y, const double &mu, const int &N){
+	
+	//double tmp;
+	//tmp = log(N-mu);
+	//return(tmp);	
+	
+	//}
+
 double logPoisson( const double &y, const double &mu)
 {
 	double tmp;

@@ -73,10 +73,10 @@ extern "C" {
 		for( int j=0; j<(all.data.nS*all.data.nPW);j++) REAL(Rgamma_hat)[j] = all.params.Gamma[j];
 			}else{
 		for( int j=0; j<(all.data.nS*all.data.nPW);j++) REAL(Rgamma_hat)[j] = -999999;
-	}		
+	}
 	  //SEXP Rgamma_hat = PROTECT(allocVector(REALSXP, 1));
-	  //REAL(Rgamma_hat)[0] = -99999;  	
-	//}	 
+	  //REAL(Rgamma_hat)[0] = -99999;
+	//}
 	UNPROTECT(1);
 	SEXP Rtheta_hat =PROTECT(allocVector(REALSXP, all.data.nS));
 	for( int s=0; s<(all.data.nS);s++) REAL(Rtheta_hat)[s] = all.params.Theta[s];
@@ -96,6 +96,7 @@ extern "C" {
 
   }
 }
+
 
 
 double SAM_optimise( sam_cpp_all_classes &all){
@@ -172,7 +173,8 @@ double sam_cpp_mix_loglike(const sam_data &dat, const sam_params &params, sam_fi
 void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data &dat){
 
 	vector<double> lps(dat.nG*dat.nS, 0);	//the nG x nS intercepts
-	double lp=0.0;	//the lin pred for the gth group, sth species and ith site
+	double lp;	//the lin pred for the gth group, sth species and ith site
+	// double lp_sppEta=0.0;   // split the linear predictor into two components.
 
 	//calcualte the G*S*n fits
 	for( int g=0; g<dat.nG; g++){
@@ -190,7 +192,7 @@ void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data
 				if(dat.nPW>0){
 					for( int l=0;l<dat.nPW; l++){
 							lp += params.Gamma[MATREF2D(s,l,(dat.nS))] * dat.W[MATREF2D(i,l,dat.nObs)];
-							}	
+							}
 				}
 					if(dat.disty==1){//bernoulli
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_logit(lp);
@@ -462,7 +464,7 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
    	calc_dlog_dgamma(fits.dlogdgamma, eta_mu_derivs, dat);
 	calc_gamma_deriv(gammaDerivs, fits.dlogdgamma, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
 	//}
-	
+
 	//derivate w.r.t thetas
 	//std::cout << dat.isDispersion() << '\n';
 	if( dat.isDispersion()){
@@ -470,7 +472,7 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 		calc_dlog_dtheta(fits.dlogdtheta, fits.allMus, dat, params);
 		calc_theta_deriv(thetaDerivs, fits.dlogdtheta, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
     }
-    
+
 	//transform pis back to additative logistic scale to keep pi_dervis happy.
 	additive_logistic_sam(parpi,0,dat.nG);
 
@@ -602,7 +604,7 @@ void calc_dlog_dgamma(vector<double> &dldg, vector<double> const &mu_eta_derivs,
 					//tmp_lpd = log_ippm_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.st_sp_wts[MATREF2D(i,s,dat.nObs)]);
 						for(int j=0; j<dat.nPW; j++){
 							dldg.at(MATREF3D(g,j,s,dat.nG,dat.nPW)) += mu_eta_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * dat.W[MATREF2D(i,j,dat.nObs)];
-							//std::cout << dldb.at(MATREF3D(g,j,s,dat.nG,dat.nP)) << '\n';
+							//std::cout << dldg.at(MATREF3D(g,j,s,dat.nG,dat.nPW)) << '\n';
 							}
 				}
 			}
