@@ -39,31 +39,39 @@ control <- species_mix.control(quiet = FALSE)
 offset <- rep(0,nrow(X))
 
 
+compile("/home/woo457/Dropbox/ecomix/devsrc/tmbsam.cpp")
+
+dyn.load(dynlib("/home/woo457/Dropbox/ecomix/devsrc/tmbsam"))
+
 #Define data object which is given to TMB---
-data = list(Y = y, # Response
+data = list(Y = as.matrix(y), # Response
             X = X, # Design matrix for archetypes
             W = W, # Design matrix for species
             offy = offset, #offy is the offset indexed by sites (i)
             wts = site_spp_weights, #wts is a matrix indexed by sites, species (i,j).
             nObs= nrow(X),# nsites.
             nG = G,       # n groups
-            nS = S,       # n species
-            npx = ncol(X),# n coefs X
-            npw = ncol(W))# n coefs W
+            nS = S,
+            thetaRange = as.numeric(c(0.001,10)))# n coefs W
 
 #-------------------------------------------
 
 #Define parameter object given to TMB-------
-par = list(
-  beta0 = 0,  # Intercept
-  beta = rep(0,sum(Sdims)),  # Spline coefficients
-  log_lambda = rep(rep(0,length(Sdims))), #Log spline penalization coefficients
-  log_sigma = 0
-)
+par = list(beta=matrix(runif(G*ncol(X)),G,ncol(X)),
+           gamma=matrix(runif(S*ncol(W)),S,ncol(W)),
+           pi = rep(0,G),
+           theta=rep(0,S))
+#
+#
+#
+#   beta = rep(0,sum(Sdims)),  # Spline coefficients
+#   log_lambda = rep(rep(0,length(Sdims))), #Log spline penalization coefficients
+#   log_sigma = 0
+# )
 #-------------------------------------------
 
 #Fit model----------------------------------
-obj = MakeADFun(data = data, parameters = par,random="beta",DLL = "pSplines")
+obj = MakeADFun(data = data, parameters = par, random="beta", DLL = "tmbsam")
 
 
 
