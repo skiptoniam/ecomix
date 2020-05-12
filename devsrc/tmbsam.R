@@ -39,6 +39,7 @@ control <- species_mix.control(quiet = FALSE)
 offset <- rep(0,nrow(X))
 
 
+library(TMB)
 compile("/home/woo457/Dropbox/ecomix/devsrc/tmbsam.cpp")
 
 dyn.load(dynlib("/home/woo457/Dropbox/ecomix/devsrc/tmbsam"))
