@@ -48,6 +48,9 @@ offy <- offset
 sites_spp_weights <- matrix(1,nrow(X),S)
 spp_wts <- rep(1,S)
 
+df <- cbind(y=Y[,1],W,X)
+gam(y~s(x0)+s(x1),family = "nb")
+
 colnames(Y) <- paste0("spp",seq_len(S))
 archetype_formula <- as.formula(paste0('cbind(',paste(paste0('spp',1:S),collapse = ','),")~s(x0)+s(x1)+s(x2)+s(x3)"))
 species_formula <- as.formula(~1)
@@ -143,8 +146,10 @@ apply_gam_sam_inits <- function(ss, y, X, W, site_spp_weights, offset, y_is_na, 
   # which family to use?
   if(disty == 1)
     fam <- "binomial" #glmnet
-  if(disty == 2 | disty == 3 | disty == 4)
+  if(disty == 2 | disty == 3 | disty == 5)
     fam <- "poisson"
+  if(disty == 4)
+    fam <- "nb"
   if(disty == 6)
     fam <- "gaussian"
 
