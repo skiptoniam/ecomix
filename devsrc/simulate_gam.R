@@ -3,6 +3,7 @@ set.seed(20)
 n <- 100
 S <- 20
 beta <- 4
+G <- 4
 
 alpha <- runif(S,-7,-4) #intercept
 f0 <- function(x) 2 * sin(pi * x)
@@ -48,8 +49,8 @@ offy <- offset
 sites_spp_weights <- matrix(1,nrow(X),S)
 spp_wts <- rep(1,S)
 
-df <- cbind(y=Y[,1],W,X)
-gam(y~s(x0)+s(x1),family = "nb")
+df <- as.data.frame(cbind(y=Y[,1],W,X))
+fm<- gam(y~s(x0)+s(x1),data = df,family = "nb")
 
 colnames(Y) <- paste0("spp",seq_len(S))
 archetype_formula <- as.formula(paste0('cbind(',paste(paste0('spp',1:S),collapse = ','),")~s(x0)+s(x1)+s(x2)+s(x3)"))
@@ -73,6 +74,7 @@ makeMatrices <- function(forms, dat) {
   ## whack in a dummy response variable
   dat$y <- dat[,1]
   gam_sam <- gam(sam.form, data = dat, method = "REML", fit = TRUE)
+  # G <- gam(sam.form, data = dat, method = "REML", fit = FALSE)
   res$gam_sam <- gam_sam
   # accumulate smoothing matrix, block diagonal
   if(length(gam_sam$smooth) > 0){
@@ -141,11 +143,27 @@ makeMatrices <- function(forms, dat) {
   return(res)
 }
 
-apply_gam_sam_inits <- function(ss, y, X, W, site_spp_weights, offset, y_is_na, disty){
+mm <- makeMatrices(forms, dat)
+
+y <- mm$Y
+X <- mm$A_sam
+
+# y, X, W
+# replace with mm from gam
+disty <- 4
+
+apply_gam_sam_inits <- function(ss, mm, site_spp_weights, offset, y_is_na, disty){
+
+  # mm - this is the model matrix with all the include data.
+  y <- mm$Y
+
+  if(is.null(mm$X_sam)) X <- mm$A_sam
+  else X <- cbind(mm$Xs_sam,mm$A_sam)
+
 
   # which family to use?
   if(disty == 1)
-    fam <- "binomial" #glmnet
+    fam <- "binomial" #gam
   if(disty == 2 | disty == 3 | disty == 5)
     fam <- "poisson"
   if(disty == 4)
@@ -173,9 +191,9 @@ apply_gam_sam_inits <- function(ss, y, X, W, site_spp_weights, offset, y_is_na, 
 
 
   if( disty %in% c(1,2,3,4,6)){
-    lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
+    # lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
 
-    ft_sp <- try(glmnet::glmnet(y=outcomes, x=as.matrix(df),
+    ft_sp <- try(mgcv::gam.fit3(y=outcomes, x=as.matrix(df),
                                 family=fam, offset=offset[ids_i],
                                 weights=as.numeric(site_spp_weights[ids_i,ss]),
                                 alpha=0,
