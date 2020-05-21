@@ -526,7 +526,7 @@ initiate_fit_sam_gam <- function(y, X, W, spp_weights, site_spp_weights, offset,
 
 
 
-"get_initial_values_sam" <- function(y, X, W, spp_weights, site_spp_weights,
+get_initial_values_samgam <- function(y, X, W, spp_weights, site_spp_weights,
                                      offset, y_is_na, G, S, disty, control){
 
   # get intial model fits
