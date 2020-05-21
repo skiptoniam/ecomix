@@ -59,7 +59,7 @@ offset <- rep(0,dim(X)[1])
 link <- make.link("log")
 for (ss in seq_len(S)) {
   gg <- ceiling(stats::runif(1) * G)
-  eta_spp <- alpha[ss]
+  eta_spp <- alpha[ss] # could addin species specific gammas here (rather than just an intercept)
   eta_mix <- f[,gg]
   eta <- eta_spp + eta_mix + offset
   fitted[, ss] <- link$linkinv(eta*scale)
