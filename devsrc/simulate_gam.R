@@ -32,7 +32,7 @@ library(nlme)
 x <- 0:(n-1)/(n-1)
 # f <- 0.2*x^11*(10*(1-x))^6+10*(10*x)^3*(1-x)^10
 ## produce scaled covariance matrix for AR1 errors...
-V <- corMatrix(Initialize(corAR1(.6),data.frame(x=x)))
+V <- corMatrix(Initialize(corAR1(.5),data.frame(x=x)))
 Cv <- chol(V)  # t(Cv)%*%Cv=V
 ## Simulate AR1 errors ...
 e <- t(Cv)%*%rnorm(n,0,sig) # so cov(e) = V * sig^2
@@ -153,9 +153,6 @@ initiate_fit_sam_gam <- function(y, X, W, spp_weights, site_spp_weights, offset,
   fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_gamsam_inits, forms,
                                        Y, W, X, y_is_na, offy, wts, disty,
                                        .parallel = control$cores, .verbose = FALSE)
-  fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W,
-                                       site_spp_weights, offset, y_is_na, disty,
-                                       .parallel = control$cores, .verbose = FALSE)
 
   alpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
   if(ncol(X)==1){
@@ -170,27 +167,6 @@ initiate_fit_sam_gam <- function(y, X, W, spp_weights, site_spp_weights, offset,
     gamma <- unlist(lapply(fm_sp_mods, `[[`, 3))
   }
   theta <- unlist(lapply(fm_sp_mods, `[[`, 4))
-
-  species_to_remove <- which(apply(beta, 1, function(x) all(is.na(x))))
-
-  if(length(species_to_remove)>0){
-    #update fits
-    alpha <- alpha[-species_to_remove]
-    beta <- beta[-species_to_remove,,drop=FALSE]
-    theta <- theta[-species_to_remove]
-
-    # update y, y_is_na and weights
-    updated_y <- update_species_data_structure(y, y_is_na, spp_weights, site_spp_weights, species_to_remove)
-    y <- updated_y[[1]]
-    y_is_na <- updated_y[[2]]
-    site_spp_weights <- updated_y[[3]]
-  } else {
-    species_to_remove <- NA
-  }
-
-  prev_min_sites <- control$minimum_sites_occurrence
-  sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
-  if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,,drop=FALSE]
 
   if(G==1) control$init_method <- 'kmeans'
 
