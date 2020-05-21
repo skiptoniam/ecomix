@@ -4,6 +4,7 @@ n <- 100
 S <- 20
 beta <- 4
 G <- 4
+sig <- 2
 
 alpha <- runif(S,-7,-4) #intercept
 f0 <- function(x) 2 * sin(pi * x)
@@ -25,6 +26,32 @@ fb3 <- f1(x1) + f2(x2)
 fb4 <- f1(x1) + f3(x3)
 scale <- 1
 
+library(nlme)
+## simulate truth
+# set.seed(1);n<-400;sig<-2
+x <- 0:(n-1)/(n-1)
+# f <- 0.2*x^11*(10*(1-x))^6+10*(10*x)^3*(1-x)^10
+## produce scaled covariance matrix for AR1 errors...
+V <- corMatrix(Initialize(corAR1(.6),data.frame(x=x)))
+Cv <- chol(V)  # t(Cv)%*%Cv=V
+## Simulate AR1 errors ...
+e <- t(Cv)%*%rnorm(n,0,sig) # so cov(e) = V * sig^2
+## Observe truth + AR1 errors
+y1 <- f0(x) + f1(x) + f2(x) + f3(x) + e
+y2 <- f1(x) + e
+y3 <- f2(x) + e
+y4 <- f3(x) + e
+
+par(mfrow=c(2,2))
+plot(y1)
+lines(f0(x) + f1(x) + f2(x) + f3(x))
+plot(y2)
+lines(f1(x))
+plot(y3)
+lines(f2(x))
+plot(y4)
+lines(f3(x))
+
 f <- cbind(fb1,fb2,fb3,fb4)
 fitted <- matrix(0, dim(X)[1], S)
 group <- rep(0, S)
@@ -43,14 +70,15 @@ outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp(theta),
 pis <- tapply(group, group, length)/S
 
 Y <- outcomes
+y_is_na <- is.na(Y)
 X <- X
 W <- matrix(1,nrow(X),1)
 offy <- offset
 sites_spp_weights <- matrix(1,nrow(X),S)
 spp_wts <- rep(1,S)
 
-df <- as.data.frame(cbind(y=Y[,1],W,X))
-fm<- gam(y~s(x0)+s(x1),data = df,family = "nb")
+df <- as.data.frame(cbind(Y,W,X))
+# fm<- gam(y~s(x0)+s(x1),data = df,family = "nb")
 
 colnames(Y) <- paste0("spp",seq_len(S))
 archetype_formula <- as.formula(paste0('cbind(',paste(paste0('spp',1:S),collapse = ','),")~s(x0)+s(x1)+s(x2)+s(x3)"))
@@ -59,6 +87,179 @@ species_formula <- as.formula(~1)
 forms <- list('archetype_formula'=archetype_formula,'species_formula'=species_formula)
 dat <- data.frame(Y,W,X)
 mm <- makeMatrices(forms,dat)
+
+merge.formula <- function(forms, ss, disty, ...){
+
+  # get character strings of the names for the responses - should only be in the sam form.
+  lhs1 <- forms[[1]][[2]]
+
+  # get character strings of the right hand sides
+  rhs1 <- strsplit(deparse(forms[[1]][[3]]), " \\+ ")[[1]]
+  rhs2 <- strsplit(deparse(forms[[2]][[2]]), " \\+ ")[[1]]
+
+  # create the merged rhs and lhs in character string form
+  rhs <- c(rhs1, rhs2)
+  lhs <- gsub("\\(","",lhs1)[-1]
+
+  # reformulate function
+  if(disty == 3 ) out <- reformulate(rhs, paste0(lhs[[ss]],"/wts"))
+  else out <- reformulate(rhs, lhs[[ss]])
+
+  environment(out) <- parent.frame()
+
+  return(out)
+}
+
+
+apply_gamsam_inits <- function(ss, forms, Y, W, X, y_is_na, offy, wts, disty){
+
+  # which family to use?
+  if(disty == 1)
+    fam <- binomial() #gam
+  if(disty == 2 | disty == 3 | disty == 5)
+    fam <- poisson()
+  if(disty == 4)
+    fam <- nb()
+  if(disty == 6)
+    fam <- gaussian()
+
+  ## a bit of f#&king around with formulas, this will probably break.
+  tmpform <- merge.formula(forms,ss,disty)
+  df <- data.frame(Y,W,X)[!y_is_na[,ss],]  # remove NA sites if needs - ippm specific.
+  fm <- mgcv::gam(tmpform, data =df, weights = wts, offset = offy, family=fam)
+
+  ##estimate the starting dispersion parameter.
+  my_coefs <- fm$coefficients
+
+  # species intercpets
+  alpha <- fm$coefficients[1]
+  names(alpha) <- paste0("alpha.",colnames(Y[,ss,drop=FALSE]))
+  # mixture coefs
+  ## this could break if similar named coefs.
+  beta <- my_coefs[grep(paste0(colnames(X),collapse = "|"),names(my_coefs))]
+  # species coefs apart from intercept
+  if(ncol(W)>1) gamma <-  my_coefs[grep(paste0(colnames(W),collapse = "|"),names(my_coefs))] else gamma <- -99999
+  if(disty%in%4) theta <- fm$family$getTheta(TRUE)
+  return(list(alpha = alpha, beta = beta, gamma = gamma, theta = theta))
+
+}
+
+## this appears to work :)
+allspmods <- lapply(seq_len(S), initial_values_gamsam, forms, Y, W, X, y_is_na, offy, wts, disty)
+
+initiate_fit_sam_gam <- function(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
+
+
+  fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_gamsam_inits, forms,
+                                       Y, W, X, y_is_na, offy, wts, disty,
+                                       .parallel = control$cores, .verbose = FALSE)
+  fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W,
+                                       site_spp_weights, offset, y_is_na, disty,
+                                       .parallel = control$cores, .verbose = FALSE)
+
+  alpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
+  if(ncol(X)==1){
+    beta <- do.call(rbind,lapply(fm_sp_mods, `[[`, 2))[,-1,drop=FALSE]
+  } else {
+    beta <- do.call(rbind,lapply(fm_sp_mods, `[[`, 2))
+  }
+  if(ncol(X)==0) beta <- rep(-999999,G)
+  if(ncol(W)>1){
+    gamma <- do.call(rbind,lapply(fm_sp_mods, `[[`, 3))
+  } else {
+    gamma <- unlist(lapply(fm_sp_mods, `[[`, 3))
+  }
+  theta <- unlist(lapply(fm_sp_mods, `[[`, 4))
+
+  species_to_remove <- which(apply(beta, 1, function(x) all(is.na(x))))
+
+  if(length(species_to_remove)>0){
+    #update fits
+    alpha <- alpha[-species_to_remove]
+    beta <- beta[-species_to_remove,,drop=FALSE]
+    theta <- theta[-species_to_remove]
+
+    # update y, y_is_na and weights
+    updated_y <- update_species_data_structure(y, y_is_na, spp_weights, site_spp_weights, species_to_remove)
+    y <- updated_y[[1]]
+    y_is_na <- updated_y[[2]]
+    site_spp_weights <- updated_y[[3]]
+  } else {
+    species_to_remove <- NA
+  }
+
+  prev_min_sites <- control$minimum_sites_occurrence
+  sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
+  if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,,drop=FALSE]
+
+  if(G==1) control$init_method <- 'kmeans'
+
+  if(control$init_method=='kmeans'){
+    # if(!control$quiet)message( "Initial groups by K-means clustering\n")
+    fmmvnorm <- stats::kmeans(beta, centers=G, nstart=100)
+    tmp_grp <- fmmvnorm$cluster
+    grp_coefs <- apply(beta, 2, function(x) tapply(x, tmp_grp, mean))
+    grp_coefs <- matrix(grp_coefs,nrow=G)
+  }
+
+  if(control$init_method=='kmed'){
+    # message( "Initial groups parameter estimates by K-medoids\n")
+    mrwdist <- kmed::distNumeric(beta, beta, method = "mrw")
+    fmmvnorm <- kmed::fastkmed(mrwdist, ncluster = G, iterate = 100)
+    tmp_grp <- fmmvnorm$cluster
+    grp_coefs <- beta[fmmvnorm$medoid,,drop=FALSE]
+    grp_coefs <- matrix(grp_coefs,nrow=G)
+  }
+
+  if(control$init_method=='random2'){
+    fmmvnorm <- stats::kmeans(beta, centers=G, nstart=100)
+    tmp_grp <- fmmvnorm$cluster
+    grp_coefs <- apply(beta, 2, function(x) tapply(x, tmp_grp, mean))
+    grp_coefs <- matrix(grp_coefs,nrow=G)
+
+    random_coefs <- sam_random_inits(alpha, grp_coefs, gamma, theta, S, G, X, W, disty, mult=0.3)
+    alpha <- random_coefs[[1]]
+    grp_coefs <- random_coefs[[2]]
+    gamma <- random_coefs[[3]]
+    if(disty%in%c(4,6))theta <- random_coefs[[4]]
+  }
+
+  if(ncol(X[,,drop=FALSE])==1){ names(grp_coefs)[2] <- names(X[,,drop=FALSE])[2]
+  } else {
+    colnames(grp_coefs) <- colnames(X[,,drop=FALSE])
+  }
+
+  #get taus as starting values
+  if(G==1){
+    taus <- matrix(1,nrow=ncol(y), ncol = G)
+  } else {
+    taus <- matrix(0,nrow=ncol(y), ncol= G)
+    if(length(sel_omit_spp)>0){
+      for(j in 1:length((1:S)[-sel_omit_spp]))
+        taus[(1:S)[-sel_omit_spp][j],fmmvnorm$cluster[j]] <- 1
+      taus[sel_omit_spp,] <- matrix(runif(length(sel_omit_spp)*G),length(sel_omit_spp), G)
+    } else {
+      for(j in seq_len(S))taus[j,fmmvnorm$cluster[j]] <- 1
+    }
+  }
+
+  taus <- taus/rowSums(taus)
+  taus <- shrink_taus(taus,G=G)
+  pis <- colMeans(taus)
+
+  results <- list()
+  results$grps <- tmp_grp
+  results$alpha <- alpha
+  results$beta <- grp_coefs
+  results$gamma <- gamma
+  results$theta <- theta
+  results$taus <- taus
+  results$pis <- pis
+  results$species_to_remove <- species_to_remove
+
+  return(results)
+}
+
 
 makeMatrices <- function(forms, dat) {
 
@@ -69,12 +270,14 @@ makeMatrices <- function(forms, dat) {
   res$Y <- Y
   # remove intercept from archetype formula and whack in a dummy y
   sam.form <- update.formula(forms[["archetype_formula"]], y ~ -1 + .)
+  # add intercept if missing and a dummy y
   spp.form <- update.formula(forms[["species_formula"]],y ~ 1 +. )
 
   ## whack in a dummy response variable
   dat$y <- dat[,1]
   gam_sam <- gam(sam.form, data = dat, method = "REML", fit = TRUE)
   # G <- gam(sam.form, data = dat, method = "REML", fit = FALSE)
+  # gam.fit(G=G)
   res$gam_sam <- gam_sam
   # accumulate smoothing matrix, block diagonal
   if(length(gam_sam$smooth) > 0){
@@ -157,19 +360,27 @@ apply_gam_sam_inits <- function(ss, mm, site_spp_weights, offset, y_is_na, disty
   # mm - this is the model matrix with all the include data.
   y <- mm$Y
 
-  if(is.null(mm$X_sam)) X <- mm$A_sam
-  else X <- cbind(mm$Xs_sam,mm$A_sam)
+  if(is.null(mm$Xs_sam)){
+    X <- mm$A_sam
+  } else {
+    X <- cbind(mm$Xs_sam,mm$A_sam)
+  }
 
+  if(is.null(mm$Xs_spp)){
+    W <- mm$A_spp
+  } else {
+    W <- cbind(mm$Xs_spp,mm$A_spp)
+  }
 
   # which family to use?
   if(disty == 1)
-    fam <- "binomial" #gam
+    fam <- binomial() #gam
   if(disty == 2 | disty == 3 | disty == 5)
-    fam <- "poisson"
+    fam <- poisson()
   if(disty == 4)
-    fam <- "nb"
+    fam <- nb()
   if(disty == 6)
-    fam <- "gaussian"
+    fam <- gaussian()
 
   ids_i <- !y_is_na[,ss]
 
@@ -178,36 +389,18 @@ apply_gam_sam_inits <- function(ss, mm, site_spp_weights, offset, y_is_na, disty
   } else {
     outcomes <- as.matrix(y[ids_i,ss])
   }
+#
+#   if(ncol(X)==1){
+#     X<-cbind(1,X[ids_i,,drop=FALSE])
+#   }
 
-  if(ncol(X)==1){
-    X<-cbind(1,X[ids_i,,drop=FALSE])
-  }
-
-  if(ncol(W) > 1){
-    df <- cbind(X[ids_i,,drop=FALSE],W[ids_i,-1,drop=FALSE])
-  } else {
-    df <- X[ids_i,,drop=FALSE]
-  }
+  df <- cbind(W,X)
 
 
   if( disty %in% c(1,2,3,4,6)){
     # lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
 
-    ft_sp <- try(mgcv::gam.fit3(y=outcomes, x=as.matrix(df),
-                                family=fam, offset=offset[ids_i],
-                                weights=as.numeric(site_spp_weights[ids_i,ss]),
-                                alpha=0,
-                                lambda=lambda.seq,
-                                standardize=FALSE,
-                                intercept=TRUE), silent=FALSE)
-    locat.s <- 1/1
-    my.coefs <- glmnet::coef.glmnet(ft_sp, s=locat.s)
-    if( any( is.na( my.coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
-      my.coefs <- glmnet::coef.glmnet(ft_sp, s=lambda.seq)
-      lastID <- apply( my.coefs, 2, function(x) !any( is.na( x)))
-      lastID <- tail( (seq_along( lastID))[lastID], 1)
-      my.coefs <- my.coefs[,lastID]
-    }
+    ft_sp <- try(mgcv::gam.fit3(y=data.frame(outcomes), x=data.frame(df), sp = mm$gam_sam$sp, mm$S_sam, family = fam))
     if (any(class(ft_sp) %in% 'try-error')){
       my_coefs <- rep(NA, ncol(X[ids_i,]))
       names(my_coefs) <- colnames(cbind(X[ids_i,,drop=FALSE],W[ids_i,,drop=FALSE]))
