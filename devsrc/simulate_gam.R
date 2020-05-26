@@ -99,8 +99,6 @@ getGamMM <- function(fm,forms){
   return(list(gamW=mmW,gamX=mmX))
 }
 
-model.matrix(fm,exclude=c("s(x1)","s(x2)"))
-
 merge.formula <- function(forms, ss, disty, ...){
 
   # get character strings of the names for the responses - should only be in the sam form.
@@ -140,8 +138,8 @@ apply_gamsam_inits <- function(ss, forms, Y, W, X, y_is_na, offy, wts, disty){
   tmpform <- merge.formula(forms,ss,disty)
   df <- data.frame(Y,W,X)[!y_is_na[,ss],]  # remove NA sites if needs - ippm specific.
   fm <- mgcv::gam(tmpform, data =df, weights = wts, offset = offy, family=fam)
-  print(head(model.matrix(fm)))
-  cat("\n\n")
+  # print(head(model.matrix(fm)))
+  # cat("\n\n")
 
   ##estimate the starting dispersion parameter.
   my_coefs <- fm$coefficients
@@ -155,7 +153,7 @@ apply_gamsam_inits <- function(ss, forms, Y, W, X, y_is_na, offy, wts, disty){
   # species coefs apart from intercept
   if(ncol(W)>1) gamma <-  my_coefs[grep(paste0(colnames(W),collapse = "|"),names(my_coefs))] else gamma <- -99999
   if(disty%in%4) theta <- fm$family$getTheta(TRUE)
-  return(list(alpha = alpha, beta = beta, gamma = gamma, theta = theta, mm_gam=model.matrix(fm)))
+  return(list(alpha = alpha, beta = beta, gamma = gamma, theta = theta, mm_gam=getGamMM(fm,forms)))
 
 }
 
@@ -243,7 +241,8 @@ initiate_fit_sam_gam <- function(forms, y, X, W, spp_weights, site_spp_weights, 
   results$theta <- theta
   results$taus <- taus
   results$pis <- pis
-  results$gam_mm <- fm_sp_mods[[1]]$mm_gam
+  results$gamW <- fm_sp_mods[[1]]$mm_gam$gamW
+  results$gamX <- fm_sp_mods[[1]]$mm_gam$gamX
 
   return(results)
 }
@@ -263,7 +262,9 @@ get_initial_values_samgam <- function(forms, y, X, W, spp_weights, site_spp_weig
                beta=starting_values$beta,
                gamma=starting_values$gamma,
                theta=starting_values$theta)
-  first_fit <- list(y = y, x = X, W = W, gamWX = starting_values$gam_mm, spp_weights = spp_weights,
+  first_fit <- list(y = y, x = X, W = W, gamX = starting_values$gamX,
+                    gamW = starting_values$gamW,
+                    spp_weights = spp_weights,
                     site_spp_weights = site_spp_weights, offset = offset,
                     y_is_na = y_is_na,
                     removed_species = starting_values$species_to_remove)
