@@ -370,6 +370,95 @@ get_logls_samgam <- function(first_fit, fits, spp_weights, G, S, disty, get_fitt
     return(out.list)
 }
 
+
+get_incomplete_logl_samgam <- function(eta, first_fit, fits,
+                                      spp_weights, G, S, disty){
+
+  pis <- ecomix:::additive_logistic(eta)
+  if(is.null(spp_weights))spp_weights <- rep(1,S) #for bayesian boostrap.
+
+  #bernoulli
+  if(disty==1){
+    logl_sp <- matrix(NA, nrow=S, ncol=G)
+    link <- stats::make.link(link = "logit")
+    for(ss in 1:S){
+      for(gg in 1:G){
+        eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
+        logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, link$linkinv(eta),log = TRUE))
+      }
+      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
+    }
+  }
+  #poisson
+  if(disty==2){
+    logl_sp <- matrix(NA, nrow=S, ncol=G)
+    link <- stats::make.link(link = "log")
+    for(ss in 1:S){
+      for(gg in 1:G){
+        eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1,drop=FALSE]) %*% fits$gamma[ss,]
+        logl_sp[ss,gg] <- sum(dpois(first_fit$y[,ss], lambda = link$linkinv(eta),log = TRUE))
+      }
+      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
+    }
+  }
+  #ippm
+  if(disty==3){
+    link <- stats::make.link(link = "log")
+    logl_sp <- matrix(NA, nrow=S, ncol=G)
+    for(ss in 1:S){
+      sp_idx<-!first_fit$y_is_na[,ss]
+      for(gg in 1:G){
+        #eta is the same as log_lambda (linear predictor)
+        eta <- fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
+        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[sp_idx,-1,drop=FALSE]) %*% fits$gamma[ss,]
+        logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$site_spp_weights[sp_idx,ss] %*% exp(eta)
+      }
+    }
+  }
+
+  #negative binomial
+  if(disty==4){
+    logl_sp <- matrix(NA, nrow=S, ncol=G)
+    for(ss in 1:S){
+      for(gg in 1:G){
+        #eta is the same as log_lambda (linear predictor)
+        etaMix <- as.matrix(first_fit$gamX) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$gamW)==1) etaSpp <- as.matrix(first_fit$gamW) %*% fits$alpha[ss]
+        else etaSpp <- s.matrix(first_fit$gamW) %*% c(fits$alpha[ss],fits$gamma[ss,])
+        eta <- etaMix + etaSpp
+        if(get_fitted) fitted_values[gg,,ss] <- exp(eta)
+        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss],mu=exp(eta),size=fits$theta[ss],log=TRUE))
+      }
+      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
+    }
+  }
+  # gaussian
+  if(disty==6){
+    logl_sp <- matrix(NA, nrow=S, ncol=G)
+    for(ss in 1:S){
+      for(gg in 1:G){
+        #eta is the same as log_lambda (linear predictor)
+        eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1,drop=FALSE]) %*% fits$gamma[ss,]
+        logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=eta,sd=exp(fits$theta[ss]),log=TRUE))
+      }
+      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
+    }
+  }
+
+  ak <- logl_sp + matrix(rep(log( pis), each=S), nrow=S, ncol=G)
+  am <- apply( ak, 1, max)
+  ak <- exp( ak-am)
+  sppLogls <- am + log( rowSums( ak))
+  # theta.range=c(0.001, 10); pen.parm=1.25
+  # if(disty==4)  sppLogls <- sppLogls  + dbeta((exp(-fits$theta[ss])-theta.range[1]) / (theta.range[2]- theta.range[1]), pen.parm, pen.parm, log=TRUE)
+  logl <- sum( sppLogls)
+  return(logl)
+}
+
+
 apply_glm_spp_coefs_samgam <- function(ss, y, X, W, G, taus,
                                        site_spp_weights,
                                        offset, y_is_na, disty, fits){
@@ -583,7 +672,7 @@ fitmix_ECM_sam_gam <- function(forms, y, X, W, spp_weights, site_spp_weights, of
     if (any(pis < sqrt(.Machine$double.eps))) {
       if(restart_ite==1){
         cat('Pis have gone to zero - restarting with new initialisation \n')
-        starting_values <- get_initial_values_sam(y = y, X = X, W = W,
+        starting_values <- get_initial_values_samgam(forms = forms, y = y, X = X, W = W,
                                                   spp_weights = spp_weights,
                                                   site_spp_weights = site_spp_weights,
                                                   offset = offset, y_is_na = y_is_na,
@@ -656,7 +745,7 @@ fitmix_ECM_sam_gam <- function(forms, y, X, W, spp_weights, site_spp_weights, of
                                           .verbose = FALSE)
         theta <- unlist(lapply(fm_theta, `[[`, 1))
         # theta <- log(1/theta)
-        fits$theta <- update_coefs(fits$theta,theta,control$update_kappa[2])
+        fits$theta <- ecomix:::update_coefs(fits$theta,theta,control$update_kappa[2])
       }
 
       if(disty%in%c(6)){
@@ -668,18 +757,18 @@ fitmix_ECM_sam_gam <- function(forms, y, X, W, spp_weights, site_spp_weights, of
                                           .verbose = FALSE)
         theta <- unlist(lapply(fm_theta, `[[`, 1))
         theta <- log(theta)
-        fits$theta <- update_coefs(log(fits$theta),theta,control$update_kappa[2])
+        fits$theta <- update_coefs(fits$theta,theta,control$update_kappa[2])
       }
     }
 
     ## up to e-step.
     # e-step - get the log-likes and taus
     logls_mus <- get_logls_samgam(first_fit, fits, spp_weights, G, S, disty)
-    taus <- get_taus(pis, logls_mus$logl_sp, G, S)
+    taus <- ecomix:::get_taus(pis, logls_mus$logl_sp, G, S)
 
     #update the likelihood
     logl_old <- logl_new
-    logl_new <- get_incomplete_logl_sam(eta = additive_logistic(pis,inv = TRUE)[-G],
+    logl_new <- get_incomplete_logl_samgam(eta = ecomix:::additive_logistic(pis,inv = TRUE)[-G],
                                         first_fit, fits, spp_weights, G, S, disty)
     if(!control$quiet)cat("Iteration ",ite,"\n")
     if(!control$quiet)cat("Loglike: ", logl_new,"\n")
@@ -690,7 +779,7 @@ fitmix_ECM_sam_gam <- function(forms, y, X, W, spp_weights, site_spp_weights, of
   taus <- data.frame(taus)
   names(taus) <- paste("grp.", 1:G, sep = "")
   names(pis) <- paste("G", 1:G, sep = ".")
-  eta <- additive_logistic(pis, TRUE)[-G]
+  eta <- ecomix:::additive_logistic(pis, TRUE)[-G]
 
   return(list(logl = logl_new, alpha = fits$alpha, beta = fits$beta,
               gamma = fits$gamma, theta = fits$theta,
@@ -699,10 +788,8 @@ fitmix_ECM_sam_gam <- function(forms, y, X, W, spp_weights, site_spp_weights, of
 
 }
 
-fitmix_ECM_sam_gam(forms, y, X, W, spp_weights, site_spp_weights, offset,
-                   y_is_na, G, S, disty, control)
-
-
+library(ecomix)
+em_samgam <- fitmix_ECM_sam_gam(forms, y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty,control= species_mix.control(em_steps = 10))
 
 
 makeMatrices <- function(forms, dat) {
