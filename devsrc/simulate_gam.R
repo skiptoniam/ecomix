@@ -671,8 +671,10 @@ fitmix_ECM_sam_gam <- function(forms, y, X, W, spp_weights, site_spp_weights, of
         fits$theta <- update_coefs(log(fits$theta),theta,control$update_kappa[2])
       }
     }
+
+    ## up to e-step.
     # e-step - get the log-likes and taus
-    logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
+    logls_mus <- get_logls_samgam(first_fit, fits, spp_weights, G, S, disty)
     taus <- get_taus(pis, logls_mus$logl_sp, G, S)
 
     #update the likelihood
@@ -697,7 +699,8 @@ fitmix_ECM_sam_gam <- function(forms, y, X, W, spp_weights, site_spp_weights, of
 
 }
 
-
+fitmix_ECM_sam_gam(forms, y, X, W, spp_weights, site_spp_weights, offset,
+                   y_is_na, G, S, disty, control)
 
 
 
