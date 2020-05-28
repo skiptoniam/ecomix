@@ -11,7 +11,7 @@ f0 <- function(x) 2 * sin(pi * x)
 f1 <- function(x) exp(2 * x)
 f2 <- function(x) 0.2 * x^11 * (10 * (1 - x))^6 + 10 * (10 * x)^3 * (1 - x)^10
 f3 <- function(x) 0 * x
-# theta <-  log( 1 + rgamma( n=S, shape=1, scale=0.75)) # dispersion
+theta <-  log( 1 + rgamma( n=S, shape=1, scale=0.75)) # dispersion
 
 x0 <- runif(n)
 x1 <- runif(n)
@@ -63,13 +63,13 @@ for (ss in seq_len(S)) {
   group[ss] <- gg
 }
 
-outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
-# outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp(theta), each=n)), nrow = n, ncol = S)
+# outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
+outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp(theta), each=n)), nrow = n, ncol = S)
 pis <- tapply(group, group, length)/S
 matplot(log(outcomes),type='l')
 matplot((outcomes),type='l')
 
-disty <- 2 #poisson
+disty <- 4 #poisson
 Y <- y <- outcomes
 colnames(Y) <- colnames(y) <- paste0("spp",seq_len(S))
 y_is_na <- is.na(Y)
@@ -80,17 +80,18 @@ site_spp_weights <- wts <- matrix(1,nrow(X),S)
 spp_weights <- rep(1,S)
 colnames(Y) <- paste0("spp",seq_len(S))
 control <- ecomix:::species_mix.control()
-archetype_formula <- as.formula(paste0('cbind(',paste(paste0('spp',1:S),collapse = ','),")~s(x0)+s(x1)+s(x2)+s(x3)"))
+archetype_formula <- as.formula(paste0('cbind(',paste(paste0('spp',1:S),collapse = ','),")~s(x0,k=4)+s(x1,k=4)+s(x2,k=4)+s(x3,k=4)"))
 species_formula <- as.formula(~1)
 forms <- list('archetype_formula'=archetype_formula,'species_formula'=species_formula)
 
 # df <- as.data.frame(cbind(Y,W,X))
-# fm<- gam(spp1~s(x0)+s(x1)+s(x2)+s(x3),data = df,family = "nb")
+fm<- gam(spp1~s(x0,k=4)+s(x1,k=4)+s(x2,k=4)+s(x3,k=4),data = df,family = "nb")
+plot(fm)
 
 # Check that the theta from gam match size in dnbinom
 # logLik(fm)
 # sum(dnbinom(Y[,1], mu = fitted(fm), size = fm$family$getTheta(TRUE), log = TRUE))
-# Xp <- predict(fm,type="lpmatrix")
+Xp <- predict(fm,type="lpmatrix")
 # Xp%*%vcov(fm)%*%t(Xp)
 
 # colnames(Y) <- paste0("spp",seq_len(S))
@@ -699,15 +700,15 @@ fitmix_ECM_sam_gam <- function(forms, y, X, W, spp_weights, site_spp_weights, of
 
 library(ecomix)
 library(mgcv)
-em_samgam <- fitmix_ECM_sam_gam(forms, y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty,control= species_mix.control(em_steps = 10))
+em_samgam <- fitmix_ECM_sam_gam(forms, y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty,control= species_mix.control(em_steps =100))
 
 archetype = ecomix:::sam_internal_pred_groups(alpha = em_samgam$alpha,
                                      beta = em_samgam$beta,
                                      gamma = em_samgam$gamma,
-                                     taus = em_samgam$taus, G = G, S = S, X = gamX, W = gamW,
+                                     taus = em_samgam$taus,
+                                     G = G, S = S, X = em_samgam$first_fit$gamX, W = em_samgam$first_fit$gamW,
                                      offset = em_samgam$first_fit$offset, family = "negative_binomial")
 
-matplot(log(archetype))
 
 df <- as.data.frame(cbind(Y,W,X))
 fm<- gam(spp1~s(x0)+s(x1)+s(x2)+s(x3),data = df,family = "nb")
@@ -723,6 +724,18 @@ archetype = ecomix:::sam_internal_pred_groups(alpha = em_samgam$alpha,
 par(mfrow=c(1,2))
 matplot(log(archetype),type = 'l',lwd=2,col=c(2,1,3))
 matplot(cbind(f0(x),f1(x),f2(x)),type='p',cex=.5,pch=16,col=c("green","black","red"))
+
+specpreds = ecomix:::sam_internal_pred_species(alpha = em_samgam$alpha,
+                                              beta = em_samgam$beta,
+                                              gamma = em_samgam$gamma,
+                                              taus = em_samgam$taus, G = G, S = S, X = Xp[,-1], W = Xp[,1,drop=FALSE],
+                                              offset = rep(0,nrow(Xp)), family = "negative_binomial")
+
+par(mfrow=c(1,2))
+matplot(log(specpreds),type = 'l',lwd=2,col=group)
+matplot(cbind(f0(x),f1(x),f2(x)),type='p',cex=.5,pch=16,col=c("green","black","red"))
+
+
 
 ## these model matricies could be used for a TMB version.
 makeMatrices <- function(forms, dat) {
