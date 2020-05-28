@@ -3,10 +3,10 @@ set.seed(20)
 n <- 100
 S <- 20
 beta <- 4
-G <- 4
+G <- 3
 sig <- 2
 
-alpha <- runif(S,-7,-4) #intercept
+alpha <- runif(S,-2,0) #intercept
 f0 <- function(x) 2 * sin(pi * x)
 f1 <- function(x) exp(2 * x)
 f2 <- function(x) 0.2 * x^11 * (10 * (1 - x))^6 + 10 * (10 * x)^3 * (1 - x)^10
@@ -20,7 +20,7 @@ x3 <- runif(n)
 
 X <- cbind(x0,x1,x2,x3)
 
-fb1 <- f0(x0) + f1(x1) + f2(x2)
+fb1 <- f0(x0)
 fb2 <- f0(x0) + f2(x1)
 fb3 <- f1(x1) + f2(x2)
 fb4 <- f1(x1) + f3(x3)
@@ -37,22 +37,19 @@ Cv <- chol(V)  # t(Cv)%*%Cv=V
 ## Simulate AR1 errors ...
 e <- t(Cv)%*%rnorm(n,0,sig) # so cov(e) = V * sig^2
 ## Observe truth + AR1 errors
-y1 <- f0(x) + e
+y1 <- f0(x) + f1(x) + f2(x) + e
 y2 <- f1(x) + e
 y3 <- f2(x) + e
 y4 <- f3(x) + e
 
-par(mfrow=c(2,2))
-plot(y1)
-lines(f0(x))
-plot(y2)
-lines(f1(x))
-plot(y3)
-lines(f2(x))
-plot(y4)
-lines(f3(x))
+# par(mfrow=c(2,2))
+plot(f0(x) ,type='l')
+lines(f1(x) ,type='l',col="red")
+lines(f2(x),type='l',col="blue")
+# lines(f3(x),type='l',col="green")
+matplot(cbind(f0(x),f1(x),f2(x)))
 
-f <- cbind(fb1,fb2,fb3,fb4)
+f <- cbind(f0(x0),f1(x1),f2(x2))#cbind(fb1,fb2,fb3,fb4)
 fitted <- matrix(0, dim(X)[1], S)
 group <- rep(0, S)
 offset <- rep(0,dim(X)[1])
@@ -68,6 +65,8 @@ for (ss in seq_len(S)) {
 
 outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp(theta), each=n)), nrow = n, ncol = S)
 pis <- tapply(group, group, length)/S
+matplot(log(outcomes),type='l')
+matplot((outcomes),type='l')
 
 Y <- outcomes
 y_is_na <- is.na(Y)
@@ -810,7 +809,9 @@ archetype = ecomix:::sam_internal_pred_groups(alpha = em_samgam$alpha,
                                               taus = em_samgam$taus, G = G, S = S, X = Xp[,-1], W = Xp[,1,drop=FALSE],
                                               offset = rep(0,nrow(Xp)), family = "negative_binomial")
 
-matplot(log(archetype),type = 'l')
+par(mfrow=c(2,1))
+matplot(log(archetype),type = 'l',lwd=2,col=c(2,1,3))
+matplot(cbind(f0(x),f1(x),f2(x)),type='p',cex=.5,pch=16,col=c("green","black","red"))
 
 ## these model matricies could be used for a TMB version.
 makeMatrices <- function(forms, dat) {
