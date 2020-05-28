@@ -32,19 +32,19 @@ library(nlme)
 x <- 0:(n-1)/(n-1)
 # f <- 0.2*x^11*(10*(1-x))^6+10*(10*x)^3*(1-x)^10
 ## produce scaled covariance matrix for AR1 errors...
-V <- corMatrix(Initialize(corAR1(.5),data.frame(x=x)))
+V <- corMatrix(Initialize(corAR1(.6),data.frame(x=x)))
 Cv <- chol(V)  # t(Cv)%*%Cv=V
 ## Simulate AR1 errors ...
 e <- t(Cv)%*%rnorm(n,0,sig) # so cov(e) = V * sig^2
 ## Observe truth + AR1 errors
-y1 <- f0(x) + f1(x) + f2(x) + f3(x) + e
+y1 <- f0(x) + e
 y2 <- f1(x) + e
 y3 <- f2(x) + e
 y4 <- f3(x) + e
 
 par(mfrow=c(2,2))
 plot(y1)
-lines(f0(x) + f1(x) + f2(x) + f3(x))
+lines(f0(x))
 plot(y2)
 lines(f1(x))
 plot(y3)
@@ -77,8 +77,12 @@ offy <- offset
 site_spp_weights <- wts <- matrix(1,nrow(X),S)
 spp_weights <- rep(1,S)
 colnames(Y) <- paste0("spp",seq_len(S))
+archetype_formula <- as.formula(paste0('cbind(',paste(paste0('spp',1:S),collapse = ','),")~s(x0)+s(x1)+s(x2)+s(x3)"))
+species_formula <- as.formula(~1)
+
+
 df <- as.data.frame(cbind(Y,W,X))
-fm<- gam(spp1~s(x0)+s(x1),data = df,family = "nb")
+fm<- gam(spp1~s(x0)+s(x1)+s(x2)+s(x3),data = df,family = "nb")
 
 # Check that the theta from gam match size in dnbinom
 logLik(fm)
@@ -86,9 +90,7 @@ sum(dnbinom(Y[,1], mu = fitted(fm), size = fm$family$getTheta(TRUE), log = TRUE)
 # Xp <- predict(fm,type="lpmatrix")
 # Xp%*%vcov(fm)%*%t(Xp)
 
-colnames(Y) <- paste0("spp",seq_len(S))
-archetype_formula <- as.formula(paste0('cbind(',paste(paste0('spp',1:S),collapse = ','),")~s(x0)+s(x1)+s(x2)+s(x3)"))
-species_formula <- as.formula(~1)
+# colnames(Y) <- paste0("spp",seq_len(S))
 
 # forms <- list('archetype_formula'=archetype_formula,'species_formula'=species_formula)
 # dat <- data.frame(Y,W,X)
@@ -791,7 +793,26 @@ fitmix_ECM_sam_gam <- function(forms, y, X, W, spp_weights, site_spp_weights, of
 library(ecomix)
 em_samgam <- fitmix_ECM_sam_gam(forms, y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty,control= species_mix.control(em_steps = 10))
 
+archetype = ecomix:::sam_internal_pred_groups(alpha = em_samgam$alpha,
+                                     beta = em_samgam$beta,
+                                     gamma = em_samgam$gamma,
+                                     taus = em_samgam$taus, G = G, S = S, X = gamX, W = gamW,
+                                     offset = em_samgam$first_fit$offset, family = "negative_binomial")
 
+df <- as.data.frame(cbind(Y,W,X))
+fm<- gam(spp1~s(x0)+s(x1)+s(x2)+s(x3),data = df,family = "nb")
+newd <- data.frame(x0=(0:100)/100,x1=(0:100)/100,x2=(0:100)/100,x3=(0:100)/100)
+Xp <- predict(fm,newd,type="lpmatrix")
+
+archetype = ecomix:::sam_internal_pred_groups(alpha = em_samgam$alpha,
+                                              beta = em_samgam$beta,
+                                              gamma = em_samgam$gamma,
+                                              taus = em_samgam$taus, G = G, S = S, X = Xp[,-1], W = Xp[,1,drop=FALSE],
+                                              offset = rep(0,nrow(Xp)), family = "negative_binomial")
+
+matplot(log(archetype),type = 'l')
+
+## these model matricies could be used for a TMB version.
 makeMatrices <- function(forms, dat) {
 
   # results list
@@ -878,50 +899,6 @@ makeMatrices <- function(forms, dat) {
 }
 
 mm <- makeMatrices(forms, dat)
-
-y <- mm$Y
-X <- mm$A_sam
-
-# y, X, W
-# replace with mm from gam
-disty <- 4
-
-
-
-get_initial_values_samgam <- function(y, X, W, spp_weights, site_spp_weights,
-                                     offset, y_is_na, G, S, disty, control){
-
-  # get intial model fits
-  starting_values <- initiate_fit_sam(y, X, W, spp_weights, site_spp_weights,
-                                      offset, y_is_na, G, S, disty, control)
-
-  #if any are errors then remove them from the models forever.
-  # updated_y <- update_species_data_structure(y, y_is_na,
-  #                                            spp_weights,
-  #                                            site_spp_weights,
-  #                                            starting_values$species_to_remove)
-  # y <- updated_y[[1]]
-  # y_is_na <- updated_y[[2]]
-  # spp_weights <- updated_y[[3]]
-  # site_spp_weights <- updated_y[[4]]
-  S <- ncol(y)
-
-  fits <- list(alpha=starting_values$alpha,
-               beta=starting_values$beta,
-               gamma=starting_values$gamma,
-               theta=starting_values$theta)
-  first_fit <- list(y = y, x = X, W = W, spp_weights = spp_weights,
-                    site_spp_weights = site_spp_weights, offset = offset,
-                    y_is_na = y_is_na,
-                    removed_species = starting_values$species_to_remove)
-
-  res <- list()
-  res$fits <- fits
-  res$first_fit <- first_fit
-  res$taus <- starting_values$taus
-  res$pis <- colSums(starting_values$taus)/S
-  return(res)
-}
 
 
 
