@@ -37,7 +37,7 @@ Cv <- chol(V)  # t(Cv)%*%Cv=V
 ## Simulate AR1 errors ...
 e <- t(Cv)%*%rnorm(n,0,sig) # so cov(e) = V * sig^2
 ## Observe truth + AR1 errors
-y1 <- f0(x) + f1(x) + f2(x) + e
+y1 <- f0(x) + e
 y2 <- f1(x) + e
 y3 <- f2(x) + e
 y4 <- f3(x) + e
@@ -80,18 +80,18 @@ site_spp_weights <- wts <- matrix(1,nrow(X),S)
 spp_weights <- rep(1,S)
 colnames(Y) <- paste0("spp",seq_len(S))
 control <- ecomix:::species_mix.control()
-archetype_formula <- as.formula(paste0('cbind(',paste(paste0('spp',1:S),collapse = ','),")~s(x0,k=4)+s(x1,k=4)+s(x2,k=4)+s(x3,k=4)"))
+archetype_formula <- as.formula(paste0('cbind(',paste(paste0('spp',1:S),collapse = ','),")~s(x0)+s(x1)+s(x2)+s(x3)"))
 species_formula <- as.formula(~1)
 forms <- list('archetype_formula'=archetype_formula,'species_formula'=species_formula)
 
 # df <- as.data.frame(cbind(Y,W,X))
-fm<- gam(spp1~s(x0,k=4)+s(x1,k=4)+s(x2,k=4)+s(x3,k=4),data = df,family = "nb")
-plot(fm)
+# fm<- gam(spp1~s(x0,k=4)+s(x1,k=4)+s(x2,k=4)+s(x3,k=4),data = df,family = "nb")
+# plot(fm)
 
 # Check that the theta from gam match size in dnbinom
 # logLik(fm)
 # sum(dnbinom(Y[,1], mu = fitted(fm), size = fm$family$getTheta(TRUE), log = TRUE))
-Xp <- predict(fm,type="lpmatrix")
+# Xp <- predict(fm,type="lpmatrix")
 # Xp%*%vcov(fm)%*%t(Xp)
 
 # colnames(Y) <- paste0("spp",seq_len(S))
@@ -148,7 +148,7 @@ apply_gamsam_inits <- function(ss, forms, Y, W, X, y_is_na, offy, wts, disty){
   ## a bit of f#&king around with formulas, this will probably break.
   tmpform <- merge.formula(forms,ss,disty)
   df <- data.frame(Y,W,X)[!y_is_na[,ss],]  # remove NA sites if needs - ippm specific.
-  fm <- mgcv::gam(tmpform, data =df, weights = wts[!y_is_na[,ss],ss], offset = offy, family=fam)
+  fm <- mgcv::gam(tmpform, data =df, weights = wts[!y_is_na[,ss],ss], offset = offy[!y_is_na[,ss]], family=fam)
   # print(head(model.matrix(fm)))
   # cat("\n\n")
 
@@ -303,7 +303,7 @@ get_logls_samgam <- function(first_fit, fits, spp_weights, G, S, disty, get_fitt
         #eta is the same as log_lambda (linear predictor)
         etaMix <- as.matrix(first_fit$gamX[sp_idx,,drop=FALSE]) %*% fits$beta[gg,] + first_fit$offset
         if(ncol(first_fit$gamW)==1) etaSpp <- as.matrix(first_fit$gamW[sp_idx,,drop=FALSE]) %*% fits$alpha[ss]
-        else etaSpp <- s.matrix(first_fit$gamW[sp_idx,,drop=FALSE]) %*% c(fits$alpha[ss],fits$gamma[ss,])
+        else etaSpp <- as.matrix(first_fit$gamW[sp_idx,,drop=FALSE]) %*% c(fits$alpha[ss],fits$gamma[ss,])
         eta <- etaMix + etaSpp
         if(get_fitted) fitted_values[gg,sp_idx,ss] <- exp(eta)
         if(disty==1) logl_sp[ss,gg] <- sum(dbinom(first_fit$y[sp_idx,ss], 1, link$linkinv(eta),log = TRUE))
@@ -314,7 +314,6 @@ get_logls_samgam <- function(first_fit, fits, spp_weights, G, S, disty, get_fitt
       }
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
-  # }
 
     out.list <- list(logl_sp=logl_sp)
     if(get_fitted) out.list$fitted = fitted_values
@@ -340,7 +339,7 @@ get_incomplete_logl_samgam <- function(eta, first_fit, fits,
       #eta is the same as log_lambda (linear predictor)
       etaMix <- as.matrix(first_fit$gamX[sp_idx,,drop=FALSE]) %*% fits$beta[gg,] + first_fit$offset
       if(ncol(first_fit$gamW)==1) etaSpp <- as.matrix(first_fit$gamW[sp_idx,,drop=FALSE]) %*% fits$alpha[ss]
-      else etaSpp <- s.matrix(first_fit$gamW[sp_idx,,drop=FALSE]) %*% c(fits$alpha[ss],fits$gamma[ss,])
+      else etaSpp <- as.matrix(first_fit$gamW[sp_idx,,drop=FALSE]) %*% c(fits$alpha[ss],fits$gamma[ss,])
       eta <- etaMix + etaSpp
       if(disty==1) logl_sp[ss,gg] <- sum(dbinom(first_fit$y[sp_idx,ss], 1, link$linkinv(eta),log = TRUE))
       if(disty==2) logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[sp_idx,ss],mu=link$linkinv(eta),size=fits$theta[ss],log=TRUE))
@@ -443,9 +442,10 @@ apply_glm_mix_coefs_samgam <- function(gg, forms, y, X, Y, gamX, gamW, site_spp_
   site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
   wts <- wts_taus*site_weights
 
-  ## negative binomial weights
+  ## negative binomial weights - these semm
   # mus <- logls_mus$fitted
-  if(disty==4) wts <- wts/(1+rep(fits$theta,n_ys)*as.vector(mus[gg,,]))
+  # if(disty==4) wts <- wts/(rep(fits$theta,n_ys)*as.vector(mus[gg,,]))
+  if(disty==4) wts <- wts*(1+rep(fits$theta,n_ys)*as.vector(mus[gg,,]))
 
   offy_mat <- replicate(ncol(y),offset)
   offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
@@ -463,6 +463,8 @@ apply_glm_mix_coefs_samgam <- function(gg, forms, y, X, Y, gamX, gamW, site_spp_
     fam <- binomial()
   if( disty %in% c(2,3,4,5))
     fam <- poisson()
+  # if( disty %in% 4)
+
   if( disty == 6)
     fam <- gaussian()
 
@@ -475,9 +477,9 @@ apply_glm_mix_coefs_samgam <- function(gg, forms, y, X, Y, gamX, gamW, site_spp_
   if(disty %in% c(1,2,3,4,5,6)){ #don't use for tweedie - try and fit negative_binomial using glm.fit.nbinom
     tmpform <- as.formula( paste('Y_taus','-1+X_taus+offset(offy)', sep='~'))
     ft_mix <- try(mgcv::gam(tmpform, weights=wts, family=fam)) ## try bam for big data
-    # rhs1 <- strsplit(deparse(forms[[1]][[3]]), " \\+ ")[[1]]
+    # rhs1 <- strsplit(deparse(forms[[1]][[3]]), " \\+ ")[[1]] ## I think i need this to estimate the penalities.
     # tmpform <- as.formula( paste0('Y_taus ~ -1 + ',paste0(rhs1,collapse="+"),'+offset(offy)'))
-    # ft_mix <- try(mgcv::gam(tmpform, data=as.data.frame(X_taus), weights=wts, family=fam))
+    # ft_mix <- try(mgcv::gam(tmpform, data=as.data.frame(X_taus), weights=wts,offset = offy, family=fam))
     if (class(ft_mix) %in% 'try-error'){
       mix_coefs <- rep(NA, ncol(X_taus))
     } else {
@@ -700,7 +702,8 @@ fitmix_ECM_sam_gam <- function(forms, y, X, W, spp_weights, site_spp_weights, of
 
 library(ecomix)
 library(mgcv)
-em_samgam <- fitmix_ECM_sam_gam(forms, y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty,control= species_mix.control(em_steps =100))
+em_samgam <- fitmix_ECM_sam_gam(forms, y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S,
+                                disty,control= species_mix.control(em_steps =10))
 
 archetype = ecomix:::sam_internal_pred_groups(alpha = em_samgam$alpha,
                                      beta = em_samgam$beta,
@@ -731,9 +734,10 @@ specpreds = ecomix:::sam_internal_pred_species(alpha = em_samgam$alpha,
                                               taus = em_samgam$taus, G = G, S = S, X = Xp[,-1], W = Xp[,1,drop=FALSE],
                                               offset = rep(0,nrow(Xp)), family = "negative_binomial")
 
-par(mfrow=c(1,2))
-matplot(log(specpreds),type = 'l',lwd=2,col=group)
-matplot(cbind(f0(x),f1(x),f2(x)),type='p',cex=.5,pch=16,col=c("green","black","red"))
+# par(mfrow=c(1,2))
+dev.off()
+matplot(log(specpreds),type = 'l',lwd=.5,col=group,ylim=c(-2,10))
+matlines(cbind(f0(x),f1(x),f2(x)),type='l',lwd=4,pch=16,col=c("black","red","green"))
 
 
 

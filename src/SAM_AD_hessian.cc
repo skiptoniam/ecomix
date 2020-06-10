@@ -32,6 +32,7 @@ AD<double> ldnegbin(double yi, AD<double> mui, AD<double> phii){
 // }
 
 
+
 void invMultLogit( vector< AD<double> > &pi2, const vector< AD<double> > alpha2, int nG2){
 	vector< AD<double> > tmp(nG2, 0.0);
 	AD<double> sum=0;
