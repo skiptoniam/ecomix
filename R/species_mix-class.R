@@ -278,11 +278,11 @@
 #'@param W is a design matrix for species_formula and will be implemented if species_formula has covariates.
 #'@param G is the number of species archetypes that are being estimated.
 #'@param S is the number of species to be modelled (this will be calculated internally in species_mix())
-#'@param spp_weights These are weights on the species logls and are specifically used in the Bayesian Boostrap.
+#'@param spp_weights These are weights on the species logls and are specifically used in the Bayesian Bootstrap.
 #'@param site_spp_weights These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.
 #'@param offset this is a vector of site specific offsets, this might be something like area sampled at sites.
 #'@param y_is_na This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!
-#'@param disty the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are avaliable - internal conversion of distribution to a integer.
+#'@param disty the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are available - internal conversion of distribution to a integer.
 #'@param control this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.
 #'@param inits This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).
 #'@export
@@ -511,7 +511,7 @@
 #'@param init_method The method to use for initialisation. The options are "random2", "kmeans", "kmed". The default uses random2, which is a kmeans with noise added to the cluster.
 #'@param init_sd The amount of noise to add to the initailisation the default is 1.
 #'@param minimum_sites_occurrence a integer which determins the number of minimum sites present for any species for it to be included in the initialisation step. This removes rare species from initial groupings. They are then included in the overall analysis.
-#'@param em_prefit Logical if TRUE the model will run a slower EM algorithim fit to find starting values.
+#'@param em_prefit Logical if TRUE the model will run a slower EM algorithm fit to find starting values.
 #'@param em_steps int Default is 3, the number of EM iterations to get to starting values.
 #'@param em_refit int Default is 1, number of times to refit using EM.
 #'@param em_reltol A function or value which gives the tolerance in the EM loglikeihood estimation.
@@ -528,7 +528,7 @@
 #'@param conv_cpp Has the model convered previously.
 #'@param printparams_cpp Print the parameter estimates within C++.
 #'@param optimise_cpp Should optimisation for estimation occur? If TRUE (default) optimisation will occur. If FALSE no optimisation is performed.
-#'@param loglOnly_cpp Should the log-likelihood be caulcated? If TRUE (default) then log-likelihood is calculated and returned. If FALSE then the log-likelihood is not calculated for return.
+#'@param loglOnly_cpp Should the log-likelihood be calculated? If TRUE (default) then log-likelihood is calculated and returned. If FALSE then the log-likelihood is not calculated for return.
 #'@param derivOnly_cpp Should the scores be evaluated at the (final) parameter values. If TRUE (default) then they are calculated. If FALSE then they are not calculated.
 #'@param getscores_cpp Return scores.
 #'@param \dots Other control calls.
@@ -612,9 +612,9 @@
   } else {
 
   if (nboot < 1)
-    stop( "No Boostrap samples requested.  Please set nboot to something > 1.")
+    stop( "No Bootstrap samples requested.  Please set nboot to something > 1.")
   if( ! type %in% c("BayesBoot","SimpleBoot"))
-    stop( "Unknown boostrap type, choices are BayesBoot and SimpleBoot.")
+    stop( "Unknown Bootstrap type, choices are BayesBoot and SimpleBoot.")
   n.reorder <- 0
   object$titbits$control$optimise <- TRUE #just in case it was turned off
   if(object$titbits$distribution=='ippm')
@@ -1219,12 +1219,12 @@
 #' @name species_mix.residuals
 #' @param object A returned species_mix model object.
 #' @param \dots additional calls for residual function
-#' @param type The type of residuals to estimate. Default is "RQR" (Random Quantile Residuals). But you can also simulate many Random Quantile Residuals using "SimRQR".
+#' @param type The type of residuals to estimate. Default is "RQR" (Random Quantile Residuals).
+#' But you can also simulate many Random Quantile Residuals using "SimRQR".
 #' @param control Default uses species_mix.control()
 #' @export
-#' @description  The randomised quantile residuals ("
-#' RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution
-#' function (marginality is over other species observations within that site;
+#' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by
+#' their marginal distribution function (marginality is over other species observations within that site;
 #' see Woolley et al, in prep).
 
 "residuals.species_mix" <- function( object, ..., type="RQR", control=species_mix.control()) {
@@ -1792,7 +1792,7 @@ starting values;\n starting values are generated using ',control$init_method,
                                       spp_weights, G, S, disty){
 
   pis <- additive_logistic(eta)
-  if(is.null(spp_weights))spp_weights <- rep(1,S) #for bayesian boostrap.
+  if(is.null(spp_weights))spp_weights <- rep(1,S) #for bayesian Bootstrap.
 
   #bernoulli
   if(disty==1){
