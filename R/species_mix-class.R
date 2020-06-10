@@ -715,7 +715,7 @@
 #'                   x2=stats::rnorm(100,0,2.5))
 #' simulated_data <- species_mix.simulate(archetype_formula,species_formula,
 #'                                        dat, n_mixtures = 4, beta=beta,
-#'                                        dist="bernoulli")
+#'                                        distribution="bernoulli")
 #' }
 ## need to update this to take the new formula framework and simulate ippm data.
 "species_mix.simulate" <-  function(archetype_formula,
