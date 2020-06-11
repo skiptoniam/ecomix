@@ -8,6 +8,8 @@
 #' @docType package
 NULL
 
-#' @useDynLib ecomix
+#' @useDynLib ecomix, .registration = TRUE
+#'
+#'
 NULL
 
