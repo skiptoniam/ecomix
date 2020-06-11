@@ -34,12 +34,17 @@ testthat::test_that('species mix bernoulli', {
 
   rm(list = ls())
   set.seed(42)
-  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~1+x1+x2"))
-  beta <- matrix(c(1.6,0.5,-0.9,1,2.9,-2.9,0.2,-0.4),4,2,byrow=TRUE)
-  dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
+  sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
+                                                      collapse = ','),
+                                       ")~1+x1+x2"))
+  sp_form <- ~ 1
+  beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,7.9),3,2,byrow=TRUE)
+  dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
+                    x2=stats::rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form, ~1, dat, n_mixtures = 4, beta=beta, dist="bernoulli")
-
+  simulated_data <- species_mix.simulate(archetype_formula=sam_form,
+                                     species_formula=sp_form,
+                                     dat,beta=beta,dist="bernoulli")
   y <- as.matrix(simulated_data[,grep("spp",colnames(simulated_data))])
   X <- simulated_data[,-grep("spp",colnames(simulated_data))]
   W <- as.matrix(X[,1,drop=FALSE])
@@ -49,7 +54,7 @@ testthat::test_that('species mix bernoulli', {
   spp_weights <- rep(1,ncol(y))
   site_spp_weights <- matrix(1,nrow(y),ncol(y))
   y_is_na <- matrix(FALSE,nrow(y),ncol(y))
-  G <- 4
+  G <- 3
   S <- ncol(y)
   control <- species_mix.control()
   disty <- 1
