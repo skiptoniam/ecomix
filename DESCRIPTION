@@ -1,6 +1,6 @@
 Package: ecomix
 Type: Package
-Title: Fits finite mixture models to ecological data.
+Title: Fit finite mixture models to ecological data
 Version: 0.0.2
 Authors@R: c(person("Skipton", "Woolley", email = "skip.woolley@csiro.au", role = c("aut", "cre")),
              person("Scott", "Foster", email = "scott.foster@csiro.au", role = c("aut")),
@@ -34,7 +34,7 @@ Suggests:
     covr
 Depends:
     R (>= 3.4.0)
-License: MIT
+License: MIT + file LICENCE
 SystemRequirements: C++11
 NeedsCompilation: yes
 RoxygenNote: 7.1.0
