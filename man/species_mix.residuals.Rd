@@ -12,13 +12,13 @@
 
 \item{\dots}{additional calls for residual function}
 
-\item{type}{The type of residuals to estimate. Default is "RQR" (Random Quantile Residuals). But you can also simulate many Random Quantile Residuals using "SimRQR".}
+\item{type}{The type of residuals to estimate. Default is "RQR" (Random Quantile Residuals).
+But you can also simulate many Random Quantile Residuals using "SimRQR".}
 
 \item{control}{Default uses species_mix.control()}
 }
 \description{
-The randomised quantile residuals ("
-RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution
-function (marginality is over other species observations within that site;
+The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by
+their marginal distribution function (marginality is over other species observations within that site;
 see Woolley et al, in prep).
 }

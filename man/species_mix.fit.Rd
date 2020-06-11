@@ -30,7 +30,7 @@ species_mix.fit(
 
 \item{S}{is the number of species to be modelled (this will be calculated internally in species_mix())}
 
-\item{spp_weights}{These are weights on the species logls and are specifically used in the Bayesian Boostrap.}
+\item{spp_weights}{These are weights on the species logls and are specifically used in the Bayesian Bootstrap.}
 
 \item{site_spp_weights}{These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.}
 
@@ -38,7 +38,7 @@ species_mix.fit(
 
 \item{y_is_na}{This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!}
 
-\item{disty}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are avaliable - internal conversion of distribution to a integer.}
+\item{disty}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are available - internal conversion of distribution to a integer.}
 
 \item{control}{this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.}
 

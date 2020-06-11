@@ -44,7 +44,7 @@ species_mix.control(
 
 \item{minimum_sites_occurrence}{a integer which determins the number of minimum sites present for any species for it to be included in the initialisation step. This removes rare species from initial groupings. They are then included in the overall analysis.}
 
-\item{em_prefit}{Logical if TRUE the model will run a slower EM algorithim fit to find starting values.}
+\item{em_prefit}{Logical if TRUE the model will run a slower EM algorithm fit to find starting values.}
 
 \item{em_steps}{int Default is 3, the number of EM iterations to get to starting values.}
 
@@ -78,7 +78,7 @@ species_mix.control(
 
 \item{optimise_cpp}{Should optimisation for estimation occur? If TRUE (default) optimisation will occur. If FALSE no optimisation is performed.}
 
-\item{loglOnly_cpp}{Should the log-likelihood be caulcated? If TRUE (default) then log-likelihood is calculated and returned. If FALSE then the log-likelihood is not calculated for return.}
+\item{loglOnly_cpp}{Should the log-likelihood be calculated? If TRUE (default) then log-likelihood is calculated and returned. If FALSE then the log-likelihood is not calculated for return.}
 
 \item{derivOnly_cpp}{Should the scores be evaluated at the (final) parameter values. If TRUE (default) then they are calculated. If FALSE then they are not calculated.}
 
