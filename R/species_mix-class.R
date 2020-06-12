@@ -230,7 +230,7 @@
   if(n_mixtures==1){
     tmp$pis <- tmp$pis
   }else{
-    tmp$pis <- ecomix:::additive_logistic(tmp$eta)
+    tmp$pis <- additive_logistic(tmp$eta)
   }
 
   # get logls from parameters
@@ -243,9 +243,9 @@
                       site_spp_weights = site_spp_weights,
                       offset = offset,
                       y_is_na = y_is_na)
-    logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S,
+    logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S,
                                         disty, get_fitted = FALSE)
-    tmp$taus <- ecomix:::get_taus(tmp$pis,logls_mus$logl_sp,G,S)
+    tmp$taus <- get_taus(tmp$pis,logls_mus$logl_sp,G,S)
     tmp$pis <- colSums(tmp$taus)/S
   }
 
@@ -1327,7 +1327,7 @@
     y_is_na <- object$titbits$y_is_na
     distribution <- object$titbits$distribution
     disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
-    disty <- ecomix:::get_distribution_sam(disty_cases, distribution)
+    disty <- get_distribution_sam(disty_cases, distribution)
     S <- object$S
     G <- object$G
     n <- object$n
@@ -1337,7 +1337,7 @@
 
     # values for optimisation.
     inits <- object$coefs
-    start_vals <- ecomix:::setup_inits_sam(inits, S, G, X, W, disty, return_list = TRUE)
+    start_vals <- setup_inits_sam(inits, S, G, X, W, disty, return_list = TRUE)
 
     # parameters to optimise
     alpha <- as.numeric(start_vals$alpha)

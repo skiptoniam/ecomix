@@ -72,19 +72,19 @@ testthat::test_that('species mix predict functions', {
   # build and test a single model.
   library(ecomix)
   set.seed(42)
-  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:100),collapse = ','),")~1+x1+x2"))
-  beta <- matrix(c(1.6,0.5,-0.9,1,2.9,2.9,0.2,-0.4),4,2,byrow=TRUE)
+  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~1+x1+x2"))
+  beta <- matrix(c(1.6,0.5,-0.9,1,2.9,-0.4),3,2,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, n_mixtures = 4,
+  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, n_mixtures = 3,
                                          beta = beta, distribution = "bernoulli")
   fm1 <- species_mix(sam_form, species_formula = ~1, simulated_data,
-                     distribution = 'bernoulli', n_mixtures=4,
+                     distribution = 'bernoulli', n_mixtures=3,
                      control=species_mix.control(print_cpp_start_vals = TRUE))
 
 
   preds <- predict(fm1)
-  testthat::expect_length(preds,400)
+  testthat::expect_length(preds,300)
   testthat::expect_is(preds,'matrix')
 
   dat2 <- data.frame(x1=runif(100,-2.5,2.5),x2=rnorm(100,-2.5,2.5))
@@ -92,40 +92,40 @@ testthat::test_that('species mix predict functions', {
   testthat::expect_is(preds2,'matrix')
 
   # poisson
-  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, n_mixtures = 4,
+  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, n_mixtures = 3,
                                          beta = beta, distribution = "poisson")
-  fm2 <- species_mix(sam_form, species_formula = ~1, simulated_data, distribution = 'poisson', n_mixtures=4)
+  fm2 <- species_mix(sam_form, species_formula = ~1, simulated_data, distribution = 'poisson', n_mixtures=3)
 
   residuals(fm2)
   preds3 <- predict(fm2)
-  testthat::expect_length(preds3,400)
+  testthat::expect_length(preds3,300)
   testthat::expect_is(preds3,'matrix')
 
   preds4 <- predict(fm2, newobs = dat2)
   testthat::expect_is(preds4,'matrix')
 
   # negative binomial
-  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, n_mixtures = 4,
+  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, n_mixtures = 3,
                                          beta = beta, distribution = "negative_binomial")
-  fm3 <- species_mix(sam_form, species_formula = ~1, simulated_data, distribution = "negative_binomial", n_mixtures=4)
+  fm3 <- species_mix(sam_form, species_formula = ~1, simulated_data, distribution = "negative_binomial", n_mixtures=3)
 
   residuals(fm3)
   preds5 <- predict(fm3)
-  testthat::expect_length(preds3,400)
+  testthat::expect_length(preds3,300)
   testthat::expect_is(preds5,'matrix')
 
   preds6 <- predict(fm3, newobs = dat2)
   testthat::expect_is(preds6,'matrix')
 
   #gaussian
-  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, n_mixtures = 4,
+  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, n_mixtures = 3,
                                          beta = beta, distribution = "gaussian")
   fm4 <- species_mix(sam_form, species_formula = ~1, simulated_data,
-                     distribution = "gaussian", n_mixtures=4)
+                     distribution = "gaussian", n_mixtures=3)
 
   residuals(fm4)
   preds7 <- predict(fm4)
-  testthat::expect_length(preds7,400)
+  testthat::expect_length(preds7,300)
   testthat::expect_is(preds7,'matrix')
 
   preds8 <- predict(fm4, newobs = dat2)

@@ -11,13 +11,13 @@ testthat::test_that('testing partial species mix bernoulli ', {
   gamma <- matrix(c(rnorm(50,1),rnorm(50,-2)),nspp,2)
   dat <- data.frame(y=rep(1,100), x1=runif(100,0,2.5), x2=rnorm(100,0,2.5),w1=rnorm(100,2,1), w2=rnorm(100,-1,2.5))
   dat[,-1] <- scale(dat[,-1])
-  model_data <- species_mix.simulate(archetype_formula=sam_form,
+  simulated_data <- species_mix.simulate(archetype_formula=sam_form,
                                      species_formula=sp_form,
                                      dat,beta=beta,gamma = gamma,
                                      dist="bernoulli")
 
   archetype_formula <- sam_form
-  species_formula <- spp_form
+  species_formula <- sp_form
 
   test_dat <- ecomix:::clean_data_sam(simulated_data, archetype_formula, species_formula, distribution = 'negative_binomial')
   test_dat$mf.X
@@ -111,22 +111,22 @@ testthat::test_that('testing partial species mix bernoulli ', {
                                S,G,disty,start_vals,
                                control=ecomix:::species_mix.control())
 
-  test_part_sam <- species_mix(sam_form,spp_form,simulated_data,4,
+  test_part_sam <- species_mix(sam_form,sp_form,simulated_data,4,
                                distribution = 'bernoulli',
                                control = species_mix.control(em_steps = 5))
 
-  test_part_sam <- species_mix(sam_form,spp_form,simulated_data,4,
+  test_part_sam <- species_mix(sam_form,sp_form,simulated_data,4,
                                distribution = 'bernoulli',
                                control = species_mix.control(em_steps = 2,
                                                              getscores_cpp = TRUE))
-  fm <- species_mix(sam_form,spp_form,simulated_data,4,
+  fm <- species_mix(sam_form,sp_form,simulated_data,4,
                                distribution = 'bernoulli',
                                standardise = TRUE,
                                # inits = unlist(coef(test_part_sam)),
                                control = species_mix.control(em_steps = 2,
                                                              getscores_cpp = TRUE))
 
-  fm <- species_mix(sam_form,spp_form,simulated_data,4,
+  fm <- species_mix(sam_form,sp_form,simulated_data,4,
                     distribution = 'bernoulli',
                     # standardise = TRUE,
                     inits = unlist(test_part_sam$coefs),

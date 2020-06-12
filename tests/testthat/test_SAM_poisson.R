@@ -4,18 +4,17 @@ library(ecomix)
 testthat::test_that('species mix poisson', {
 
   set.seed(42)
-  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~x1+x2"))
-  alpha <- rnorm(50,1, 0.5)
+  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~x1+x2"))
+  alpha <- rnorm(20,1, 0.5)
   beta <- matrix(c(-2.6,0.5,
                    -0.9,1.0,
-                   0.9,-2.9,
-                   2.2,1.4),
-                 4,2,byrow=TRUE)
+                   0.9,-1.9),
+                 3,2,byrow=TRUE)
   dat <- data.frame(y=1, x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   simulated_data <- species_mix.simulate(archetype_formula = sam_form,
                                          species_formula = ~1,
                                          dat = dat,
-                                         n_mixtures = 4,
+                                         n_mixtures = 3,
                                          alpha=alpha,
                                          beta=beta,
                                          distribution = "poisson")
@@ -28,7 +27,7 @@ testthat::test_that('species mix poisson', {
   spp_weights <- rep(1,ncol(y))
   site_spp_weights <- matrix(1,nrow(y),ncol(y))
   y_is_na <- matrix(FALSE,nrow(y),ncol(y))
-  G <- 4
+  G <- 3
   S <- ncol(y)
   control <- species_mix.control()
   disty <- 2

@@ -12,16 +12,16 @@ testthat::test_that('species mix ippm', {
   set.seed(42)
   n_g <- 4
   n_sp <- 25
-  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:25),collapse = ','),")~1+x1+x2"))
-  alphas <- runif(50,-8,-6)
+  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:n_sp),collapse = ','),")~1+x1+x2"))
+  alphas <- runif(50,-6,-4)
   betas <- matrix(c(0.5,-1.3,
                      1.8,   1,
                      -1.2, 0.1),3,2,byrow=TRUE)
 
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form, ~1, dat,n_mixtures = 3,
-                                         alpha=alphas,beta = betas,
+  simulated_data <- species_mix.simulate(sam_form, ~1, dat, n_mixtures = 3,
+                                         alpha=alphas, beta = betas,
                                          distribution = "ippm")
   wts <- attr(simulated_data,"ippm_weights")
   y <- simulated_data[,1:n_sp]

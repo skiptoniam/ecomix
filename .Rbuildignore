@@ -4,4 +4,5 @@
 ^codecov\.yml$
 ^data-raw$
 ^README.Rmd
+^readme.md
 ^docs$
