@@ -2,20 +2,19 @@ testthat::test_that('testing partial species mix bernoulli ', {
 
   library(ecomix)
   set.seed(42)
-  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~x1+x2"))
-  spp_form <- as.formula(~1+w1+w2)
-  beta <- matrix(c(-3.6,0.5,
-                   -0.9,1.0,
-                   0.9,-2.9,
-                   2.2,5.4),
-                 4,2,byrow=TRUE)
-  gamma <- matrix(c(rnorm(50,1),rnorm(50,-2)),50,2)
+  nspp <- 20
+  sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:nspp),
+                                                      collapse = ','),
+                                       ")~1+x1+x2"))
+  sp_form <- as.formula(~1+w1+w2)
+  beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,7.9),3,2,byrow=TRUE)
+  gamma <- matrix(c(rnorm(50,1),rnorm(50,-2)),nspp,2)
   dat <- data.frame(y=rep(1,100), x1=runif(100,0,2.5), x2=rnorm(100,0,2.5),w1=rnorm(100,2,1), w2=rnorm(100,-1,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form, spp_form, dat = dat,
-                                         beta = beta, gamma = gamma,
-                                         n_mixtures = 4,
-                                         distribution = "bernoulli")
+  model_data <- species_mix.simulate(archetype_formula=sam_form,
+                                     species_formula=sp_form,
+                                     dat,beta=beta,gamma = gamma,
+                                     dist="bernoulli")
 
   archetype_formula <- sam_form
   species_formula <- spp_form
@@ -24,7 +23,7 @@ testthat::test_that('testing partial species mix bernoulli ', {
   test_dat$mf.X
   test_dat$mf.W
 
-  y <- simulated_data[,1:50]
+  y <- simulated_data[,1:nspp]
   X <- ecomix:::get_X_sam(archetype_formula, test_dat$mf.X)
   W <- ecomix:::get_W_sam(species_formula, test_dat$mf.W)
 
