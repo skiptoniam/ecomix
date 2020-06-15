@@ -322,13 +322,16 @@
 
 #'@rdname species_mix
 #'@name species_mix.multifit
-#'@param nstart for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.
-#'@param mc.cores for species_mix.multifit only. The number of cores to spread the re-fitting over.
+#'@param nstart for species_mix.multifit only. The number of random starts to
+#'perform for re-fitting. Default is 10, which will need increasing for serious use.
+#'@param mc.cores for species_mix.multifit only. The number of cores to spread
+#' the re-fitting over.
 #'@export
 #'@examples
 #' \dontrun{
 #' fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
-#' distribution = 'bernoulli', nstart = 10, n_mixtures=3)
+#'                               distribution = 'bernoulli', nstart = 10,
+#'                               n_mixtures=3)
 #' }
 "species_mix.multifit" <- function(archetype_formula = NULL,
                                    species_formula = stats::as.formula(~1),
@@ -593,6 +596,7 @@
 
 #' @rdname species_mix
 #' @name species_mix.bootstrap
+#' @importFrom stats vcov
 #' @export
 
 "species_mix.bootstrap" <-function (object, nboot=1000, type="BayesBoot",

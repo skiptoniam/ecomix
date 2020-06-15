@@ -1,4 +1,4 @@
 library(testthat)
 library(ecomix)
-test_check("ecomix",filter='SAM_ippm')
+# test_check("ecomix",filter='SAM_ippm')
 
