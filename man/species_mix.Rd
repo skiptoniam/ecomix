@@ -56,13 +56,13 @@ species_mix.bootstrap(
   quiet = FALSE
 )
 
-\method{AIC}{species_mix}(object, ..., k = 2)
+\method{AIC}{species_mix}(object, ...)
 
 \method{BIC}{species_mix}(object, ...)
 
 \method{coef}{species_mix}(object, ...)
 
-\method{plot}{species_mix}(x, ..., quiet = FALSE, species = "AllSpecies", fitted.scale = "response")
+\method{plot}{species_mix}(x, species = "AllSpecies", fitted.scale = "response", ...)
 
 \method{predict}{species_mix}(
   object,
@@ -165,13 +165,17 @@ using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created
 for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then
 setting titbits=TRUE may give users problems with memory.}
 
-\item{nstart}{for species_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
+\item{nstart}{for species_mix.multifit only. The number of random starts to
+perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
 \item{mc.cores}{number of cores to use in prediction. default is 1.}
 
 \item{object}{is a matrix model returned from the species_mix model.}
 
 \item{nboot}{Number of bootstraps (or simulations if using IPPM) to run if no object2 is provided.}
+
+\item{type}{the type of bootstrap to use, options are  "SimpleBoot" which is
+a parameteric bootstrap, or "BayesBoot"}
 
 \item{object2}{is a species mix bootstrap object.}
 
@@ -180,6 +184,8 @@ setting titbits=TRUE may give users problems with memory.}
 \item{alpha}{confidence level. default is 0.95}
 
 \item{prediction_type}{Do you want to produce 'archetype' or 'species' level predictions. default is 'archetype'.}
+
+\item{\\dots}{additional parameters}
 }
 \description{
 Fits a finite mixture model to identify species archetype
@@ -213,8 +219,9 @@ fm1 <- species_mix(sam_form, sp_form, simulated_data,
  distribution = 'bernoulli',  n_mixtures=3)
  }
 \dontrun{
-fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
-distribution = 'bernoulli', nstart = 10, n_mixtures=3)
+fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,\\
+                              distribution = 'bernoulli', nstart = 10,\\
+                              n_mixtures=3)
 }
 \dontrun{
 preds_fm1 <- predict(fm1)
@@ -226,7 +233,9 @@ print(fm1)}
 
 #Print information about a species_mix model
 \dontrun{
-fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli', nstart = 10, n_mixtures=3)
+fmods <- species_mix.multifit(sam_form, sp_form, data,
+                             distribution = 'bernoulli',
+                              nstart = 10, n_mixtures=3)
 print(fmods)
 }
 

@@ -329,8 +329,8 @@
 #'@export
 #'@examples
 #' \dontrun{
-#' fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
-#'                               distribution = 'bernoulli', nstart = 10,
+#' fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,\\
+#'                               distribution = 'bernoulli', nstart = 10,\\
 #'                               n_mixtures=3)
 #' }
 "species_mix.multifit" <- function(archetype_formula = NULL,
@@ -596,6 +596,8 @@
 
 #' @rdname species_mix
 #' @name species_mix.bootstrap
+#' @param type the type of bootstrap to use, options are  "SimpleBoot" which is
+#'  a parameteric bootstrap, or "BayesBoot"
 #' @importFrom stats vcov
 #' @export
 
@@ -854,9 +856,10 @@
 
 ##### S3 class SAM functions #####
 #' @rdname species_mix
+#' @param \\dots additional parameters
 #' @export
 
-"AIC.species_mix" <- function (object, ..., k = 2){
+"AIC.species_mix" <- function (object, ...){
   p <- length(unlist(object$coefs))
   if (is.null(k))
     k <- 2
@@ -901,18 +904,17 @@
 #' @rdname species_mix
 #' @export
 
-"plot.species_mix" <- function (x, ...,
-                                # alpha.conf = c(0.9, 0.95, 0.99),
-                                quiet=FALSE,
+"plot.species_mix" <- function (x,
                                 species="AllSpecies",
-                                fitted.scale="response"){
+                                fitted.scale="response",
+                                ...){
   # if( ! type %in% c("RQR"))
     # stop( "Unknown type of residuals. Options are 'RQR'.\n")
   if( ! all( species %in% c("AllSpecies",x$names$spp)))
     stop( "Unknown species.  Options are 'AllSpecies' or any one of the species names as supplied (and stored in x$names$spp)")
 
   # if( type=="RQR"){
-    obs.resid <- residuals(x, type="RQR", quiet=quiet)
+    obs.resid <- residuals(x, type="RQR", quiet=TRUE)
     S <- x$S
     sppID <- rep( TRUE, S)
     if( species != "AllSpecies"){
@@ -1205,7 +1207,9 @@
 #'
 #'#Print information about a species_mix model
 #'\dontrun{
-#'fmods <- species_mix.multifit(sam_form, sp_form, data, distribution = 'bernoulli', nstart = 10, n_mixtures=3)
+#'fmods <- species_mix.multifit(sam_form, sp_form, data,
+#'                              distribution = 'bernoulli',
+#'                              nstart = 10, n_mixtures=3)
 #'print(fmods)
 #'}
 
