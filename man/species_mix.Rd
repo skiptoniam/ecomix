@@ -56,7 +56,7 @@ species_mix.bootstrap(
   quiet = FALSE
 )
 
-\method{AIC}{species_mix}(object, ...)
+\method{AIC}{species_mix}(object, k = NULL, ...)
 
 \method{BIC}{species_mix}(object, ...)
 
@@ -84,15 +84,14 @@ species_mix.bootstrap(
 
 \method{vcov}{species_mix}(
   object,
-  ...,
   object2 = NULL,
   method = "BayesBoot",
   nboot = 10,
   mc.cores = 1,
-  D.accuracy = 2
+  ...
 )
 
-species_mix_boot_parametric(fm, mf, nboot)
+species_mix_boot_parametric(object, nboot)
 }
 \arguments{
 \item{archetype_formula}{an object of class "formula" (or an object that can
@@ -177,6 +176,16 @@ perform for re-fitting. Default is 10, which will need increasing for serious us
 \item{type}{the type of bootstrap to use, options are  "SimpleBoot" which is
 a parameteric bootstrap, or "BayesBoot"}
 
+\item{quiet}{If TRUE, do not print progress of bootstrap.}
+
+\item{k}{AIC penality}
+
+\item{x}{a fitted species_mix model.}
+
+\item{species}{which species residuals to plot. Default is "AllSpecies".}
+
+\item{fitted.scale}{log or logit, this enables the plotting of residuals to be on the linear predictor scale.}
+
 \item{object2}{is a species mix bootstrap object.}
 
 \item{newdata}{a matrix of new observations for prediction.}
@@ -184,6 +193,9 @@ a parameteric bootstrap, or "BayesBoot"}
 \item{alpha}{confidence level. default is 0.95}
 
 \item{prediction_type}{Do you want to produce 'archetype' or 'species' level predictions. default is 'archetype'.}
+
+\item{method}{Which of the following methods: c("FiniteDifference", "BayesBoot", "SimpleBoot") should
+you use to estimate the variance-covariance matirx.}
 
 \item{\\dots}{additional parameters}
 }
@@ -235,7 +247,7 @@ print(fm1)}
 \dontrun{
 fmods <- species_mix.multifit(sam_form, sp_form, data,
                              distribution = 'bernoulli',
-                              nstart = 10, n_mixtures=3)
+                             nstart = 10, n_mixtures=3)
 print(fmods)
 }
 

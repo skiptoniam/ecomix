@@ -598,6 +598,7 @@
 #' @name species_mix.bootstrap
 #' @param type the type of bootstrap to use, options are  "SimpleBoot" which is
 #'  a parameteric bootstrap, or "BayesBoot"
+#'@param quiet If TRUE, do not print progress of bootstrap.
 #' @importFrom stats vcov
 #' @export
 
@@ -856,10 +857,11 @@
 
 ##### S3 class SAM functions #####
 #' @rdname species_mix
+#' @param k AIC penality
 #' @param \\dots additional parameters
 #' @export
 
-"AIC.species_mix" <- function (object, ...){
+"AIC.species_mix" <- function (object, k=NULL, ...){
   p <- length(unlist(object$coefs))
   if (is.null(k))
     k <- 2
@@ -902,6 +904,9 @@
 }
 
 #' @rdname species_mix
+#' @param x a fitted species_mix model.
+#' @param species which species residuals to plot. Default is "AllSpecies".
+#' @param fitted.scale log or logit, this enables the plotting of residuals to be on the linear predictor scale.
 #' @export
 
 "plot.species_mix" <- function (x,
@@ -1016,8 +1021,7 @@
     }
     else
       my.nboot <- 0
-    allCoBoot <- species_mix_boot_parametric(fm = object, mf = mf,
-                                             nboot = my.nboot)
+    allCoBoot <- species_mix_boot_parametric(object = object, nboot = my.nboot)
   } else {
     if( !object$titbits$control$quiet)
       message("Using supplied species_mix.bootstrap object (non-parametric bootstrap)")
@@ -1306,7 +1310,8 @@
 
 
 #'@rdname species_mix
-#'
+#'@param method Which of the following methods: c("FiniteDifference", "BayesBoot", "SimpleBoot") should
+#'you use to estimate the variance-covariance matirx.
 #'@export
 #'
 #'@examples
@@ -1315,8 +1320,8 @@
 #'# This will provide estimates of uncertainty for model parameters.
 #'\dontrun{
 #' vcov(fm1)}
-"vcov.species_mix" <- function (object, ..., object2=NULL, method = "BayesBoot",
-                                nboot = 10, mc.cores = 1, D.accuracy=2){
+"vcov.species_mix" <- function (object, object2=NULL, method = "BayesBoot",
+                                nboot = 10, mc.cores = 1, ...){
     if( method %in% c("simple","Richardson"))
       method <- "FiniteDifference"
     if (!method %in% c("FiniteDifference", "BayesBoot", "SimpleBoot")) {
@@ -2387,17 +2392,17 @@ starting values;\n starting values are generated using ',control$init_method,
 #' @rdname species_mix
 #' @export
 
-"species_mix_boot_parametric" <- function( fm, mf, nboot){
+"species_mix_boot_parametric" <- function( object, nboot){
   if( nboot > 0){
-    if( is.null( fm$vcov)){
-      message( "An estimate of the variance matrix for regression parameters is required. Please run fm$vcov <- vcov(), see ?vcov.regional_mix for help")
+    if( is.null( object$vcov)){
+      message( "An estimate of the variance matrix for regression parameters is required. Please run object$vcov <- vcov(), see ?vcov.regional_mix for help")
       return( NULL)
     }
-    allCoBoot <- my.rmvnorm( n=nboot, mean=as.numeric(unlist( fm$coefs)), sigma=fm$vcov, method='eigen')
+    allCoBoot <- my.rmvnorm( n=nboot, mean=as.numeric(unlist( object$coefs)), sigma=object$vcov, method='eigen')
     return( allCoBoot)
   }
   else{
-    boot.estis <- matrix( unlist( fm$coef), nrow=1)
+    boot.estis <- matrix( unlist( object$coef), nrow=1)
     return( boot.estis)
   }
 }
@@ -2442,6 +2447,8 @@ starting values;\n starting values are generated using ',control$init_method,
   tau_star <- ( 2*alpha*taus - alpha + 1 ) / ( 2*alpha - alpha*G + G)
   return(tau_star)
 }
+
+
 
 "print_input_sam" <- function(y, X, W=NULL, S, archetype_formula, species_formula, distribution, quiet=FALSE){
   if( quiet)
