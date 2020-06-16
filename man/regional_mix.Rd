@@ -6,6 +6,7 @@
 \alias{AIC.regional_mix}
 \alias{BIC.regional_mix}
 \alias{coef.regional_mix}
+\alias{extractAIC}
 \alias{extractAIC.regional_mix}
 \alias{plot.regional_mix}
 \alias{plot.regional_mix_stab}
@@ -168,9 +169,41 @@ stability.regional_mix(
 
 \item{nstart}{for regional_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
-\item{mc.cores}{for regional_mix.multifit only. The number of cores to spread the re-fitting over.}
+\item{mc.cores}{the number of cores to spread the computations over. Ignored if running on a Windows machine.}
 
 \item{object}{A RCP model}
+
+\item{k}{AIC penality}
+
+\item{fit}{Fitted RCP model}
+
+\item{scale}{scale parameter}
+
+\item{x}{x-axis}
+
+\item{type}{What type of residuals to plot? 'RQR'; random quantile residuals or 'deviance' residuals.}
+
+\item{nsim}{number of simulations to run}
+
+\item{alpha.conf}{The bounds of the confidence intervals.}
+
+\item{quiet}{Run in quiet mode.}
+
+\item{species}{Which species to plot as residuals.}
+
+\item{y}{y-axis}
+
+\item{minWidth}{min width of cuts/binning}
+
+\item{ncuts}{number of cuts/bins to make}
+
+\item{ylimmo}{limit of y-axis}
+
+\item{object2}{a regional_mix object obtained from bootstrapping the regimix object. Such as that generated from a call to regiboot(qv). If not supplied, then predict.regimix will do parametric bootstrapping (otherwise non-parametric bootstrap).}
+
+\item{newdata}{a data.frame (or something that can be coerced) containing the values of the covariates where predictions are to be made. If NULL (the default) then predictions are made at the locations of the original data.}
+
+\item{nboot}{the number of parametric bootstrap samples to take for the bootstrap predictions, standard errors and confidence intervals. The default is 0, that is no bootstrapping is to be done and point predictions only are given. If object2 is not NULL, then the number of bootstrap samples is taken from that object (this argument is then ignored).}
 
 \item{alpha}{Numeric vector of length S. Specifies the mean prevalence for each species, on the logit scale}
 
@@ -199,16 +232,41 @@ stability.regional_mix(
 \item{CI}{The confidence intervals to report the range of
 values form bootstrap}
 
+\item{fitted.species}{What scale to plot the residuals on?}
+
+\item{\\dots}{additional predict calls    ignorned}
+
 \item{boot_object}{A RCP model bootstrap object}
+}
+\value{
+If nboot==0 then a n x H matrix of prior predictions (n=nrow(newdata), H=number of RCPs). Each row should sum to one.
+\item{ if nboot!=0 then a list is returned. It has elements:}{}
+\item{ ptPreds}{the n x H matrix of point predictions}
+\item{ bootPreds}{the n x H matrix of bootstrap point predictions (mean of bootstrap samples)}
+\item{ bootSEs}{the n x H matrix of bootstrap standard errors for predictions}
+\item{ bootCIs}{the n x H x 2 array of bootstrap confidence intervals. Note that bootCIs[,,1] gives the lower CIs and bootCIs[,,2] gives the upper CIs.}
+
+\item{ For type=="RQR", a number-of-sites by number-of-species matrix with the randomised quantile residuals, which should be distributed as a standard normal variate.}{}
+\item{ For type=="deviance" a numeric vector of size object$n containing the deviance residuals.}{}
 }
 \description{
 creates an \code{regional_mix} model.
 
-The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep). The result is one residual per species per site and they all should be standard
+The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over
+other species observations within that site; see Foster et al, in prep). The result is one residual per species per site and they all should be standard
 normal variates. Within a site they are likely to be correlated (as they share a common latent factor), but across sampling locations they will be independent.
- The deviance residuals (as used here), are actually just square root of minus two times the log-likelihood contribution for each sampling location. We do #' not subtract the log-likelihood of the saturated model as, at the time of writing, we are unsure what this log-likelihood should be (latent factors confuse #' things here). This implies that the residuals will not have mean zero and their variance might also be heteroskedastic. This was not realised when writing #' the original RCP paper (Foster et al, 2013), obviously. We still believe that these residuals have some utility, but we are unsure where that utility stops. #' For general useage, the "RQR" residuals should probably be preferred.
+The deviance residuals (as used here), are actually just square root of minus two times the log-likelihood contribution for each sampling location. We do
+not subtract the log-likelihood of the saturated model as, at the time of writing, we are unsure what this log-likelihood should be (latent factors confuse
+things here). This implies that the residuals will not have mean zero and their variance might also be heteroskedastic. This was not realised when writing
+the original RCP paper (Foster et al, 2013), obviously. We still believe that these residuals have some utility, but we are unsure where that utility stops.
+For general useage, the "RQR" residuals should probably be preferred.
 
 Extracts the average species' membership for each RCP.
+}
+\details{
+This function implements two separate, and quite different, bootstrapping routines. The first, attributable to Foster et al (2013), which implements a parametric bootstrap, whereby parameters are drawn from their sampling distribution (defined by the ML estimates and their asymptotic vcov matrix). Yes, the vcov function needs to be run first and stored in the the regimix object as $vcov. Typically, the vcov matrix is obtained using numerical derivatives, which can be slow to calculate and somewhat unstable/erratic. This was the original suggestion and has been superceeded by the non-parametric bootstrap routine. This is described in Foster et al (in prep) and bootstraps the sampling site data repeatedly, and for each bootstrap sample the model is re-estimated. Variation in the bootstrap samples is carried forward to the prediction step to guage the uncertainty.
+The parametric bootsrap implementation of this function can take a while to run ??? it is a bootstrap function. nboot samples of the parameters are taken and then used to predict at each set of covariates defined in newdata. Quantiles of the resulting sets of bootstrap predictions are then taken. It is the last step that really takes a while. The non-parametric version of this function should not take as long as the grunt work of bootstrapping is carried out in the regiboot(qv) function.
+Note that this function is not implemented. It could be, using the parallel package, but it is currently not. The bulk of the bootstrap calculations are done in C++, which reduces the waiting time but parallelising it would be even better.
 }
 \examples{
 \dontrun{
@@ -255,4 +313,9 @@ alpha=alpha, tau=tau, beta=beta, gamma=gamma, X=X[,-(2:3)], W=W,
 distribution=my.dist, logDisp=logDisp, offset=Offy)
 
 }
+}
+\references{
+Dunn, P.K. and Smyth G.K. (1996) Randomized Quantile Residuals. Journal of Computational and Graphical Statistics \emph{5}: 236--244.
+Foster, S.D., Givens, G.H., Dornan, G.J., Dunstan, P.K. and Darnell, R{}. (2013) Modelling Regions of Common Profiles Using Biological and Environmental Data. Environmetrics \emph{24}: 489--499. DOI: 10.1002/env.2245
+Foster, S.D., Hill, N.A. and Lyons, M., 2017. Ecological grouping of survey sites when sampling artefacts are present. Journal of the Royal Statistical Society: Series C (Applied Statistics), 66(5), pp.1031-1047.
 }

@@ -268,6 +268,8 @@
 
 ##### S3 Class exports #####
 #' @rdname regional_mix
+#' @param \\dots extra things for AIC
+#' @param k AIC penality
 #' @export
 "AIC.regional_mix" <- function (object, ..., k = 2){
   p <- length(unlist(object$coefs))
@@ -436,19 +438,29 @@
 }
 
 #' @rdname regional_mix
+#' @name extractAIC
+#' @param fit  Fitted RCP model
+#' @param scale scale parameter
 #' @export
 
 "extractAIC.regional_mix" <- function (fit, scale = 1, k = 2, ...){
   n <- fit$n
-  edf <- length(unlist(stats::coef( fit)))
+  edf <- length(unlist(stats::coef(fit)))
   if (is.null(k))
     k <- 2
-  aic <- -2 * logLik( fit) + k * edf
+  aic <- -2 * logLik(fit) + k * edf
   return(c(edf, aic))
 }
 
 
 #' @rdname regional_mix
+#' @param x a fitted regional_mix model you wish to plot
+#' @param type What type of residuals to plot? 'RQR'; random quantile residuals or 'deviance' residuals.
+#' @param nsim number of simulations to run
+#' @param alpha.conf The bounds of the confidence intervals.
+#' @param quiet Run in quiet mode.
+#' @param species Which species to plot as residuals.
+#' @param fitted.species What scale to plot the residuals on?
 #' @export
 
 "plot.regional_mix" <- function (x, ..., type="RQR", nsim = 100,
@@ -617,6 +629,13 @@
 }
 
 #' @rdname regional_mix
+#' @name plot.regional_mix_stab
+#' @param x x-axis
+#' @param y y-axis
+#' @param minWidth min width of cuts/binning
+#' @param ncuts number of cuts/bins to make
+#' @param ylimmo limit of y-axis
+#' @param \\dots additional plotting calls
 #' @export
 
 "plot.regional_mix_stab" <-function(x, y, minWidth=1, ncuts=111, ylimmo=NULL, ...){
@@ -651,6 +670,23 @@
 }
 
 #' @rdname regional_mix
+#' @name predict.regional_mix
+#' @param object an object obtained from fitting a RCP mixture model. Such as that generated from a call to regimix(qv).
+#' @param object2 a regional_mix object obtained from bootstrapping the regimix object. Such as that generated from a call to regiboot(qv). If not supplied, then predict.regimix will do parametric bootstrapping (otherwise non-parametric bootstrap).
+#' @param newdata a data.frame (or something that can be coerced) containing the values of the covariates where predictions are to be made. If NULL (the default) then predictions are made at the locations of the original data.
+#' @param nboot the number of parametric bootstrap samples to take for the bootstrap predictions, standard errors and confidence intervals. The default is 0, that is no bootstrapping is to be done and point predictions only are given. If object2 is not NULL, then the number of bootstrap samples is taken from that object (this argument is then ignored).
+#' @param alpha a numeric within [0,1] (well [0.5,1] really) indicating the specified confidence for the confidence interval. Argument is redundant if nboot == 0.
+#' @param mc.cores the number of cores to spread the computations over. Ignored if running on a Windows machine.
+#' @param \\dots additional predict calls	ignorned
+#' @details This function implements two separate, and quite different, bootstrapping routines. The first, attributable to Foster et al (2013), which implements a parametric bootstrap, whereby parameters are drawn from their sampling distribution (defined by the ML estimates and their asymptotic vcov matrix). Yes, the vcov function needs to be run first and stored in the the regimix object as $vcov. Typically, the vcov matrix is obtained using numerical derivatives, which can be slow to calculate and somewhat unstable/erratic. This was the original suggestion and has been superceeded by the non-parametric bootstrap routine. This is described in Foster et al (in prep) and bootstraps the sampling site data repeatedly, and for each bootstrap sample the model is re-estimated. Variation in the bootstrap samples is carried forward to the prediction step to guage the uncertainty.
+#' The parametric bootsrap implementation of this function can take a while to run ??? it is a bootstrap function. nboot samples of the parameters are taken and then used to predict at each set of covariates defined in newdata. Quantiles of the resulting sets of bootstrap predictions are then taken. It is the last step that really takes a while. The non-parametric version of this function should not take as long as the grunt work of bootstrapping is carried out in the regiboot(qv) function.
+#' Note that this function is not implemented. It could be, using the parallel package, but it is currently not. The bulk of the bootstrap calculations are done in C++, which reduces the waiting time but parallelising it would be even better.
+#' @return If nboot==0 then a n x H matrix of prior predictions (n=nrow(newdata), H=number of RCPs). Each row should sum to one.
+#' \item{ if nboot!=0 then a list is returned. It has elements:}{}
+#' \item{ ptPreds}{the n x H matrix of point predictions}
+#' \item{ bootPreds}{the n x H matrix of bootstrap point predictions (mean of bootstrap samples)}
+#' \item{ bootSEs}{the n x H matrix of bootstrap standard errors for predictions}
+#' \item{ bootCIs}{the n x H x 2 array of bootstrap confidence intervals. Note that bootCIs[,,1] gives the lower CIs and bootCIs[,,2] gives the upper CIs.}
 #' @export
 
 "predict.regional_mix" <- function (object, object2 = NULL, ..., newdata = NULL, nboot = 0, alpha = 0.95, mc.cores = 1){
@@ -821,14 +857,24 @@
   invisible(ret)
 }
 
-
-
 #' @rdname regional_mix
-#' @export
-#' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over #' other species observations within that site; see Foster et al, in prep). The result is one residual per species per site and they all should be standard
+#' @name residuals.regional_mix
+#' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over
+#' other species observations within that site; see Foster et al, in prep). The result is one residual per species per site and they all should be standard
 #' normal variates. Within a site they are likely to be correlated (as they share a common latent factor), but across sampling locations they will be independent.
+#' The deviance residuals (as used here), are actually just square root of minus two times the log-likelihood contribution for each sampling location. We do
+#' not subtract the log-likelihood of the saturated model as, at the time of writing, we are unsure what this log-likelihood should be (latent factors confuse
+#' things here). This implies that the residuals will not have mean zero and their variance might also be heteroskedastic. This was not realised when writing
+#' the original RCP paper (Foster et al, 2013), obviously. We still believe that these residuals have some utility, but we are unsure where that utility stops.
+#' For general useage, the "RQR" residuals should probably be preferred.
+#' @return
+#' \item{ For type=="RQR", a number-of-sites by number-of-species matrix with the randomised quantile residuals, which should be distributed as a standard normal variate.}{}
+#' \item{ For type=="deviance" a numeric vector of size object$n containing the deviance residuals.}{}
+#' @references Dunn, P.K. and Smyth G.K. (1996) Randomized Quantile Residuals. Journal of Computational and Graphical Statistics \emph{5}: 236--244.
+#' Foster, S.D., Givens, G.H., Dornan, G.J., Dunstan, P.K. and Darnell, R{}. (2013) Modelling Regions of Common Profiles Using Biological and Environmental Data. Environmetrics \emph{24}: 489--499. DOI: 10.1002/env.2245
+#' Foster, S.D., Hill, N.A. and Lyons, M., 2017. Ecological grouping of survey sites when sampling artefacts are present. Journal of the Royal Statistical Society: Series C (Applied Statistics), 66(5), pp.1031-1047.
+#' @export
 
-#'  The deviance residuals (as used here), are actually just square root of minus two times the log-likelihood contribution for each sampling location. We do #' not subtract the log-likelihood of the saturated model as, at the time of writing, we are unsure what this log-likelihood should be (latent factors confuse #' things here). This implies that the residuals will not have mean zero and their variance might also be heteroskedastic. This was not realised when writing #' the original RCP paper (Foster et al, 2013), obviously. We still believe that these residuals have some utility, but we are unsure where that utility stops. #' For general useage, the "RQR" residuals should probably be preferred.
 "residuals.regional_mix" <- function( object, ..., type="RQR", quiet=FALSE, mc.cores=1){
   if( ! type %in% c("deviance","RQR","RQR.sim"))
     stop( "Unknown type of residual requested. Only deviance and RQR (for randomised quantile residuals) are implemented\n")
@@ -1087,6 +1133,229 @@
 }
 
 
+#'@rdname regional_mix
+#'@export
+#'
+"stability.regional_mix" <- function( model, oosSizeRange=NULL, times=model$n, mc.cores=1, quiet=FALSE, doPlot=TRUE){
+  if( is.null( oosSizeRange))
+    oosSizeRange <- round( seq( from=1, to=model$n%/%5, length=10))
+  if( any( oosSizeRange < 1))
+    stop( "Silly number of RCPs. Specified range is: ", oosSizeRange, " and they should all be >= 1")
+  disty <- matrix( NA, nrow=length( oosSizeRange), ncol=model$nRCP)
+  predlogls <- array( NA, dim=c(length( oosSizeRange), model$n, times)) #matrix( NA, nrow=length( oosSizeRange), ncol=times)
+  for( ii in oosSizeRange){
+    tmp <- cooks.distance( model, oosSize=ii, times=times, mc.cores=mc.cores, quiet=quiet)
+    disty[oosSizeRange==ii,] <- colMeans( abs( tmp$cooksD))
+    predlogls[oosSizeRange==ii,,] <- tmp$predLogL
+    #predlogls[oosSizeRange==ii,] <- colMeans( tmp$predLogL, na.rm=TRUE)
+  }
+  ret <- list( oosSizeRange=oosSizeRange, disty=disty, nRCP=model$nRCP,n=model$n, predlogls=predlogls, logl.sites=model$logl.sites)
+  class( ret) <- "regional_mix_stab"
+
+  if( doPlot)
+    plot( ret)
+
+  invisible( ret)
+}
+
+#' @rdname regional_mix
+#' @export
+
+"summary.regional_mix" <-
+  function (object, ...)
+  {
+    if (is.null(object$vcov)) {
+      object$vcov <- matrix(NA, nrow = length(unlist(object$coef)),
+                            ncol = length(unlist(object$coef)))
+      stop("No variance matrix has been supplied")
+
+    }
+    message("Standard errors for alpha, tau and (probably) gamma parameters may be (are likely to be) misleading")
+    res <- cbind(unlist(object$coefs), sqrt(diag(object$vcov)))
+    res <- cbind(res, res[, 1]/res[, 2])
+    res <- cbind(res, 2 * (1 - pnorm(abs(res[, 3]))))
+    colnames(res) <- c("Estimate", "SE", "z-score", "p")
+    return(res)
+  }
+
+#'@rdname regional_mix
+#'@export
+"vcov.regional_mix" <- function (object, ..., object2=NULL,
+                                 method = "FiniteDifference",
+                                 nboot = 1000, mc.cores=1, D.accuracy=2){
+
+  if( method %in% c("simple","Richardson"))
+    method <- "FiniteDifference"
+  if (!method %in% c("FiniteDifference", "BayesBoot", "SimpleBoot", "EmpiricalInfo")) {
+    error("Unknown method to calculate variance matrix, viable options are: 'FiniteDifference' (numerical), 'BayesBoot' (bootstrap), 'SimpleBoot' (bootstrap)', and 'EmpiricalInfo'.")
+    return(NULL)
+  }
+  if( Sys.info()['sysname'] == "Windows")
+    mc.cores <- 1
+  X <- object$titbits$X
+  p.x <- ncol( X)
+  if( class( object$titbits$species_formula)=="formula"){
+    form.W <- object$titbits$species_formula
+    W <- object$titbits$W
+    p.w <- ncol( W)
+  }
+  else{
+    form.W <- NULL
+    W <- -999999
+    p.w <- 0
+  }
+  offy <- object$titbits$offset
+  wts <- object$titbits$wts
+  Y <- object$titbits$Y
+  disty <- object$titbits$disty
+  power <- object$titbits$power
+  S <- object$S
+  nRCP <- object$nRCP
+  p.x <- object$p.x
+  p.w <- object$p.w
+  n <- object$n
+  disty <- object$titbits$disty
+  control <- object$titbits$control
+  pis <- as.numeric( matrix( -999999, nrow = n, ncol = nRCP))
+  mus <- as.numeric( array( -999999, dim=c( n, S, nRCP)))
+  logCondDens <- as.numeric( matrix( -999999, nrow = n, ncol = nRCP))
+  logls <- as.numeric(rep(-999999, n))
+  alpha.score <- as.numeric(rep(-999999, S))
+  tau.score <- as.numeric(matrix(-999999, nrow = nRCP - 1, ncol = S))
+  beta.score <- as.numeric(matrix(-999999, nrow = nRCP - 1, ncol = p.x))
+  if( p.w > 0)
+    gamma.score <- as.numeric( matrix( -999999, nrow = S, ncol = p.w))
+  else
+    gamma.score <- -999999
+  if( !is.null( object$coef$disp))
+    disp.score <- as.numeric( rep( -999999, S))
+  else
+    disp.score <- -999999
+  conv <- FALSE
+
+  if (method %in% c("FiniteDifference")) {
+    my.fun <- function(x) {
+      start <- 0
+      alpha <- x[start + 1:S]
+      start <- start + S
+      tau <- x[start + 1:((nRCP - 1) * S)]
+      start <- start + (nRCP-1)*S
+      beta <- x[start + 1:((nRCP - 1) * p.x)]
+      start <- start + (nRCP-1)*p.x
+      if( p.w > 0){
+        gamma <- x[start + 1:(S*p.w)]
+        start <- start + S*p.w
+      }
+      else
+        gamma <- -999999
+      if( any( !is.null( object$coef$disp)))
+        disp <- x[start + 1:S]
+      else
+        disp <- -999999
+      scoreContri <- -999999
+      tmp <- .Call("RCP_C", as.numeric(Y), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
+                   as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
+                   alpha, tau, beta, gamma, disp, power,
+                   as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
+                   alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
+                   pis, mus, logCondDens, logls,
+                   as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
+                   as.integer( FALSE), as.integer( FALSE), as.integer( TRUE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "ecomix")
+
+      tmp1 <- c(alpha.score, tau.score, beta.score)
+      if( p.w > 0)#class( object$titbits$species_formula) == "formula")
+        tmp1 <- c( tmp1, gamma.score)
+      if( !is.null( object$coef$disp))
+        tmp1 <- c( tmp1, disp.score)
+      return(tmp1)
+    }
+    hess <- nd2(x0=unlist( object$coefs), f=my.fun, mc.cores=mc.cores, D.accur=D.accuracy)#numDeriv::jacobian(my.fun, unlist(object$coefs), method = method)
+    vcov.mat <- try( -solve(hess))
+    if( inherits( vcov.mat, 'try-error')){
+      attr(vcov.mat, "hess") <- hess
+      warning( "Hessian appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe Hessian is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data.")
+    }
+    else
+      vcov.mat <- ( vcov.mat + t(vcov.mat)) / 2 #to ensure symmetry
+  }
+  if( method %in% c( "BayesBoot","SimpleBoot")){
+    object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
+    if( is.null( object2))
+      coefMat <- regional_mix_boot( object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE)#, orderSamps=FALSE)
+    else
+      coefMat <- object2
+    vcov.mat <- cov( coefMat)
+  }
+  if( method=="EmpiricalInfo"){
+    message( "Information approximated by empirical methods.  I have not been able to get this to work, even for simulated data.  I hope that you are feeling brave!")
+    alpha <- object$coef$alpha
+    tau <- object$coef$tau
+    beta <- object$coef$beta
+    if( p.w > 0)
+      gamma <- object$coef$gamma
+    else
+      gamma <- -999999
+    if( any( !is.null( object$coef$disp)))
+      disp <- object$coef$disp
+    else
+      disp <- -999999
+    scoreContri <- as.numeric( matrix( NA, nrow=n, ncol=length( unlist( object$coef))))
+    tmp <- .Call("RCP_C", as.numeric(Y), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
+                 as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
+                 alpha, tau, beta, gamma, disp, power,
+                 as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
+                 alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
+                 pis, mus, logCondDens, logls,
+                 as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
+                 as.integer( FALSE), as.integer( FALSE), as.integer( TRUE), as.integer( TRUE), as.integer( TRUE), PACKAGE = "ecomix")
+    scoreContri <- matrix( scoreContri, nrow=n)
+    summy <- matrix( 0, ncol=ncol( scoreContri), nrow=ncol( scoreContri))
+    for( ii in 1:n){
+      summy <- summy + scoreContri[ii,] %o% scoreContri[ii,]
+    }
+    tmp <- colSums( scoreContri)
+    tmp <- tmp %o% tmp / n
+    emp.info <- summy - tmp
+    #    diag( emp.info) <- diag( emp.info) + 0.00001 #makes it invertable but not realistic.
+    vcov.mat <- try( solve( emp.info))
+    if( inherits( vcov.mat, 'try-error')){
+      attr(vcov.mat, "hess") <- emp.info
+      warning( "Empirical information matrix (average of the cross-products of the scores for each observation) appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe empirical inverse is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data. Note that you have chosen to use method=\"EmpricalInfo\", which is likely to cause heartache (albeit computationally thrifty heartache) -- try other methods (and probably do that first).")
+    }
+    else
+      vcov.mat <- ( vcov.mat + t(vcov.mat)) / 2 #to ensure symmetry
+  }
+
+  return(vcov.mat)
+}
+
+#'@title What is the average species membership per RCP?
+#'@rdname regional_mix
+#'@name regional_mix.species_membership
+#'@param object A RCP model
+#'@param boot_object A RCP model bootstrap object
+#'@param CI The confidence intervals to report the range of
+#'values form bootstrap
+#'@export
+#'@description Extracts the average species' membership for each RCP.
+
+"regional_mix.species_membership" <- function(object, object2=NULL, CI=c(0.025,0.975), ...){
+
+  if(is.null(object2)){
+    if(check_if_sampling(object)) type <- "single_no_sp_results"
+    else type <- "single_results"
+  } else {
+    type <- "bootstrap_results"
+  }
+  partial_mus <- switch(type,
+                        single_no_sp_results = partial_mus_no_species_form(object),
+                        single_results = partial_mus_with_species_form(object),
+                        bootstrap_results = partial_mus_from_boostrap(object, object2, CI = CI))
+
+  return(partial_mus)
+}
+
+
 #### Non S3 Class objects ####
 #'@title What is the average species membership per RCP?
 #'@rdname regional_mix
@@ -1098,8 +1367,7 @@
 #'@export
 #'@description Extracts the average species' membership for each RCP.
 
-"regional_mix.species_membership" <- function(object, object2=NULL,
-                                              CI=c(0.025,0.975), ...){
+"regional_mix.species_membership" <- function(object, object2=NULL, CI=c(0.025,0.975), ...){
 
   if(is.null(object2)){
     if(check_if_sampling(object)) type <- "single_no_sp_results"
@@ -1149,7 +1417,7 @@ partial_mus_no_species_form <- function(object, ...){
 
 partial_mus_with_species_form <- function(object, ... ){
 
-  # what are the taus?
+  ## what are the taus?
   tau <- coef(object)$tau
   tau <- rbind(tau, -colSums( tau))
 
@@ -1167,7 +1435,7 @@ partial_mus_with_species_form <- function(object, ... ){
   if(object$distribution=='guassian')
     link.fun <- stats::make.link('identity')
 
-  #probabilities for all other levels of same sampling var
+  ## probabilities for all other levels of same sampling var
   res<- lapply(seq_along(object$names$Wvars),function(jj){
     new_eta <- sweep(eta, 2, coef(object)$gamma[,object$names$Wvars[jj]], "+");
     part_mu <- link.fun$linkinv(new_eta);
@@ -2193,51 +2461,6 @@ function(control)
 
 }
 
-#'@rdname regional_mix
-#'@export
-#'
-"stability.regional_mix" <- function( model, oosSizeRange=NULL, times=model$n, mc.cores=1, quiet=FALSE, doPlot=TRUE){
-  if( is.null( oosSizeRange))
-    oosSizeRange <- round( seq( from=1, to=model$n%/%5, length=10))
-  if( any( oosSizeRange < 1))
-    stop( "Silly number of RCPs. Specified range is: ", oosSizeRange, " and they should all be >= 1")
-  disty <- matrix( NA, nrow=length( oosSizeRange), ncol=model$nRCP)
-  predlogls <- array( NA, dim=c(length( oosSizeRange), model$n, times)) #matrix( NA, nrow=length( oosSizeRange), ncol=times)
-  for( ii in oosSizeRange){
-    tmp <- cooks.distance( model, oosSize=ii, times=times, mc.cores=mc.cores, quiet=quiet)
-    disty[oosSizeRange==ii,] <- colMeans( abs( tmp$cooksD))
-    predlogls[oosSizeRange==ii,,] <- tmp$predLogL
-    #predlogls[oosSizeRange==ii,] <- colMeans( tmp$predLogL, na.rm=TRUE)
-  }
-  ret <- list( oosSizeRange=oosSizeRange, disty=disty, nRCP=model$nRCP,n=model$n, predlogls=predlogls, logl.sites=model$logl.sites)
-  class( ret) <- "regional_mix_stab"
-
-  if( doPlot)
-    plot( ret)
-
-  invisible( ret)
-}
-
-#' @rdname regional_mix
-#' @export
-
-"summary.regional_mix" <-
-function (object, ...)
-{
-    if (is.null(object$vcov)) {
-        object$vcov <- matrix(NA, nrow = length(unlist(object$coef)),
-            ncol = length(unlist(object$coef)))
-        stop("No variance matrix has been supplied")
-
-    }
-    message("Standard errors for alpha, tau and (probably) gamma parameters may be (are likely to be) misleading")
-    res <- cbind(unlist(object$coefs), sqrt(diag(object$vcov)))
-    res <- cbind(res, res[, 1]/res[, 2])
-    res <- cbind(res, 2 * (1 - pnorm(abs(res[, 3]))))
-    colnames(res) <- c("Estimate", "SE", "z-score", "p")
-    return(res)
-}
-
 
 # "TweedieOptimise" <-
 # function( outcomes, X, W, offy, wts, S, nRCP, p.x, p.w, n, disty, start.vals, power, control)
@@ -2256,260 +2479,109 @@ function (object, ...)
 #     return( -as.numeric( tmp1))
 #   }
 
- #  Tw.phi.func.grad <- function( phi1, spp3){
- #    disp3 <- disp
- #    disp3[spp3] <- phi1
- #    tmp.disp.score <- rep( -99999, S)
- #    tmp1 <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
- #      as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
- #      alpha, tau, beta, gamma, disp3, power,
- #      as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
- #      alpha.score, tau.score, beta.score, gamma.score, tmp.disp.score, scoreContri,
- #      pis, mus, logCondDens, logls,
- #      as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
- #      as.integer(FALSE), as.integer(FALSE), as.integer(TRUE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "ecomix")
- #    return( -as.numeric( tmp.disp.score[spp3]))
- #  }
- #
- #  inits <- c(start.vals$alpha, start.vals$tau, start.vals$beta, start.vals$gamma, start.vals$disp)
- #  alpha <- start.vals$alpha; tau <- as.numeric( start.vals$tau); beta <- as.numeric( start.vals$beta); gamma <- as.numeric( start.vals$gamma); disp <- start.vals$disp
- #  #scores
- #  alpha.score <- as.numeric(rep(NA, S))
- #  tau.score <- as.numeric(matrix(NA, ncol = S, nrow = nRCP - 1))
- #  beta.score <- as.numeric(matrix(NA, ncol = ncol(X), nrow = nRCP - 1))
- #  if( p.w > 0)
- #    gamma.score <- as.numeric(matrix( NA, nrow=S, ncol=ncol(W)))
- #  else
- #    gamma.score <- -999999
- #  if( disty %in% 3:5)
- #    disp.score <- as.numeric( rep( NA, S))
- #  else
- #    disp.score <- -999999
- #  scoreContri <- -999999  #as.numeric(matrix(NA, ncol = length(inits), nrow = n))
- #  #model quantities
- #  pis <- as.numeric(matrix(NA, nrow = n, ncol = nRCP))  #container for the fitted RCP model
- #  mus <- as.numeric(array( NA, dim=c( n, S, nRCP)))  #container for the fitted spp model
- #  logCondDens <- as.numeric(matrix(NA, nrow = n, ncol = nRCP))
- #  logls <- as.numeric(rep(NA, n))
- #  conv <- as.integer(0)
- #
- #  optimiseDisp <- FALSE
- #  kount <- 1
- #  tmp.new <- tmp.old <- -999999
- #  if( control$optimise){
- #    while( (abs( abs( tmp.new - tmp.old) / ( abs( tmp.old) + control$reltol)) > control$reltol | kount==1) & (kount < 15)){
- #      kount <- kount + 1
- #      tmp.old <- tmp.new
- #      message( "Updating Location Parameters: ", appendLF=FALSE)
- #      tmp <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
- #        as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
- #        alpha, tau, beta, gamma, disp, power,
- #        as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
- #        alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
- #        pis, mus, logCondDens, logls,
- #        as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
- #        as.integer(control$optimise), as.integer(TRUE), as.integer( FALSE), as.integer(optimiseDisp), as.integer( FALSE), PACKAGE = "ecomix")
- #      message( "Updating Dispersion Parameters: ", appendLF=FALSE)
- #      for( ii in 1:S){
- #        tmp1 <- nlminb( disp[ii], Tw.phi.func, Tw.phi.func.grad, spp3=ii, control=list( trace=0))
- #        disp[ii] <- tmp1$par
- #        message( tmp1$objective, " ")
- #      }
- #      message( "")
- #      tmp.new <- -tmp1$objective
- #    }
- #  }
- #  tmp <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
- #    as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
- #    alpha, tau, beta, gamma, disp, power,
- #    as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
- #    alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
- #    pis, mus, logCondDens, logls,
- #    as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
- #    as.integer(FALSE), as.integer( TRUE), as.integer(TRUE), as.integer(TRUE), as.integer( FALSE), PACKAGE = "ecomix")
- #
- #  ret <- list()
- #
- #  ret$pis <- matrix(pis, ncol = nRCP)
- #    ret$mus <- array( mus, dim=c(n,S,nRCP))
- #  ret$coefs <- list(alpha = alpha, tau = tau, beta = beta, gamma=gamma, disp=disp)
- #  if( any( ret$coefs$gamma==-999999, na.rm=TRUE))
- #    ret$coefs$gamma <- NULL
- #  if( any( ret$coefs$disp==-999999, na.rm=TRUE))
- #    ret$coefs$disp <- NULL
- #  ret$names <- list( spp=colnames( outcomes), RCPs=paste( "RCP", 1:nRCP, sep=""), Xvars=colnames( X))
- #  if( p.w>0)
- #    ret$names$Wvars <- colnames( W)
- #  else
- #    ret$names$Wvars <- NA
- #  ret$scores <- list(alpha = alpha.score, tau = tau.score, beta = beta.score, gamma = gamma.score, disp=disp.score)
- #  if( any( ret$scores$gamma==-999999, na.rm=TRUE))
- #    ret$scores$gamma <- NULL
- #  if( any( ret$scores$disp==-999999, na.rm=TRUE))
- #    ret$scores$disp <- NULL
- #  ret$logCondDens <- matrix(logCondDens, ncol = nRCP)
- #  if( control$optimise)
- #    ret$conv <- conv
- #  else
- #    ret$conv <- "not optimised"
- #  ret$S <- S; ret$nRCP <- nRCP; ret$p.x <- p.x; ret$p.w <- p.w; ret$n <- n
- #  ret$start.vals <- inits
- #  ret$logl <- tmp
- #  ret$logl.sites <- logls  #for residuals
- #
- #  return( ret)
- # }
-
-#'@rdname regional_mix
-#'@export
-"vcov.regional_mix" <- function (object, ..., object2=NULL,
-                                 method = "FiniteDifference",
-                                 nboot = 1000, mc.cores=1, D.accuracy=2){
-
-  if( method %in% c("simple","Richardson"))
-    method <- "FiniteDifference"
-  if (!method %in% c("FiniteDifference", "BayesBoot", "SimpleBoot", "EmpiricalInfo")) {
-      error("Unknown method to calculate variance matrix, viable options are: 'FiniteDifference' (numerical), 'BayesBoot' (bootstrap), 'SimpleBoot' (bootstrap)', and 'EmpiricalInfo'.")
-      return(NULL)
-  }
-  if( Sys.info()['sysname'] == "Windows")
-    mc.cores <- 1
-  X <- object$titbits$X
-  p.x <- ncol( X)
-  if( class( object$titbits$species_formula)=="formula"){
-    form.W <- object$titbits$species_formula
-    W <- object$titbits$W
-    p.w <- ncol( W)
-  }
-  else{
-    form.W <- NULL
-    W <- -999999
-    p.w <- 0
-  }
-  offy <- object$titbits$offset
-  wts <- object$titbits$wts
-  Y <- object$titbits$Y
-  disty <- object$titbits$disty
-  power <- object$titbits$power
-  S <- object$S
-  nRCP <- object$nRCP
-  p.x <- object$p.x
-  p.w <- object$p.w
-  n <- object$n
-  disty <- object$titbits$disty
-  control <- object$titbits$control
-  pis <- as.numeric( matrix( -999999, nrow = n, ncol = nRCP))
-  mus <- as.numeric( array( -999999, dim=c( n, S, nRCP)))
-  logCondDens <- as.numeric( matrix( -999999, nrow = n, ncol = nRCP))
-  logls <- as.numeric(rep(-999999, n))
-  alpha.score <- as.numeric(rep(-999999, S))
-  tau.score <- as.numeric(matrix(-999999, nrow = nRCP - 1, ncol = S))
-  beta.score <- as.numeric(matrix(-999999, nrow = nRCP - 1, ncol = p.x))
-  if( p.w > 0)
-    gamma.score <- as.numeric( matrix( -999999, nrow = S, ncol = p.w))
-  else
-    gamma.score <- -999999
-  if( !is.null( object$coef$disp))
-    disp.score <- as.numeric( rep( -999999, S))
-  else
-    disp.score <- -999999
-  conv <- FALSE
-
-  if (method %in% c("FiniteDifference")) {
-    my.fun <- function(x) {
-      start <- 0
-      alpha <- x[start + 1:S]
-      start <- start + S
-      tau <- x[start + 1:((nRCP - 1) * S)]
-      start <- start + (nRCP-1)*S
-      beta <- x[start + 1:((nRCP - 1) * p.x)]
-      start <- start + (nRCP-1)*p.x
-      if( p.w > 0){
-        gamma <- x[start + 1:(S*p.w)]
-        start <- start + S*p.w
-      }
-      else
-       gamma <- -999999
-      if( any( !is.null( object$coef$disp)))
-        disp <- x[start + 1:S]
-      else
-        disp <- -999999
-      scoreContri <- -999999
-      tmp <- .Call("RCP_C", as.numeric(Y), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
-        as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
-        alpha, tau, beta, gamma, disp, power,
-        as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
-        alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
-        pis, mus, logCondDens, logls,
-        as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-        as.integer( FALSE), as.integer( FALSE), as.integer( TRUE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "ecomix")
-
-        tmp1 <- c(alpha.score, tau.score, beta.score)
-        if( p.w > 0)#class( object$titbits$species_formula) == "formula")
-          tmp1 <- c( tmp1, gamma.score)
-        if( !is.null( object$coef$disp))
-          tmp1 <- c( tmp1, disp.score)
-        return(tmp1)
-    }
-    hess <- nd2(x0=unlist( object$coefs), f=my.fun, mc.cores=mc.cores, D.accur=D.accuracy)#numDeriv::jacobian(my.fun, unlist(object$coefs), method = method)
-    vcov.mat <- try( -solve(hess))
-    if( inherits( vcov.mat, 'try-error')){
-      attr(vcov.mat, "hess") <- hess
-      warning( "Hessian appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe Hessian is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data.")
-    }
-    else
-      vcov.mat <- ( vcov.mat + t(vcov.mat)) / 2 #to ensure symmetry
-  }
-  if( method %in% c( "BayesBoot","SimpleBoot")){
-    object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
-    if( is.null( object2))
-      coefMat <- regional_mix_boot( object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE)#, orderSamps=FALSE)
-    else
-      coefMat <- object2
-    vcov.mat <- cov( coefMat)
-  }
-  if( method=="EmpiricalInfo"){
-    message( "Information approximated by empirical methods.  I have not been able to get this to work, even for simulated data.  I hope that you are feeling brave!")
-    alpha <- object$coef$alpha
-    tau <- object$coef$tau
-    beta <- object$coef$beta
-    if( p.w > 0)
-      gamma <- object$coef$gamma
-    else
-      gamma <- -999999
-    if( any( !is.null( object$coef$disp)))
-      disp <- object$coef$disp
-    else
-      disp <- -999999
-    scoreContri <- as.numeric( matrix( NA, nrow=n, ncol=length( unlist( object$coef))))
-    tmp <- .Call("RCP_C", as.numeric(Y), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
-      as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
-      alpha, tau, beta, gamma, disp, power,
-      as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
-      alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
-      pis, mus, logCondDens, logls,
-      as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-      as.integer( FALSE), as.integer( FALSE), as.integer( TRUE), as.integer( TRUE), as.integer( TRUE), PACKAGE = "ecomix")
-    scoreContri <- matrix( scoreContri, nrow=n)
-    summy <- matrix( 0, ncol=ncol( scoreContri), nrow=ncol( scoreContri))
-    for( ii in 1:n){
-      summy <- summy + scoreContri[ii,] %o% scoreContri[ii,]
-    }
-    tmp <- colSums( scoreContri)
-    tmp <- tmp %o% tmp / n
-    emp.info <- summy - tmp
-#    diag( emp.info) <- diag( emp.info) + 0.00001 #makes it invertable but not realistic.
-    vcov.mat <- try( solve( emp.info))
-    if( inherits( vcov.mat, 'try-error')){
-      attr(vcov.mat, "hess") <- emp.info
-      warning( "Empirical information matrix (average of the cross-products of the scores for each observation) appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe empirical inverse is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data. Note that you have chosen to use method=\"EmpricalInfo\", which is likely to cause heartache (albeit computationally thrifty heartache) -- try other methods (and probably do that first).")
-    }
-    else
-      vcov.mat <- ( vcov.mat + t(vcov.mat)) / 2 #to ensure symmetry
-  }
-
-    return(vcov.mat)
-}
+#  Tw.phi.func.grad <- function( phi1, spp3){
+#    disp3 <- disp
+#    disp3[spp3] <- phi1
+#    tmp.disp.score <- rep( -99999, S)
+#    tmp1 <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
+#      as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
+#      alpha, tau, beta, gamma, disp3, power,
+#      as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
+#      alpha.score, tau.score, beta.score, gamma.score, tmp.disp.score, scoreContri,
+#      pis, mus, logCondDens, logls,
+#      as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
+#      as.integer(FALSE), as.integer(FALSE), as.integer(TRUE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "ecomix")
+#    return( -as.numeric( tmp.disp.score[spp3]))
+#  }
+#
+#  inits <- c(start.vals$alpha, start.vals$tau, start.vals$beta, start.vals$gamma, start.vals$disp)
+#  alpha <- start.vals$alpha; tau <- as.numeric( start.vals$tau); beta <- as.numeric( start.vals$beta); gamma <- as.numeric( start.vals$gamma); disp <- start.vals$disp
+#  #scores
+#  alpha.score <- as.numeric(rep(NA, S))
+#  tau.score <- as.numeric(matrix(NA, ncol = S, nrow = nRCP - 1))
+#  beta.score <- as.numeric(matrix(NA, ncol = ncol(X), nrow = nRCP - 1))
+#  if( p.w > 0)
+#    gamma.score <- as.numeric(matrix( NA, nrow=S, ncol=ncol(W)))
+#  else
+#    gamma.score <- -999999
+#  if( disty %in% 3:5)
+#    disp.score <- as.numeric( rep( NA, S))
+#  else
+#    disp.score <- -999999
+#  scoreContri <- -999999  #as.numeric(matrix(NA, ncol = length(inits), nrow = n))
+#  #model quantities
+#  pis <- as.numeric(matrix(NA, nrow = n, ncol = nRCP))  #container for the fitted RCP model
+#  mus <- as.numeric(array( NA, dim=c( n, S, nRCP)))  #container for the fitted spp model
+#  logCondDens <- as.numeric(matrix(NA, nrow = n, ncol = nRCP))
+#  logls <- as.numeric(rep(NA, n))
+#  conv <- as.integer(0)
+#
+#  optimiseDisp <- FALSE
+#  kount <- 1
+#  tmp.new <- tmp.old <- -999999
+#  if( control$optimise){
+#    while( (abs( abs( tmp.new - tmp.old) / ( abs( tmp.old) + control$reltol)) > control$reltol | kount==1) & (kount < 15)){
+#      kount <- kount + 1
+#      tmp.old <- tmp.new
+#      message( "Updating Location Parameters: ", appendLF=FALSE)
+#      tmp <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
+#        as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
+#        alpha, tau, beta, gamma, disp, power,
+#        as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
+#        alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
+#        pis, mus, logCondDens, logls,
+#        as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
+#        as.integer(control$optimise), as.integer(TRUE), as.integer( FALSE), as.integer(optimiseDisp), as.integer( FALSE), PACKAGE = "ecomix")
+#      message( "Updating Dispersion Parameters: ", appendLF=FALSE)
+#      for( ii in 1:S){
+#        tmp1 <- nlminb( disp[ii], Tw.phi.func, Tw.phi.func.grad, spp3=ii, control=list( trace=0))
+#        disp[ii] <- tmp1$par
+#        message( tmp1$objective, " ")
+#      }
+#      message( "")
+#      tmp.new <- -tmp1$objective
+#    }
+#  }
+#  tmp <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
+#    as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
+#    alpha, tau, beta, gamma, disp, power,
+#    as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
+#    alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
+#    pis, mus, logCondDens, logls,
+#    as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
+#    as.integer(FALSE), as.integer( TRUE), as.integer(TRUE), as.integer(TRUE), as.integer( FALSE), PACKAGE = "ecomix")
+#
+#  ret <- list()
+#
+#  ret$pis <- matrix(pis, ncol = nRCP)
+#    ret$mus <- array( mus, dim=c(n,S,nRCP))
+#  ret$coefs <- list(alpha = alpha, tau = tau, beta = beta, gamma=gamma, disp=disp)
+#  if( any( ret$coefs$gamma==-999999, na.rm=TRUE))
+#    ret$coefs$gamma <- NULL
+#  if( any( ret$coefs$disp==-999999, na.rm=TRUE))
+#    ret$coefs$disp <- NULL
+#  ret$names <- list( spp=colnames( outcomes), RCPs=paste( "RCP", 1:nRCP, sep=""), Xvars=colnames( X))
+#  if( p.w>0)
+#    ret$names$Wvars <- colnames( W)
+#  else
+#    ret$names$Wvars <- NA
+#  ret$scores <- list(alpha = alpha.score, tau = tau.score, beta = beta.score, gamma = gamma.score, disp=disp.score)
+#  if( any( ret$scores$gamma==-999999, na.rm=TRUE))
+#    ret$scores$gamma <- NULL
+#  if( any( ret$scores$disp==-999999, na.rm=TRUE))
+#    ret$scores$disp <- NULL
+#  ret$logCondDens <- matrix(logCondDens, ncol = nRCP)
+#  if( control$optimise)
+#    ret$conv <- conv
+#  else
+#    ret$conv <- "not optimised"
+#  ret$S <- S; ret$nRCP <- nRCP; ret$p.x <- p.x; ret$p.w <- p.w; ret$n <- n
+#  ret$start.vals <- inits
+#  ret$logl <- tmp
+#  ret$logl.sites <- logls  #for residuals
+#
+#  return( ret)
+# }
 
 # MVB's workaround for futile CRAN 'no visible blah' check:
 globalVariables( package="ecomix",
