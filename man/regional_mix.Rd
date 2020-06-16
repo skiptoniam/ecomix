@@ -205,7 +205,7 @@ regional_mix_bootParametric(fm, mf, nboot)
 
 \item{newdata}{a data.frame (or something that can be coerced) containing the values of the covariates where predictions are to be made. If NULL (the default) then predictions are made at the locations of the original data.}
 
-\item{nboot}{a numeric scalar giving the number of bootstrap samples to obtain. More is better, but takes longer.}
+\item{nboot}{The number of bootstraps to fit.}
 
 \item{alpha}{Numeric vector of length S. Specifies the mean prevalence for each species, on the logit scale}
 
@@ -248,9 +248,11 @@ values form bootstrap}
 
 \item{MLstart}{should each bootstrap estimation start at the original model's ML estimate? Default is TRUE for \code{yes} it should.}
 
-\item{\\dots}{ignored.}
+\item{fm}{A fitted regional_mix model.}
 
-\item{orderSamps}{should each bootstrap sample be re-ordered to that permutation of RCP ordering that best matches the initial model? Default FALSE implies no re-ordering.}
+\item{mf}{A model frame.}
+
+\item{\\dots}{ignored.}
 }
 \value{
 If nboot==0 then a n x H matrix of prior predictions (n=nrow(newdata), H=number of RCPs). Each row should sum to one.
@@ -355,7 +357,7 @@ distribution=my.dist, logDisp=logDisp, offset=Offy)
 \dontrun{
 #not run as R CMD check complains about the time taken.
 #This code will take a little while to run (about 3.5minutes on my computer)
- stability.regional_mix( fm, oosSizeRange=seq( from=1,to=fm$n\\%/\\%5,length=5),
+ stability.regional_mix( fm, oosSizeRange=seq( from=1,to=fm$n,length=5),
                     times=fm$n, mc.cores=2, doPlot=FALSE);
 }
 

@@ -16,8 +16,6 @@
 \arguments{
 \item{model}{A regional_mix object whose fit you want to assess}
 
-\item{...}{ignored}
-
 \item{oosSize}{The size of the with held partitions (out-of-sample size). Use 1 (default) for leave-one-out statistics, such as Cook's distance and leave-one-out validation.}
 
 \item{times}{The number of times to perform the re-estimation (the number of leave out groups). For each 1:times a random partition of the data, of size oosSize, is taken and the model is fitted to one of the partitions. It is predicted to the other partition. The exception is when oosSize=1 and times=model$n (leave-one-out). In such cases (the default too), the observations are left out one-by-one and not randomly.}
@@ -25,6 +23,8 @@
 \item{mc.cores}{The number of cores to spread the workload over. Default is 1. Argument is useless on Windows machines ??? see ?parallel::mclapply}
 
 \item{quiet}{Should printing be suppressed? Default is no, it should not. Note that in either case, printing of the iteration trace etc is suppressed for each regional_mix fit.}
+
+\item{\\dots}{ignored}
 }
 \value{
 An object of class regiCooksD. It is a list of 4 elements:
