@@ -2,7 +2,7 @@
 % Please edit documentation in R/species_mix-class.R
 \name{species_mix.control}
 \alias{species_mix.control}
-\title{Controls for species_mix model.}
+\title{species_mix.control}
 \usage{
 species_mix.control(
   quiet = FALSE,
@@ -87,5 +87,5 @@ species_mix.control(
 \item{\dots}{Other control calls.}
 }
 \description{
-Controls for species_mix model.
+This is the control function used to tweak the species_mix model.
 }

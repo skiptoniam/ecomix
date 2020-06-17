@@ -2,7 +2,6 @@
 % Please edit documentation in R/species_mix-class.R
 \name{species_mix}
 \alias{species_mix}
-\alias{species_mix.bootstrap}
 \alias{AIC.species_mix}
 \alias{BIC.species_mix}
 \alias{coef.species_mix}
@@ -28,14 +27,6 @@ species_mix(
   inits = NULL,
   standardise = FALSE,
   titbits = TRUE
-)
-
-species_mix.bootstrap(
-  object,
-  nboot = 1000,
-  type = "BayesBoot",
-  mc.cores = 1,
-  quiet = FALSE
 )
 
 \method{AIC}{species_mix}(object, k = NULL, ...)
@@ -148,15 +139,6 @@ setting titbits=TRUE may give users problems with memory.}
 
 \item{object}{is a matrix model returned from the species_mix model.}
 
-\item{nboot}{Number of bootstraps (or simulations if using IPPM) to run if no object2 is provided.}
-
-\item{type}{the type of bootstrap to use, options are  "SimpleBoot" which is
-a parameteric bootstrap, or "BayesBoot"}
-
-\item{mc.cores}{number of cores to use in prediction. default is 1.}
-
-\item{quiet}{If TRUE, do not print progress of bootstrap.}
-
 \item{k}{AIC penality}
 
 \item{x}{a fitted species_mix model.}
@@ -169,7 +151,11 @@ a parameteric bootstrap, or "BayesBoot"}
 
 \item{newdata}{a matrix of new observations for prediction.}
 
+\item{nboot}{Number of bootstraps (or simulations if using IPPM) to run if no object2 is provided.}
+
 \item{alpha}{confidence level. default is 0.95}
+
+\item{mc.cores}{number of cores to use in prediction. default is 1.}
 
 \item{prediction_type}{Do you want to produce 'archetype' or 'species' level predictions. default is 'archetype'.}
 

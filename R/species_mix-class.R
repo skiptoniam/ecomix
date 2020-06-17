@@ -392,8 +392,8 @@
 #'@export
 #'@examples
 #' \dontrun{
-#' fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,\\
-#'                               distribution = 'bernoulli', nstart = 10,\\
+#' fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
+#'                               distribution = 'bernoulli', nstart = 10,
 #'                               n_mixtures=3)
 #' }
 "species_mix.multifit" <- function(archetype_formula = NULL,
@@ -569,9 +569,10 @@
    return(many_starts)
 }
 
-#'@title Controls for species_mix model.
+#'@title species_mix.control
 #'@rdname species_mix.control
 #'@name species_mix.control
+#'@description This is the control function used to tweak the species_mix model.
 #'@param quiet Should any reporting be performed? Default is FALSE, for reporting.
 #'@param cores The number of cores to use in fitting of species_mix models. These will be largely used to model the species-specific parameteres.
 #'@param init_method The method to use for initialisation. The options are "random2", "kmeans", "kmed". The default uses random2, which is a kmeans with noise added to the cluster.
@@ -657,11 +658,14 @@
   rval
 }
 
-#' @rdname species_mix
+#' @rdname species_mix.bootstrap
 #' @name species_mix.bootstrap
-#' @param type the type of bootstrap to use, options are  "SimpleBoot" which is
-#'  a parameteric bootstrap, or "BayesBoot"
-#'@param quiet If TRUE, do not print progress of bootstrap.
+#' @title species_mix.bootstrap
+#' @param object A species_mix model object
+#' @param nboot The number of boostraps to run.
+#' @param type the type of bootstrap to use, options are  "SimpleBoot" which is  a parameteric bootstrap, or "BayesBoot"
+#' @param mc.cores The number of core to fit. The default is 1.
+#' @param quiet If TRUE, do not print progress of bootstrap.
 #' @importFrom stats vcov
 #' @export
 

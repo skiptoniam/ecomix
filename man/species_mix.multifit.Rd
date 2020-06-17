@@ -106,8 +106,8 @@ The multiple starts will enable optimisation of the loglikelihood using multiple
 }
 \examples{
 \dontrun{
-fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,\\
-                              distribution = 'bernoulli', nstart = 10,\\
+fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
+                              distribution = 'bernoulli', nstart = 10,
                               n_mixtures=3)
 }
 }
