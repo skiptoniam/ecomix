@@ -320,8 +320,71 @@
   return(tmp)
 }
 
-#'@rdname species_mix
+#'@rdname species_mix.multifit
 #'@name species_mix.multifit
+#'@title species_mix.multifit
+#'@description This version of species mix is useful for fitting models which have complex likelihoods.
+#'The multiple starts will enable optimisation of the loglikelihood using multiple starts.
+#' @param archetype_formula an object of class "formula" (or an object that can
+#' be coerced to that class). The response variable (left hand side of the
+#' formula) needs to be either 'occurrence', 'abundance',
+#' 'biomass' or 'quantity' data. The type of reponse data will help specify
+#' the type of error distribution to be used. The dependent variables
+#' (the right hind side) of this formula specifies the dependence of the
+#' species archetype probabilities on covariates. For all model the basic
+#' formula structure follows something like this:
+#' cbind(spp1,spp2,spp3)~1+temperature+rainfall
+#' @param species_formula an object of class "formula" (or an object that can be
+#' coerced to that class). The right hand side of this formula specifies the
+#' dependence of the species"'" data on covariates (typically different
+#' covariates to \code{archetype_formula} to avoid confusing confounding).
+#' Current the formula is set at ~ 1 by default for species-specific intercepts
+#' for the archetype models. If you include a species specific formula which has
+#' more than an intercept you will be fitting a partial species archetype model
+#' which has species specific covariates and archetype specific covariates.
+#' @param data a matrix of dataframe which contains the 'species_data'
+#' matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
+#' const, temperature, rainfall. dims of matirx should be
+#' nsites*(nspecies+const+covariates).
+#' @param n_mixtures The number of mixing components (groups) to fit.
+#' @param distribution The family of statistical distribution to use within
+#' the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
+#' "negative_binomial" and "gaussian" distributions are possible and applicable
+#' to specific types of data.
+#' @param offset a numeric vector of length nrow(data) (n sites) that is
+#' included into the model as an offset. It is included into the conditional
+#' part of the model where conditioning is performed on the SAM.
+#' @param weights a numeric vector of length ncol(Y) (n species) that is used
+#' as weights in the log-likelihood calculations. If NULL (default) then all
+#' weights are assumed to be identically 1. Because we are estimating the
+#' log-likelihood over species (rather than sites), the weights should be a
+#' vector n species long.
+#' @param bb_weights a numeric vector of n species long. This is used for
+#' undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.
+#' @param control a list of control parameters for optimisation and calculation.
+#' See details. From \code{species_mix.control} for details on optimistaion
+#' parameters.
+#' @param inits NULL a numeric vector that provides approximate starting values
+#' for species_mix coefficents. These are distribution specific, but at a
+#' minimum you will need pis (additive_logitic transformed), alpha
+#' (intercepts) and beta (mixing coefs).
+#' @param standardise Booliean. If TRUE, standarise the covariate data.
+#' @param titbits either a boolean or a vector of characters. If TRUE
+#' (default for species_mix(qv)), then some objects used in the estimation of
+#' the model"'"s parameters are returned in a list entitled "titbits" in the
+#' model object. Some functions, for example plot.species_mix(qv) and
+#' predict.species_mix(qv), will require some or all of these pieces of
+#' information. If titbits=FALSE (default for species_mix.multifit(qv)),
+#' then an empty list is returned. If a character vector, then just those
+#' objects are returned. Possible values are:"Y" for the outcome matrix, "X"
+#' for the model matrix for the SAM model, "offset" for the offset in the model,
+#' "site_spp_weights" for the model weights, "archetype_formula" for the formula
+#' for the SAMs, "species_formula" for the formula for the species-specific
+#' model, "control" for the control arguments used in model fitting, "dist" for
+#' the conditional distribution of the species data. Care needs to be taken when
+#' using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created
+#' for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then
+#' setting titbits=TRUE may give users problems with memory.
 #'@param nstart for species_mix.multifit only. The number of random starts to
 #'perform for re-fitting. Default is 10, which will need increasing for serious use.
 #'@param mc.cores for species_mix.multifit only. The number of cores to spread

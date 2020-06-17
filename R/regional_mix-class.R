@@ -22,6 +22,27 @@
 #' ppois predict qnorm qqnorm quantile rbinom
 #' residuals rgamma rnbinom rnorm rpois runif
 #' sd uniroot update update.formula
+#' @return regional_mix returns an object of class \code{regional_mix} and regional_mix.multifit returns a list of objects of class \code{regional_mix}. The regional_mix class has several methods: coef, plot, predict, residuals, summary, and vcov. The regional_mix object consists of a list with the following elements:
+#' @return AIC Akaike an information criterion for the maximised model.
+#' @return BIC Bayesian information criterion for the maximised model.
+#' @return call the call to the function.
+#' @return coefs a list of three elements, one each for the estimates for the species prevalence (alpha), the deviations from alpha for the first (nRCP-1) RCP (tau), and the (nRCP-1) sets of RCP regression coefficents (beta).
+#' @return conv the convergence code from the maximisation procedure. See ?optim for an explanation (basically 0 is good and anything else is bad).
+#' @return dist the character string identifying the distribution used for the model.
+#' @return logCondDens an nObs by nRCP matrix specifying the probability of observing each sites"'" data, given each of the RCP types.
+#' @return logl the maximised log likelihood.
+#' @return mus an array of size nRCP x S x nRCP where each element of the first dimension is the fitted value for all the species in all the RCP types.
+#' @return n the number of samples.
+#' @return names the names of the species, and the names of the covariates for X and W.
+#' @return nRCP the number of RCPs.
+#' @return pis an n x nRCP matrix with each column giving the prior probabilities for the corresponding RCP type. Rows sum to one.
+#' @return postProbs an n x nRCP matrix with each column giving the posterior probabilities for the corresponding RCP type. Rows sum to one (as each site is assumed to be from one of the RCP types).
+#' @return p.w the number of covariates used in the species-specific model.
+#' @return p.x the number of covariates used in the RCP model
+#' @return S the number of species.
+#' @return scores a list of three elements. Structure corresponds to coefs.
+#' @return start.vals the values used to start the estimation procedure.
+#' @return titbits (if requested using the titbit argument, see above) other pieces of information, useful to developers, that users should not typically need to concern themselves with. However, this information is used by methods for regional_mix objects.
 #' @export
 #' @examples
 #' \dontrun{
@@ -126,6 +147,29 @@
   #documentation needs to be adjusted to fit new model.
 
 }
+
+#'@title regional_mix.fit
+#'@rdname regional_mix.fit
+#'@name regional_mix.fit
+#' @description regional_mix.fit is similar to \link[stats]{glm.fit} and does all the heavy lifting when it
+#' comes to estimating regional mix models. If you are unfamilar with how to use \link[stats]{glm.fit} it is
+#' recommended that you use \link[ecomix]{regional_mix} which is the user friendly wrapper around this
+#' function.
+#'@param outcomes is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.
+#'@param W is a design matrix for regional_formula and will be implemented if regional_formula has covariates.
+#'@param X is a design matrix for the archetype_formula dimension n_sites * n_covariates.
+#'@param offy this is a vector of site specific offsets, this might be something like the log(area sampled at sites).
+#'@param wts is the site weights. These are weights used to alter the loglikelihood.
+#'@param disty the error distribution to used in regional_mix estimation. Currently, 'bernoulli', 'poisson', 'negative_binomial' and 'guassian' are available - internal conversion of distribution to a integer.
+#'@param nRCP is the number of species archetypes that are being estimated.
+#'@param control this is a list of control parameters that alter the specifics of model fitting.
+#'@param power This is for the Tweedie distribution - currently not in use (until we fix the Tweedie computational stuff).
+#'@param inits This will be a vector of starting values for regional_mix (i.e you've fitted a model and want to refit it).
+#'@param n the number of sites in the data
+#'@param S is the number of species to be modelled (this will be calculated internally in regional_mix())
+#'@param p.x The number of covariates fitted to the design matrix X.
+#'@param p.w The number of covariates fitted to the design matrix W.
+#'@export
 
 "regional_mix.fit" <- function(outcomes, W, X, offy, wts, disty, nRCP, power,
                                inits, control, n, S, p.x, p.w){

@@ -255,6 +255,48 @@ values form bootstrap}
 \item{\\dots}{ignored.}
 }
 \value{
+regional_mix returns an object of class \code{regional_mix} and regional_mix.multifit returns a list of objects of class \code{regional_mix}. The regional_mix class has several methods: coef, plot, predict, residuals, summary, and vcov. The regional_mix object consists of a list with the following elements:
+
+AIC Akaike an information criterion for the maximised model.
+
+BIC Bayesian information criterion for the maximised model.
+
+call the call to the function.
+
+coefs a list of three elements, one each for the estimates for the species prevalence (alpha), the deviations from alpha for the first (nRCP-1) RCP (tau), and the (nRCP-1) sets of RCP regression coefficents (beta).
+
+conv the convergence code from the maximisation procedure. See ?optim for an explanation (basically 0 is good and anything else is bad).
+
+dist the character string identifying the distribution used for the model.
+
+logCondDens an nObs by nRCP matrix specifying the probability of observing each sites"'" data, given each of the RCP types.
+
+logl the maximised log likelihood.
+
+mus an array of size nRCP x S x nRCP where each element of the first dimension is the fitted value for all the species in all the RCP types.
+
+n the number of samples.
+
+names the names of the species, and the names of the covariates for X and W.
+
+nRCP the number of RCPs.
+
+pis an n x nRCP matrix with each column giving the prior probabilities for the corresponding RCP type. Rows sum to one.
+
+postProbs an n x nRCP matrix with each column giving the posterior probabilities for the corresponding RCP type. Rows sum to one (as each site is assumed to be from one of the RCP types).
+
+p.w the number of covariates used in the species-specific model.
+
+p.x the number of covariates used in the RCP model
+
+S the number of species.
+
+scores a list of three elements. Structure corresponds to coefs.
+
+start.vals the values used to start the estimation procedure.
+
+titbits (if requested using the titbit argument, see above) other pieces of information, useful to developers, that users should not typically need to concern themselves with. However, this information is used by methods for regional_mix objects.
+
 If nboot==0 then a n x H matrix of prior predictions (n=nrow(newdata), H=number of RCPs). Each row should sum to one.
 \item{ if nboot!=0 then a list is returned. It has elements:}{}
 \item{ ptPreds}{the n x H matrix of point predictions}
