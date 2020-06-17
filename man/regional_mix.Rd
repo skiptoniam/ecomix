@@ -12,13 +12,13 @@
 \alias{plot.regional_mix_stab}
 \alias{predict.regional_mix}
 \alias{print.regional_mix}
+\alias{regional_mix_boot}
 \alias{residuals.regional_mix}
 \alias{regional_mix.simulate}
 \alias{stability.regional_mix}
 \alias{summary.regional_mix}
 \alias{vcov.regional_mix}
 \alias{regional_mix.species_membership}
-\alias{regional_mix_boot}
 \alias{regional_mix_bootParametric}
 \title{regional_mix objects}
 \usage{
@@ -85,6 +85,15 @@ regional_mix.multifit(
 
 \method{print}{regional_mix}(x, ...)
 
+regional_mix_boot(
+  object,
+  nboot = 1000,
+  type = "BayesBoot",
+  mc.cores = 1,
+  quiet = FALSE,
+  MLstart = TRUE
+)
+
 \method{residuals}{regional_mix}(object, ..., type = "RQR", quiet = FALSE, mc.cores = 1)
 
 regional_mix.simulate(
@@ -133,15 +142,6 @@ regional_mix.species_membership(
   ...
 )
 
-regional_mix_boot(
-  object,
-  nboot = 1000,
-  type = "BayesBoot",
-  mc.cores = 1,
-  quiet = FALSE,
-  MLstart = TRUE
-)
-
 regional_mix_bootParametric(fm, mf, nboot)
 }
 \arguments{
@@ -169,9 +169,9 @@ regional_mix_bootParametric(fm, mf, nboot)
 
 \item{nstart}{for regional_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
-\item{mc.cores}{an integer giving the number of cores to run the bootstrap samples on. The default is 1, that is no parallelisation. This parameter is redundant on Windows machines as the method of parallelisation, mclapply(), is not available there.}
+\item{mc.cores}{the number of cores to distrbute the calculations on. Default is 4. Set to 1 if the computer is running Windows (as it cannot handle forking -- see mclapply(qv)). Ignored if method=='EmpiricalInfo'.}
 
-\item{object}{an object obtained from fitting a RCP mixture model (class "regional_mix"). Such as that generated from a call to regional_mix(qv). This object will need to be created with the argument titbits=TRUE as these pieces of data are needed in the re-fitting. Of course, you could try to just save parts of titbits but the memory-hungry data is all required.}
+\item{object}{A RCP model}
 
 \item{k}{AIC penality}
 
@@ -187,7 +187,7 @@ regional_mix_bootParametric(fm, mf, nboot)
 
 \item{alpha.conf}{The bounds of the confidence intervals.}
 
-\item{quiet}{should the progress bar be printed to the output device?If quiet=FALSE (default) then the progress bar is printed.}
+\item{quiet}{should the progress bar be displayed (bar for each oosSizeRange)}
 
 \item{species}{Which species to plot as residuals.}
 
@@ -208,6 +208,8 @@ regional_mix_bootParametric(fm, mf, nboot)
 \item{nboot}{The number of bootstraps to fit.}
 
 \item{alpha}{Numeric vector of length S. Specifies the mean prevalence for each species, on the logit scale}
+
+\item{MLstart}{should each bootstrap estimation start at the original model's ML estimate? Default is TRUE for \code{yes} it should.}
 
 \item{S}{Integer giving the number of species}
 
@@ -246,8 +248,6 @@ regional_mix_bootParametric(fm, mf, nboot)
 \item{CI}{The confidence intervals to report the range of
 values form bootstrap}
 
-\item{MLstart}{should each bootstrap estimation start at the original model's ML estimate? Default is TRUE for \code{yes} it should.}
-
 \item{fm}{A fitted regional_mix model.}
 
 \item{mf}{A model frame.}
@@ -262,17 +262,22 @@ If nboot==0 then a n x H matrix of prior predictions (n=nrow(newdata), H=number 
 \item{ bootSEs}{the n x H matrix of bootstrap standard errors for predictions}
 \item{ bootCIs}{the n x H x 2 array of bootstrap confidence intervals. Note that bootCIs[,,1] gives the lower CIs and bootCIs[,,2] gives the upper CIs.}
 
+An object of class "regional_mix_boot", which is essentially a matrix with nboot rows and the number of columns equal to the number of parameters matrix. Each row gives a bootstrap estimate of the parameters.
+
 \item{ For type=="RQR", a number-of-sites by number-of-species matrix with the randomised quantile residuals, which should be distributed as a standard normal variate.}{}
 \item{ For type=="deviance" a numeric vector of size object$n containing the deviance residuals.}{}
 
 Produces a regional_mix_stab object. This is a list with the oosSizeRnage, disty (the mean Cook's Distance for each subset size), nRCP, n, predlogls (log-likelihood of out-of-sample sites), logl.sites (the in-sample log-likelihood for full data set).
 
 A square matrix of size equal to the number of parameters. It contains the variance matrix of the parameter estimates.
-
-An object of class "regional_mix_boot", which is essentially a matrix with nboot rows and the number of columns equal to the number of parameters matrix. Each row gives a bootstrap estimate of the parameters.
 }
 \description{
 creates an \code{regional_mix} model.
+
+Performs bootstrap sample and estimation for regional_mix objects. Useful for calculating measures of uncertainty in predictions from a regional_mix object, and also about the regional_mix parameter estimates. This function can be used in conjunction with vcov.regional_mix(qv) and predict.regional_mix(qv). In partciular, these bootstrap samples can be used to gauge variability in parameter estimates and hence the model itself.
+
+This function can take a while to run -- it is a bootstrap function. nboot re-samples of the data are taken and then the parameters are estimated for each re-sample. The function allows for parallel calculations, via mclapply(qv), which reduces some of the computational burden. To use parallel computing, specify mc.cores>1. Note that this will not work on Windows computers, as mclapply(qv) will not work.
+The Bayesian bootstrap method is operationally equivalent to the simple bootstrap, except that the weightings are non-integral. See Rubin (1981). It might be tempting to reduce the tolerance for convergence of each estimation procedure. We recommend not doing this as it is likely to have the effect of artificially reducing estimates of uncertainty. This occurs as the resampled estimates are liekly to be closer to their starting values (the MLEs from the original data set).
 
 The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over
 other species observations within that site; see Foster et al, in prep). The result is one residual per species per site and they all should be standard
@@ -290,11 +295,6 @@ A summary from a regional_mix object.
 Calculates variance-covariance matrix from a regional_mix object
 
 Extracts the average species' membership for each RCP.
-
-Performs bootstrap sample and estimation for regional_mix objects. Useful for calculating measures of uncertainty in predictions from a regional_mix object, and also about the regional_mix parameter estimates. This function can be used in conjunction with vcov.regional_mix(qv) and predict.regional_mix(qv). In partciular, these bootstrap samples can be used to gauge variability in parameter estimates and hence the model itself.
-
-This function can take a while to run -- it is a bootstrap function. nboot re-samples of the data are taken and then the parameters are estimated for each re-sample. The function allows for parallel calculations, via mclapply(qv), which reduces some of the computational burden. To use parallel computing, specify mc.cores>1. Note that this will not work on Windows computers, as mclapply(qv) will not work.
-The Bayesian bootstrap method is operationally equivalent to the simple bootstrap, except that the weightings are non-integral. See Rubin (1981). It might be tempting to reduce the tolerance for convergence of each estimation procedure. We recommend not doing this as it is likely to have the effect of artificially reducing estimates of uncertainty. This occurs as the resampled estimates are liekly to be closer to their starting values (the MLEs from the original data set).
 }
 \details{
 This function implements two separate, and quite different, bootstrapping routines. The first, attributable to Foster et al (2013), which implements a parametric bootstrap, whereby parameters are drawn from their sampling distribution (defined by the ML estimates and their asymptotic vcov matrix). Yes, the vcov function needs to be run first and stored in the the regional_mix object as $vcov. Typically, the vcov matrix is obtained using numerical derivatives, which can be slow to calculate and somewhat unstable/erratic. This was the original suggestion and has been superceeded by the non-parametric bootstrap routine. This is described in Foster et al (in prep) and bootstraps the sampling site data repeatedly, and for each bootstrap sample the model is re-estimated. Variation in the bootstrap samples is carried forward to the prediction step to guage the uncertainty.
@@ -363,13 +363,13 @@ distribution=my.dist, logDisp=logDisp, offset=Offy)
 
 }
 \references{
+Foster, S.D., Lyons, M. and Hill, N. (in prep.) Ecological Groupings of Sample Sites in the presence of sampling artefacts.
+Rubin, D.B. (1981) The Bayesian Bootstrap. The Annals of Statistics \emph{9}:130--134.
+
 Dunn, P.K. and Smyth G.K. (1996) Randomized Quantile Residuals. Journal of Computational and Graphical Statistics \emph{5}: 236--244.
 Foster, S.D., Givens, G.H., Dornan, G.J., Dunstan, P.K. and Darnell, R{}. (2013) Modelling Regions of Common Profiles Using Biological and Environmental Data. Environmetrics \emph{24}: 489--499. DOI: 10.1002/env.2245
 Foster, S.D., Hill, N.A. and Lyons, M., 2017. Ecological grouping of survey sites when sampling artefacts are present. Journal of the Royal Statistical Society: Series C (Applied Statistics), 66(5), pp.1031-1047.
 
 Foster, S.D., Givens, G.H., Dornan, G.J., Dunstan, P.K. and Darnell, R. (2013) Modelling Regions of Common Profiles Using Biological and Environmental Data. Environmetrics \emph{24}: 489--499. DOI: 10.1002/env.2245
 Foster, S.D., Hill, N.A. and Lyons, M., 2017. Ecological grouping of survey sites when sampling artefacts are present. Journal of the Royal Statistical Society: Series C (Applied Statistics), 66(5), pp.1031-1047.
-
-Foster, S.D., Lyons, M. and Hill, N. (in prep.) Ecological Groupings of Sample Sites in the presence of sampling artefacts.
-Rubin, D.B. (1981) The Bayesian Bootstrap. The Annals of Statistics \emph{9}:130--134.
 }
