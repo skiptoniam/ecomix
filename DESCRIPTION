@@ -1,12 +1,12 @@
 Package: ecomix
 Type: Package
-Title: Fit finite mixture models to ecological data
+Title: A Package for Fitting Finite Mixture Models to Ecological Data
 Version: 0.0.2
 Authors@R: c(person("Skipton", "Woolley", email = "skip.woolley@csiro.au", role = c("aut", "cre")),
              person("Scott", "Foster", email = "scott.foster@csiro.au", role = c("aut")),
              person("Piers", "Dunstan", email = "Piers.Dunstan@csiro.au",  role = c("aut")))
 Maintainer: Skipton Woolley <skip.woolley@csiro.au>
-Description: ecomix is a package to implement model-based species level (Species
+Description: This package implements model-based species level (Species
     Archetype Models) or site level (Region of Common Profile) grouping of community
     data.
 Encoding: UTF-8
@@ -34,8 +34,8 @@ Suggests:
     covr
 Depends:
     R (>= 3.4.0)
-License: MIT + file LICENCE
+License: GPL (>= 2)
 SystemRequirements: C++11
 NeedsCompilation: yes
 RoxygenNote: 7.1.0
-VignetteBuilder: knitr
+

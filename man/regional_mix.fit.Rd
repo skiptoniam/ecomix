@@ -22,7 +22,7 @@ regional_mix.fit(
 )
 }
 \arguments{
-\item{outcomes}{is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.}
+\item{outcomes}{is a matrix genertated from model.response containing the species information. The matrix has the dimensions n_sites * n_species.}
 
 \item{W}{is a design matrix for regional_formula and will be implemented if regional_formula has covariates.}
 
@@ -51,8 +51,7 @@ regional_mix.fit(
 \item{p.w}{The number of covariates fitted to the design matrix W.}
 }
 \description{
-regional_mix.fit is similar to \link[stats]{glm.fit} and does all the heavy lifting when it
-comes to estimating regional mix models. If you are unfamilar with how to use \link[stats]{glm.fit} it is
-recommended that you use \link[ecomix]{regional_mix} which is the user friendly wrapper around this
-function.
+regional_mix.fit is similar to glm.fit and does all the heavy lifting when it
+comes to estimating regional mix models. If you are unfamilar with how to use glm.fit it is
+recommended that you use regional_mix which is the user friendly wrapper around this function.
 }

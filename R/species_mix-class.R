@@ -269,11 +269,11 @@
 #'@title species_mix.fit
 #'@rdname species_mix.fit
 #'@name species_mix.fit
-#' @description species_mix.fit is similar to \link[stats]{glm.fit} and does all the heavy lifting when it
-#' comes to estimating species mix models. If you are unfamilar with how to use \link[stats]{glm.fit} it is
-#' recommended that you use \link[ecomix]{species_mix} which is the user friendly wrapper around this
+#' @description species_mix.fit is similar to glm.fit and does all the heavy lifting when it
+#' comes to estimating species mix models. If you are unfamilar with how to use glm.fit it is
+#' recommended that you use species_mix which is the user friendly wrapper around this
 #' function.
-#'@param y is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.
+#'@param y is a matrix genertated from model.response containing the species information. The matrix has the dimensions n_sites * n_species.
 #'@param X is a design matrix for the archetype_formula dimension n_sites * n_covariates.
 #'@param W is a design matrix for species_formula and will be implemented if species_formula has covariates.
 #'@param G is the number of species archetypes that are being estimated.

@@ -197,9 +197,18 @@ void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data
 					if(dat.disty==1){//bernoulli
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_logit(lp);
 						}
-					if(dat.disty==2 | dat.disty==3 | dat.disty==4 | dat.disty==5){//poisson, ippm, negative binomial, tweedie
+					if(dat.disty==2){ //poisson
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
 						}
+					if(dat.disty==3){	//ippm
+						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
+					}
+					if(dat.disty==4){	//negative binomial
+						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
+					}
+					if(dat.disty==5){	//tweedie
+						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
+					 }
 					if(dat.disty==6){//normal
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = lp;
 					}
@@ -531,9 +540,15 @@ void calc_eta_mu_deriv( vector<double> &etaDerivs, const sam_data &dat, const ve
 						if(dat.disty==3){ // ippm
 							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = dat.site_spp_wts[MATREF2D(i,s,dat.nObs)] * fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)); // loglink + weights
 						}
-						if(dat.disty==2 | dat.disty==4 | dat.disty==5){ // poisson, negative binomial, tweedie
+						if(dat.disty==2){ // poisson, negative binomial, tweedie
 							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//log link
 						}
+						if(dat.disty==4){
+						  etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//log link
+						}
+						if(dat.disty==5){
+						  etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//log link
+  					}
 						if(dat.disty==6){ // normal
 							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//identity link
 						}

@@ -20,7 +20,7 @@ species_mix.fit(
 )
 }
 \arguments{
-\item{y}{is a matrix genertated from \link[stats]{model.response} containing the species information. The matrix has the dimensions n_sites * n_species.}
+\item{y}{is a matrix genertated from model.response containing the species information. The matrix has the dimensions n_sites * n_species.}
 
 \item{X}{is a design matrix for the archetype_formula dimension n_sites * n_covariates.}
 
@@ -45,8 +45,8 @@ species_mix.fit(
 \item{inits}{This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).}
 }
 \description{
-species_mix.fit is similar to \link[stats]{glm.fit} and does all the heavy lifting when it
-comes to estimating species mix models. If you are unfamilar with how to use \link[stats]{glm.fit} it is
-recommended that you use \link[ecomix]{species_mix} which is the user friendly wrapper around this
+species_mix.fit is similar to glm.fit and does all the heavy lifting when it
+comes to estimating species mix models. If you are unfamilar with how to use glm.fit it is
+recommended that you use species_mix which is the user friendly wrapper around this
 function.
 }
