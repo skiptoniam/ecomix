@@ -120,9 +120,6 @@ fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
 
 #Print information about a species_mix model
 \dontrun{
-fmods <- species_mix.multifit(sam_form, sp_form, data,
-                             distribution = 'bernoulli',
-                             nstart = 10, n_mixtures=3)
 print(fmods)
 }
 }
