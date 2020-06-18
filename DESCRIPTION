@@ -6,9 +6,7 @@ Authors@R: c(person("Skipton", "Woolley", email = "skip.woolley@csiro.au", role 
              person("Scott", "Foster", email = "scott.foster@csiro.au", role = c("aut")),
              person("Piers", "Dunstan", email = "Piers.Dunstan@csiro.au",  role = c("aut")))
 Maintainer: Skipton Woolley <skip.woolley@csiro.au>
-Description: Implements model-based species level (Species
-    Archetype Models) or site level (Region of Common Profile) grouping of community
-    data.
+Description: Implements model-based species level (Species Archetype Models) or site level (Region of Common Profile) grouping of multiple species data.
 Encoding: UTF-8
 LazyData: true
 Imports:
