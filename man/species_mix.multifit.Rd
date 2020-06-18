@@ -2,6 +2,7 @@
 % Please edit documentation in R/species_mix-class.R
 \name{species_mix.multifit}
 \alias{species_mix.multifit}
+\alias{print.species_mix.multifit}
 \title{species_mix.multifit}
 \usage{
 species_mix.multifit(
@@ -20,6 +21,8 @@ species_mix.multifit(
   standardise = TRUE,
   titbits = TRUE
 )
+
+\method{print}{species_mix.multifit}(x, ...)
 }
 \arguments{
 \item{archetype_formula}{an object of class "formula" (or an object that can
@@ -99,6 +102,10 @@ the conditional distribution of the species data. Care needs to be taken when
 using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created
 for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then
 setting titbits=TRUE may give users problems with memory.}
+
+\item{x}{A species mix multifit object}
+
+\item{\\dots}{Ignored}
 }
 \description{
 This version of species mix is useful for fitting models which have complex likelihoods.
@@ -109,5 +116,13 @@ The multiple starts will enable optimisation of the loglikelihood using multiple
 fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
                               distribution = 'bernoulli', nstart = 10,
                               n_mixtures=3)
+}
+
+#Print information about a species_mix model
+\dontrun{
+fmods <- species_mix.multifit(sam_form, sp_form, data,
+                             distribution = 'bernoulli',
+                             nstart = 10, n_mixtures=3)
+print(fmods)
 }
 }

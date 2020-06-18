@@ -8,9 +8,7 @@
 \alias{plot.species_mix}
 \alias{predict.species_mix}
 \alias{print.species_mix}
-\alias{print.species_mix.multifit}
 \alias{summary.species_mix}
-\alias{vcov.species_mix}
 \alias{species_mix_boot_parametric}
 \title{species_mix objects}
 \usage{
@@ -51,18 +49,7 @@ species_mix(
 
 \method{print}{species_mix}(x, ...)
 
-\method{print}{species_mix.multifit}(x, ...)
-
 \method{summary}{species_mix}(object, ...)
-
-\method{vcov}{species_mix}(
-  object,
-  object2 = NULL,
-  method = "BayesBoot",
-  nboot = 10,
-  mc.cores = 1,
-  ...
-)
 
 species_mix_boot_parametric(object, nboot)
 }
@@ -159,9 +146,6 @@ setting titbits=TRUE may give users problems with memory.}
 
 \item{prediction_type}{Do you want to produce 'archetype' or 'species' level predictions. default is 'archetype'.}
 
-\item{method}{Which of the following methods: c("FiniteDifference", "BayesBoot", "SimpleBoot") should
-you use to estimate the variance-covariance matirx.}
-
 \item{\\dots}{additional parameters}
 }
 \description{
@@ -202,17 +186,4 @@ preds_fm1 <- predict(fm1)
 #Print information about a species_mix model
 \dontrun{
 print(fm1)}
-
-#Print information about a species_mix model
-\dontrun{
-fmods <- species_mix.multifit(sam_form, sp_form, data,
-                             distribution = 'bernoulli',
-                             nstart = 10, n_mixtures=3)
-print(fmods)
-}
-
-# Estimate the variance-covariance matrix.
-# This will provide estimates of uncertainty for model parameters.
-\dontrun{
-vcov(fm1)}
 }

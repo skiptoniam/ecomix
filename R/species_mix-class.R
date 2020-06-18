@@ -1272,15 +1272,15 @@
 
 }
 
-#'@rdname species_mix
+#'@rdname species_mix.multifit
+#'@name print.species_mix.multifit
+#'@param x A species mix multifit object
+#'@param \\dots Ignored
 #'@export
 #'@examples
 #'
 #'#Print information about a species_mix model
 #'\dontrun{
-#'fmods <- species_mix.multifit(sam_form, sp_form, data,
-#'                              distribution = 'bernoulli',
-#'                              nstart = 10, n_mixtures=3)
 #'print(fmods)
 #'}
 
@@ -1376,9 +1376,21 @@
 }
 
 
-#'@rdname species_mix
-#'@param method Which of the following methods: c("FiniteDifference", "BayesBoot", "SimpleBoot") should
-#'you use to estimate the variance-covariance matirx.
+#'@rdname vcov.species_mix
+#'@name vcov.species_mix
+#'@title Estimate the Variance-covariance matrix for a species_mix object.
+#'@description Calculates variance-covariance matrix from a species_mix object
+#'@param object an object obtained from fitting a RCP (for region of common profile) mixture model. Such as that generated from a call to species_mix(qv).
+#'@param object2 an object of class \code{species_mix} containing bootstrap samples of the parameter estimates (see species_mix_boot(qv)). If NULL (default) the bootstrapping is performed from within the vcov function. If not null, then the vcov estimate is obtained from these bootstrap samples.
+#'@param method the method to calculate the variance-covariance matrix. Options are:'FiniteDifference' (default), \code{BayesBoot}, \code{SimpleBoot}, and \code{EmpiricalInfo}. The two bootstrap methods (\code{BayesBoot} and \code{SimpleBoot}, see species_mix_boot(qv)) should be more general and may possibly be more robust. The \code{EmpiricalInfo} method implements an empirical estimate of the Fisher information matrix, I can not recommend it however. It seems to behave poorly, even in well behaved simulations. It is computationally thrifty though.
+#'@param nboot the number of bootstrap samples to take for the bootstrap estimation. Argument is ignored if !method \%in\% c(\code{FiniteDifference},'EmpiricalInfo').
+#'@param mc.cores the number of cores to distrbute the calculations on. Default is 4. Set to 1 if the computer is running Windows (as it cannot handle forking -- see mclapply(qv)). Ignored if method=='EmpiricalInfo'.
+#'@param \\dots Ignored
+#'@details If method is \code{FiniteDifference}, then the estimates variance matrix is based on a finite difference approximation to the observed information matrix.
+#'If method is either "BayesBoot" or "SimpleBoot", then the estimated variance matrix is calculated from bootstrap samples of the parameter estimates. See Foster et al (in prep) for details of how the bootstrapping is actually done, and species_mix_boot(qv) for its implementation.
+#'@return A square matrix of size equal to the number of parameters. It contains the variance matrix of the parameter estimates.
+#'@export
+
 #'@export
 #'
 #'@examples
@@ -1515,7 +1527,7 @@
       }
     }
     if( method %in% c( "BayesBoot","SimpleBoot")){
-      object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
+      object$titbits$control$optimise <- TRUE #just in case it was turned off (see species_mix.multfit)
       if( is.null( object2))
         coefMat <- species_mix.bootstrap(object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE)
       else
@@ -2462,7 +2474,7 @@ starting values;\n starting values are generated using ',control$init_method,
 "species_mix_boot_parametric" <- function( object, nboot){
   if( nboot > 0){
     if( is.null( object$vcov)){
-      message( "An estimate of the variance matrix for regression parameters is required. Please run object$vcov <- vcov(), see ?vcov.regional_mix for help")
+      message( "An estimate of the variance matrix for regression parameters is required. Please run object$vcov <- vcov(), see ?vcov.species_mix for help")
       return( NULL)
     }
     allCoBoot <- my.rmvnorm( n=nboot, mean=as.numeric(unlist( object$coefs)), sigma=object$vcov, method='eigen')
