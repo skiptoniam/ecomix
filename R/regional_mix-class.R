@@ -310,7 +310,10 @@
   }
 
 ##### S3 Class exports #####
-#' @rdname regional_mix
+#' @rdname AIC.regional_mix
+#' @name AIC.regional_mix
+#' @title AIC from a regional_mix model
+#' @param object A regional_mix object
 #' @param \\dots extra things for AIC
 #' @param k AIC penality
 #' @export
@@ -321,7 +324,12 @@
   star.ic <- -2 * object$logl + k * p
   return(star.ic)
 }
-#' @rdname regional_mix
+
+#' @rdname BIC.regional_mix
+#' @name BIC.regional_mix
+#' @title BIC from a regional_mix model
+#' @param object A regional_mix object
+#' @param \\dots Ignored
 #' @export
 #' @importFrom stats BIC
 "BIC.regional_mix" <- function (object, ...){
@@ -331,7 +339,11 @@
   return(star.ic)
 }
 
-#'@rdname regional_mix
+#' @rdname coef.regional_mix
+#' @name coef.regional_mix
+#' @title Print the coefficientf from a regional_mix model
+#' @param object A regional_mix object
+#' @param \\dots Ignored
 #'@export
 
 "coef.regional_mix" <- function (object, ...){

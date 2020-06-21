@@ -3,9 +3,6 @@
 \name{regional_mix}
 \alias{regional_mix}
 \alias{regional_mix.multifit}
-\alias{AIC.regional_mix}
-\alias{BIC.regional_mix}
-\alias{coef.regional_mix}
 \alias{extractAIC}
 \alias{extractAIC.regional_mix}
 \alias{plot.regional_mix}
@@ -51,12 +48,6 @@ regional_mix.multifit(
   nstart = 10,
   mc.cores = 1
 )
-
-\method{AIC}{regional_mix}(object, ..., k = 2)
-
-\method{BIC}{regional_mix}(object, ...)
-
-\method{coef}{regional_mix}(object, ...)
 
 \method{extractAIC}{regional_mix}(fit, scale = 1, k = 2, ...)
 
@@ -171,10 +162,6 @@ regional_mix_bootParametric(fm, mf, nboot)
 
 \item{mc.cores}{the number of cores to distrbute the calculations on. Default is 4. Set to 1 if the computer is running Windows (as it cannot handle forking -- see mclapply(qv)). Ignored if method=='EmpiricalInfo'.}
 
-\item{object}{A RCP model}
-
-\item{k}{AIC penality}
-
 \item{fit}{Fitted RCP model}
 
 \item{scale}{scale parameter}
@@ -200,6 +187,8 @@ regional_mix_bootParametric(fm, mf, nboot)
 \item{ncuts}{number of cuts/bins to make}
 
 \item{ylimmo}{limit of y-axis}
+
+\item{object}{A RCP model}
 
 \item{object2}{A RCP model bootstrap object}
 

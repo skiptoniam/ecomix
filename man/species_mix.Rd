@@ -2,7 +2,7 @@
 % Please edit documentation in R/species_mix-class.R
 \name{species_mix}
 \alias{species_mix}
-\title{This is how you fit a species archetype model (SAM) in R.}
+\title{This is how you fit a species archetype model (SAM) in ecomix.}
 \usage{
 species_mix(
   archetype_formula = NULL,

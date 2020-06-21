@@ -1,6 +1,6 @@
 ##### Main species mix functions to export #####
 
-#' @title This is how you fit a species archetype model (SAM) in R.
+#' @title This is how you fit a species archetype model (SAM) in ecomix.
 #' @rdname species_mix
 #' @name species_mix
 #' @description Fits a finite mixture model to identify species archetype
