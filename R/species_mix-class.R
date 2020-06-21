@@ -1,6 +1,6 @@
 ##### Main species mix functions to export #####
 
-#' @title species_mix objects
+#' @title This is how you fit a species archetype model (SAM) in R.
 #' @rdname species_mix
 #' @name species_mix
 #' @description Fits a finite mixture model to identify species archetype
@@ -923,9 +923,12 @@
 }
 
 ##### S3 class SAM functions #####
-#' @rdname species_mix
-#' @param k AIC penality
-#' @param \\dots additional parameters
+#' @rdname AIC.species_mix
+#' @name AIC.species_mix
+#' @title Return AIC from a species_mix model
+#' @param object A species mix object
+#' @param k AIC parameter
+#' @param \\dots Ignored
 #' @export
 
 "AIC.species_mix" <- function (object, k=NULL, ...){
@@ -936,7 +939,11 @@
   return(star.ic)
 }
 
-#' @rdname species_mix
+#' @rdname BIC.species_mix
+#' @name BIC.species_mix
+#' @title Return BIC from a species_mix model
+#' @param object A species mix object
+#' @param \\dots Ignored
 #' @export
 
 "BIC.species_mix" <-  function (object, ...){
@@ -946,7 +953,11 @@
   return(star.ic)
 }
 
-#' @rdname species_mix
+#' @rdname coef.species_mix
+#' @name coef.species_mix
+#' @title print the coefficients from the species_mix model
+#' @param object A species mix object
+#' @param \\dots Ignored
 #' @export
 
 "coef.species_mix" <- function (object, ...){
@@ -970,10 +981,15 @@
   return(res)
 }
 
-#' @rdname species_mix
+#' @rdname plot.species_mix
+#' @name plot.species_mix
+#' @title plot.species_mix
 #' @param x a fitted species_mix model.
 #' @param species which species residuals to plot. Default is "AllSpecies".
 #' @param fitted.scale log or logit, this enables the plotting of residuals to be on the linear predictor scale.
+#' @param \\dots Extra plotting arguments.
+#' @details Plot random quantile residuals (RQR). "RQR" produces residuals for each species.
+#' @references  Dunn, P.K. and Smyth G.K. (1996) Randomized Quantile Residuals. Journal of Computational and Graphical Statistics \emph{5}: 236--244.
 #' @export
 
 "plot.species_mix" <- function (x,
@@ -1032,7 +1048,9 @@
 }
 
 
-#'@rdname species_mix
+#'@rdname predict.species_mix
+#'@name predict.species_mix
+#'@title Predict a species_mix model.
 #'@param object is a matrix model returned from the species_mix model.
 #'@param object2 is a species mix bootstrap object.
 #'@param newdata a matrix of new observations for prediction.
@@ -1041,6 +1059,8 @@
 #'@param alpha confidence level. default is 0.95
 #'@param mc.cores number of cores to use in prediction. default is 1.
 #'@param prediction_type Do you want to produce 'archetype' or 'species' level predictions. default is 'archetype'.
+#'@param \\dots Ignored
+#'@description Predict species archetypes from a species_mix model. You can also predict the conditional species predictions using "prediction_type='species'".
 #'@export
 #'@examples
 #'\dontrun{
@@ -1255,7 +1275,11 @@
   return(ret)
 }
 
-#'@rdname species_mix
+#'@rdname print.species_mix
+#'@name print.species_mix
+#'@title Print a species_mix model object.
+#'@param x A model object.
+#'@param \\dots Ignored
 #'@export
 #'@examples
 #'
@@ -1348,7 +1372,12 @@
     return( resids)
   }
 
-#' @rdname species_mix
+#' @rdname summary.species_mix
+#' @name summary.species_mix
+#' @title Print a summary of the species_mix model
+#' @description Print a summary of the species_mix model, this requires the variance-covariance matrix to be appended to the species_mix model.
+#' @param object A species_mix model object
+#' @param \\dots Ignored
 #' @export
 "summary.species_mix" <-function (object, ...){
   if (is.null(object$vcov)) {
@@ -2467,9 +2496,6 @@ starting values;\n starting values are generated using ',control$init_method,
   gc()
   return(ret)
 }
-
-#' @rdname species_mix
-#' @export
 
 "species_mix_boot_parametric" <- function( object, nboot){
   if( nboot > 0){

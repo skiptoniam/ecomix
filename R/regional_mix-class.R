@@ -915,6 +915,7 @@
 #' @return An object of class "regional_mix_boot", which is essentially a matrix with nboot rows and the number of columns equal to the number of parameters matrix. Each row gives a bootstrap estimate of the parameters.
 #' @references Foster, S.D., Lyons, M. and Hill, N. (in prep.) Ecological Groupings of Sample Sites in the presence of sampling artefacts.
 #' Rubin, D.B. (1981) The Bayesian Bootstrap. The Annals of Statistics \emph{9}:130--134.
+#' @export
 
 "regional_mix_boot" <-function (object,
                                 nboot=1000,

@@ -2,15 +2,7 @@
 % Please edit documentation in R/species_mix-class.R
 \name{species_mix}
 \alias{species_mix}
-\alias{AIC.species_mix}
-\alias{BIC.species_mix}
-\alias{coef.species_mix}
-\alias{plot.species_mix}
-\alias{predict.species_mix}
-\alias{print.species_mix}
-\alias{summary.species_mix}
-\alias{species_mix_boot_parametric}
-\title{species_mix objects}
+\title{This is how you fit a species archetype model (SAM) in R.}
 \usage{
 species_mix(
   archetype_formula = NULL,
@@ -26,32 +18,6 @@ species_mix(
   standardise = FALSE,
   titbits = TRUE
 )
-
-\method{AIC}{species_mix}(object, k = NULL, ...)
-
-\method{BIC}{species_mix}(object, ...)
-
-\method{coef}{species_mix}(object, ...)
-
-\method{plot}{species_mix}(x, species = "AllSpecies", fitted.scale = "response", ...)
-
-\method{predict}{species_mix}(
-  object,
-  object2 = NULL,
-  newdata = NULL,
-  offset = NULL,
-  nboot = 0,
-  alpha = 0.95,
-  mc.cores = 1,
-  prediction_type = "archetype",
-  ...
-)
-
-\method{print}{species_mix}(x, ...)
-
-\method{summary}{species_mix}(object, ...)
-
-species_mix_boot_parametric(object, nboot)
 }
 \arguments{
 \item{archetype_formula}{an object of class "formula" (or an object that can
@@ -85,7 +51,9 @@ the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
 "negative_binomial" and "gaussian" distributions are possible and applicable
 to specific types of data.}
 
-\item{offset}{an offset for prediction}
+\item{offset}{a numeric vector of length nrow(data) (n sites) that is
+included into the model as an offset. It is included into the conditional
+part of the model where conditioning is performed on the SAM.}
 
 \item{weights}{a numeric vector of length ncol(Y) (n species) that is used
 as weights in the log-likelihood calculations. If NULL (default) then all
@@ -123,30 +91,6 @@ the conditional distribution of the species data. Care needs to be taken when
 using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created
 for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then
 setting titbits=TRUE may give users problems with memory.}
-
-\item{object}{is a matrix model returned from the species_mix model.}
-
-\item{k}{AIC penality}
-
-\item{x}{a fitted species_mix model.}
-
-\item{species}{which species residuals to plot. Default is "AllSpecies".}
-
-\item{fitted.scale}{log or logit, this enables the plotting of residuals to be on the linear predictor scale.}
-
-\item{object2}{is a species mix bootstrap object.}
-
-\item{newdata}{a matrix of new observations for prediction.}
-
-\item{nboot}{Number of bootstraps (or simulations if using IPPM) to run if no object2 is provided.}
-
-\item{alpha}{confidence level. default is 0.95}
-
-\item{mc.cores}{number of cores to use in prediction. default is 1.}
-
-\item{prediction_type}{Do you want to produce 'archetype' or 'species' level predictions. default is 'archetype'.}
-
-\item{\\dots}{additional parameters}
 }
 \description{
 Fits a finite mixture model to identify species archetype
@@ -179,11 +123,4 @@ simulated_data <- species_mix.simulate(archetype_formula=sam_form,
 fm1 <- species_mix(sam_form, sp_form, simulated_data,
  distribution = 'bernoulli',  n_mixtures=3)
  }
-\dontrun{
-preds_fm1 <- predict(fm1)
-}
-
-#Print information about a species_mix model
-\dontrun{
-print(fm1)}
 }
