@@ -1,9 +1,9 @@
 ##### Main species mix functions to export #####
 
-#' @title regional_mix objects
+#' @title This is how you fit a regions of common profiles model in ecomix
 #' @rdname regional_mix
 #' @name regional_mix
-#' @description creates an \code{regional_mix} model.
+#' @description This is how you fit \code{regional_mix} model in ecomix.
 #' @param rcp_formula an object of class "formula" (or an object that can be coerced to that class). The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the region of common profile (rcp) probabilities on covariates.
 #' @param species_formula an object of class "formula" (or an object that can be coerced to that class). The left hand side of this formula should be left empty (it is removed if it is not empty). The right hand side of this formula specifies the dependence of the species"'" data on covariates (typically different covariates to \code{rcp_formula} to avoid confusing confounding). An example formula is observations ~ gear_type + time_of_day, where gear_type describes the different sampling gears and time_of_day describes the time of the sample. #maybe could call this detection/bias
 #' @param data a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containing the covariate data for each site. Names of columns must match that given in \code{rcp_formula} and \code{species_formula}.
@@ -491,10 +491,13 @@
   return(ret)
 }
 
-#' @rdname regional_mix
-#' @name extractAIC
+#' @rdname extractAIC.regional_mix
+#' @name extractAIC.regional_mix
+#' @title Extract AIC from regional_mix model.
 #' @param fit  Fitted RCP model
 #' @param scale scale parameter
+#' @param k AIC parameter
+#' @param \\dots Ignored
 #' @export
 
 "extractAIC.regional_mix" <- function (fit, scale = 1, k = 2, ...){
@@ -507,14 +510,22 @@
 }
 
 
-#' @rdname regional_mix
+#' @rdname plot.regional_mix
+#' @name plot.regional_mix
+#' @title Plot residuals from a regional_mix model.
 #' @param x a fitted regional_mix model you wish to plot
+#' @param \\dots Additional plotting calls
 #' @param type What type of residuals to plot? 'RQR'; random quantile residuals or 'deviance' residuals.
-#' @param nsim number of simulations to run
+#' @param nsim Number of simulations to run
 #' @param alpha.conf The bounds of the confidence intervals.
 #' @param quiet Run in quiet mode.
 #' @param species Which species to plot as residuals.
 #' @param fitted.scale What scale to plot the residuals on?
+#' @details The two types of residuals are inherently different. The "RQR" residuals produce a residual for each species at each site and the "deviance" residuals produce a site residual (no species level residual). The plots also differ, the "RQR" type generates a single normal QQ-plot for all species and all sites, and a residual versus fitted plot for all species and sites (Described in Foster et al, 2013). The "deviance" type generates a pair of Tukey mean-difference plots, similar in spirit to a QQ-plot. The first is for point-wise confidence intervals and the second is for approximate global intervals. See Foster et al (2013) for details.
+#' The distribution for the "RQR" residuals should be standard normal. For "deviance" residuals, the distribution is unknown and simulation is used to graphically assess how odd the observed residuals look compared to ones generated assuming the model is correct.
+#' @references Dunn, P.K. and Smyth G.K. (1996) Randomized Quantile Residuals. Journal of Computational and Graphical Statistics \emph{5}: 236--244.
+#' Foster, S.D., Givens, G.H., Dornan, G.J., Dunstan, P.K. and Darnell, R. (2013) Modelling Regions of Common Profiles Using Biological and Environmental Data. Environmetrics \emph{24}: 489--499. DOI: 10.1002/env.2245
+#' Foster, S.D., Hill, N.A. and Lyons, M., 2017. Ecological grouping of survey sites when sampling artefacts are present. Journal of the Royal Statistical Society: Series C (Applied Statistics), 66(5), pp.1031-1047.
 #' @export
 
 "plot.regional_mix" <- function (x, ..., type="RQR", nsim = 100,
@@ -682,8 +693,10 @@
   }
 }
 
-#' @rdname regional_mix
+#' @rdname plot.regional_mix_stab
 #' @name plot.regional_mix_stab
+#' @title Diagnostic plotting to see if RCP groups are stable
+#' @description For increasing size of hold-out samples, cooks distance and predictive log-likelihood are plotted.
 #' @param x x-axis
 #' @param y y-axis
 #' @param minWidth min width of cuts/binning
@@ -691,6 +704,16 @@
 #' @param ylimmo limit of y-axis
 #' @param \\dots additional plotting calls
 #' @export
+#' @examples
+#' \dontrun{
+#'  #not run as R CMD check complains about the time taken.
+#'  #This code will take a little while to run (about 3.5minutes on my computer)
+#'  system.time(\{
+#'  my.registab <- stability.regional_mix( fm, oosSizeRange=seq( from=1,to=fm$n\%/\%5,length=5),
+#'                                      times=fm$n, mc.cores=2, doPlot=FALSE);
+#'  plot( my.registab, minWidth=1, ncuts=15);
+#'  \})
+#'}
 
 "plot.regional_mix_stab" <-function(x, y, minWidth=1, ncuts=111, ylimmo=NULL, ...){
   # par(mfrow = c(1, 2))
@@ -723,8 +746,9 @@
   invisible(TRUE)
 }
 
-#' @rdname regional_mix
+#' @rdname predict.regional_mix
 #' @name predict.regional_mix
+#' @title Predicts RCP probabilities at a series of sites. Confidence intervals are available too.
 #' @param object an object obtained from fitting a RCP mixture model. Such as that generated from a call to regional_mix(qv).
 #' @param object2 a regional_mix object obtained from bootstrapping the regional_mix object. Such as that generated from a call to regional_mix_boot(qv). If not supplied, then predict.regional_mix will do parametric bootstrapping (otherwise non-parametric bootstrap).
 #' @param newdata a data.frame (or something that can be coerced) containing the values of the covariates where predictions are to be made. If NULL (the default) then predictions are made at the locations of the original data.
@@ -900,8 +924,14 @@
   return(ret)
 }
 
-#'@rdname regional_mix
+#'@rdname print.regional_mix
+#'@name print.regional_mix
+#'@title Prints some attributes of a regimix object.
+#'@param x A fitted regional_mix object
+#'@param \\dots Ignored
+#'@description A list is returned that will be printed on exit, if not assigned to anything. It contains the function call and the estimated coefficients.
 #'@export
+#'
 "print.regional_mix" <- function (x, ...){
   ret <- list()
   ret$Call <- x$call
@@ -911,8 +941,9 @@
   invisible(ret)
 }
 
-#' @rdname regional_mix
+#' @rdname regional_mix_boot
 #' @name regional_mix_boot
+#' @title Performs bootstrap sample and estimation for regimix objects. Useful for calculating measures of uncertainty in predictions from a regimix object, and also about the regimix parameter estimates. This function can be used in conjunction with vcov.regimix(qv) and predict.regimix(qv). In partciular, these bootstrap samples can be used to gauge variability in parameter estimates and hence the model itself.
 #' @aliases regional_mix_boot
 #' @title Bootstraps a regional_mix object.
 #' @description Performs bootstrap sample and estimation for regional_mix objects. Useful for calculating measures of uncertainty in predictions from a regional_mix object, and also about the regional_mix parameter estimates. This function can be used in conjunction with vcov.regional_mix(qv) and predict.regional_mix(qv). In partciular, these bootstrap samples can be used to gauge variability in parameter estimates and hence the model itself.
@@ -1004,8 +1035,14 @@
   return( boot.estis)
 }
 
-#' @rdname regional_mix
+#' @rdname residuals.regional_mix
 #' @name residuals.regional_mix
+#' @title Residuals for a regional_mix object
+#' @param object A regional_mix model
+#' @param \\dots Additional arguments for residuals function
+#' @param type What type of residuals to plot? 'RQR'; random quantile residuals or 'deviance' residuals.
+#' @param quiet Run in quiet mode.
+#'@param mc.cores the number of cores to farm the jobs out to.
 #' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over
 #' other species observations within that site; see Foster et al, in prep). The result is one residual per species per site and they all should be standard
 #' normal variates. Within a site they are likely to be correlated (as they share a common latent factor), but across sampling locations they will be independent.
@@ -1112,8 +1149,10 @@
 
 
 
-#' @rdname regional_mix
+#' @rdname regional_mix.simulate
 #' @name regional_mix.simulate
+#' @title Simulate a regional_mix dataset for modelling.
+#' @description Simulates a data set from a mixture-of-experts model for RCP (for region of common profile) types.
 #' @param nRCP Integer giving the number of RCPs
 #' @param S Integer giving the number of species
 #' @param n Integer giving the number of observations (sites)
@@ -1280,8 +1319,9 @@
 }
 
 
-#'@rdname regional_mix
+#'@rdname stability.regional_mix
 #'@name stability.regional_mix
+#'@title Diagnostic checks to see if RCP groups are stable
 #'@description For increasing size of hold-out samples, cooks distance and predictive log-likelihood are calculated and optionally plotted.
 #'@param model a regional_mix model, as obtained by the function \code{regional_mix}. This is the model whose stability is assessed. Model must contain titbits (see ?regional_mix and particular attention to the argument titbits=TRUE)
 #'@param oosSizeRange the size of the (successive) hold-out samples. If NULL (default), then a sequence of 10 sizes, from 1 to 0.2*model$n is used. The more numbers in this range, the slower the function will run.
@@ -1323,8 +1363,9 @@
   invisible( ret)
 }
 
-#' @rdname regional_mix
+#' @rdname summary.regional_mix
 #' @name summary.regional_mix
+#' @title A summary from a regional_mix object.
 #' @description A summary from a regional_mix object.
 #' @param object A regional_mix model object
 #' @param \\dots ignored.
@@ -1348,12 +1389,13 @@
     return(res)
   }
 
-#'@rdname regional_mix
+#'@rdname vcov.regional_mix
 #'@name vcov.regional_mix
 #'@aliases vcov.regional_mix
 #'@title Variance matrix for a regional_mix object.
 #'@description Calculates variance-covariance matrix from a regional_mix object
 #'@param object an object obtained from fitting a RCP (for region of common profile) mixture model. Such as that generated from a call to regional_mix(qv).
+#'@param \\dots Other calls to the vcov function.
 #'@param object2 an object of class \code{regional_mix} containing bootstrap samples of the parameter estimates (see regional_mix_boot(qv)). If NULL (default) the bootstrapping is performed from within the vcov function. If not null, then the vcov estimate is obtained from these bootstrap samples.
 #'@param method the method to calculate the variance-covariance matrix. Options are:'FiniteDifference' (default), \code{BayesBoot}, \code{SimpleBoot}, and \code{EmpiricalInfo}. The two bootstrap methods (\code{BayesBoot} and \code{SimpleBoot}, see regional_mix_boot(qv)) should be more general and may possibly be more robust. The \code{EmpiricalInfo} method implements an empirical estimate of the Fisher information matrix, I can not recommend it however. It seems to behave poorly, even in well behaved simulations. It is computationally thrifty though.
 #'@param nboot the number of bootstrap samples to take for the bootstrap estimation. Argument is ignored if !method \%in\% c(\code{FiniteDifference},'EmpiricalInfo').
@@ -1515,12 +1557,12 @@
 }
 
 #'@title What is the average species membership per RCP?
-#'@rdname regional_mix
+#'@rdname regional_mix.species_membership
 #'@name regional_mix.species_membership
 #'@param object A RCP model
 #'@param object2 A RCP model bootstrap object
-#'@param CI The confidence intervals to report the range of
-#'values form bootstrap
+#'@param CI The confidence intervals to report the range of values form bootstrap
+#'@param \\dots Ignored for now.
 #'@export
 #'@description Extracts the average species' membership for each RCP.
 
@@ -2459,12 +2501,12 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
 
 
 
-#' @rdname regional_mix
-#' @name regional_mix_bootParametric
-#' @param fm A fitted regional_mix model.
-#' @param mf A model frame.
-#' @param nboot The number of bootstraps to fit.
-#' @export
+# #' @rdname regional_mix
+# #' @name regional_mix_bootParametric
+# #' @param fm A fitted regional_mix model.
+# #' @param mf A model frame.
+# #' @param nboot The number of bootstraps to fit.
+# #' @export
 
 "regional_mix_bootParametric" <- function( fm, mf, nboot){
 	if( nboot > 0){

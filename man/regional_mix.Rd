@@ -3,21 +3,7 @@
 \name{regional_mix}
 \alias{regional_mix}
 \alias{regional_mix.multifit}
-\alias{extractAIC}
-\alias{extractAIC.regional_mix}
-\alias{plot.regional_mix}
-\alias{plot.regional_mix_stab}
-\alias{predict.regional_mix}
-\alias{print.regional_mix}
-\alias{regional_mix_boot}
-\alias{residuals.regional_mix}
-\alias{regional_mix.simulate}
-\alias{stability.regional_mix}
-\alias{summary.regional_mix}
-\alias{vcov.regional_mix}
-\alias{regional_mix.species_membership}
-\alias{regional_mix_bootParametric}
-\title{regional_mix objects}
+\title{This is how you fit a regions of common profiles model in ecomix}
 \usage{
 regional_mix(
   rcp_formula = NULL,
@@ -48,92 +34,6 @@ regional_mix.multifit(
   nstart = 10,
   mc.cores = 1
 )
-
-\method{extractAIC}{regional_mix}(fit, scale = 1, k = 2, ...)
-
-\method{plot}{regional_mix}(
-  x,
-  ...,
-  type = "RQR",
-  nsim = 100,
-  alpha.conf = c(0.9, 0.95, 0.99),
-  quiet = FALSE,
-  species = "AllSpecies",
-  fitted.scale = "response"
-)
-
-\method{plot}{regional_mix_stab}(x, y, minWidth = 1, ncuts = 111, ylimmo = NULL, ...)
-
-\method{predict}{regional_mix}(
-  object,
-  object2 = NULL,
-  ...,
-  newdata = NULL,
-  nboot = 0,
-  alpha = 0.95,
-  mc.cores = 1
-)
-
-\method{print}{regional_mix}(x, ...)
-
-regional_mix_boot(
-  object,
-  nboot = 1000,
-  type = "BayesBoot",
-  mc.cores = 1,
-  quiet = FALSE,
-  MLstart = TRUE
-)
-
-\method{residuals}{regional_mix}(object, ..., type = "RQR", quiet = FALSE, mc.cores = 1)
-
-regional_mix.simulate(
-  nRCP = 3,
-  S = 20,
-  n = 200,
-  p.x = 3,
-  p.w = 0,
-  alpha = NULL,
-  tau = NULL,
-  beta = NULL,
-  gamma = NULL,
-  logDisps = NULL,
-  powers = NULL,
-  X = NULL,
-  W = NULL,
-  offset = NULL,
-  distribution = "bernoulli"
-)
-
-stability.regional_mix(
-  model,
-  oosSizeRange = NULL,
-  times = model$n,
-  mc.cores = 1,
-  quiet = FALSE,
-  doPlot = TRUE
-)
-
-\method{summary}{regional_mix}(object, ...)
-
-\method{vcov}{regional_mix}(
-  object,
-  ...,
-  object2 = NULL,
-  method = "FiniteDifference",
-  nboot = 1000,
-  mc.cores = 1,
-  D.accuracy = 2
-)
-
-regional_mix.species_membership(
-  object,
-  object2 = NULL,
-  CI = c(0.025, 0.975),
-  ...
-)
-
-regional_mix_bootParametric(fm, mf, nboot)
 }
 \arguments{
 \item{rcp_formula}{an object of class "formula" (or an object that can be coerced to that class). The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the region of common profile (rcp) probabilities on covariates.}
@@ -142,11 +42,11 @@ regional_mix_bootParametric(fm, mf, nboot)
 
 \item{data}{a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containing the covariate data for each site. Names of columns must match that given in \code{rcp_formula} and \code{species_formula}.}
 
-\item{nRCP}{Integer giving the number of RCPs}
+\item{nRCP}{The number of mixing components (groups) to fit.}
 
-\item{distribution}{Text string. Specifies the distribution of the species data. Current options are "bernoulli" (default), "poisson", "negative_binomial", "tweedie" and "gaussian.}
+\item{distribution}{The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial" and "gaussian" distributions are possible and applicable to specific types of data.}
 
-\item{offset}{Numeric vector of size n. Specifies any offset to be included into the species level model.}
+\item{offset}{a numeric vector of length nrow( data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the unobserved RCP type. Note that offsets cannot be included as part of the rcp_formula or species_formula arguments ??? only through this argument.}
 
 \item{weights}{a numeric vector of length nrow( data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1.}
 
@@ -160,88 +60,7 @@ regional_mix_bootParametric(fm, mf, nboot)
 
 \item{nstart}{for regional_mix.multifit only. The number of random starts to perform for re-fitting. Default is 10, which will need increasing for serious use.}
 
-\item{mc.cores}{the number of cores to distrbute the calculations on. Default is 4. Set to 1 if the computer is running Windows (as it cannot handle forking -- see mclapply(qv)). Ignored if method=='EmpiricalInfo'.}
-
-\item{fit}{Fitted RCP model}
-
-\item{scale}{scale parameter}
-
-\item{x}{x-axis}
-
-\item{type}{a character string giving the type of bootstrap to perform. Options are:"SimpleBoot" which gives sample resampling, and "BayesBoot" (default) which gives Bayesian Bootstrap sampling. The nomenclature, and the Bayesian Bootstrap, come from Rubin (1981).}
-
-\item{nsim}{number of simulations to run}
-
-\item{alpha.conf}{The bounds of the confidence intervals.}
-
-\item{quiet}{should the progress bar be displayed (bar for each oosSizeRange)}
-
-\item{species}{Which species to plot as residuals.}
-
-\item{fitted.scale}{What scale to plot the residuals on?}
-
-\item{y}{y-axis}
-
-\item{minWidth}{min width of cuts/binning}
-
-\item{ncuts}{number of cuts/bins to make}
-
-\item{ylimmo}{limit of y-axis}
-
-\item{object}{A RCP model}
-
-\item{object2}{A RCP model bootstrap object}
-
-\item{newdata}{a data.frame (or something that can be coerced) containing the values of the covariates where predictions are to be made. If NULL (the default) then predictions are made at the locations of the original data.}
-
-\item{nboot}{The number of bootstraps to fit.}
-
-\item{alpha}{Numeric vector of length S. Specifies the mean prevalence for each species, on the logit scale}
-
-\item{MLstart}{should each bootstrap estimation start at the original model's ML estimate? Default is TRUE for \code{yes} it should.}
-
-\item{S}{Integer giving the number of species}
-
-\item{n}{Integer giving the number of observations (sites)}
-
-\item{p.x}{Integer giving the number of covariates (including the intercept) for the model for the latent RCP types}
-
-\item{p.w}{Integer giving the number of covariates (excluding the intercept) for the model for the species data}
-
-\item{tau}{Numeric matrix of dimension c(nRCP-1,S). Specifies each species difference from the mean to each RCPs mean for the first nRCP-1 RCPs. The last RCP means are calculated using the sum-to-zero constraints}
-
-\item{beta}{Numeric matrix of dimension c(nRCP-1,p.x). Specifies the RCP's dependence on the covariates (in X)}
-
-\item{gamma}{Numeric matrix of dimension c(n,p.w). Specifies the species' dependence on the covariates (in W)}
-
-\item{logDisps}{Logartihm of the (over-)dispersion parameters for each species for negative binomial, Tweedie and Normal models}
-
-\item{powers}{Power parameters for each species for Tweedie model}
-
-\item{X}{Numeric matrix of dimension c(n,p.x). Specifies the covariates for the RCP model. Must include the intercept, if one is wanted. Default is random numbers in a matrix of the right size.}
-
-\item{W}{Numeric matrix of dimension c(n,p.w). Specifies the covariates for the species model. Must not include the intercept. Unless you want it included twice. Default is to give random levels of a two-level factor.}
-
-\item{model}{a regional_mix model, as obtained by the function \code{regional_mix}. This is the model whose stability is assessed. Model must contain titbits (see ?regional_mix and particular attention to the argument titbits=TRUE)}
-
-\item{oosSizeRange}{the size of the (successive) hold-out samples. If NULL (default), then a sequence of 10 sizes, from 1 to 0.2*model$n is used. The more numbers in this range, the slower the function will run.}
-
-\item{times}{the number of hold-out samples to use. If times=model$n and oosSize is 1, then the sample contains each and every site. Otherwise, it is a sample of size times from the possible combinations of possible hold-out sets.}
-
-\item{doPlot}{should the plots be produced? Default is that they should be.}
-
-\item{method}{the method to calculate the variance-covariance matrix. Options are:'FiniteDifference' (default), \code{BayesBoot}, \code{SimpleBoot}, and \code{EmpiricalInfo}. The two bootstrap methods (\code{BayesBoot} and \code{SimpleBoot}, see regional_mix_boot(qv)) should be more general and may possibly be more robust. The \code{EmpiricalInfo} method implements an empirical estimate of the Fisher information matrix, I can not recommend it however. It seems to behave poorly, even in well behaved simulations. It is computationally thrifty though.}
-
-\item{D.accuracy}{The number of finite difference points used in the numerical approximation to the observed information matrix. Ignored if method != \code{FiniteDifference}. Options are 2 (default) and 4.}
-
-\item{CI}{The confidence intervals to report the range of
-values form bootstrap}
-
-\item{fm}{A fitted regional_mix model.}
-
-\item{mf}{A model frame.}
-
-\item{\\dots}{ignored.}
+\item{mc.cores}{for regional_mix.multifit only. The number of cores to spread the re-fitting over.}
 }
 \value{
 regional_mix returns an object of class \code{regional_mix} and regional_mix.multifit returns a list of objects of class \code{regional_mix}. The regional_mix class has several methods: coef, plot, predict, residuals, summary, and vcov. The regional_mix object consists of a list with the following elements:
@@ -285,60 +104,9 @@ scores a list of three elements. Structure corresponds to coefs.
 start.vals the values used to start the estimation procedure.
 
 titbits (if requested using the titbit argument, see above) other pieces of information, useful to developers, that users should not typically need to concern themselves with. However, this information is used by methods for regional_mix objects.
-
-If nboot==0 then a n x H matrix of prior predictions (n=nrow(newdata), H=number of RCPs). Each row should sum to one.
-\item{ if nboot!=0 then a list is returned. It has elements:}{}
-\item{ ptPreds}{the n x H matrix of point predictions}
-\item{ bootPreds}{the n x H matrix of bootstrap point predictions (mean of bootstrap samples)}
-\item{ bootSEs}{the n x H matrix of bootstrap standard errors for predictions}
-\item{ bootCIs}{the n x H x 2 array of bootstrap confidence intervals. Note that bootCIs[,,1] gives the lower CIs and bootCIs[,,2] gives the upper CIs.}
-
-An object of class "regional_mix_boot", which is essentially a matrix with nboot rows and the number of columns equal to the number of parameters matrix. Each row gives a bootstrap estimate of the parameters.
-
-\item{ For type=="RQR", a number-of-sites by number-of-species matrix with the randomised quantile residuals, which should be distributed as a standard normal variate.}{}
-\item{ For type=="deviance" a numeric vector of size object$n containing the deviance residuals.}{}
-
-Produces a regional_mix_stab object. This is a list with the oosSizeRnage, disty (the mean Cook's Distance for each subset size), nRCP, n, predlogls (log-likelihood of out-of-sample sites), logl.sites (the in-sample log-likelihood for full data set).
-
-A square matrix of size equal to the number of parameters. It contains the variance matrix of the parameter estimates.
 }
 \description{
-creates an \code{regional_mix} model.
-
-Performs bootstrap sample and estimation for regional_mix objects. Useful for calculating measures of uncertainty in predictions from a regional_mix object, and also about the regional_mix parameter estimates. This function can be used in conjunction with vcov.regional_mix(qv) and predict.regional_mix(qv). In partciular, these bootstrap samples can be used to gauge variability in parameter estimates and hence the model itself.
-
-This function can take a while to run -- it is a bootstrap function. nboot re-samples of the data are taken and then the parameters are estimated for each re-sample. The function allows for parallel calculations, via mclapply(qv), which reduces some of the computational burden. To use parallel computing, specify mc.cores>1. Note that this will not work on Windows computers, as mclapply(qv) will not work.
-The Bayesian bootstrap method is operationally equivalent to the simple bootstrap, except that the weightings are non-integral. See Rubin (1981). It might be tempting to reduce the tolerance for convergence of each estimation procedure. We recommend not doing this as it is likely to have the effect of artificially reducing estimates of uncertainty. This occurs as the resampled estimates are liekly to be closer to their starting values (the MLEs from the original data set).
-
-The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by their marginal distribution function (marginality is over
-other species observations within that site; see Foster et al, in prep). The result is one residual per species per site and they all should be standard
-normal variates. Within a site they are likely to be correlated (as they share a common latent factor), but across sampling locations they will be independent.
-The deviance residuals (as used here), are actually just square root of minus two times the log-likelihood contribution for each sampling location. We do
-not subtract the log-likelihood of the saturated model as, at the time of writing, we are unsure what this log-likelihood should be (latent factors confuse
-things here). This implies that the residuals will not have mean zero and their variance might also be heteroskedastic. This was not realised when writing
-the original RCP paper (Foster et al, 2013), obviously. We still believe that these residuals have some utility, but we are unsure where that utility stops.
-For general useage, the "RQR" residuals should probably be preferred.
-
-For increasing size of hold-out samples, cooks distance and predictive log-likelihood are calculated and optionally plotted.
-
-A summary from a regional_mix object.
-
-Calculates variance-covariance matrix from a regional_mix object
-
-Extracts the average species' membership for each RCP.
-}
-\details{
-This function implements two separate, and quite different, bootstrapping routines. The first, attributable to Foster et al (2013), which implements a parametric bootstrap, whereby parameters are drawn from their sampling distribution (defined by the ML estimates and their asymptotic vcov matrix). Yes, the vcov function needs to be run first and stored in the the regional_mix object as $vcov. Typically, the vcov matrix is obtained using numerical derivatives, which can be slow to calculate and somewhat unstable/erratic. This was the original suggestion and has been superceeded by the non-parametric bootstrap routine. This is described in Foster et al (in prep) and bootstraps the sampling site data repeatedly, and for each bootstrap sample the model is re-estimated. Variation in the bootstrap samples is carried forward to the prediction step to guage the uncertainty.
-The parametric bootsrap implementation of this function can take a while to run ??? it is a bootstrap function. nboot samples of the parameters are taken and then used to predict at each set of covariates defined in newdata. Quantiles of the resulting sets of bootstrap predictions are then taken. It is the last step that really takes a while. The non-parametric version of this function should not take as long as the grunt work of bootstrapping is carried out in the regional_mix_boot(qv) function.
-Note that this function is not implemented. It could be, using the parallel package, but it is currently not. The bulk of the bootstrap calculations are done in C++, which reduces the waiting time but parallelising it would be even better.
-
-The plots produced are: 1) leave-some-out Cook's distance (see \code{\link{cooks.distance.regional_mix}}) against holdout sample size; and 2) the predictive log-likelihood for times sites, against the holdout sample size.
-In both plots, the values from the original model have been added to the plot.
-
-A table is printed that contains the coefficient values, their standard errors, and their z-statistic. The second and thrid columns may be unreliable for some parameters.
-
-If method is \code{FiniteDifference}, then the estimates variance matrix is based on a finite difference approximation to the observed information matrix.
-If method is either "BayesBoot" or "SimpleBoot", then the estimated variance matrix is calculated from bootstrap samples of the parameter estimates. See Foster et al (in prep) for details of how the bootstrapping is actually done, and regional_mix_boot(qv) for its implementation.
+This is how you fit \code{regional_mix} model in ecomix.
 }
 \examples{
 \dontrun{
@@ -350,57 +118,4 @@ data <- make_mixture_data(species_data = simulated_data$species_data,
                           covariate_data = simulated_data$covariate_data[,-1])
 fm_regional_mix <- regional_mix(rcp_form,spp_form,data=data,distribution='bernoulli',n_mixtures=5)
 }
-\dontrun{
-#generates synthetic data
-set.seed( 151)
-n <- 100
-S <- 10
-nRCP <- 3
-my.dist <- "negative_binomial"
-X <- as.data.frame( cbind( x1=runif( n, min=-10, max=10),
-                          x2=runif( n, min=-10, max=10)))
-Offy <- log( runif( n, min=30, max=60))
-pols <- list()
-pols[[1]] <- poly( X$x1, degree=3)
-pols[[2]] <- poly( X$x2, degree=3)
-X <- as.matrix( cbind( 1, X, pols[[1]], pols[[2]]))
-colnames( X) <- c("const", 'x1', 'x2', paste( "x1",1:3,sep='.'),
-paste( "x2",1:3,sep='.'))
-p.x <- ncol( X[,-(2:3)])
-p.w <- 3
-W <- matrix(sample( c(0,1), size=(n*p.w), replace=TRUE), nrow=n, ncol=p.w)
-colnames( W) <- paste( "w",1:3,sep=".")
-alpha <- rnorm( S)
-tau.var <- 0.5
-b <- sqrt( tau.var/2)
-tau <- matrix( rexp( n=(nRCP-1)*S,
-rate=1/b) - rexp( n=(nRCP-1)*S, rate=1/b), nrow=nRCP-1, ncol=S)
-beta <- 0.2 * matrix( c(-1.2, -2.6, 0.2, -23.4, -16.7, -18.7, -59.2, -76.0,
--14.2, -28.3, -36.8, -17.8, -92.9,-2.7), nrow=nRCP-1, ncol=p.x)
-gamma <- matrix( rnorm( S*p.w), ncol=p.w, nrow=S)
-logDisp <- log( rexp( S, 1))
-set.seed(121)
-simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n,
-alpha=alpha, tau=tau, beta=beta, gamma=gamma, X=X[,-(2:3)], W=W,
-distribution=my.dist, logDisp=logDisp, offset=Offy)
-
-}
-\dontrun{
-#not run as R CMD check complains about the time taken.
-#This code will take a little while to run (about 3.5minutes on my computer)
- stability.regional_mix( fm, oosSizeRange=seq( from=1,to=fm$n,length=5),
-                    times=fm$n, mc.cores=2, doPlot=FALSE);
-}
-
-}
-\references{
-Foster, S.D., Lyons, M. and Hill, N. (in prep.) Ecological Groupings of Sample Sites in the presence of sampling artefacts.
-Rubin, D.B. (1981) The Bayesian Bootstrap. The Annals of Statistics \emph{9}:130--134.
-
-Dunn, P.K. and Smyth G.K. (1996) Randomized Quantile Residuals. Journal of Computational and Graphical Statistics \emph{5}: 236--244.
-Foster, S.D., Givens, G.H., Dornan, G.J., Dunstan, P.K. and Darnell, R{}. (2013) Modelling Regions of Common Profiles Using Biological and Environmental Data. Environmetrics \emph{24}: 489--499. DOI: 10.1002/env.2245
-Foster, S.D., Hill, N.A. and Lyons, M., 2017. Ecological grouping of survey sites when sampling artefacts are present. Journal of the Royal Statistical Society: Series C (Applied Statistics), 66(5), pp.1031-1047.
-
-Foster, S.D., Givens, G.H., Dornan, G.J., Dunstan, P.K. and Darnell, R. (2013) Modelling Regions of Common Profiles Using Biological and Environmental Data. Environmetrics \emph{24}: 489--499. DOI: 10.1002/env.2245
-Foster, S.D., Hill, N.A. and Lyons, M., 2017. Ecological grouping of survey sites when sampling artefacts are present. Journal of the Royal Statistical Society: Series C (Applied Statistics), 66(5), pp.1031-1047.
 }
