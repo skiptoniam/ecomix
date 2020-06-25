@@ -52,8 +52,8 @@ data = list(Y = as.matrix(y), # Response
             wts = site_spp_weights, #wts is a matrix indexed by sites, species (i,j).
             nObs= nrow(X),# nsites.
             nG = G,       # n groups
-            nS = S,
-            thetaRange = as.numeric(c(0.001,10)))# n coefs W
+            nS = S)#,
+            thetaRang#e = as.numeric(c(0.001,10)))# n coefs W
 
 #-------------------------------------------
 
@@ -72,7 +72,7 @@ par = list(beta=matrix(runif(G*ncol(X)),G,ncol(X)),
 #-------------------------------------------
 
 #Fit model----------------------------------
-obj = MakeADFun(data = data, parameters = par, random="beta", DLL = "tmbsam")
+obj = MakeADFun(data = data, parameters = par, DLL = "tmbsam")
 
 
 

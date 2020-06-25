@@ -66,7 +66,7 @@ Type objective_function<Type>::operator() (){
   DATA_INTEGER(nObs);    //n sites.
   DATA_INTEGER(nG);     //n groups
   DATA_INTEGER(nS);     //n species
-  DATA_VECTOR(thetaRange);
+  // DATA_VECTOR(thetaRange);
 
   // what distributiona and link function to use.
   DATA_INTEGER(family);
@@ -86,7 +86,7 @@ Type objective_function<Type>::operator() (){
   PARAMETER_VECTOR(theta); //dispersion coefs.
 
   // intialise the negative loglike.
-  Type mu, eta_i, logl= 0.0, penalty= 0.0, tmp=0.0, avSummand = 0.0, sppContr= 0.0,tau = 100;
+  Type mu, eta_i, logl= 0.0, tmp=0.0, avSummand = 0.0, sppContr= 0.0,tau = 100;
 
   matrix<Type> sppEta(nObs,nS);
   matrix<Type> grpEta(nObs,nG);
@@ -96,8 +96,8 @@ Type objective_function<Type>::operator() (){
   vector<Type> wt(nG);
   // double tmp, tau, avSummand, sppContr;
 
-  sppEta = X*beta.transpose();//might need to transpose beta.
-  grpEta = W*gamma.transpose();//might need to transpose gamma.
+  sppEta = X*beta;//might need to transpose beta.
+  grpEta = W*gamma;//might need to transpose gamma.
 
   for(int ss=0; ss<nS; ss++){
     for(int gg=0; gg<nG; gg++){
@@ -125,13 +125,14 @@ Type objective_function<Type>::operator() (){
       tmp += exp( summand(gg) - avSummand);
     sppContr = avSummand + log( tmp);
     logl += sppContr;
+
 // # pen.max <- theta.range[2]
 // # pen.min <- theta.range[1]
 // # shape1 <- shape2 <- 1.25
 // # if(disty==4)  sppLogls <- sppLogls + dbeta( (theta-pen.min) / (pen.max-pen.min), shape1, shape2, log=TRUE)
     // theta_tmp = 0.0;
-    Type theta_tmp = (theta(ss)-thetaRange(0)) / (thetaRange(1)-thetaRange(0));
-    penalty += dbeta(theta_tmp, 1.25, 1.25, true);
+    // Type theta_tmp = (theta(ss)-thetaRange(0)) / (thetaRange(1)-thetaRange(0));
+    // penalty += dbeta(theta_tmp, 1.25, 1.25, true);
   }
-  return (logl + penalty);
+  return (logl);//# + penalty);
 }
