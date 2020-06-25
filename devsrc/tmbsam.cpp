@@ -105,7 +105,7 @@ Type objective_function<Type>::operator() (){
       for( size_t ii=0; ii<nObs; ii++){
         eta_i = sppEta(ii,ss) + grpEta(ii,gg) + offy(ii);
         mu = InverseLink(eta_i, link);
-        sppLogl(gg) += dnbinom(Y(ii,ss), theta(ss), mu, 1);
+        sppLogl(gg) -= dnbinom(Y(ii,ss), theta(ss), mu, 1);
       }
       summand(gg) = log(pi(gg)) + sppLogl(gg);
     }
@@ -124,7 +124,7 @@ Type objective_function<Type>::operator() (){
     for( int gg=0; gg<nG; gg++)
       tmp += exp( summand(gg) - avSummand);
     sppContr = avSummand + log( tmp);
-    logl += sppContr;
+    logl -= sppContr;
 
 // # pen.max <- theta.range[2]
 // # pen.min <- theta.range[1]

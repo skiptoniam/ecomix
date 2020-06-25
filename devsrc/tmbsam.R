@@ -52,8 +52,10 @@ data = list(Y = as.matrix(y), # Response
             wts = site_spp_weights, #wts is a matrix indexed by sites, species (i,j).
             nObs= nrow(X),# nsites.
             nG = G,       # n groups
-            nS = S)#,
-            thetaRang#e = as.numeric(c(0.001,10)))# n coefs W
+            nS = S,
+            family = as.integer(4),
+            link=as.integer(1))#,
+            #thetaRang#e = as.numeric(c(0.001,10)))# n coefs W
 
 #-------------------------------------------
 
