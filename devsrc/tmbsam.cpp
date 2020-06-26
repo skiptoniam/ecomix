@@ -16,7 +16,6 @@ Type invMultLogit( Type pi2, Type alpha2, int nG2){
     pi2.push_back(tmp(gg) / sum);
 }
 
-
 enum valid_family {
   bernoulli = 1,
   poisson  = 2,
@@ -53,20 +52,36 @@ Type InverseLink(Type eta, int link)
 }
 
 template<class Type>
+Type logit_inverse_linkfun(Type eta, int link) {
+  Type ans;
+  switch (link) {
+  case logit_link:
+    ans = eta;
+    break;
+  default:
+    ans = logit( inverse_linkfun(eta, link) );
+  } // End switch
+  return ans;
+}
+
+template<class Type>
 Type objective_function<Type>::operator() (){
   using namespace density;
   using namespace Eigen;
 
   //Read data from R
   DATA_MATRIX(Y);       //Responses
+  DATA_MATRIX(y_is_na); //NA data in response
   DATA_MATRIX(X);       //X is the archetype design matrix
   DATA_MATRIX(W);       //W is the species design matrix
   DATA_VECTOR(offy);    //offy is the offset indexed by sites (i)
-  DATA_MATRIX(wts);     //wts is a matrix indexed by sites, species (i,j).
-  DATA_INTEGER(nObs);    //n sites.
+  DATA_VECTOR(eta);     //additive_logistic transform of pis
+  DATA_MATRIX(wts);     //wts is a matrix indexed by sites, species (i,j) this is for ippm.
+  DATA_INTEGER(nObs);   //n sites.
   DATA_INTEGER(nG);     //n groups
   DATA_INTEGER(nS);     //n species
-  // DATA_VECTOR(thetaRange);
+
+  // DATA_VECTOR(thetaRange); penalties for overdispersion if needed.
 
   // what distributiona and link function to use.
   DATA_INTEGER(family);
@@ -86,8 +101,9 @@ Type objective_function<Type>::operator() (){
   PARAMETER_VECTOR(theta); //dispersion coefs.
 
   // intialise the negative loglike.
-  Type mu, eta_i, logl= 0.0, tmp=0.0, avSummand = 0.0, sppContr= 0.0,tau = 100;
+  Type mu, eta_i, logl= 0.0, tmp=0.0, sppContr= 0.0,tau = 100;
 
+  array<Type> mus(nObs,nS,nG); //Matrix for storing mus
   matrix<Type> sppEta(nObs,nS);
   matrix<Type> grpEta(nObs,nG);
   vector<Type> sppLogl(nG);
@@ -96,13 +112,49 @@ Type objective_function<Type>::operator() (){
   vector<Type> wt(nG);
   // double tmp, tau, avSummand, sppContr;
 
-  sppEta = X*beta;//might need to transpose beta.
-  grpEta = W*gamma;//might need to transpose gamma.
+
+  // setting up the pis
+  invMultLogit(pi, eta, nG1);
+
+
+  sppEta = X*beta; // Mixing coefs
+  grpEta = W*gamma; // Species coefs
+
+  // get the mus
+  for(int ss=0; ss<nS; ss++){
+	     for(int gg=0; gg<nG; gg++){
+			       for( int ii=0; ii<nObs; ii++){
+					  eta_i = sppEta(ii,ss) + grpEta(ii,gg) + offy(ii);
+                      mu(ii,ss,gg) = InverseLink(eta_i, link);
+                      switch (family) {
+					  case gaussian_family:
+						tmp_loglik = dnorm(yobs(ii,ss), mu(ii,ss,gg), sqrt(theta(ss)), true);
+						break;
+					  case poisson_family:
+						tmp_loglik = dpois(yobs(ii,ss), mu(ii,ss,gg), true);
+						break;
+					  case binomial_family:
+						s1 = logit_inverse_linkfun(eta(i), link); // logit(p)
+						tmp_loglik = dbinom_robust(yobs(i), size(i), s1, true);
+						break;
+					  case negative_binomial:
+					    tmp_loglik = dnbinom2(Y(ii,ss), theta(ss), mu(ii,ss,gg), true);
+					    break;
+					}
+					tmp_loglik *= weights(i,ss);
+          sppLogl(gg) -= tmp_loglik;
+				  }
+				 summand(gg) = log( pi(gg)) + sppLogl(gg);
+			  }
+
+		  }
+
 
   for(int ss=0; ss<nS; ss++){
+	Type avSummand = 0.0;
     for(int gg=0; gg<nG; gg++){
       sppLogl(gg) = 0.0;
-      for( size_t ii=0; ii<nObs; ii++){
+      for( int ii=0; ii<nObs; ii++){
         eta_i = sppEta(ii,ss) + grpEta(ii,gg) + offy(ii);
         mu = InverseLink(eta_i, link);
         sppLogl(gg) -= dnbinom(Y(ii,ss), theta(ss), mu, 1);

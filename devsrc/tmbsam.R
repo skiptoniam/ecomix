@@ -60,10 +60,10 @@ data = list(Y = as.matrix(y), # Response
 #-------------------------------------------
 
 #Define parameter object given to TMB-------
-par = list(beta=matrix(runif(G*ncol(X)),G,ncol(X)),
-           gamma=matrix(runif(S*ncol(W)),S,ncol(W)),
-           pi = rep(0,G),
-           theta=rep(0,S))
+par = list(beta=matrix(runif(G*ncol(X)),ncol(X),G),
+           gamma=matrix(runif(S*ncol(W)),ncol(W),S),
+           eta = rep(0,G-1),
+           theta = rep(1,S))
 #
 #
 #
