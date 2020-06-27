@@ -40,7 +40,7 @@ offset <- rep(0,nrow(X))
 
 
 library(TMB)
-compile("/home/woo457/Dropbox/ecomix/devsrc/tmbsam.cpp")
+compile("/home/woo457/Dropbox/ecomix/devsrc/tmbsam.cpp","&> /tmp/logfile.log")
 
 dyn.load(dynlib("/home/woo457/Dropbox/ecomix/devsrc/tmbsam"))
 

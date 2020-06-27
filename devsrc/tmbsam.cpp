@@ -1,20 +1,25 @@
 #include <TMB.hpp>   //Links in the TMB libraries
 
 template <class Type>
-Type invMultLogit( Type pi2, Type alpha2, int nG2){
-  Type tmp(nG2, 0.0);
-  Type sum=0;
+Type invMultLogit(Type alpha2, int nG2){
+  Type tmp(nG2);
+  Type sumTmp=0;
 
+  vector<Type> expEta = exp(alpha2);
+  Type sumexpEta = sum(expEta) + 1;  
+   
   for( int gg=0; gg<(nG2-1); gg++){
-    tmp( gg) = exp( alpha2(gg));
-    sum += tmp(gg);
+	  tmp(gg) = alpha2(gg)/sumexpEta;
+	  sumTmp += tmp(gg);	  
   }
-  tmp( nG2-1) = 1.0;
-  sum += tmp( nG2-1);
-
-  for( int gg=0; gg<nG2; gg++)
-    pi2.push_back(tmp(gg) / sum);
+  
+  tmp(nG2-1) = 1-sumTmp;
+  
+  return tmp;
+  
 }
+
+
 
 enum valid_family {
   bernoulli = 1,
@@ -64,6 +69,16 @@ Type logit_inverse_linkfun(Type eta, int link) {
   return ans;
 }
 
+double log_ippm_sam(const double &y, const double &mu, const double &st_sp_wts){
+	double tmp, z;
+	z = y/st_sp_wts;
+	tmp = z * log(mu);
+	tmp -= mu;
+	tmp *= st_sp_wts;
+	return( tmp);
+}
+
+
 template<class Type>
 Type objective_function<Type>::operator() (){
   using namespace density;
@@ -74,9 +89,10 @@ Type objective_function<Type>::operator() (){
   DATA_MATRIX(y_is_na); //NA data in response
   DATA_MATRIX(X);       //X is the archetype design matrix
   DATA_MATRIX(W);       //W is the species design matrix
+  DATA_VECTOR(size);    // Include a size in the tmb binomial model.
   DATA_VECTOR(offy);    //offy is the offset indexed by sites (i)
-  DATA_VECTOR(eta);     //additive_logistic transform of pis
   DATA_MATRIX(wts);     //wts is a matrix indexed by sites, species (i,j) this is for ippm.
+  DATA_VECTOR(bb_wts);   //offy is the offset indexed by sites (i)
   DATA_INTEGER(nObs);   //n sites.
   DATA_INTEGER(nG);     //n groups
   DATA_INTEGER(nS);     //n species
@@ -97,25 +113,23 @@ Type objective_function<Type>::operator() (){
   // PARAMETER_VECTOR(alpha); //intercepts. // Could potentiak merge this into gamma for ease.
   PARAMETER_MATRIX(beta);  //archetype coefs.
   PARAMETER_MATRIX(gamma); //species specific coefs //species intercepts are in here.
-  PARAMETER_VECTOR(pi);    //mixing coefs.
+  PARAMETER_VECTOR(eta);    //mixing coefs.
   PARAMETER_VECTOR(theta); //dispersion coefs.
 
   // intialise the negative loglike.
-  Type mu, eta_i, logl= 0.0, tmp=0.0, sppContr= 0.0,tau = 100;
+  Type mu_i = 0.0, eta_i = 0.0, logl= 0.0;
+  Type tmp_loglik;
 
-  array<Type> mus(nObs,nS,nG); //Matrix for storing mus
-  matrix<Type> sppEta(nObs,nS);
-  matrix<Type> grpEta(nObs,nG);
-  vector<Type> sppLogl(nG);
-  vector<Type> summand(nG);
-  vector<Type> summandAlt(nG);
-  vector<Type> wt(nG);
-  // double tmp, tau, avSummand, sppContr;
+  //array<double> mus(nObs,nS,nG); //Array for storing mus
+  matrix<double> sppEta(nObs,nS); //Matrix of spp linear predictors
+  matrix<double> grpEta(nObs,nG); //Matrix of group linear predictors
+  vector<Type> loglGS(nG,nS); //loglike speceis grousps.
+  vector<Type> pi, alpha; 
+  
 
 
-  // setting up the pis
-  invMultLogit(pi, eta, nG1);
-
+  for(int gg=0; gg<(nG-1); gg++) alpha(gg) = eta(gg);
+  pi = invMultLogit(alpha, nG);
 
   sppEta = X*beta; // Mixing coefs
   grpEta = W*gamma; // Species coefs
@@ -124,67 +138,58 @@ Type objective_function<Type>::operator() (){
   for(int ss=0; ss<nS; ss++){
 	     for(int gg=0; gg<nG; gg++){
 			       for( int ii=0; ii<nObs; ii++){
+					   	if(y_is_na(ii,ss)>0){
 					  eta_i = sppEta(ii,ss) + grpEta(ii,gg) + offy(ii);
-                      mu(ii,ss,gg) = InverseLink(eta_i, link);
+                      //mu(ii,ss,gg) = InverseLink(eta_i, link);
+                      mu_i = InverseLink(eta_i, link);
+                      //std::cout<<"a(0) =\n"<< mu(0,0,0)<<"\n";
                       switch (family) {
-					  case gaussian_family:
-						tmp_loglik = dnorm(yobs(ii,ss), mu(ii,ss,gg), sqrt(theta(ss)), true);
+					  case normal:
+						//tmp_loglik = dnorm(Y(ii,ss), mu(ii,ss,gg), sqrt(theta(ss)), true);
+						tmp_loglik = dnorm(Y(ii,ss), mu_i, sqrt(theta(ss)), true);
 						break;
-					  case poisson_family:
-						tmp_loglik = dpois(yobs(ii,ss), mu(ii,ss,gg), true);
+					  case poisson:
+						//tmp_loglik = dpois(Y(ii,ss), mu(ii,ss,gg), true);
+						tmp_loglik = dpois(Y(ii,ss), mu_i, true);
+						break;	
+					  case ippm:
+						//tmp_loglik = dpois(Y(ii,ss), mu(ii,ss,gg), true);
+						tmp_loglik = dpois(Y(ii,ss), mu_i, true);
 						break;
-					  case binomial_family:
-						s1 = logit_inverse_linkfun(eta(i), link); // logit(p)
-						tmp_loglik = dbinom_robust(yobs(i), size(i), s1, true);
+					  case bernoulli:
+						//tmp_loglik = dbinom_robust(Y(i,ss), 1, mu(ii,ss,gg), true); //size(i) if you want binomial with size.
+						tmp_loglik = dbinom_robust(Y(ii,ss), size(ii), mu_i, true); //size(i) if you want binomial with size.
 						break;
 					  case negative_binomial:
-					    tmp_loglik = dnbinom2(Y(ii,ss), theta(ss), mu(ii,ss,gg), true);
+					    //tmp_loglik = dnbinom2(Y(ii,ss), theta(ss), mu(ii,ss,gg), true);
+					    tmp_loglik = dnbinom2(Y(ii,ss), theta(ss), mu_i, true);
 					    break;
 					}
-					tmp_loglik *= weights(i,ss);
-          sppLogl(gg) -= tmp_loglik;
+					tmp_loglik *= wts(ii,ss);
+                    loglGS(gg,ss) += tmp_loglik;
 				  }
-				 summand(gg) = log( pi(gg)) + sppLogl(gg);
 			  }
-
-		  }
-
-
-  for(int ss=0; ss<nS; ss++){
-	Type avSummand = 0.0;
-    for(int gg=0; gg<nG; gg++){
-      sppLogl(gg) = 0.0;
-      for( int ii=0; ii<nObs; ii++){
-        eta_i = sppEta(ii,ss) + grpEta(ii,gg) + offy(ii);
-        mu = InverseLink(eta_i, link);
-        sppLogl(gg) -= dnbinom(Y(ii,ss), theta(ss), mu, 1);
-      }
-      summand(gg) = log(pi(gg)) + sppLogl(gg);
+            loglGS(gg,ss) = loglGS(gg,ss)*bb_wts(ss);// bayesian boostrap weights
+	   }
     }
-    // double tmp = 0.0;
-    // double tau = 100;	//magic number
-    for(int gg=0; gg<nG; gg++){
-      summandAlt(gg) = exp(summand(gg) / tau);
-      tmp += summandAlt(gg);
-    }
-    for(int gg=0; gg<nG; gg++)
-      wt(gg) = summandAlt(gg) / tmp;
 
-    for( int gg=0; gg<nG; gg++)
-      avSummand += wt(gg) * summand(gg);
-    Type tmp = 0.0;
-    for( int gg=0; gg<nG; gg++)
-      tmp += exp( summand(gg) - avSummand);
-    sppContr = avSummand + log( tmp);
-    logl -= sppContr;
+    for( int ss=0; ss<nS; ss++){
+		
+	Type eps=0.0, glogl=0.0, tloglike=0.0;
 
-// # pen.max <- theta.range[2]
-// # pen.min <- theta.range[1]
-// # shape1 <- shape2 <- 1.25
-// # if(disty==4)  sppLogls <- sppLogls + dbeta( (theta-pen.min) / (pen.max-pen.min), shape1, shape2, log=TRUE)
-    // theta_tmp = 0.0;
-    // Type theta_tmp = (theta(ss)-thetaRange(0)) / (thetaRange(1)-thetaRange(0));
-    // penalty += dbeta(theta_tmp, 1.25, 1.25, true);
-  }
+	////calcualte the G*S log conditional densities
+    for( int gg=0; gg<nG; gg++){
+		if(gg==0) eps = loglGS(gg,ss);
+		if(loglGS(gg,ss) > eps) eps = loglGS(gg,ss);
+	}
+
+  // this will calculate the species specific loglikelihoods based on sum across Gs.
+	for(int gg=0; gg<nG; gg++){
+		glogl += pi(gg)*exp(loglGS(gg,ss) - eps);
+	  }
+	  tloglike = log(glogl) + eps;
+	  logl -= tloglike;
+	}
+
   return (logl);//# + penalty);
 }
