@@ -3,18 +3,17 @@
 template <class Type>
 Type invMultLogit(Type alpha2, int nG2){
   Type tmp(nG2);
-  Type sumTmp=0;
+  Type sumTmp = Type(0);
 
   vector<Type> expEta = exp(alpha2);
-  Type sumexpEta = sum(expEta) + 1;  
+  Type sumexpEta = sum(expEta);  
    
   for( int gg=0; gg<(nG2-1); gg++){
-	  tmp(gg) = alpha2(gg)/sumexpEta;
+	  tmp(gg) = alpha2(gg)/(1.0+sumexpEta);
 	  sumTmp += tmp(gg);	  
   }
   
-  tmp(nG2-1) = 1-sumTmp;
-  
+  tmp(nG2-1) = 1.-sumTmp;  
   return tmp;
   
 }
@@ -124,7 +123,7 @@ Type objective_function<Type>::operator() (){
   matrix<double> sppEta(nObs,nS); //Matrix of spp linear predictors
   matrix<double> grpEta(nObs,nG); //Matrix of group linear predictors
   vector<Type> loglGS(nG,nS); //loglike speceis grousps.
-  vector<Type> pi, alpha; 
+  vector<Type> pi, alpha(nG-1); 
   
 
 
