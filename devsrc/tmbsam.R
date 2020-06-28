@@ -1,5 +1,4 @@
 ## test tmb sam.
-
 library(ecomix)
 set.seed(42)
 sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~x1+x2"))
@@ -33,38 +32,44 @@ S <- ncol(y)
 spp_weights <- rep(1,S)
 site_spp_weights <- matrix(1,nrow(y),S)
 disty <- 4
+link <- 1
 y_is_na <- is.na(y)
 inits <- NULL
 control <- species_mix.control(quiet = FALSE)
 offset <- rep(0,nrow(X))
-
+size <- as.integer(rep(1,nrow(X)))
 
 library(TMB)
-compile("/home/woo457/Dropbox/ecomix/devsrc/tmbsam.cpp","&> /tmp/logfile.log")
+compile("/home/woo457/Dropbox/ecomix/devsrc/tmbsam.cpp",flags="-O0 -g",DLLFLAGS="")
 
 dyn.load(dynlib("/home/woo457/Dropbox/ecomix/devsrc/tmbsam"))
 
 #Define data object which is given to TMB---
-data = list(Y = as.matrix(y), # Response
+dats = list(Y = as.matrix(y), # Response
+            y_is_na = matrix(as.integer(!y_is_na),nrow(X),S),
             X = X, # Design matrix for archetypes
             W = W, # Design matrix for species
+            size = size,
             offy = offset, #offy is the offset indexed by sites (i)
             wts = site_spp_weights, #wts is a matrix indexed by sites, species (i,j).
+            bb_wts = rep(1,S),
             nObs= nrow(X),# nsites.
             nG = G,       # n groups
             nS = S,
-            family = as.integer(4),
-            link=as.integer(1))#,
-            #thetaRang#e = as.numeric(c(0.001,10)))# n coefs W
+            family = as.integer(disty),
+            link=as.integer(link),
+            keep_mu = as.integer(0))#,
 
 #-------------------------------------------
 
+gamma <- t(cbind(attr(simulated_data,"alpha"),attr(simulated_data,"gamma")))
+
 #Define parameter object given to TMB-------
-par = list(beta=matrix(runif(G*ncol(X)),ncol(X),G),
-           gamma=matrix(runif(S*ncol(W)),ncol(W),S),
+pars = list(beta=t(beta),
+           gamma=gamma,
            eta = rep(0,G-1),
-           theta = rep(1,S))
-#
+           theta = 1/exp(attr(simulated_data,'theta')))
+
 #
 #
 #   beta = rep(0,sum(Sdims)),  # Spline coefficients
@@ -74,43 +79,46 @@ par = list(beta=matrix(runif(G*ncol(X)),ncol(X),G),
 #-------------------------------------------
 
 #Fit model----------------------------------
-obj = MakeADFun(data = data, parameters = par, DLL = "tmbsam")
+obj = MakeADFun(data = dats, parameters = pars, DLL = "tmbsam")
+Opt = nlminb( start=obj$par, objective=obj$fn, gr=obj$gr)
+SD = sdreport( obj )
 
-### Predict the confedence intervals.
 
-
-# Generate data
-n_data = 30
-X = runif( n_data )
-Y = 1 + 0.2*X + rnorm( n_data )
-
-# Step 1 -- make and compile template file
-compile( "devsrc/TMB_intervals.cpp" )
-
-# Step 2 -- build inputs and object
-dyn.load( dynlib("devsrc/TMB_intervals") )
-Data = list( "y_i"=Y, "X_ij"=cbind(1,X) )
-Params = list( "b_j"=rep(0,ncol(Data$X_ij)), "log_sd"=0 )
-Obj = MakeADFun( data=Data, parameters=Params, DLL="TMB_intervals")
-
-# Step 3 -- test and optimize
-Opt = nlminb( start=Obj$par, objective=Obj$fn, gr=Obj$gr )
-SD = sdreport( Obj )
-
-# Step 4 -- Simulate from predictive distribution
-match_index = grep( "b_j", names(Opt$par) )
-bhat_rj = mvtnorm::rmvnorm( n=1e4, mean=Opt$par[match_index], sigma=SD$cov.fixed[match_index,match_index] )
-
-# predict response for new values
-Xpred_z = seq( from=-10, to=10, length=1000 )
-Ybounds_zj = matrix( NA, ncol=2, nrow=length(Xpred_z) )
-for( z in 1:nrow(Ybounds_zj) ){
-  ysim_r = bhat_rj[,1] + bhat_rj[,2]*Xpred_z[z]
-  Ybounds_zj[z,] = quantile( ysim_r, prob=c(0.1,0.9) )
-}
-
-# plot results
-plot( x=X, y=Y )
-abline( a=Opt$par[match_index][1], b=Opt$par[match_index][2] )
-polygon( x=c(Xpred_z,rev(Xpred_z)), y=c(Ybounds_zj[,1],rev(Ybounds_zj[,2])), col=rgb(1,0,0,0.2) )
-
+# ### Predict the confedence intervals.
+#
+#
+# # Generate data
+# n_data = 30
+# X = runif( n_data )
+# Y = 1 + 0.2*X + rnorm( n_data )
+#
+# # Step 1 -- make and compile template file
+# compile( "devsrc/TMB_intervals.cpp" )
+#
+# # Step 2 -- build inputs and object
+# dyn.load( dynlib("devsrc/TMB_intervals") )
+# Data = list( "y_i"=Y, "X_ij"=cbind(1,X) )
+# Params = list( "b_j"=rep(0,ncol(Data$X_ij)), "log_sd"=0 )
+# Obj = MakeADFun( data=Data, parameters=Params, DLL="TMB_intervals")
+#
+# # Step 3 -- test and optimize
+# Opt = nlminb( start=Obj$par, objective=Obj$fn, gr=Obj$gr )
+# SD = sdreport( Obj )
+#
+# # Step 4 -- Simulate from predictive distribution
+# match_index = grep( "b_j", names(Opt$par) )
+# bhat_rj = mvtnorm::rmvnorm( n=1e4, mean=Opt$par[match_index], sigma=SD$cov.fixed[match_index,match_index] )
+#
+# # predict response for new values
+# Xpred_z = seq( from=-10, to=10, length=1000 )
+# Ybounds_zj = matrix( NA, ncol=2, nrow=length(Xpred_z) )
+# for( z in 1:nrow(Ybounds_zj) ){
+#   ysim_r = bhat_rj[,1] + bhat_rj[,2]*Xpred_z[z]
+#   Ybounds_zj[z,] = quantile( ysim_r, prob=c(0.1,0.9) )
+# }
+#
+# # plot results
+# plot( x=X, y=Y )
+# abline( a=Opt$par[match_index][1], b=Opt$par[match_index][2] )
+# polygon( x=c(Xpred_z,rev(Xpred_z)), y=c(Ybounds_zj[,1],rev(Ybounds_zj[,2])), col=rgb(1,0,0,0.2) )
+#

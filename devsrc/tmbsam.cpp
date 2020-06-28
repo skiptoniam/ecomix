@@ -1,4 +1,5 @@
 #include <TMB.hpp>   //Links in the TMB libraries
+#include "debug_print.hpp"
 
 //template <class Type>
 //Type invMultLogit(vector<Type> alpha2, int nG2){
@@ -96,8 +97,8 @@ Type logit_inverse_linkfun(Type eta, int link) {
 
 template<class Type>
 Type objective_function<Type>::operator() (){
-  //using namespace density;
-  //using namespace Eigen;
+  using namespace density;
+  using namespace Eigen;
 
   //Read data from R
   DATA_MATRIX(Y);       //Responses
@@ -130,41 +131,41 @@ Type objective_function<Type>::operator() (){
   PARAMETER_VECTOR(theta); //dispersion coefs.
 
   // intialise the negative loglike.
-  Type mu_i = 0.0, eta_i = 0.0, logl= 0.0, tmp_loglik = 0.0;
+  Type mu_i = 0.0, eta_i = 0.0, logl= 0.0;
 
   array<Type> mus(nObs,nS,nG); //Array for storing mus
   matrix<Type> sppEta(nObs,nS); //Matrix of spp linear predictors
   matrix<Type> grpEta(nObs,nG); //Matrix of group linear predictors
-  vector<Type> loglGS(nG,nS); //loglike speceis grousps.
-  vector<Type> alpha(nG-1); //
+  matrix<Type> loglGS(nG,nS); //loglike speceis grousps.
   vector<Type> pi(nG); 
   
-  for(int gg=0; gg<(nG-1); gg++) alpha(gg) = eta(gg);
-  //pi = invMultLogit(alpha, nG);
-  //invMultLogit(pi, alpha, nG);
-  //vector<Type> tmp(nG);
+  //vector<Type> alpha = eta;
   Type sumTmp = 0.0;
 
-  vector<Type> expEta = exp(alpha);
+  vector<Type> expEta = exp(eta);
   Type sumexpEta = sum(expEta);  
    
   for( int gg=0; gg<(nG-1); gg++){
-	  //Type alphaTmp = alpha2(gg);
-	  pi(gg) = alpha(gg)/(1.0+sumexpEta);
+	  pi(gg) = expEta(gg)/(1.0+sumexpEta);
 	  sumTmp += pi(gg);	  
   }
-  
+    
   pi(nG-1) = 1.0 - sumTmp;  
   
-
-  sppEta = X*beta; // Mixing coefs
-  grpEta = W*gamma; // Species coefs
+  //std::cout<<" exp(eta) "<< expEta <<"\n";//returns only one number
+  //std::cout<<" sumEta "<< sumexpEta <<"\n";//returns only one number
+  //std::cout<<" pi "<< pi <<"\n";//returns only one number
+  
+  grpEta = X*beta; // Mixing coefs
+  sppEta = W*gamma; // Species coefs
 
   // get the mus
+  
   for(int ss=0; ss<nS; ss++){
 	     for(int gg=0; gg<nG; gg++){
+			 Type tmp_loglik;
 			       for( int ii=0; ii<nObs; ii++){
-					   	if(y_is_na(ii,ss)>0){
+					  // 	if(y_is_na(ii,ss)>0){
 					  eta_i = sppEta(ii,ss) + grpEta(ii,gg) + offy(ii);
                       //mu(ii,ss,gg) = InverseLink(eta_i, link);
                       mu_i = InverseLink(eta_i, link);
@@ -188,12 +189,12 @@ Type objective_function<Type>::operator() (){
 						break;
 					  case negative_binomial:
 					    //tmp_loglik = dnbinom2(Y(ii,ss), theta(ss), mu(ii,ss,gg), true);
-					    tmp_loglik = dnbinom2(Y(ii,ss), theta(ss), mu_i, true);
+					    tmp_loglik = dnbinom2(Y(ii,ss), mu_i, theta(ss), true);
 					    break;
 					}
 					tmp_loglik *= wts(ii,ss);
                     loglGS(gg,ss) += tmp_loglik;
-				  }
+				  //}
 			  }
             loglGS(gg,ss) = loglGS(gg,ss)*bb_wts(ss);// bayesian boostrap weights
 	   }
@@ -215,7 +216,7 @@ Type objective_function<Type>::operator() (){
 		glogl += pi(gg)*exp(loglGS(gg,ss) - eps);
 	  }
 	  tloglike = log(glogl) + eps;
-	  logl -= tloglike;
+	  logl += tloglike;
 	}
 
   return (logl);//# + penalty);
