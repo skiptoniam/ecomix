@@ -84,10 +84,10 @@ Type log_ippm(Type y, Type mu, Type st_sp_wts){
 
 template<class Type>
 Type objective_function<Type>::operator() (){
+  using namespace R_inla; //spde
   using namespace density;
   using namespace Eigen;
-   
-
+ 
   //Read data from R
   DATA_MATRIX(Y);       //Responses
   DATA_MATRIX(y_is_na); //NA data in response
@@ -102,25 +102,25 @@ Type objective_function<Type>::operator() (){
   DATA_INTEGER(nS);     //n species
   DATA_INTEGER(family); //What error distribution to fit.
   DATA_INTEGER(link);   //What link function to use.
-  // DATA_INTEGER(keep_mu);//logical 1 = return mus. 
-  // DATA_VECTOR(thetaRange); penalties for overdispersion if needed.
-  // DATA_SCALAR(penParm1);
-
-  // for doing the GAMy bits once glm version is working.
-  // DATA_SPARSE_MATRIX(S);//Penalization matrix diag(S1,S2,S3,S4,S5) without storing off-diagonal zeros.
-  // DATA_IVECTOR(Sdims);  //Dimensions of S1,S2,S3,S4 and S5
-  // DATA_SPARSE_MATRIX(designMatrixForReport);//Design matrix for report of splines
- 
+  
+  //Add in a GMRF data structures
+  DATA_STRUCT(spdeMatrices,spde_t); //Three matrices needed for representing the GMRF, see p. 8 in Lindgren et al. (2011)
+  DATA_SPARSE_MATRIX(A);  //Matrix for interpolating points witin triangles 
+   
   //Parameters
   PARAMETER_MATRIX(beta);  //archetype coefs.
   PARAMETER_MATRIX(gamma); //species specific coefs //species intercepts are in here.
   PARAMETER_VECTOR(eta);   //mixing coefs.
   PARAMETER_VECTOR(theta); //dispersion coefs.
   
-  // intialise the negative loglike.
-  Type mu_i = 0., eta_i = 0.;
+  //GMRF parameters
+  PARAMETER(log_tau);
+  PARAMETER(log_kappa);
+  PARAMETER_VECTOR(x);  
 
-  //array<Type> mus(nObs,nS,nG); //Array for storing mus
+  //Intialise the negative loglike.
+  Type mu_i = 0.0, eta_i = 0.0;
+
   matrix<Type> sppEta(nObs,nS); //Matrix of spp linear predictors
   matrix<Type> grpEta(nObs,nG); //Matrix of group linear predictors
   matrix<Type> loglGS(nG,nS); //loglike speceis grousps.
@@ -129,20 +129,33 @@ Type objective_function<Type>::operator() (){
   // additive transfrom.  
   vector<Type> pi = invMultLogit(pi2, eta, nG);
   
+  //Linear predictors for the species and group parameters
   grpEta = X*beta; // Mixing coefs
   sppEta = W*gamma; // Species coefs
-  //std::cout<<"print grpEta"<< grpEta.head() <<"\n";
-  //std::cout<<"print sppEta"<< sppEta.head() <<"\n";
-  // get the mus
   
+  //Load objects for the nll  
   Type s1, s2;
   Type nll = 0.0;
+
+  /* GMRF part of the model */
+  // GMRF parameters
+  Type tau = exp(log_tau); // transform the tau 
+  Type kappa = exp(log_kappa); // transform the kappa
+  
+  //Spatial smoothing
+  vector<Type> delta = (A*x)/tau;
+  //Construct sparce precision matrix for latent field---
+  SparseMatrix<Type> Q = Q_spde(spdeMatrices,kappa);
+
+
+
+  nll = GMRF(Q)(x); //add the GMRF to the nll     
   
   for(int ss=0; ss<nS; ss++){
 	     for(int gg=0; gg<nG; gg++){
 			       for( int ii=0; ii<nObs; ii++){
 					  if(y_is_na(ii,ss)>0){
-					  eta_i = sppEta(ii,ss) + grpEta(ii,gg) + offy(ii);// add in the GMRF
+					  eta_i = sppEta(ii,ss) + grpEta(ii,gg) + offy(ii) + delta(ii);// add in the GMRF
                       mu_i = inverse_linkfun(eta_i, link);
                       //std::cout<<"print mu"<< mu_i<<"\n";
                       //if(keep_mu) mus(ii,ss,gg) = mu_i;
@@ -196,6 +209,13 @@ Type objective_function<Type>::operator() (){
 	 
 	 nll -= tloglike;
 	}
+	
+  //Report what we want to report----------------
+  Type range = sqrt(8)/kappa;   //Distance at which correlation has dropped to 0.1, see p. 4 in Lindgren et al. (2011)
+  ADREPORT(range);
+  //---------------------------------------------
+  
+	
 	
   return nll;
 }

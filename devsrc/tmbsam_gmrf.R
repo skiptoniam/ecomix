@@ -109,7 +109,7 @@ for (ss in seq_len(S)) {
   gg <- ceiling(stats::runif(1) * G)
   eta_spp <- W %*% c(alpha[ss],gamma[ss,])
   eta_mix <- X %*% beta[gg, ]
-  eta <- eta_spp + eta_mix +
+  eta <- eta_spp + eta_mix + A_sp[,ss] + offset
   fitted[, ss] <- link$linkinv(eta)
   group[ss] <- gg
 }
@@ -164,3 +164,31 @@ for(p in 1:nspecies){
   A_sp[,p] = A_sp[,p] - mean(A_sp[,p]) + alpha_p[p]
 }
 
+loc = locations
+boundary = INLA::inla.nonconvex.hull(loc)
+boundary2 = INLA::inla.nonconvex.hull(loc,convex = -0.35)
+mesh = INLA::inla.mesh.2d(
+  loc=loc,
+  boundary = list(boundary,boundary2),
+  max.edge=c(0.05, 0.2),
+  cutoff=0.05
+)
+A = INLA::inla.spde.make.A(mesh,loc)
+spde = INLA::inla.spde2.matern(mesh, alpha=2)
+spdeMatrices = spde$param.inla[c("M0","M1","M2")]
+
+
+meshidxloc = mesh$idx$loc - 1,
+A = A,
+X          = as.matrix(X),
+spdeMatrices = spdeMatrices
+
+
+parameters <- list(beta = c(0.0,0,0,0,0),
+                   log_tau = 0,
+                   log_kappa = 0,
+                   x = rep(0.0, nrow(data$spdeMatrices$M0)))
+
+obj <- MakeADFun(data, parameters, random="x", DLL="spde")
+#obj <- normalize(obj, flag="flag")
+opt <- nlminb(obj$par, obj$fn, obj$gr)
