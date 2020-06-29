@@ -66,9 +66,8 @@ dats = list(Y = as.matrix(y), # Response
 #-------------------------------------------
 
 gamma <- t(cbind(attr(simulated_data,"alpha"),attr(simulated_data,"gamma")))
-
-beta[] <- runif(length(beta))
-gamma[] <- runif(length(gamma))
+beta[] <- beta[]+rnorm(length(beta),0,.2)
+gamma[] <- gamma[]+rnorm(length(gamma),0,0.2)
 
 
 #Define parameter object given to TMB-------
