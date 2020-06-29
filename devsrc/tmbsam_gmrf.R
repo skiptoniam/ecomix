@@ -254,3 +254,22 @@ plot_spde(spde)
 
 
 ## Ideas - simulated overall GMRF, species GMRF and archetype GMRF.
+
+library(TMB)
+compile("/home/woo457/Dropbox/ecomix/devsrc/tmbsam_gmrf.cpp","&> /tmp/logfile.log")
+dyn.load(dynlib("/home/woo457/Dropbox/ecomix/devsrc/tmbsam_gmrf"))
+
+#Define data object which is given to TMB---
+dats = list(Y = as.matrix(y), # Response
+            y_is_na = matrix(as.integer(!y_is_na),nrow(X),S),
+            X = X, # Design matrix for archetypes
+            W = W, # Design matrix for species
+            size = size,
+            offy = offset, #offy is the offset indexed by sites (i)
+            wts = site_spp_weights, #wts is a matrix indexed by sites, species (i,j).
+            bb_wts = rep(1,S),
+            nObs= nrow(X),# nsites.
+            nG = G,       # n groups
+            nS = S,
+            family = as.integer(disty),
+            link=as.integer(link))#,
