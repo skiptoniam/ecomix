@@ -34,7 +34,7 @@ enum valid_link {
 };
 
 template <class Type>
-Type InverseLink(Type eta, int link)
+Type inverse_linkfun(Type eta, int link)
 {
   Type out;
   switch (link) {
@@ -96,7 +96,7 @@ Type objective_function<Type>::operator() (){
   DATA_INTEGER(nS);     //n species
   DATA_INTEGER(family); //What error distribution to fit.
   DATA_INTEGER(link);   //What link function to use.
-  DATA_INTEGER(keep_mu);//logical 1 = return mus. 
+  //DATA_INTEGER(keep_mu);//logical 1 = return mus. 
   // DATA_VECTOR(thetaRange); penalties for overdispersion if needed.
   // DATA_SCALAR(penParm1);
 
@@ -106,46 +106,44 @@ Type objective_function<Type>::operator() (){
   // DATA_SPARSE_MATRIX(designMatrixForReport);//Design matrix for report of splines
 
   //Parameters
-  // PARAMETER_VECTOR(alpha); //intercepts. // Could potentiak merge this into gamma for ease.
   PARAMETER_MATRIX(beta);  //archetype coefs.
   PARAMETER_MATRIX(gamma); //species specific coefs //species intercepts are in here.
-  PARAMETER_VECTOR(eta);    //mixing coefs.
+  PARAMETER_VECTOR(eta);   //mixing coefs.
   PARAMETER_VECTOR(theta); //dispersion coefs.
 
   // intialise the negative loglike.
   Type mu_i = 0., eta_i = 0., nll= 0.;
 
-  array<Type> mus(nObs,nS,nG); //Array for storing mus
+  //array<Type> mus(nObs,nS,nG); //Array for storing mus
   matrix<Type> sppEta(nObs,nS); //Matrix of spp linear predictors
   matrix<Type> grpEta(nObs,nG); //Matrix of group linear predictors
   matrix<Type> loglGS(nG,nS); //loglike speceis grousps.
   vector<Type> pi2(nG);
-  vector<Type> loglS(nS); 
-
+ 
   // additive transfrom.  
   vector<Type> pi = invMultLogit(pi2, eta, nG);
 
   
   //std::cout<<" exp(eta) "<< expEta <<"\n";//returns only one number
   //std::cout<<" sumEta "<< sumexpEta <<"\n";//returns only one number
-  std::cout<<" pi "<< pi <<"\n";//returns only one number
+  //std::cout<<" pi "<< pi <<"\n";//returns only one number
   
   grpEta = X*beta; // Mixing coefs
   sppEta = W*gamma; // Species coefs
-  std::cout<<"print grpEta"<< grpEta.head() <<"\n";
-  std::cout<<"print sppEta"<< sppEta.head() <<"\n";
+  //std::cout<<"print grpEta"<< grpEta.head() <<"\n";
+  //std::cout<<"print sppEta"<< sppEta.head() <<"\n";
   // get the mus
   
-  Type s1, s2 tmp_loglik=0.;
+  Type s1, s2;
   
   for(int ss=0; ss<nS; ss++){
 	     for(int gg=0; gg<nG; gg++){
 			       for( int ii=0; ii<nObs; ii++){
 					  if(y_is_na(ii,ss)>0){
 					  eta_i = sppEta(ii,ss) + grpEta(ii,gg) + offy(ii);
-                      mu_i = InverseLink(eta_i, link);
+                      mu_i = inverse_linkfun(eta_i, link);
                       //std::cout<<"print mu"<< mu_i<<"\n";
-                      if(keep_mu) mus(ii,ss,gg) = mu_i;
+                      //if(keep_mu) mus(ii,ss,gg) = mu_i;
                       switch (family) {
 					  case normal:
 						loglGS(gg,ss) += dnorm(Y(ii,ss), mu_i, sqrt(theta(ss)), true);
@@ -189,11 +187,13 @@ Type objective_function<Type>::operator() (){
 		glogl += pi(gg)*exp(loglGS(gg,ss) - eps);
 	  }
 	    
-	 loglS(ss) = log(glogl) + eps;
-	  nll -= tloglike;
+	 //loglS(ss) = log(glogl) + eps;
+	 tloglike = log(glogl) + eps;
+	 
+	 std::cout<<"print mu"<< tloglike<<"\n\n\n";
+	 
+	 nll -= tloglike;
 	}
 	
-	
-
-  return (nll);//# + penalty);
+  return nll;
 }

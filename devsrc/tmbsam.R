@@ -43,8 +43,8 @@ offset <- rep(0,nrow(X))
 size <- as.integer(rep(1,nrow(X)))
 
 library(TMB)
-compile("/home/woo457/Dropbox/ecomix/devsrc/tmbsam.cpp",flags="-O0 -g",DLLFLAGS="")
-# compile("/home/woo457/Dropbox/ecomix/devsrc/tmbsam.cpp","&> /tmp/logfile.log")
+# compile("/home/woo457/Dropbox/ecomix/devsrc/tmbsam.cpp",flags="-O0 -g",DLLFLAGS="")
+compile("/home/woo457/Dropbox/ecomix/devsrc/tmbsam.cpp","&> /tmp/logfile.log")
 dyn.load(dynlib("/home/woo457/Dropbox/ecomix/devsrc/tmbsam"))
 
 #Define data object which is given to TMB---
@@ -66,6 +66,10 @@ dats = list(Y = as.matrix(y), # Response
 #-------------------------------------------
 
 gamma <- t(cbind(attr(simulated_data,"alpha"),attr(simulated_data,"gamma")))
+
+beta[] <- runif(length(beta))
+gamma[] <- runif(length(gamma))
+
 
 #Define parameter object given to TMB-------
 pars = list(beta=t(beta),
