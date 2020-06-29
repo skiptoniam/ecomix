@@ -1,6 +1,7 @@
 ## test tmb sam.
 library(ecomix)
 set.seed(42)
+
 sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~x1+x2"))
 spp_form <- as.formula(~1+w1+w2)
 beta <- matrix(c(-3.6,0.5,
@@ -14,7 +15,7 @@ dat[,-1] <- scale(dat[,-1])
 simulated_data <- species_mix.simulate(sam_form, spp_form, dat = dat,
                                        beta = beta, gamma = gamma,
                                        n_mixtures = 4,
-                                       distribution = "bernoulli")
+                                       distribution = "poisson")
 attr(simulated_data,"pi")
 
 
@@ -34,8 +35,8 @@ n_mixtures <- G <- 4
 S <- ncol(y)
 spp_weights <- rep(1,S)
 site_spp_weights <- matrix(1,nrow(y),S)
-disty <- 1
-link <- 2
+disty <- 2
+link <- 1
 y_is_na <- is.na(y)
 inits <- NULL
 control <- species_mix.control(quiet = FALSE)
@@ -60,8 +61,7 @@ dats = list(Y = as.matrix(y), # Response
             nG = G,       # n groups
             nS = S,
             family = as.integer(disty),
-            link=as.integer(link),
-            keep_mu = as.integer(0))#,
+            link=as.integer(link))#,
 
 #-------------------------------------------
 
@@ -85,7 +85,7 @@ pars = list(beta=t(beta),
 #Fit model----------------------------------
 obj = MakeADFun(data = dats, parameters = pars, DLL = "tmbsam")
 Opt = nlminb( start=obj$par, objective=obj$fn, gr=obj$gr)
-SD = sdreport( obj )
+SD = sdreport( obj , skip.delta.method = TRUE)
 
 # ### Predict the confedence intervals.
 #

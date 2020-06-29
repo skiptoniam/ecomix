@@ -66,16 +66,15 @@ Type logit_inverse_linkfun(Type eta, int link) {
   return ans;
 }
 
-
-//double log_ippm_sam(const double &y, const double &mu, const double &st_sp_wts){
-	//double tmp, z;
-	//z = y/st_sp_wts;
-	//tmp = z * log(mu);
-	//tmp -= mu;
-	//tmp *= st_sp_wts;
-	//return( tmp);
-//}
-
+template<class Type>
+Type log_ippm(Type y, Type mu, Type st_sp_wts){
+	Type tmp, z;
+	z = y/st_sp_wts;
+	tmp = z * log(mu);
+	tmp -= mu;
+	tmp *= st_sp_wts;
+	return( tmp);
+}
 
 template<class Type>
 Type objective_function<Type>::operator() (){
@@ -96,13 +95,13 @@ Type objective_function<Type>::operator() (){
   DATA_INTEGER(nS);     //n species
   DATA_INTEGER(family); //What error distribution to fit.
   DATA_INTEGER(link);   //What link function to use.
-  //DATA_INTEGER(keep_mu);//logical 1 = return mus. 
+  // DATA_INTEGER(keep_mu);//logical 1 = return mus. 
   // DATA_VECTOR(thetaRange); penalties for overdispersion if needed.
   // DATA_SCALAR(penParm1);
 
   // for doing the GAMy bits once glm version is working.
   // DATA_SPARSE_MATRIX(S);//Penalization matrix diag(S1,S2,S3,S4,S5) without storing off-diagonal zeros.
-  // DATA_IVECTOR(Sdims);   //Dimensions of S1,S2,S3,S4 and S5
+  // DATA_IVECTOR(Sdims);  //Dimensions of S1,S2,S3,S4 and S5
   // DATA_SPARSE_MATRIX(designMatrixForReport);//Design matrix for report of splines
 
   //Parameters
@@ -145,24 +144,24 @@ Type objective_function<Type>::operator() (){
                       //std::cout<<"print mu"<< mu_i<<"\n";
                       //if(keep_mu) mus(ii,ss,gg) = mu_i;
                       switch (family) {
-					  case normal:
-						loglGS(gg,ss) += dnorm(Y(ii,ss), mu_i, sqrt(theta(ss)), true);
-						break;
+  					  case bernoulli:
+						s1 = logit_inverse_linkfun(eta_i, link); // logit(p)
+						loglGS(gg,ss) += dbinom_robust(Y(ii,ss), size(ii), s1, true); //size(ii) if you want binomial with size.
+						break;	  
 					  case poisson:
 						loglGS(gg,ss) += dpois(Y(ii,ss), mu_i, true);
 						break;	
 					  case ippm:
-						loglGS(gg,ss) += dpois(Y(ii,ss), mu_i, true);
-						break;
-					  case bernoulli:
-						s1 = logit_inverse_linkfun(eta_i, link); // logit(p)
-						loglGS(gg,ss) += dbinom_robust(Y(ii,ss), size(ii), s1, true); //size(ii) if you want binomial with size.
+						loglGS(gg,ss) += log_ippm(Y(ii,ss), mu_i, wts(ii,ss));
 						break;
 					  case negative_binomial:
 					    s1 = mu_i;
                         s2 = mu_i * (Type(1) + mu_i / theta(ss));
  					    loglGS(gg,ss) += dnbinom_robust(Y(ii,ss), s1, s2, true);
 					    break;
+  					  case normal:
+						loglGS(gg,ss) += dnorm(Y(ii,ss), mu_i, sqrt(theta(ss)), true);
+						break;
 					}
 					////loglGS(gg,ss) *= wts(ii,ss);
 				  }
