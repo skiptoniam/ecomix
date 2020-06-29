@@ -164,6 +164,21 @@ for(p in 1:nspecies){
   A_sp[,p] = A_sp[,p] - mean(A_sp[,p]) + alpha_p[p]
 }
 
+sigma_O <- 0.01
+kappa <- 0.01
+rf_omega <- RandomFields::RMmatern(nu = 1, var = sigma_O^2, scale = 1 / kappa)
+plot(rf_omega)
+
+rf_sim <- function(model, x, y) {
+  set.seed(sample.int(1e5L, 1L))
+  suppressMessages(
+    RandomFields::RFsimulate(model = model, x = x, y = y)$variable1
+  )
+}
+omega_s <- rf_sim(model = rf_omega, locations[,"x"], locations[,"y"])
+omega_s <- omega_s - mean(omega_s)
+
+
 loc = locations
 boundary = INLA::inla.nonconvex.hull(loc)
 boundary2 = INLA::inla.nonconvex.hull(loc,convex = -0.35)
@@ -176,7 +191,6 @@ mesh = INLA::inla.mesh.2d(
 A = INLA::inla.spde.make.A(mesh,loc)
 spde = INLA::inla.spde2.matern(mesh, alpha=2)
 spdeMatrices = spde$param.inla[c("M0","M1","M2")]
-
 
 meshidxloc = mesh$idx$loc - 1,
 A = A,
@@ -192,3 +206,51 @@ parameters <- list(beta = c(0.0,0,0,0,0),
 obj <- MakeADFun(data, parameters, random="x", DLL="spde")
 #obj <- normalize(obj, flag="flag")
 opt <- nlminb(obj$par, obj$fn, obj$gr)
+
+
+
+make_spde <- function(x, y, n_knots, seed = 42, mesh = NULL) {
+  loc_xy <- cbind(x, y)
+
+  if (is.null(mesh)) {
+    if (n_knots >= nrow(loc_xy)) {
+      warning(
+        "Reducing `n_knots` to be one less than the ",
+        "number of data points."
+      )
+      n_knots <- nrow(loc_xy) - 1
+    }
+    set.seed(seed)
+    knots <- stats::kmeans(x = loc_xy, centers = n_knots)
+    loc_centers <- knots$centers
+    mesh <- INLA::inla.mesh.create(loc_centers, refine = TRUE)
+  } else {
+    knots <- list()
+    knots$cluster <- vapply(seq_len(nrow(loc_xy)), function(i)
+      RANN::nn2(mesh$loc[, 1:2, drop = FALSE],
+                t(as.numeric(loc_xy[i, , drop = FALSE])),
+                k = 1L
+      )$nn.idx,
+      FUN.VALUE = 1L
+    )
+    loc_centers <- NA
+  }
+  spde <- INLA::inla.spde2.matern(mesh)
+  A <- INLA::inla.spde.make.A(mesh, loc = loc_xy)
+  list(
+    x = x, y = y, mesh = mesh, spde = spde, cluster = knots$cluster,
+    loc_centers = loc_centers, A = A
+  )
+}
+
+plot_spde <- function(object) {
+  plot(object$mesh, main = NA, edge.color = "grey60", asp = 1)
+  points(object$x, object$y, pch = 21, col = "#00000070")
+  points(object$loc_centers, pch = 20, col = "red")
+}
+
+spde <- make_spde(locations[,1],locations[,2],25)
+plot_spde(spde)
+
+
+## Ideas - simulated overall GMRF, species GMRF and archetype GMRF.

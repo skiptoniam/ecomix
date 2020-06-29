@@ -141,13 +141,10 @@ Type objective_function<Type>::operator() (){
   // GMRF parameters
   Type tau = exp(log_tau); // transform the tau 
   Type kappa = exp(log_kappa); // transform the kappa
-  
   //Spatial smoothing
   vector<Type> delta = (A*x)/tau;
   //Construct sparce precision matrix for latent field---
   SparseMatrix<Type> Q = Q_spde(spdeMatrices,kappa);
-
-
 
   nll = GMRF(Q)(x); //add the GMRF to the nll     
   
