@@ -1,41 +1,22 @@
 #include <TMB.hpp>   //Links in the TMB libraries
 #include "debug_print.hpp"
 
-//template <class Type>
-//Type invMultLogit(vector<Type> alpha2, int nG2){
-  //vector<Type> tmp(nG2);
-  //Type sumTmp = Type(0);
+template<class Type>
+vector<Type> invMultLogit( vector<Type> pi2, vector<Type> eta2, int nG2){
+ 
+  Type sumTmp = 0.;
 
-  //vector<Type> expEta = exp(alpha2);
-  //Type sumexpEta = sum(expEta);  
+  vector<Type> expEta = exp(eta2);
+  Type sumexpEta = sum(expEta);  
    
-  //for( int gg=0; gg<(nG2-1); gg++){
-	  ////Type alphaTmp = alpha2(gg);
-	  //tmp(gg) = alpha2(gg)/(1.0+sumexpEta);
-	  //sumTmp += tmp(gg);	  
-  //}
-  
-  //tmp(nG2-1) = 1.-sumTmp;  
-  //return(tmp); 
-//}
-
-//template <class Type>
-//Type invMultLogit(vector<Type> pi2, vector<Type> alpha2, int nG2){
-	//vector<Type> tmp(nG2, 0.0);
-	//Type sum=0;
-
-	//for( size_t gg=0; gg<(nG2-1); gg++){
-		//tmp.at( gg) = exp( alpha2.at(gg));
-		//sum += tmp.at(gg);
-	//}
-	//tmp.at( nG2-1) = 1.0;
-	//sum += tmp.at( nG2-1);
-
-	//for( size_t gg=0; gg<nG2; gg++)
-		//pi2.push_back(tmp.at( gg) / sum);
-//}
-
-
+  for( int gg=0; gg<(nG2-1); gg++){
+	  pi2(gg) = expEta(gg)/(1.0+sumexpEta);
+	  sumTmp += pi2(gg);	  
+  }
+    
+  pi2(nG2-1) = 1.0 - sumTmp;  
+  return pi2;	
+}
 
 enum valid_family {
   bernoulli = 1,
@@ -85,6 +66,7 @@ Type logit_inverse_linkfun(Type eta, int link) {
   return ans;
 }
 
+
 //double log_ippm_sam(const double &y, const double &mu, const double &st_sp_wts){
 	//double tmp, z;
 	//z = y/st_sp_wts;
@@ -131,72 +113,74 @@ Type objective_function<Type>::operator() (){
   PARAMETER_VECTOR(theta); //dispersion coefs.
 
   // intialise the negative loglike.
-  Type mu_i = 0.0, eta_i = 0.0, logl= 0.0;
+  Type mu_i = 0., eta_i = 0., nll= 0.;
 
   array<Type> mus(nObs,nS,nG); //Array for storing mus
   matrix<Type> sppEta(nObs,nS); //Matrix of spp linear predictors
   matrix<Type> grpEta(nObs,nG); //Matrix of group linear predictors
   matrix<Type> loglGS(nG,nS); //loglike speceis grousps.
-  vector<Type> pi(nG); 
+  vector<Type> pi2(nG);
+  vector<Type> loglS(nS); 
   
-  //vector<Type> alpha = eta;
-  Type sumTmp = 0.0;
+  vector<Type> pi = invMultLogit(pi2, eta, nG);
+  
+  ////vector<Type> alpha = eta;
+  //Type sumTmp = 0.0;
 
-  vector<Type> expEta = exp(eta);
-  Type sumexpEta = sum(expEta);  
+  //vector<Type> expEta = exp(eta);
+  //Type sumexpEta = sum(expEta);  
    
-  for( int gg=0; gg<(nG-1); gg++){
-	  pi(gg) = expEta(gg)/(1.0+sumexpEta);
-	  sumTmp += pi(gg);	  
-  }
+  //for( int gg=0; gg<(nG-1); gg++){
+	  //pi(gg) = expEta(gg)/(1.0+sumexpEta);
+	  //sumTmp += pi(gg);	  
+  //}
     
-  pi(nG-1) = 1.0 - sumTmp;  
+  //pi(nG-1) = 1.0 - sumTmp;  
   
   //std::cout<<" exp(eta) "<< expEta <<"\n";//returns only one number
   //std::cout<<" sumEta "<< sumexpEta <<"\n";//returns only one number
-  //std::cout<<" pi "<< pi <<"\n";//returns only one number
+  std::cout<<" pi "<< pi <<"\n";//returns only one number
   
   grpEta = X*beta; // Mixing coefs
   sppEta = W*gamma; // Species coefs
-
+  std::cout<<"print grpEta"<< grpEta.head() <<"\n";
+  std::cout<<"print sppEta"<< sppEta.head() <<"\n";
   // get the mus
+  
+  Type s1, s2 tmp_loglik=0.;
   
   for(int ss=0; ss<nS; ss++){
 	     for(int gg=0; gg<nG; gg++){
-			 Type tmp_loglik;
 			       for( int ii=0; ii<nObs; ii++){
-					  // 	if(y_is_na(ii,ss)>0){
+					  if(y_is_na(ii,ss)>0){
 					  eta_i = sppEta(ii,ss) + grpEta(ii,gg) + offy(ii);
-                      //mu(ii,ss,gg) = InverseLink(eta_i, link);
                       mu_i = InverseLink(eta_i, link);
-                      if(keep_mu) mus(ii,ss,gg) = mu_i;//std::cout<<"a(0) =\n"<< mu(0,0,0)<<"\n";
+                      //std::cout<<"print mu"<< mu_i<<"\n";
+                      if(keep_mu) mus(ii,ss,gg) = mu_i;
                       switch (family) {
 					  case normal:
-						//tmp_loglik = dnorm(Y(ii,ss), mu(ii,ss,gg), sqrt(theta(ss)), true);
-						tmp_loglik = dnorm(Y(ii,ss), mu_i, sqrt(theta(ss)), true);
+						loglGS(gg,ss) += dnorm(Y(ii,ss), mu_i, sqrt(theta(ss)), true);
 						break;
 					  case poisson:
-						//tmp_loglik = dpois(Y(ii,ss), mu(ii,ss,gg), true);
-						tmp_loglik = dpois(Y(ii,ss), mu_i, true);
+						loglGS(gg,ss) += dpois(Y(ii,ss), mu_i, true);
 						break;	
 					  case ippm:
-						//tmp_loglik = dpois(Y(ii,ss), mu(ii,ss,gg), true);
-						tmp_loglik = dpois(Y(ii,ss), mu_i, true);
+						loglGS(gg,ss) += dpois(Y(ii,ss), mu_i, true);
 						break;
 					  case bernoulli:
-						//tmp_loglik = dbinom_robust(Y(i,ss), 1, mu(ii,ss,gg), true); //size(ii) if you want binomial with size.
-						tmp_loglik = dbinom_robust(Y(ii,ss), size(ii), mu_i, true); //size(ii) if you want binomial with size.
+						s1 = logit_inverse_linkfun(eta_i, link); // logit(p)
+						loglGS(gg,ss) += dbinom_robust(Y(ii,ss), size(ii), s1, true); //size(ii) if you want binomial with size.
 						break;
 					  case negative_binomial:
-					    //tmp_loglik = dnbinom2(Y(ii,ss), theta(ss), mu(ii,ss,gg), true);
-					    tmp_loglik = dnbinom2(Y(ii,ss), mu_i, theta(ss), true);
+					    s1 = mu_i;
+                        s2 = mu_i * (Type(1) + mu_i / theta(ss));
+ 					    loglGS(gg,ss) += dnbinom_robust(Y(ii,ss), s1, s2, true);
 					    break;
 					}
-					tmp_loglik *= wts(ii,ss);
-                    loglGS(gg,ss) += tmp_loglik;
-				  //}
+					loglGS(gg,ss) *= wts(ii,ss);
+				  }
 			  }
-            loglGS(gg,ss) = loglGS(gg,ss)*bb_wts(ss);// bayesian boostrap weights
+            loglGS(gg,ss) *= bb_wts(ss);// bayesian boostrap weights
 	   }
     }
 
@@ -215,9 +199,12 @@ Type objective_function<Type>::operator() (){
 	for(int gg=0; gg<nG; gg++){
 		glogl += pi(gg)*exp(loglGS(gg,ss) - eps);
 	  }
-	  tloglike = log(glogl) + eps;
-	  logl += tloglike;
+	    
+	 loglS(ss) = log(glogl) + eps;
+	  nll -= tloglike;
 	}
+	
+	
 
-  return (logl);//# + penalty);
+  return (nll);//# + penalty);
 }

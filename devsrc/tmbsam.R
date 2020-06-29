@@ -14,7 +14,10 @@ dat[,-1] <- scale(dat[,-1])
 simulated_data <- species_mix.simulate(sam_form, spp_form, dat = dat,
                                        beta = beta, gamma = gamma,
                                        n_mixtures = 4,
-                                       distribution = "negative_binomial")
+                                       distribution = "bernoulli")
+attr(simulated_data,"pi")
+
+
 
 archetype_formula <- sam_form
 species_formula <- spp_form
@@ -31,8 +34,8 @@ n_mixtures <- G <- 4
 S <- ncol(y)
 spp_weights <- rep(1,S)
 site_spp_weights <- matrix(1,nrow(y),S)
-disty <- 4
-link <- 1
+disty <- 1
+link <- 2
 y_is_na <- is.na(y)
 inits <- NULL
 control <- species_mix.control(quiet = FALSE)
@@ -41,7 +44,7 @@ size <- as.integer(rep(1,nrow(X)))
 
 library(TMB)
 compile("/home/woo457/Dropbox/ecomix/devsrc/tmbsam.cpp",flags="-O0 -g",DLLFLAGS="")
-
+# compile("/home/woo457/Dropbox/ecomix/devsrc/tmbsam.cpp","&> /tmp/logfile.log")
 dyn.load(dynlib("/home/woo457/Dropbox/ecomix/devsrc/tmbsam"))
 
 #Define data object which is given to TMB---
@@ -67,11 +70,9 @@ gamma <- t(cbind(attr(simulated_data,"alpha"),attr(simulated_data,"gamma")))
 #Define parameter object given to TMB-------
 pars = list(beta=t(beta),
            gamma=gamma,
-           eta = rep(0,G-1),
-           theta = 1/exp(attr(simulated_data,'theta')))
+           eta = ecomix:::additive_logistic(attr(simulated_data,"pi"),TRUE)[-G],
+           theta = rep(1,S))#1/exp(attr(simulated_data,'theta')))
 
-#
-#
 #   beta = rep(0,sum(Sdims)),  # Spline coefficients
 #   log_lambda = rep(rep(0,length(Sdims))), #Log spline penalization coefficients
 #   log_sigma = 0
@@ -82,7 +83,6 @@ pars = list(beta=t(beta),
 obj = MakeADFun(data = dats, parameters = pars, DLL = "tmbsam")
 Opt = nlminb( start=obj$par, objective=obj$fn, gr=obj$gr)
 SD = sdreport( obj )
-
 
 # ### Predict the confedence intervals.
 #
