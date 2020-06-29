@@ -121,21 +121,10 @@ Type objective_function<Type>::operator() (){
   matrix<Type> loglGS(nG,nS); //loglike speceis grousps.
   vector<Type> pi2(nG);
   vector<Type> loglS(nS); 
-  
-  vector<Type> pi = invMultLogit(pi2, eta, nG);
-  
-  ////vector<Type> alpha = eta;
-  //Type sumTmp = 0.0;
 
-  //vector<Type> expEta = exp(eta);
-  //Type sumexpEta = sum(expEta);  
-   
-  //for( int gg=0; gg<(nG-1); gg++){
-	  //pi(gg) = expEta(gg)/(1.0+sumexpEta);
-	  //sumTmp += pi(gg);	  
-  //}
-    
-  //pi(nG-1) = 1.0 - sumTmp;  
+  // additive transfrom.  
+  vector<Type> pi = invMultLogit(pi2, eta, nG);
+
   
   //std::cout<<" exp(eta) "<< expEta <<"\n";//returns only one number
   //std::cout<<" sumEta "<< sumexpEta <<"\n";//returns only one number
@@ -177,10 +166,10 @@ Type objective_function<Type>::operator() (){
  					    loglGS(gg,ss) += dnbinom_robust(Y(ii,ss), s1, s2, true);
 					    break;
 					}
-					loglGS(gg,ss) *= wts(ii,ss);
+					////loglGS(gg,ss) *= wts(ii,ss);
 				  }
 			  }
-            loglGS(gg,ss) *= bb_wts(ss);// bayesian boostrap weights
+            //loglGS(gg,ss) *= bb_wts(ss);// bayesian boostrap weights
 	   }
     }
 
