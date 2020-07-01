@@ -202,7 +202,7 @@ Type objective_function<Type>::operator() (){
 	 //loglS(ss) = log(glogl) + eps;
 	 tloglike = log(glogl) + eps;
 	 
-	 std::cout<<"print mu"<< tloglike<<"\n\n\n";
+	 //std::cout<<"print mu"<< tloglike<<"\n\n\n";
 	 
 	 nll -= tloglike;
 	}
