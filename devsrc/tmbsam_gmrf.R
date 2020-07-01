@@ -11,7 +11,7 @@ dat <- cbind(locations,dat)
 
 ## setup a matern spatial covariance for a spatial parameter
 sigma = .01
-kappa = 1
+kappa = .1
 rf_omega <- RandomFields::RMmatern(nu = 1, var = sigma^2, scale = 1 / kappa)
 plot(rf_omega)
 rf_sim <- function(model, x, y) {
@@ -247,26 +247,26 @@ obj <- MakeADFun(dats, pars, random="x", DLL="tmbsam_gmrf")
 opt <- nlminb(obj$par, obj$fn, obj$gr)
 SD = sdreport( obj )
 
-g <- as.numeric(obj$gr(opt$par))
-h <- stats::optimHess(opt$par, fn = obj$fn, gr = obj$gr)
-tmb_opt$par <- tmb_opt$par - solve(h, g)
-tmb_opt$objective <- tmb_obj$fn(tmb_opt$par)
+# g <- as.numeric(obj$gr(opt$par))
+# h <- stats::optimHess(opt$par, fn = obj$fn, gr = obj$gr)
+# tmb_opt$par <- tmb_opt$par - solve(h, g)
+# tmb_opt$objective <- tmb_obj$fn(tmb_opt$par)
 
 # Step 4 -- Simulate from predictive distribution
-match_index = grep( "b_j", names(Opt$par) )
-bhat_rj = mvtnorm::rmvnorm( n=1e4, mean=Opt$par[match_index], sigma=SD$cov.fixed[match_index,match_index] )
+# match_index = grep("theta", names(opt$par) )
+# bhat_rj = mvtnorm::rmvnorm( n=1e4, mean=opt$par[-match_index], sigma=SD$cov.fixed[match_index,!match_index] )
 
 # predict response for new values
-Xpred_z = seq( from=-10, to=10, length=1000 )
-Ybounds_zj = matrix( NA, ncol=2, nrow=length(Xpred_z) )
-for( z in 1:nrow(Ybounds_zj) ){
-  ysim_r = bhat_rj[,1] + bhat_rj[,2]*Xpred_z[z]
-  Ybounds_zj[z,] = quantile( ysim_r, prob=c(0.1,0.9) )
-}
+# Xpred_z = seq( from=-10, to=10, length=1000 )
+# Ybounds_zj = matrix( NA, ncol=2, nrow=length(Xpred_z) )
+# for( z in 1:nrow(Ybounds_zj) ){
+  # ysim_r = bhat_rj[,1] + bhat_rj[,2]*Xpred_z[z]
+  # Ybounds_zj[z,] = quantile( ysim_r, prob=c(0.1,0.9) )
+# }
 
 # plot results
-plot( x=X, y=Y )
-abline( a=Opt$par[match_index][1], b=Opt$par[match_index][2] )
-polygon( x=c(Xpred_z,rev(Xpred_z)), y=c(Ybounds_zj[,1],rev(Ybounds_zj[,2])), col=rgb(1,0,0,0.2) )
-
+# plot( x=X, y=Y )
+# abline( a=Opt$par[match_index][1], b=Opt$par[match_index][2] )
+# polygon( x=c(Xpred_z,rev(Xpred_z)), y=c(Ybounds_zj[,1],rev(Ybounds_zj[,2])), col=rgb(1,0,0,0.2) )
+#
 
