@@ -67,8 +67,8 @@ testthat::test_that('species mix binomial', {
 
   # test a single binomial model
   i <- 1
-  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W, site_spp_weights, offset, y_is_na, disty, size),4)
-  fm_binomialint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam_inits,
+  testthat::expect_length(ecomix:::apply_glm_sam_inits(i, y, X, W, site_spp_weights, offset, y_is_na, disty, size),4)
+  fm_binomialint <- surveillance::plapply(1:S, ecomix:::apply_glm_sam_inits,
                                            y, X, W, site_spp_weights, offset,
                                            y_is_na, disty, size, .parallel = control$cores, .verbose = !control$quiet)
   testthat::expect_length(do.call(cbind,fm_binomialint)[1,],S)
@@ -103,7 +103,7 @@ testthat::test_that('species mix binomial', {
   set.seed(123)
   tmp1 <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights,
                                            offset, y_is_na, G, S, disty,size,
-                                           control=species_mix.control(em_refit = 5, em_steps = 100))
+                                           control=species_mix.control(em_refit = 5, em_steps = 10))
   set.seed(123)
   tmp2 <- ecomix:::fitmix_ECM_sam(y=y, X=X, W=W, G=G, S=S,
                          spp_weights=spp_weights,
