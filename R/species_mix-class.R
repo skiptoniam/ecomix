@@ -1708,7 +1708,7 @@
   }
 
 
-  if( disty %in% c(1,2,3,4,6)){
+  if( disty %in% c(1,2,3,4,6,7)){
     lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
 
     ft_sp <- try(glmnet::glmnet(y=outcomes, x=as.matrix(df),
@@ -1801,7 +1801,21 @@
                                 weights=as.numeric(wts1),
                                 offset=as.numeric(offy),
                                 family=fam), silent=FALSE)
-    if (class(ft_sp) %in% 'try-error'){
+    if (class(ft_sp)[1] %in% 'try-error'){
+      # print(paste0(ss,"\n"))
+      my_coefs <- rep(NA, ncol(W1))
+    } else {
+      my_coefs <- stats::coef(ft_sp)
+      names(my_coefs) <- c(colnames(y)[ss],colnames(W[,-1,drop=FALSE]))
+    }
+  }
+  if(disty %in% c(7)){
+    # tmpform <- "out1 ~ -1 + W1"
+    ft_sp <- try(stats::glm.fit(y = out1,x = W1,
+                                weights=as.numeric(wts1),
+                                offset=as.numeric(offy),
+                                family=fam), silent=FALSE)
+    if (class(ft_sp)[1] %in% 'try-error'){
       # print(paste0(ss,"\n"))
       my_coefs <- rep(NA, ncol(W1))
     } else {
@@ -1813,7 +1827,7 @@
     tmpform <- as.formula( paste('out1','-1+W1+offset(offy)', sep='~'))
     ft_sp <- try(mgcv::gam(tmpform, weights=wts1, family=mgcv::negbin(theta=exp(-fits$theta[ss]))))
     kount1 <- 1
-    while( any(class( ft_sp) %in% 'try-error') & kount1 < 10){
+    while( any(class( ft_sp)[1] %in% 'try-error') & kount1 < 10){
       kount1 <- kount1 + 1
       theta <- 10 * exp(-fits$theta[ss])
       ft_sp <- try(mgcv::gam(tmpform, weights=wts1, family=mgcv::negbin(theta=theta)))
@@ -1831,7 +1845,7 @@
 
   ### setup the data stucture for this model.
   Y_taus <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
-  size_taus <- matrix(rep(size,ncol(y)),nrow(y),ncol(y))
+  size_taus <- matrix(rep(size,ncol(y)),nrow(y),ncol(y))[!y_is_na]
   X_no_NA <- list()
   W_no_NA <- list()
   for (jj in 1:ncol(y)){
@@ -1852,7 +1866,7 @@
   offy <- as.numeric(offy1 + offy2)
 
   # which family to use?
-  if( disty == 1)
+  if( disty == 1 | disty == 7)
     fam <- binomial()
   if( disty == 2 | disty == 3 |disty == 4)
     fam <- poisson()
@@ -1863,6 +1877,9 @@
   } else {
     Y_taus <- as.matrix(Y_taus)
   }
+  if(disty==7){
+    Y_taus <- as.matrix(cbind(Y_taus,size_taus))
+  }
 
   if(disty %in% c(1,2,3,6)){ #don't use for tweedie - try and fit negative_binomial using glm.fit.nbinom
     ft_mix <- try(glm.fit(x = as.data.frame(X_taus),
@@ -1870,25 +1887,38 @@
                           weights = c(wts_tausXsite_weights),
                           offset = offy,
                           family = fam), silent = TRUE)
-    if (class(ft_mix) %in% 'try-error'){
+    if (class(ft_mix)[1] %in% 'try-error'){
       mix_coefs <- rep(NA, ncol(X_taus))
     } else {
       mix_coefs <- ft_mix$coefficients
+    }
+  }
+  if(disty %in% c(7)){
+    # tmpform <- as.formula( paste('Y_taus','-1+X_taus', sep='~'))
+    ft_mix <- try(glm.fit(y=Y_taus,x=X_taus,# tmpform,
+         weights = c(wts_tausXsite_weights),
+         offset = offy,
+         family = binomial()))
+    if (class(ft_mix)[1] %in% 'try-error'){
+      mix_coefs <- rep(NA, ncol(X_taus))
+    } else {
+      mix_coefs <- ft_mix$coefficients
+      names(mix_coefs) <- colnames(X)
     }
   }
   return(c(mix_coefs))
 }
 
 "get_starting_values_sam" <- function(y, X, W, spp_weights, site_spp_weights,
-                                      offset, y_is_na, G, S, disty, control){
+                                      offset, y_is_na, G, S, disty, size, control){
   if(isTRUE(control$em_prefit)){
     if(!control$quiet)message('Using ECM algorithm to find starting values; using ',
                               control$em_refit,'refits\n')
     emfits <- list()
     for(ii in seq_len(control$em_refit)){
       if(!control$quiet)message('ECM fit: ',ii,'\n')
-      emfits[[ii]] <-  fitmix_ECM_sam(y, X, W, spp_weights, site_spp_weights,
-                                     offset, y_is_na, G, S, disty, control)
+      emfits[[ii]] <- ecomix:::fitmix_ECM_sam(y, X, W, spp_weights, site_spp_weights,
+                                     offset, y_is_na, G, S, disty, size, control)
     }
     bf <- which.max(vapply(emfits,function(x)c(x$logl),c(logl=0)))
     emfit <- emfits[[bf]]
@@ -1908,7 +1938,7 @@ starting values;\n starting values are generated using ',control$init_method,
                                               site_spp_weights = site_spp_weights,
                                               offset = offset, y_is_na = y_is_na,
                                               G = G, S = S,
-                                              disty=disty,
+                                              disty=disty,size=size,
                                               control = control)
     start_vals <- list(alpha=(starting_values$fits$alpha),
                        beta=(starting_values$fits$beta),
@@ -2001,6 +2031,20 @@ starting values;\n starting values are generated using ',control$init_method,
     }
   }
 
+  if(disty==7){
+    logl_sp <- matrix(NA, nrow=S, ncol=G)
+    link <- stats::make.link(link = "logit")
+    for(ss in 1:S){
+      for(gg in 1:G){
+        if(ncol(first_fit$x)==1) eta <- rep(fits$alpha[ss],nrow(first_fit$x)) + first_fit$offset
+        else eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
+        logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], first_fit$size, link$linkinv(eta),log = TRUE))
+      }
+      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
+    }
+  }
+
   ak <- logl_sp + matrix(rep(log( pis), each=S), nrow=S, ncol=G)
   am <- apply( ak, 1, max)
   ak <- exp( ak-am)
@@ -2016,18 +2060,18 @@ starting values;\n starting values are generated using ',control$init_method,
 
   # get intial model fits
   starting_values <- initiate_fit_sam(y, X, W, spp_weights, site_spp_weights,
-                                      offset, y_is_na, G, S, disty, control)
+                                      offset, y_is_na, G, S, disty, size, control)
 
   #if any are errors then remove them from the models forever.
-  updated_y <- update_species_data_structure(y, y_is_na,
-                                             spp_weights,
-                                             site_spp_weights,
-                                             starting_values$species_to_remove)
-  y <- updated_y[[1]]
-  y_is_na <- updated_y[[2]]
-  spp_weights <- updated_y[[3]]
-  site_spp_weights <- updated_y[[4]]
-  S <- ncol(y)
+  # updated_y <- update_species_data_structure(y, y_is_na,
+  #                                            spp_weights,
+  #                                            site_spp_weights,
+  #                                            starting_values$species_to_remove)
+  # y <- updated_y[[1]]
+  # y_is_na <- updated_y[[2]]
+  # spp_weights <- updated_y[[3]]
+  # site_spp_weights <- updated_y[[4]]
+  # S <- ncol(y)
 
   fits <- list(alpha=starting_values$alpha,
                beta=starting_values$beta,
@@ -2035,8 +2079,7 @@ starting values;\n starting values are generated using ',control$init_method,
                theta=starting_values$theta)
   first_fit <- list(y = y, x = X, W = W, spp_weights = spp_weights,
                     site_spp_weights = site_spp_weights, offset = offset,
-                    y_is_na = y_is_na,
-                    removed_species = starting_values$species_to_remove)
+                    y_is_na = y_is_na, size = size)
 
   res <- list()
   res$fits <- fits
@@ -2127,6 +2170,22 @@ starting values;\n starting values are generated using ',control$init_method,
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
   }
+
+  if(disty==7){
+    logl_sp <- matrix(NA, nrow=S, ncol=G)
+    link <- stats::make.link(link = "logit")
+    for(ss in 1:S){
+      for(gg in 1:G){
+        if(ncol(first_fit$x)==1) eta <- rep(fits$alpha[ss],nrow(first_fit$x)) + first_fit$offset
+        else eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
+        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
+        if(get_fitted) fitted_values[gg,,ss] <- link$linkinv(eta)
+        logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], first_fit$size, link$linkinv(eta),log = TRUE))
+      }
+      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
+    }
+  }
+
   out.list <- list(logl_sp=logl_sp)
   if(get_fitted) out.list$fitted = fitted_values
   return(out.list)
@@ -2141,12 +2200,12 @@ starting values;\n starting values are generated using ',control$init_method,
   logl_new <- -88888888
 
   # get starting values
-  starting_values <- get_initial_values_sam(y = y, X = X, W = W,
+  starting_values <- ecomix:::get_initial_values_sam(y = y, X = X, W = W,
                                             spp_weights = spp_weights,
                                             site_spp_weights = site_spp_weights,
                                             offset = offset, y_is_na = y_is_na,
                                             G = G, S = S,
-                                            disty = disty,
+                                            disty = disty, size =size,
                                             control = control)
 
   # first e-step
@@ -2155,7 +2214,7 @@ starting values;\n starting values are generated using ',control$init_method,
   pis <- starting_values$pis
   # cat('start pis', pis,'\n')
   first_fit <- starting_values$first_fit
-  logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
+  logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
   init_steps <- 3
 
   while(control$em_reltol(logl_new,logl_old) & ite <= control$em_steps){
@@ -2176,7 +2235,7 @@ starting values;\n starting values are generated using ',control$init_method,
                                                 site_spp_weights = site_spp_weights,
                                                 offset = offset, y_is_na = y_is_na,
                                                 G = G, S = S,
-                                                disty = disty,
+                                                disty = disty, size=size,
                                                 control = control)
       pis <- starting_values$pis
       fits <- starting_values$fits
@@ -2197,9 +2256,9 @@ starting values;\n starting values are generated using ',control$init_method,
 
     # m-step
     fm_spp_coefs <- surveillance::plapply(seq_len(S),
-                                          apply_glm_spp_coefs_sams,
+                                          ecomix:::apply_glm_spp_coefs_sams,
                                           y, X, W, G, taus, site_spp_weights,
-                                          offset, y_is_na, disty, fits,
+                                          offset, y_is_na, disty, fits, size,
                                           .parallel = control$cores,
                                           .verbose = FALSE)
 
@@ -2225,7 +2284,7 @@ starting values;\n starting values are generated using ',control$init_method,
                                           apply_glm_mix_coefs_sams,
                                           y, X, W, site_spp_weights,
                                           offset, y_is_na, disty, taus,
-                                          fits, logls_mus$fitted,
+                                          fits, logls_mus$fitted, size,
                                           .parallel = control$cores,
                                           .verbose = FALSE)
 
@@ -2306,26 +2365,26 @@ starting values;\n starting values are generated using ',control$init_method,
   }
   theta <- unlist(lapply(fm_sp_mods, `[[`, 4))
 
-  species_to_remove <- which(apply(beta, 1, function(x) all(is.na(x))))
+  # species_to_remove <- which(apply(beta, 1, function(x) all(is.na(x))))
+  #
+  # if(length(species_to_remove)>0){
+  #   #update fits
+  #   alpha <- alpha[-species_to_remove]
+  #   beta <- beta[-species_to_remove,,drop=FALSE]
+  #   theta <- theta[-species_to_remove]
+  #
+  #   # update y, y_is_na and weights
+  #   # updated_y <- update_species_data_structure(y, y_is_na, spp_weights, site_spp_weights, species_to_remove)
+  #   # y <- updated_y[[1]]
+  #   # y_is_na <- updated_y[[2]]
+  #   # site_spp_weights <- updated_y[[3]]
+  # } else {
+  #   species_to_remove <- NA
+  # }
 
-  if(length(species_to_remove)>0){
-    #update fits
-    alpha <- alpha[-species_to_remove]
-    beta <- beta[-species_to_remove,,drop=FALSE]
-    theta <- theta[-species_to_remove]
-
-    # update y, y_is_na and weights
-    updated_y <- update_species_data_structure(y, y_is_na, spp_weights, site_spp_weights, species_to_remove)
-    y <- updated_y[[1]]
-    y_is_na <- updated_y[[2]]
-    site_spp_weights <- updated_y[[3]]
-  } else {
-    species_to_remove <- NA
-  }
-
-  prev_min_sites <- control$minimum_sites_occurrence
-  sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
-  if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,,drop=FALSE]
+  # prev_min_sites <- control$minimum_sites_occurrence
+  # sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
+  # if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,,drop=FALSE]
 
   if(G==1) control$init_method <- 'kmeans'
 
@@ -2369,13 +2428,13 @@ starting values;\n starting values are generated using ',control$init_method,
     taus <- matrix(1,nrow=ncol(y), ncol = G)
   } else {
   taus <- matrix(0,nrow=ncol(y), ncol= G)
-  if(length(sel_omit_spp)>0){
-    for(j in 1:length((1:S)[-sel_omit_spp]))
-      taus[(1:S)[-sel_omit_spp][j],fmmvnorm$cluster[j]] <- 1
-      taus[sel_omit_spp,] <- matrix(runif(length(sel_omit_spp)*G),length(sel_omit_spp), G)
-      } else {
-          for(j in seq_len(S))taus[j,fmmvnorm$cluster[j]] <- 1
-        }
+  # if(length(sel_omit_spp)>0){
+  #   for(j in 1:length((1:S)[-sel_omit_spp]))
+  #     taus[(1:S)[-sel_omit_spp][j],fmmvnorm$cluster[j]] <- 1
+  #     taus[sel_omit_spp,] <- matrix(runif(length(sel_omit_spp)*G),length(sel_omit_spp), G)
+  #     } else {
+  for(j in seq_len(S))taus[j,fmmvnorm$cluster[j]] <- 1
+        # }
   }
 
   taus <- taus/rowSums(taus)
@@ -2390,7 +2449,7 @@ starting values;\n starting values are generated using ',control$init_method,
   results$theta <- theta
   results$taus <- taus
   results$pis <- pis
-  results$species_to_remove <- species_to_remove
+  # results$species_to_remove <- species_to_remove
 
   return(results)
 }
@@ -2751,11 +2810,11 @@ starting values;\n starting values are generated using ',control$init_method,
 }
 
 
-"update_species_data_structure" <- function(y, y_is_na, spp_weights, site_spp_weights, species_to_remove){
-  if(is.na(species_to_remove)) return(list(y, y_is_na, spp_weights, site_spp_weights))
-  else return(list(y[,-species_to_remove], y_is_na[,-species_to_remove],
-                   spp_weights[-species_to_remove], site_spp_weights[,-species_to_remove]))
-}
+# "update_species_data_structure" <- function(y, y_is_na, spp_weights, site_spp_weights, species_to_remove){
+#   if(is.na(species_to_remove)) return(list(y, y_is_na, spp_weights, site_spp_weights))
+#   else return(list(y[,-species_to_remove], y_is_na[,-species_to_remove],
+#                    spp_weights[-species_to_remove], site_spp_weights[,-species_to_remove]))
+# }
 
 
 "print_starting_values" <-  function(S, G, npx, npw, n, alpha, beta, gamma,
@@ -3024,7 +3083,7 @@ starting values;\n starting values are generated using ',control$init_method,
 }
 
 "check_size_binomial" <- function(size, nsites) {
-  if(!is.null(size)) rep(1,nsites)
+  if(is.null(size)) size <- rep(1,nsites)
   if(length(size)!=nsites)stop("Vector sites does not match then number of sites, if you are supplying these values please double check.")
   return(size)
 }
