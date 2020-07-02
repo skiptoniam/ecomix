@@ -98,16 +98,16 @@ if(distribution %in% c('poisson','ippm','negative_binomial')) link <- make.link(
 if(distribution %in% c('gaussian')) link <- make.link('identity')
 
 # # Putting spatial random effects on the species intercepts
-# A_sp = matrix(NA, nrow=nsites, ncol=nspecies)
-# sigma_sp <- 0.1
-# kappa_sp <- 1
-# model_A <- RandomFields::RMmatern(nu = 1, var = sigma_sp^2, scale = 1 / kappa_sp)
-# for(ss in 1:S){
-#   A_sp[,ss] = RandomFields::RFsimulate(model=model_A, x=locations[,'x'], y=locations[,'y'])@data[,1]
-#   A_sp[,ss] = A_sp[,ss] - mean(A_sp[,ss]) + alpha[ss]
-# }
-# ggplot(data = data.frame(locations,A_sp),)+
-#   geom_point(aes(x,y,colour=X4))
+A_sp = matrix(NA, nrow=nsites, ncol=nspecies)
+sigma_sp <- 0.1
+kappa_sp <- 1
+model_A <- RandomFields::RMmatern(nu = 1, var = sigma_sp^2, scale = 1 / kappa_sp)
+for(ss in 1:S){
+  A_sp[,ss] = RandomFields::RFsimulate(model=model_A, x=locations[,'x'], y=locations[,'y'])@data[,1]
+  A_sp[,ss] = A_sp[,ss] - mean(A_sp[,ss])
+}
+ggplot(data = data.frame(locations,A_sp),)+
+  geom_point(aes(x,y,colour=X4))
 
 ## simulate the groups and fitted values.
 fitted <- matrix(0, dim(X)[1], S)
@@ -115,15 +115,13 @@ eta <- matrix(0, dim(X)[1], S)
 group <- rep(0, S)
 for (ss in seq_len(S)) {
   gg <- ceiling(stats::runif(1) * G)
-  eta_spp <- W %*% c(alpha[ss],gamma[ss,])
+  eta_spp <- W %*% c(alpha[ss],gamma[ss,]) + A_sp[,ss] # Move the random effect into the species.
   eta_mix <- X %*% beta[gg, ]
-  eta[,ss] <- eta_spp + eta_mix + omega_s + offset
+  eta[,ss] <- eta_spp + eta_mix +  offset #+ omega_s # An overall spatial effect.
   fitted[, ss] <- link$linkinv(eta[,ss])
   group[ss] <- gg
 }
 
-matplot(eta)
-points(omega_s,col="red",pch=16)
 
 if( distribution=="bernoulli")
   outcomes <- matrix(rbinom(n * S, 1, as.numeric( fitted)), nrow = n, ncol = S)
@@ -235,8 +233,8 @@ pars = list(beta=t(beta),
             gamma=gamma,
             eta = ecomix:::additive_logistic(attr(simulated_data,"pi"),TRUE)[-G],
             theta = rep(1,S),#1/exp(attr(simulated_data,'theta')))
-            log_tau = log(0.01),
-            log_kappa = log(1),
+            log_tau = 0.0,
+            log_kappa = 0.0,
             x = rep(0.0, nrow(dats$spdeMatrices$M0)))
 
 
@@ -244,29 +242,11 @@ library(TMB)
 compile("/home/woo457/Dropbox/ecomix/devsrc/tmbsam_gmrf.cpp","&> /tmp/logfile.log")
 dyn.load(dynlib("/home/woo457/Dropbox/ecomix/devsrc/tmbsam_gmrf"))
 obj <- MakeADFun(dats, pars, random="x", DLL="tmbsam_gmrf")
-opt <- nlminb(obj$par, obj$fn, obj$gr)
+opt <- nlminb( start=obj$par, objective=obj$fn, gr=obj$gr,control = list(iter.max=1e5,eval.max=1e5))
 SD = sdreport( obj )
 
 # g <- as.numeric(obj$gr(opt$par))
 # h <- stats::optimHess(opt$par, fn = obj$fn, gr = obj$gr)
 # tmb_opt$par <- tmb_opt$par - solve(h, g)
 # tmb_opt$objective <- tmb_obj$fn(tmb_opt$par)
-
-# Step 4 -- Simulate from predictive distribution
-# match_index = grep("theta", names(opt$par) )
-# bhat_rj = mvtnorm::rmvnorm( n=1e4, mean=opt$par[-match_index], sigma=SD$cov.fixed[match_index,!match_index] )
-
-# predict response for new values
-# Xpred_z = seq( from=-10, to=10, length=1000 )
-# Ybounds_zj = matrix( NA, ncol=2, nrow=length(Xpred_z) )
-# for( z in 1:nrow(Ybounds_zj) ){
-  # ysim_r = bhat_rj[,1] + bhat_rj[,2]*Xpred_z[z]
-  # Ybounds_zj[z,] = quantile( ysim_r, prob=c(0.1,0.9) )
-# }
-
-# plot results
-# plot( x=X, y=Y )
-# abline( a=Opt$par[match_index][1], b=Opt$par[match_index][2] )
-# polygon( x=c(Xpred_z,rev(Xpred_z)), y=c(Ybounds_zj[,1],rev(Ybounds_zj[,2])), col=rgb(1,0,0,0.2) )
-#
 
