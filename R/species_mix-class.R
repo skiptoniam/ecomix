@@ -11,7 +11,7 @@
 #' parameters. `species_mix` acts as a wrapper for species_mix.fit
 #' that allows for easier data input. The data frames are merged into
 #' the appropriate format for the use in species_mix.fit.
-#' Minima is found using vmmin (BFGS). Currently 'bernoulli',
+#' Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
 #' 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative_binomial'
 #'  and 'normal' distributions can be fitted using the species_mix function.
 #' @param archetype_formula an object of class "formula" (or an object that can
@@ -50,6 +50,7 @@
 #' vector n species long.
 #' @param bb_weights a numeric vector of n species long. This is used for
 #' undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.
+#' @param size The size of the sample for a binomial model (defaults to 1).
 #' @param control a list of control parameters for optimisation and calculation.
 #' See details. From \code{species_mix.control} for details on optimistaion
 #' parameters.
@@ -98,7 +99,7 @@
 "species_mix" <- function(archetype_formula = NULL,
                           species_formula = stats::as.formula(~1), data,
                           n_mixtures = 3, distribution="bernoulli", offset=NULL,
-                          weights=NULL, bb_weights=NULL, control=NULL,
+                          weights=NULL, bb_weights=NULL, size= NULL, control=NULL,
                           inits=NULL, standardise = FALSE, titbits = TRUE){
 
   data <- as.data.frame(data)
@@ -197,6 +198,8 @@
                                                distribution)
   spp_weights <- check_spp_weights(bb_weights,S)
 
+  size <- check_size_binomial(size,nrow(dat$mf.X))
+
   if(distribution=='ippm'){
     if(!all(colnames(y)==colnames(site_spp_weights))){
       stop(cat('When modelling a inhomogeneous poisson point process model,
@@ -223,7 +226,7 @@
                          spp_weights=spp_weights,
                          site_spp_weights=site_spp_weights,
                          offset=offset, disty=disty, y_is_na=y_is_na,
-                         control=control, inits=inits)
+                         size=size, control=control, inits=inits)
 
   tmp$dist <- disty_cases[disty]
 
@@ -283,16 +286,17 @@
 #'@param offset this is a vector of site specific offsets, this might be something like area sampled at sites.
 #'@param y_is_na This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!
 #'@param disty the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are available - internal conversion of distribution to a integer.
+#'@param size The size of each of binomial sample at each site. Length should be the number of sites.
 #'@param control this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.
 #'@param inits This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).
 #'@export
 
 "species_mix.fit" <- function(y, X, W, G, S, spp_weights, site_spp_weights,
-                              offset, y_is_na, disty, control, inits=NULL){
+                              offset, y_is_na, disty, size, control, inits=NULL){
 
   if(G==1){
     tmp <- fitmix_ECM_sam(y, X, W, spp_weights, site_spp_weights,
-                         offset, y_is_na, G, S, disty, control)
+                         offset, y_is_na, G, S, disty, size, control)
     tmp <- clean_ECM_output_one_group(tmp, G, S, disty)
     return(tmp)
   }
@@ -800,6 +804,7 @@
                                     beta=NULL,
                                     gamma=NULL,
                                     theta=NULL,
+                                    size=NULL,
                                     distribution = "bernoulli"){
 
   #update the formula to old format.
@@ -825,6 +830,8 @@
   n <- nrow(X)
   npx <- ncol(X)
   npw <- ncol(W) - 1
+
+  size  <- check_size_binomial(size, n)
 
   if (is.null(alpha)) {
     message("Random alpha from normal (-1,0.5) distribution")
@@ -855,7 +862,7 @@
     theta <- log( 1 + rgamma( n+S, shape=1, scale=0.75))
   }
 
-  if(distribution %in% 'bernoulli') link <- make.link('logit')
+  if(distribution %in% c('bernoulli','binomial')) link <- make.link('logit')
   if(distribution %in% c('poisson','ippm','negative_binomial')) link <- make.link('log')
   if(distribution %in% c('gaussian')) link <- make.link('identity')
   if(distribution %in% 'ippm') {
@@ -879,6 +886,8 @@
 
   if( distribution=="bernoulli")
     outcomes <- matrix(rbinom(n * S, 1, as.numeric( fitted)), nrow = n, ncol = S)
+  if( distribution=="binomial")
+    outcomes <- matrix(rbinom(n * S, rep(size, S), as.numeric( fitted)), nrow = n, ncol = S)
   if( distribution=="poisson")
     outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
   if( distribution=="ippm")
@@ -919,6 +928,7 @@
   attr(res, "theta") <- theta
   attr(res, "mu") <- fitted
   attr(res, "ippm_weights") <- wts
+  attr(res, "size") <- size
   return(res)
 }
 
@@ -1666,10 +1676,10 @@
 
 ## function for starting values using penalities
 "apply_glmnet_sam_inits" <- function(ss, y, X, W, site_spp_weights,
-                                     offset, y_is_na, disty){
+                                     offset, y_is_na, disty, size){
 
   # which family to use?
-  if(disty == 1)
+  if(disty == 1 | disty == 7 ) #binomials
     fam <- "binomial" #glmnet
   if(disty == 2 | disty == 3 | disty == 4)
     fam <- "poisson"
@@ -1682,6 +1692,9 @@
     outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
   } else {
     outcomes <- as.matrix(y[ids_i,ss])
+  }
+  if (disty==7){
+    outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]))
   }
 
   if(ncol(X)==1){
@@ -1753,8 +1766,8 @@
 #get the conditional maxima for species specific parameters.
 "apply_glm_spp_coefs_sams" <- function(ss, y, X, W, G, taus,
                                        site_spp_weights,
-                                       offset, y_is_na, disty, fits){
-  if(disty == 1)
+                                       offset, y_is_na, disty, fits, size){
+  if(disty == 1 | disty == 7)
     fam <- binomial()
   if(disty == 2 | disty == 3 | disty == 4)
     fam <- poisson()
@@ -1767,6 +1780,9 @@
     outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
   } else {
     outcomes <- as.numeric(y[ids_i,ss])
+  }
+  if (disty==7){
+    outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]))
   }
   out1 <- kronecker(rep( 1, G), outcomes)
   X1 <- kronecker(rep( 1, G), X[ids_i,,drop=FALSE])
@@ -1811,10 +1827,11 @@
 #get the conditional maximums for group coefs.
 "apply_glm_mix_coefs_sams" <- function(gg, y, X, W, site_spp_weights, offset,
                                                y_is_na, disty,
-                                               taus, fits, mus){
+                                               taus, fits, mus, size){
 
   ### setup the data stucture for this model.
   Y_taus <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
+  size_taus <- matrix(rep(size,ncol(y)),nrow(y),ncol(y))
   X_no_NA <- list()
   W_no_NA <- list()
   for (jj in 1:ncol(y)){
@@ -1995,7 +2012,7 @@ starting values;\n starting values are generated using ',control$init_method,
 }
 
 "get_initial_values_sam" <- function(y, X, W, spp_weights, site_spp_weights,
-                                     offset, y_is_na, G, S, disty, control){
+                                     offset, y_is_na, G, S, disty, size, control){
 
   # get intial model fits
   starting_values <- initiate_fit_sam(y, X, W, spp_weights, site_spp_weights,
@@ -2116,7 +2133,7 @@ starting values;\n starting values are generated using ',control$init_method,
 }
 
 "fitmix_ECM_sam" <- function(y, X, W, spp_weights, site_spp_weights, offset,
-                             y_is_na, G, S, disty, control){
+                             y_is_na, G, S, disty, size, control){
 
   ite <- 1
   restart_ite <- 1
@@ -2268,11 +2285,11 @@ starting values;\n starting values are generated using ',control$init_method,
 
 }
 
-"initiate_fit_sam" <- function(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control){
+"initiate_fit_sam" <- function(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control){
 
 
   fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W,
-                                       site_spp_weights, offset, y_is_na, disty,
+                                       site_spp_weights, offset, y_is_na, disty, size,
                                       .parallel = control$cores, .verbose = FALSE)
 
   alpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
@@ -3004,6 +3021,12 @@ starting values;\n starting values are generated using ',control$init_method,
   if(all(attr(stats::terms(f), 'intercept') == 1 & length(attr(stats::terms(f), 'factors')) > 0))
     return(2)
 
+}
+
+"check_size_binomial" <- function(size, nsites) {
+  if(!is.null(size)) rep(1,nsites)
+  if(length(size)!=nsites)stop("Vector sites does not match then number of sites, if you are supplying these values please double check.")
+  return(size)
 }
 
 "check_reponse_sam" <-function(outs) {
