@@ -245,7 +245,9 @@ void calc_sam_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam
 					if(dat.disty==6){ // normal
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_normal_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 						}
-
+					if(dat.disty==7){ // normal
+						loglSG.at(MATREF2D(g,s,dat.nG)) += log_binomial_sam(dat.y[MATREF2D(i,s,dat.nObs)], dat.size, fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
+						}	
 					}
 				}
 			// This is for the bayesian bootstrap. For ippm this will be set to default of 1 in R as BB is to hard to do with ippms.
@@ -276,7 +278,6 @@ double calc_sam_loglike_S(vector<double> &fits, vector<double> const &pis, const
 
 }
 
-
 double log_bernoulli_sam( const double &y, const double &mu){
 	double tmp;
 	if( y==1){
@@ -288,6 +289,25 @@ double log_bernoulli_sam( const double &y, const double &mu){
 }
 
 double log_bernoulli_deriv_sam(const double &y, const double &mu){
+	double tmp, negOne = -1.0;
+	if( y==1){
+		tmp = 1/mu;
+		return( tmp);
+	}
+	if( y==0){
+		tmp = -1/(1-mu);
+		return( tmp);
+	}
+	return( log( negOne));	//to give an error
+}
+
+double log_binomial_sam( const double &y, const double &mu, const double &n){
+	double tmp;
+	tmp = dbinom(y, n, mu, 1);
+	return( tmp);
+}
+
+double log_binomial_deriv_sam(const double &y, const double &mu, const double &n){
 	double tmp, negOne = -1.0;
 	if( y==1){
 		tmp = 1/mu;
