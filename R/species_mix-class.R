@@ -319,7 +319,7 @@
   }
 
   tmp <- sam_optimise(y, X, W, offset, spp_weights, site_spp_weights,
-                      y_is_na, S, G, disty, starting_values, control)
+                      y_is_na, S, G, disty, size, starting_values, control)
 
   return(tmp)
 }
@@ -1531,7 +1531,7 @@
         #c++ call to optimise the model (needs pretty good starting values)
         tmp <- .Call("species_mix_cpp",
                      as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(offset), as.numeric(spp_wts),
-                     as.numeric(as.matrix(site_spp_wts)), as.integer(as.matrix(!y_is_na)),
+                     as.numeric(as.matrix(site_spp_wts)), as.integer(as.matrix(!y_is_na)), as.numeric(size),
                      # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
                      as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n),
                      as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),
@@ -2541,7 +2541,7 @@ starting values;\n starting values are generated using ',control$init_method,
 }
 
 "sam_optimise" <- function(y, X, W, offset, spp_weights, site_spp_weights, y_is_na,
-                           S, G, disty, start_vals, control){
+                           S, G, disty, size, start_vals, control){
 
   inits <- c(start_vals$alpha, start_vals$beta, start_vals$eta, start_vals$gamma, start_vals$theta)
   npx <- as.integer(ncol(X))
@@ -2602,7 +2602,7 @@ starting values;\n starting values are generated using ',control$init_method,
   #c++ call to optimise the model (needs pretty good starting values)
   tmp <- .Call("species_mix_cpp",
                as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(offset),
-               as.numeric(spp_weights), as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
+               as.numeric(spp_weights), as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)), as.numeric(size),
                # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
                as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n),
                as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),

@@ -23,7 +23,7 @@ class sam_data {
 	public:
 		sam_data();
 		~sam_data();
-		void setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &Roffset, SEXP &Rspp_wts, SEXP &Rsite_spp_wts, SEXP &Ry_not_na,
+		void setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &Roffset, SEXP &Rspp_wts, SEXP &Rsite_spp_wts, SEXP &Ry_not_na, SEXP &Rsize,
 		 SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw, SEXP &RnObs, SEXP &Rdisty, SEXP &RoptiDisp, SEXP &RoptiPart);
 		bool isDispersion() const;
 		bool doOptiDisp() const;
@@ -46,7 +46,8 @@ class sam_data {
 				*W, //the design matix in vector for for the species model (nObs x npw). 
 				*offset, //the offset vector (length nObs)
 				*spp_wts,  //the wts for the logl dependent on the species - used for the bayesian bootstrap (typically all zero and of length nObs).
-				*site_spp_wts; // the wts for the ippm.
+				*site_spp_wts, // the wts for the ippm.
+				*size; //Size for a binomial.
 		int 	*y_not_na; //a matrix which keeps track of NAs in ippm data. If non-ippm model all == 1.
 
 };
@@ -139,7 +140,7 @@ class sam_cpp_all_classes {
 /////////////	Function Definitions	////////////////
 ////////////////////////////////////////////////////////
 
-extern "C" SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na,
+extern "C" SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rsize,
 								SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart,
 								SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rtheta, 
 								SEXP RderivsAlpha, SEXP RderivsBeta,  SEXP RderivsEta, SEXP RderivsGamma, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
@@ -164,7 +165,6 @@ double inverse_logit(const double eta);
 // functions for calculating the gradient.
 void gradient_function_sam(int n, double *par, double *gr, void *ex);
 void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_derivs &derivs, sam_fits &fits);
-double log_poisson_deriv( const double &y, const double &mu, const double &wts);
 void calc_mu_deriv( vector<double> &mu_derivs, const vector<double> &fits, const sam_data &dat, const sam_params &params);
 void calc_eta_mu_deriv( vector<double> &etaDerivs, const sam_data &dat, const vector<double> &muDerivs, const vector<double> &fits);
 void calc_dlog_dalpha(vector<double> &dlda, vector<double> const &mu_eta_derivs, const sam_data &dat);
@@ -192,4 +192,7 @@ double log_negative_binomial_deriv_theta_sam(const double &y, const double &mu, 
 double log_normal_sam( const double &y, const double &mu, const double &sig);
 double log_normal_deriv_mu_sam( const double &y, const double &mu, const double &sig);
 double log_normal_deriv_theta_sam( const double &y, const double &mu, const double &sig);
+double log_binomial_sam( const double &y, const double &mu, const double &n);
+double log_binomial_deriv_sam(const double &y, const double &mu, const double &n);
+
 #endif
