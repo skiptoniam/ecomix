@@ -317,7 +317,7 @@ double log_binomial_deriv_sam(const double &y, const double &mu, const double &n
 
 	yn = y/n;
 	tmp1 = yn/mu;
-	tmp2 = (1-yn)/(1-mu);
+	tmp2 = (n-y)/(1-mu);
 	tmp = tmp1 - tmp2;
 	return(tmp);
 
@@ -564,7 +564,7 @@ void calc_eta_mu_deriv( vector<double> &etaDerivs, const sam_data &dat, const ve
 							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * (1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS))) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//logit link
 						}
 						if(dat.disty==7){ //binomial (size rather than 1).
-							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * (1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS))) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * dat.size[i];	//logit link
+							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * (1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS))) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//logit link
 						}
 						if(dat.disty==3){ // ippm
 							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = dat.site_spp_wts[MATREF2D(i,s,dat.nObs)] * fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)); // loglink + weights
