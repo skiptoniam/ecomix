@@ -2748,6 +2748,7 @@ starting values;\n starting values are generated using ',control$init_method,
                    "negative_binomial" = 4,
                    "tweedie" = 5,
                    "gaussian" = 6,
+                   "binomial" = 7,
                    {stop( error.msg)} )
   return( disty)
 }
@@ -2941,7 +2942,7 @@ starting values;\n starting values are generated using ',control$init_method,
 "sam_internal_pred_groups" <- function(alpha, beta, taus, gamma, G, S, X, W,
                                        offset = NULL, family){
 
-  if (family == "bernoulli")
+  if (family %in% c("bernoulli","binomial"))
     link.fun <- make.link("logit")
   if (family %in% c("negative_binomial","poisson","ippm"))
     link.fun <- make.link("log")
@@ -2972,7 +2973,7 @@ starting values;\n starting values are generated using ',control$init_method,
 "sam_internal_pred_species" <- function(alpha, beta, taus, gamma, G, S, X, W,
                                         offset = NULL, family){
 
-  if (family == "bernoulli")
+  if (family %in% c("bernoulli","binomial"))
     link.fun <- make.link("logit")
   if (family %in% c("negative_binomial","poisson","ippm"))
     link.fun <- make.link("log")
