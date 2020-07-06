@@ -310,13 +310,13 @@ double log_binomial_sam( const double &y, const double &mu, const double &n){
 	return( tmp);
 }
 
-//((y/n)/mu) - ((1-(y/n))/(1-mu))
+//(y/mu) - ((n-y)/(1-mu))
 
 double log_binomial_deriv_sam(const double &y, const double &mu, const double &n){
-	double tmp, tmp1, tmp2, yn;
+	double tmp, tmp1, tmp2;
 
-	yn = y/n;
-	tmp1 = yn/mu;
+	//yn = y/n;
+	tmp1 = y/mu;
 	tmp2 = (n-y)/(1-mu);
 	tmp = tmp1 - tmp2;
 	return(tmp);
