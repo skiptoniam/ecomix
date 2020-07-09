@@ -14,6 +14,7 @@ species_mix.simulate(
   beta = NULL,
   gamma = NULL,
   theta = NULL,
+  size = NULL,
   distribution = "bernoulli"
 )
 }

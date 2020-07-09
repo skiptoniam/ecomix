@@ -122,8 +122,8 @@ testthat::test_that('species mix binomial', {
                          control=species_mix.control(print_cpp_start_vals = TRUE), inits=inits)
 
   sp_form <- ~1
-  fm1 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'binomial',
-                     n_mixtures=3, size = size)
+    fm1 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'binomial',
+                       n_mixtures=3, size = size)
   testthat::expect_s3_class(fm1,'species_mix')
 
   fm2 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'binomial',

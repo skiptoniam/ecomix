@@ -13,6 +13,7 @@ species_mix(
   offset = NULL,
   weights = NULL,
   bb_weights = NULL,
+  size = NULL,
   control = NULL,
   inits = NULL,
   standardise = FALSE,
@@ -64,6 +65,8 @@ vector n species long.}
 \item{bb_weights}{a numeric vector of n species long. This is used for
 undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
 
+\item{size}{The size of the sample for a binomial model (defaults to 1).}
+
 \item{control}{a list of control parameters for optimisation and calculation.
 See details. From \code{species_mix.control} for details on optimistaion
 parameters.}
@@ -103,7 +106,7 @@ There is the option to use EM algorithm to get appropriate starting
 parameters. `species_mix` acts as a wrapper for species_mix.fit
 that allows for easier data input. The data frames are merged into
 the appropriate format for the use in species_mix.fit.
-Minima is found using vmmin (BFGS). Currently 'bernoulli',
+Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative_binomial'
  and 'normal' distributions can be fitted using the species_mix function.
 }

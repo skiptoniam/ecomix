@@ -15,6 +15,7 @@ species_mix.fit(
   offset,
   y_is_na,
   disty,
+  size,
   control,
   inits = NULL
 )
@@ -39,6 +40,8 @@ species_mix.fit(
 \item{y_is_na}{This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!}
 
 \item{disty}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are available - internal conversion of distribution to a integer.}
+
+\item{size}{The size of each of binomial sample at each site. Length should be the number of sites.}
 
 \item{control}{this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.}
 

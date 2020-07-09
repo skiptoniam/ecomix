@@ -774,8 +774,9 @@
 #'  parameters. Each row is a different species archetype.
 #' @param theta coefficents for the dispersion variables for negative_binomial
 #' and gaussian distributions - should be number of species long
+#' @param size Is for the binomial model and this respresents the number of binomial trials per site, can be fixed or vary.
 #' @param distribution Which statistical distribution to simulate data for.
-#'  'bernoulli', 'gaussian', 'ippm', 'negative_binomial' and 'poisson'.
+#'  'bernoulli','binomial', 'gaussian', 'ippm', 'negative_binomial' and 'poisson'.
 #' @param offset used to offset sampling effort for abundance data (log link function).
 #' @export
 #' @examples
@@ -1456,6 +1457,7 @@
     site_spp_wts <- object$titbits$site_spp_weights
     y <- object$titbits$Y
     y_is_na <- object$titbits$y_is_na
+    size <- object$titbits$size
     distribution <- object$titbits$distribution
     disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
     disty <- get_distribution_sam(disty_cases, distribution)
@@ -2003,7 +2005,7 @@
     emfits <- list()
     for(ii in seq_len(control$em_refit)){
       if(!control$quiet)message('ECM fit: ',ii,'\n')
-      emfits[[ii]] <- ecomix:::fitmix_ECM_sam(y, X, W, spp_weights, site_spp_weights,
+      emfits[[ii]] <- fitmix_ECM_sam(y, X, W, spp_weights, site_spp_weights,
                                      offset, y_is_na, G, S, disty, size, control)
     }
     bf <- which.max(vapply(emfits,function(x)c(x$logl),c(logl=0)))
@@ -2286,7 +2288,7 @@ starting values;\n starting values are generated using ',control$init_method,
   logl_new <- -88888888
 
   # get starting values
-  starting_values <- ecomix:::get_initial_values_sam(y = y, X = X, W = W,
+  starting_values <- get_initial_values_sam(y = y, X = X, W = W,
                                             spp_weights = spp_weights,
                                             site_spp_weights = site_spp_weights,
                                             offset = offset, y_is_na = y_is_na,
@@ -2300,7 +2302,7 @@ starting values;\n starting values are generated using ',control$init_method,
   pis <- starting_values$pis
   # cat('start pis', pis,'\n')
   first_fit <- starting_values$first_fit
-  logls_mus <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
+  logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
   init_steps <- 3
 
   while(control$em_reltol(logl_new,logl_old) & ite <= control$em_steps){
@@ -2342,7 +2344,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
     # m-step
     fm_spp_coefs <- surveillance::plapply(seq_len(S),
-                                          ecomix:::apply_glm_spp_coefs_sams,
+                                          apply_glm_spp_coefs_sams,
                                           y, X, W, G, taus, site_spp_weights,
                                           offset, y_is_na, disty, fits, size,
                                           .parallel = control$cores,
