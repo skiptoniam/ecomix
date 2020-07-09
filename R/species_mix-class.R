@@ -244,8 +244,7 @@
     first_fit <- list(y = y, x = X, W = W,
                       spp_weights = spp_weights,
                       site_spp_weights = site_spp_weights,
-                      offset = offset,
-                      y_is_na = y_is_na)
+                      offset = offset, y_is_na = y_is_na, size = size)
     logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S,
                                         disty, get_fitted = FALSE)
     tmp$taus <- get_taus(tmp$pis,logls_mus$logl_sp,G,S)
@@ -257,7 +256,7 @@
 
   #titbits object, if wanted/needed.
   tmp$titbits <- get_titbits_sam(titbits, y, X, W, spp_weights,
-                                 site_spp_weights, offset, y_is_na,
+                                 site_spp_weights, offset, y_is_na, size,
                                  archetype_formula, species_formula, control,
                                  disty_cases[disty], tmp$removed_species)
 
@@ -309,6 +308,7 @@
                                                  y_is_na = y_is_na,
                                                  G = G, S = S,
                                                  disty = disty,
+                                                 size = size,
                                                  control = control)
 
   } else {
@@ -2811,12 +2811,12 @@ starting values;\n starting values are generated using ',control$init_method,
 }
 
 "get_titbits_sam" <- function(titbits, y, X, W, spp_weights, site_spp_weights, offset,
-                               y_is_na , archetype_formula, species_formula,
+                               y_is_na, size, archetype_formula, species_formula,
                                control, distribution,removed_species)  {
     if( titbits==TRUE)
       titbits <- list( Y = y, X = X, W = W, spp_weights = spp_weights,
                        site_spp_weights = site_spp_weights, offset = offset,
-                       y_is_na = y_is_na, archetype_formula =  archetype_formula,
+                       y_is_na = y_is_na, size = size, archetype_formula =  archetype_formula,
                        species_formula = species_formula, control = control,
                        distribution = distribution, removed_species = removed_species)
     else{
@@ -2835,6 +2835,8 @@ starting values;\n starting values are generated using ',control$init_method,
         titbits$offset <- offset
       if( "y_is_na" %in% titbits)
         titbits$y_is_na <- y_is_na
+      if( "size" %in% titbits)
+        titbits$size <- size
       if( "archetype_formula" %in% titbits)
         titbits$archetype_formula <- archetype_formula
       if( "species_formula" %in% titbits)

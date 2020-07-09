@@ -3,7 +3,7 @@
 // this is the external C call which will be called by R using .Call.
 
 extern "C" {
-	SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rsize,
+	SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rbinsize,
 					     SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart,
 						 SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rtheta,
 						 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsGamma, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
@@ -14,7 +14,7 @@ extern "C" {
 	sam_cpp_all_classes all;
 
 	//initialise the data structures -- they are mostly just pointers to REAL()s...
-	all.data.setVals(Ry, RX, RW, Roffset, Rspp_wts, Rsite_spp_wts, Ry_not_na, Rsize, RnS, RnG, Rpx, Rpw, RnObs, Rdisty, RoptiDisp, RoptiPart);	//read in the data
+	all.data.setVals(Ry, RX, RW, Roffset, Rspp_wts, Rsite_spp_wts, Ry_not_na, Rbinsize, RnS, RnG, Rpx, Rpw, RnObs, Rdisty, RoptiDisp, RoptiPart);	//read in the data
 	all.params.setVals(all.data, Ralpha, Rbeta, Reta, Rgamma, Rtheta);	//read in the parameters
 	all.derivs.setVals(all.data, RderivsAlpha, RderivsBeta, RderivsEta, RderivsGamma, RderivsTheta, RgetScores, Rscores);
 	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv, Rprintparams);
@@ -197,19 +197,19 @@ void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data
 					if(dat.disty==1){//bernoulli
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_logit(lp);
 						}
-					if(dat.disty==7){//normal
+					if(dat.disty==7){//binomial
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_logit(lp);
 					}
 					if(dat.disty==2){ //poisson
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
 						}
-					if(dat.disty==3){	//ippm
+					if(dat.disty==3){ //ippm
 						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
 					}
-					if(dat.disty==4){	//negative binomial
+					if(dat.disty==4){ //negative binomial
 						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
 					}
-					if(dat.disty==5){	//tweedie
+					if(dat.disty==5){ //tweedie
 						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
 					 }
 					if(dat.disty==6){//normal
@@ -248,8 +248,8 @@ void calc_sam_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam
 					if(dat.disty==6){ // normal
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_normal_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 						}
-					if(dat.disty==7){ // normal
-						loglSG.at(MATREF2D(g,s,dat.nG)) += log_binomial_sam(dat.y[MATREF2D(i,s,dat.nObs)],fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.size[i]);
+					if(dat.disty==7){ // binomial
+						loglSG.at(MATREF2D(g,s,dat.nG)) += log_binomial_sam(dat.y[MATREF2D(i,s,dat.nObs)],fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.binsize[i]);
 						}
 					}
 				}
@@ -546,7 +546,7 @@ void calc_mu_deriv( vector<double> &mu_derivs, const vector<double> &fits, const
 					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_normal_deriv_mu_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 				}
 				if(dat.disty==7){
-					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_binomial_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.size[i]);
+					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_binomial_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.binsize[i]);
 				}
 				//}
 			}

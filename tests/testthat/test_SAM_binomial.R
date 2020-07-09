@@ -89,8 +89,8 @@ testthat::test_that('species mix binomial', {
   testthat::expect_length(ecomix:::apply_glm_mix_coefs_sams(gg, y, X, W, site_spp_weights, offset, y_is_na, disty, taus, fits, logls$fitted, size),2)
 
   # ## now let's try and fit the optimisation
-  sv <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control)
-  tmp <- ecomix:::sam_optimise(y, X, W, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, start_vals = sv, control)
+  sv <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control=species_mix.control(em_steps = 100))
+  tmp <- ecomix:::sam_optimise(y, X, W, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, size, start_vals = sv, control = species_mix.control())
   testthat::expect_length(tmp,19)
 
   ## test species mix fit
@@ -112,22 +112,22 @@ testthat::test_that('species mix binomial', {
                          control=species_mix.control(em_refit = 5, em_steps = 5))
   set.seed(123)
   tmp3 <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights,
-                                           offset, y_is_na, G, S, disty,
+                                           offset, y_is_na, G, S, disty,size,
                                            control = species_mix.control(em_prefit = FALSE))
   set.seed(123)
   tmp <- ecomix:::species_mix.fit(y=y, X=X, W=W, G=G, S=S,
                          spp_weights=spp_weights,
                          site_spp_weights=site_spp_weights,
-                         offset=offset, disty=disty, y_is_na=y_is_na,
+                         offset=offset, disty=disty,size = size,y_is_na=y_is_na,
                          control=species_mix.control(print_cpp_start_vals = TRUE), inits=inits)
 
   sp_form <- ~1
   fm1 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'binomial',
-                     n_mixtures=4)
+                     n_mixtures=3, size = size)
   testthat::expect_s3_class(fm1,'species_mix')
 
   fm2 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'binomial',
-                     n_mixtures=4,control=species_mix.control(em_prefit = FALSE),
+                     n_mixtures=3, size = size, control=species_mix.control(em_prefit = FALSE),
                      standardise = FALSE)
   testthat::expect_s3_class(fm2,'species_mix')
 
