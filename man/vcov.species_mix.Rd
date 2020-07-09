@@ -40,6 +40,6 @@ If method is either "BayesBoot" or "SimpleBoot", then the estimated variance mat
 
 # Estimate the variance-covariance matrix.
 # This will provide estimates of uncertainty for model parameters.
-\dontrun{
+\donttest{
 vcov(fm1)}
 }

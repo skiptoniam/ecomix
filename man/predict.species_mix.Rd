@@ -39,7 +39,7 @@
 Predict species archetypes from a species_mix model. You can also predict the conditional species predictions using "prediction_type='species'".
 }
 \examples{
-\dontrun{
+\donttest{
 preds_fm1 <- predict(fm1)
 }
 }

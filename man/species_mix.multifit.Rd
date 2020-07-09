@@ -112,14 +112,14 @@ This version of species mix is useful for fitting models which have complex like
 The multiple starts will enable optimisation of the loglikelihood using multiple starts.
 }
 \examples{
-\dontrun{
+\donttest{
 fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
                               distribution = 'bernoulli', nstart = 10,
                               n_mixtures=3)
 }
 
 #Print information about a species_mix model
-\dontrun{
+\donttest{
 print(fmods)
 }
 }

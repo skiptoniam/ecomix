@@ -42,14 +42,16 @@ parameters. Each row is a different species archetype.}
 \item{theta}{coefficents for the dispersion variables for negative_binomial
 and gaussian distributions - should be number of species long}
 
+\item{size}{Is for the binomial model and this respresents the number of binomial trials per site, can be fixed or vary.}
+
 \item{distribution}{Which statistical distribution to simulate data for.
-'bernoulli', 'gaussian', 'ippm', 'negative_binomial' and 'poisson'.}
+'bernoulli','binomial', 'gaussian', 'ippm', 'negative_binomial' and 'poisson'.}
 }
 \description{
 Simulate species mix data for model fitting.
 }
 \examples{
-\dontrun{
+\donttest{
 archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',
 1:20),collapse = ','),")~1+x1+x2"))
 species_formula <- stats::as.formula(~1)

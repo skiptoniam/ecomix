@@ -17,6 +17,6 @@ Print a species_mix model object.
 \examples{
 
 #Print information about a species_mix model
-\dontrun{
+\donttest{
 print(fm1)}
 }

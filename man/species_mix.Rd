@@ -111,7 +111,7 @@ Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
  and 'normal' distributions can be fitted using the species_mix function.
 }
 \examples{
-\dontrun{
+\donttest{
 library(ecomix)
 set.seed(42)
 sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),

@@ -80,7 +80,7 @@
 #' @importFrom stats as.formula binomial cooks.distance cov cutree dbinom dist dnbinom dnorm dpois make.link coef glm.fit fitted gaussian glm hclust lm logLik model.matrix model.frame model.offset model.response model.weights pbinom pnbinom pnorm poisson ppois predict qnorm qqnorm quantile rbinom residuals rgamma rnbinom rnorm rpois runif sd uniroot update update.formula nlminb optimise
 #' @export
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' library(ecomix)
 #' set.seed(42)
 #' sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
@@ -185,8 +185,8 @@
   }
 
   #get distribution
-  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie",
-                   "gaussian")
+  disty_cases <- c("bernoulli","binomial","poisson","ippm","negative_binomial","tweedie","gaussian")
+
   disty <- get_distribution_sam(disty_cases, distribution)
 
   # get offsets
@@ -395,7 +395,7 @@
 #' the re-fitting over.
 #'@export
 #'@examples
-#' \dontrun{
+#' \donttest{
 #' fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
 #'                               distribution = 'bernoulli', nstart = 10,
 #'                               n_mixtures=3)
@@ -405,8 +405,8 @@
                                    data, n_mixtures = 3, nstart = 10,
                                    mc.cores=1, distribution="bernoulli",
                                    offset=NULL, weights=NULL, bb_weights=NULL,
-                                   control=species_mix.control(), inits=NULL,
-                                   standardise = TRUE, titbits = TRUE){
+                                   size= NULL, control=species_mix.control(),
+                                   inits=NULL, standardise = TRUE, titbits = TRUE){
 
   data <- as.data.frame(data)
   control <- set_control_sam(control)
@@ -491,12 +491,15 @@
   }
 
   #get distribution
-  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie",
-                   "gaussian")
+  disty_cases <- c("bernoulli","binomial","poisson","ippm","negative_binomial","tweedie","gaussian")
+
   disty <- get_distribution_sam(disty_cases, distribution)
 
   # get offsets
   offset <- get_offset_sam(dat$mf.X)
+
+  # check size
+  size <- check_size_binomial(size,nrow(dat$mf.X))
 
   # get the weights
   species_names <- colnames(y)
@@ -534,7 +537,7 @@
                                spp_weights=spp_weights,
                                site_spp_weights=site_spp_weights,
                                offset=offset, disty=disty, y_is_na=y_is_na,
-                               control=control, inits=inits)
+                               size=size, control=control, inits=inits)
 
         tmp$dist <- disty_cases[disty]
 
@@ -552,7 +555,7 @@
 
         #titbits object, if wanted/needed.
         tmp$titbits <- get_titbits_sam(titbits, y, X, W, spp_weights,
-                                       site_spp_weights, offset, y_is_na,
+                                       site_spp_weights, offset, y_is_na, size,
                                        archetype_formula, species_formula, control,
                                        disty_cases[disty], tmp$removed_species)
       class(tmp) <- c("species_mix")
@@ -719,7 +722,7 @@
 
   my.fun <- function(dummy){
     if( !quiet) setTxtProgressBar(pb, dummy)
-    disty_cases <- c("bernoulli", "poisson", "ippm", "negative_binomial", "tweedie", "gaussian")
+    disty_cases <- c("bernoulli","binomial","poisson", "ippm", "negative_binomial", "tweedie", "gaussian")
     disty <- get_distribution_sam(disty_cases, object$dist)
     dumbOut <- capture.output(
       samp.object <- species_mix.fit(y=object$titbits$Y,
@@ -732,6 +735,7 @@
                                      S = object$S,
                                      y_is_na = object$titbits$y_is_na,
                                      disty = disty,
+                                     size = object$titbits$size,
                                      control = object$titbits$control,
                                      inits = my.inits))
     return( unlist( samp.object$coef))
@@ -780,7 +784,7 @@
 #' @param offset used to offset sampling effort for abundance data (log link function).
 #' @export
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' archetype_formula <- stats::as.formula(paste0('cbind(',paste(paste0('spp',
 #' 1:20),collapse = ','),")~1+x1+x2"))
 #' species_formula <- stats::as.formula(~1)
@@ -1074,7 +1078,7 @@
 #'@description Predict species archetypes from a species_mix model. You can also predict the conditional species predictions using "prediction_type='species'".
 #'@export
 #'@examples
-#'\dontrun{
+#'\donttest{
 #'preds_fm1 <- predict(fm1)
 #'}
 
@@ -1108,7 +1112,7 @@
   spp_wts <- object$titbits$spp_weights
   site_spp_wts <- object$titbits$site_spp_weights
 
-  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
+  disty_cases <- c("bernoulli","binomial","poisson","ippm","negative_binomial","tweedie","gaussian")
   disty <- get_distribution_sam(disty_cases, object$titbits$distribution)
   taus <- object$taus
   if (is.null(object2)) {
@@ -1295,7 +1299,7 @@
 #'@examples
 #'
 #'#Print information about a species_mix model
-#'\dontrun{
+#'\donttest{
 #'print(fm1)}
 
 "print.species_mix" <-  function (x,...){
@@ -1315,7 +1319,7 @@
 #'@examples
 #'
 #'#Print information about a species_mix model
-#'\dontrun{
+#'\donttest{
 #'print(fmods)
 #'}
 
@@ -1437,7 +1441,7 @@
 #'
 #'# Estimate the variance-covariance matrix.
 #'# This will provide estimates of uncertainty for model parameters.
-#'\dontrun{
+#'\donttest{
 #' vcov(fm1)}
 "vcov.species_mix" <- function (object, object2=NULL, method = "BayesBoot",
                                 nboot = 10, mc.cores = 1, ...){
@@ -1459,7 +1463,7 @@
     y_is_na <- object$titbits$y_is_na
     size <- object$titbits$size
     distribution <- object$titbits$distribution
-    disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian")
+    disty_cases <- c("bernoulli","binomial","poisson","ippm","negative_binomial","tweedie","gaussian")
     disty <- get_distribution_sam(disty_cases, distribution)
     S <- object$S
     G <- object$G
