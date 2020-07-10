@@ -191,7 +191,7 @@ testthat::test_that('stability',{
   vcov(fm2,method="EmpiricalInfo")
 
   fm2$vcov <- tmp
-  regional_mix_bootParametric(fm2, nboot = 10)
+  # regional_mix_bootParametric(fm2, nboot = 10)
   summary(fm2)
 
 })
