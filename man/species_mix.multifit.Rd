@@ -16,6 +16,7 @@ species_mix.multifit(
   offset = NULL,
   weights = NULL,
   bb_weights = NULL,
+  size = NULL,
   control = species_mix.control(),
   inits = NULL,
   standardise = TRUE,

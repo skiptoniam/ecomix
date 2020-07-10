@@ -40,6 +40,19 @@ Predict species archetypes from a species_mix model. You can also predict the co
 }
 \examples{
 \donttest{
+library(ecomix)
+set.seed(42)
+sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
+collapse = ','),")~x1+x2"))
+sp_form <- ~ 1
+beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,1.9),3,2,byrow=TRUE)
+dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
+x2=stats::rnorm(100,0,2.5))
+dat[,-1] <- scale(dat[,-1])
+simulated_data <- species_mix.simulate(archetype_formula=sam_form,
+ species_formula=sp_form, dat,beta=beta,dist="bernoulli")
+fm1 <- species_mix(sam_form, sp_form, simulated_data,
+ distribution = 'bernoulli',  n_mixtures=3)
 preds_fm1 <- predict(fm1)
 }
 }

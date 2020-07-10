@@ -185,7 +185,7 @@
   }
 
   #get distribution
-  disty_cases <- c("bernoulli","binomial","poisson","ippm","negative_binomial","tweedie","gaussian")
+  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian","binomial")
 
   disty <- get_distribution_sam(disty_cases, distribution)
 
@@ -365,6 +365,7 @@
 #' vector n species long.
 #' @param bb_weights a numeric vector of n species long. This is used for
 #' undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.
+#' @param size The size of the sample for a binomial model (defaults to 1).
 #' @param control a list of control parameters for optimisation and calculation.
 #' See details. From \code{species_mix.control} for details on optimistaion
 #' parameters.
@@ -396,6 +397,17 @@
 #'@export
 #'@examples
 #' \donttest{
+#' library(ecomix)
+#' set.seed(42)
+#' sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
+#' collapse = ','),")~x1+x2"))
+#' sp_form <- ~ 1
+#' beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,1.9),3,2,byrow=TRUE)
+#' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
+#' x2=stats::rnorm(100,0,2.5))
+#' dat[,-1] <- scale(dat[,-1])
+#' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
+#'  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
 #' fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
 #'                               distribution = 'bernoulli', nstart = 10,
 #'                               n_mixtures=3)
@@ -491,7 +503,7 @@
   }
 
   #get distribution
-  disty_cases <- c("bernoulli","binomial","poisson","ippm","negative_binomial","tweedie","gaussian")
+  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian","binomial")
 
   disty <- get_distribution_sam(disty_cases, distribution)
 
@@ -1079,6 +1091,19 @@
 #'@export
 #'@examples
 #'\donttest{
+#' library(ecomix)
+#' set.seed(42)
+#' sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
+#' collapse = ','),")~x1+x2"))
+#' sp_form <- ~ 1
+#' beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,1.9),3,2,byrow=TRUE)
+#' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
+#' x2=stats::rnorm(100,0,2.5))
+#' dat[,-1] <- scale(dat[,-1])
+#' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
+#'  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
+#' fm1 <- species_mix(sam_form, sp_form, simulated_data,
+#'  distribution = 'bernoulli',  n_mixtures=3)
 #'preds_fm1 <- predict(fm1)
 #'}
 
@@ -1112,7 +1137,7 @@
   spp_wts <- object$titbits$spp_weights
   site_spp_wts <- object$titbits$site_spp_weights
 
-  disty_cases <- c("bernoulli","binomial","poisson","ippm","negative_binomial","tweedie","gaussian")
+  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian","binomial")
   disty <- get_distribution_sam(disty_cases, object$titbits$distribution)
   taus <- object$taus
   if (is.null(object2)) {
@@ -1300,6 +1325,19 @@
 #'
 #'#Print information about a species_mix model
 #'\donttest{
+#' library(ecomix)
+#' set.seed(42)
+#' sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
+#' collapse = ','),")~x1+x2"))
+#' sp_form <- ~ 1
+#' beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,1.9),3,2,byrow=TRUE)
+#' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
+#' x2=stats::rnorm(100,0,2.5))
+#' dat[,-1] <- scale(dat[,-1])
+#' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
+#'  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
+#' fm1 <- species_mix(sam_form, sp_form, simulated_data,
+#'  distribution = 'bernoulli',  n_mixtures=3)
 #'print(fm1)}
 
 "print.species_mix" <-  function (x,...){
@@ -1463,7 +1501,7 @@
     y_is_na <- object$titbits$y_is_na
     size <- object$titbits$size
     distribution <- object$titbits$distribution
-    disty_cases <- c("bernoulli","binomial","poisson","ippm","negative_binomial","tweedie","gaussian")
+    disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian","binomial")
     disty <- get_distribution_sam(disty_cases, distribution)
     S <- object$S
     G <- object$G
@@ -1828,10 +1866,7 @@
     ##estimate the starting dispersion parameter.
     theta <- -99999
     if( disty == 4){
-      tmp <- MASS::theta.mm(outcomes, as.numeric(predict(ft_sp, s=locat.s,
-                                                         type="response",
-                                                         newx=as.matrix(df),
-                                                         newoffset=offset[ids_i])),
+      tmp <- MASS::theta.mm(outcomes,ft_sp$fitted.values,
                             weights=as.matrix(site_spp_weights[ids_i,ss]),
                             dfr=length(outcomes), eps=1e-4)
       if(tmp>2) tmp <- 2
@@ -1839,8 +1874,7 @@
       # cat(tmp,"\n")
     }
     if( disty == 6){
-      preds <- as.numeric( predict(ft_sp, s=locat.s, type="link",
-                                   newx=as.matrix(df), newoffset=offset[ids_i]))
+      preds <- as.numeric(ft_sp$linear.predictors)
       theta <- log( sqrt( sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard
     }
   }
@@ -2954,7 +2988,7 @@ starting values;\n starting values are generated using ',control$init_method,
     link.fun <- make.link("logit")
   if (family %in% c("negative_binomial","poisson","ippm"))
     link.fun <- make.link("log")
-  if (family == "gaussian")
+  if (family %in% "gaussian")
     link.fun <- make.link("identity")
   if (is.null(offset))
     offset <- rep(0, nrow(X))
@@ -2985,7 +3019,7 @@ starting values;\n starting values are generated using ',control$init_method,
     link.fun <- make.link("logit")
   if (family %in% c("negative_binomial","poisson","ippm"))
     link.fun <- make.link("log")
-  if (family == "gaussian")
+  if (family %in% "gaussian")
     link.fun <- make.link("identity")
   if (is.null(offset))
     offset <- rep(0, nrow(X))

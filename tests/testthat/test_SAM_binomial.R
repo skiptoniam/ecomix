@@ -91,7 +91,7 @@ testthat::test_that('species mix binomial', {
   # ## now let's try and fit the optimisation
   sv <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control=species_mix.control(em_steps = 100))
   tmp <- ecomix:::sam_optimise(y, X, W, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, size, start_vals = sv, control = species_mix.control())
-  testthat::expect_length(tmp,19)
+  testthat::expect_length(tmp,18)
 
   ## test species mix fit
   inits <- NULL
