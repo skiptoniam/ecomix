@@ -2004,12 +2004,14 @@
     Y_taus <- as.matrix(Y_taus)
   }
   if(disty==7){
-    Y_taus <- as.matrix(cbind(Y_taus,size_taus))
+    Y_taus <- as.matrix(cbind(as.interger(Y_taus),as.interger(size_taus)))
   }
+
+  if(disty%in%c(1,2,4)) Y_taus <- as.integer(Y_taus)
 
   if(disty %in% c(1,2,3,6)){ #don't use for tweedie - try and fit negative_binomial using glm.fit.nbinom
     ft_mix <- try(glm.fit(x = as.data.frame(X_taus),
-                          y = as.numeric(Y_taus),
+                          y =Y_taus,
                           weights = c(wts_tausXsite_weights),
                           offset = offy,
                           family = fam), silent = TRUE)
