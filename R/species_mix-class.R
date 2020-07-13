@@ -1821,13 +1821,17 @@
 
   ids_i <- !y_is_na[,ss]
 
+  if(disty == 1 | disty == 2 | disty == 4){
+    outcomes <- as.matrix(as.integer(y[ids_i,ss]))
+  }
   if (disty==3){
-    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
-  } else {
-    outcomes <- as.matrix(y[ids_i,ss])
+   outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+  }
+  if(disty == 6){
+   outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
   }
   if (disty==7){
-    outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]))
+    outcomes <- as.matrix(cbind(as.integer(y[ids_i,ss]),as.integer(size[ids_i])))
   }
 
   if(ncol(X)==1){
@@ -1844,9 +1848,8 @@
   if( disty %in% c(1,2,3,4,6,7)){
     # lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
 
-    ft_sp <- try(glm.fit(y=outcomes, x=df,
-                        family=fam, offset=offset[ids_i],
-                        weights=as.numeric(site_spp_weights[ids_i,ss])), silent=FALSE)
+    ft_sp <- try(glm.fit(y=outcomes, x=df,weights=as.numeric(site_spp_weights[ids_i,ss]),
+                        family=fam, offset=offset[ids_i], silent=FALSE))
     # locat.s <- 1/1
     # my.coefs <- glmnet::coef.glmnet(ft_sp, s=locat.s)
     # if( any( is.na( my.coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
@@ -1904,12 +1907,17 @@
 
   if (disty==3){
     outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
-  } else {
+  }
+  if (disty == 6){
     outcomes <- as.numeric(y[ids_i,ss])
   }
-  if (disty==7){
-    outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]))
+  if (disty %in% c(1,2,4)){
+    outcomes <- as.integer(y[ids_i,ss])
   }
+  if (disty==7){
+    outcomes <- as.matrix(cbind(as.integer(y[ids_i,ss]),as.integer(size[ids_i])))
+  }
+
   out1 <- kronecker(rep( 1, G), outcomes)
   X1 <- kronecker(rep( 1, G), X[ids_i,,drop=FALSE])
   W1 <- kronecker(rep( 1, G), W[ids_i,,drop=FALSE])
@@ -1923,7 +1931,7 @@
 
   if(disty %in% c(1,2,3,6)){
     ft_sp <- try(stats::glm.fit(x=as.data.frame(W1),
-                                y=as.numeric(out1),
+                                y=as.matrix(out1),
                                 weights=as.numeric(wts1),
                                 offset=as.numeric(offy),
                                 family=fam), silent=FALSE)
