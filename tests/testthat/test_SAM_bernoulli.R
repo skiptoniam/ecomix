@@ -85,9 +85,9 @@ testthat::test_that('species mix bernoulli', {
   testthat::expect_length(ecomix:::apply_glm_mix_coefs_sams(gg, y, X, W, site_spp_weights, offset, y_is_na, disty, taus, fits, logls$fitted, size),2)
 
   # ## now let's try and fit the optimisation
-  sv <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
-  tmp <- ecomix:::sam_optimise(y, X, W, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, start_vals = sv, control)
-  testthat::expect_length(tmp,19)
+  sv <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control)
+  tmp <- ecomix:::sam_optimise(y, X, W, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, size, start_vals = sv, control)
+  testthat::expect_length(tmp,18)
 
   ## test species mix fit
   inits <- NULL
@@ -98,23 +98,23 @@ testthat::test_that('species mix bernoulli', {
   #                        control=control, inits=inits)
   set.seed(123)
   tmp1 <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights,
-                                           offset, y_is_na, G, S, disty,
+                                           offset, y_is_na, G, S, disty, size,
                                            control=species_mix.control(em_refit = 1, em_steps = 100))
   set.seed(123)
   tmp2 <- ecomix:::fitmix_ECM_sam(y=y, X=X, W=W, G=G, S=S,
                          spp_weights=spp_weights,
                          site_spp_weights=site_spp_weights,
-                         offset=offset, disty=disty, y_is_na=y_is_na,
+                         offset=offset, disty=disty, y_is_na=y_is_na,size = size,
                          control=species_mix.control(em_refit = 1, em_steps = 100))
   set.seed(123)
   tmp3 <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights,
-                                           offset, y_is_na, G, S, disty,
+                                           offset, y_is_na, G, S, disty, size,
                                            control = species_mix.control(em_prefit = FALSE))
   set.seed(123)
   tmp <- ecomix:::species_mix.fit(y=y, X=X, W=W, G=G, S=S,
                          spp_weights=spp_weights,
                          site_spp_weights=site_spp_weights,
-                         offset=offset, disty=disty, y_is_na=y_is_na,
+                         offset=offset, disty=disty, y_is_na=y_is_na, size=size,
                          control=species_mix.control(print_cpp_start_vals = TRUE), inits=inits)
 
   sp_form <- ~1
