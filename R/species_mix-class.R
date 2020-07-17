@@ -1822,7 +1822,7 @@
   ids_i <- !y_is_na[,ss]
 
   if(disty == 1 | disty == 2 | disty == 4){
-    outcomes <- as.matrix(as.integer(y[ids_i,ss]))
+    outcomes <- as.matrix(y[ids_i,ss])
   }
   if (disty==3){
    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
@@ -1831,7 +1831,7 @@
    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
   }
   if (disty==7){
-    outcomes <- as.matrix(cbind(as.integer(y[ids_i,ss]),as.integer(size[ids_i])))
+    outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]))
   }
 
   if(ncol(X)==1){
@@ -1849,15 +1849,7 @@
     # lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
 
     ft_sp <- try(glm.fit(y=outcomes, x=df,weights=as.numeric(site_spp_weights[ids_i,ss]),
-                        family=fam, offset=offset[ids_i], silent=FALSE))
-    # locat.s <- 1/1
-    # my.coefs <- glmnet::coef.glmnet(ft_sp, s=locat.s)
-    # if( any( is.na( my.coefs))){  #just in case the model is so badly posed that mild penalisation doesn't work...
-      # my.coefs <- glmnet::coef.glmnet(ft_sp, s=lambda.seq)
-      # lastID <- apply( my.coefs, 2, function(x) !any( is.na( x)))
-      # lastID <- tail( (seq_along( lastID))[lastID], 1)
-      # my.coefs <- my.coefs[,lastID]
-    # }
+                        family=fam, offset=offset[ids_i]), silent=FALSE)
     if (any(class(ft_sp)[1] %in% 'try-error')){
       my_coefs <- rep(NA, ncol(X[ids_i,]))
       names(my_coefs) <- colnames(cbind(X[ids_i,,drop=FALSE],W[ids_i,,drop=FALSE]))
@@ -1912,18 +1904,16 @@
     outcomes <- as.numeric(y[ids_i,ss])
   }
   if (disty %in% c(1,2,4)){
-    outcomes <- as.integer(y[ids_i,ss])
+    outcomes <-y[ids_i,ss]
   }
   if (disty==7){
-    outcomes <- as.matrix(cbind(as.integer(y[ids_i,ss]),as.integer(size[ids_i])))
+    outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]))
   }
 
   out1 <- kronecker(rep( 1, G), outcomes)
   X1 <- kronecker(rep( 1, G), X[ids_i,,drop=FALSE])
   W1 <- kronecker(rep( 1, G), W[ids_i,,drop=FALSE])
-  wts1 <- kronecker(rep( 1, G),
-                    as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,],
-                                                                each=length(site_spp_weights[ids_i,ss]))
+  wts1 <- kronecker(rep( 1, G), as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,],each=length(site_spp_weights[ids_i,ss]))
   offy1 <- kronecker(rep( 1, G), offset[ids_i])
   offy2 <- X[ids_i,] %*% t(fits$beta)
   offy2 <- as.numeric(offy2)
@@ -2012,7 +2002,7 @@
     Y_taus <- as.matrix(Y_taus)
   }
   if(disty==7){
-    Y_taus <- as.matrix(cbind(as.interger(Y_taus),as.interger(size_taus)))
+    Y_taus <- as.matrix(cbind((Y_taus),(size_taus)))
   }
 
   if(disty%in%c(1,2,4)) Y_taus <- as.integer(Y_taus)

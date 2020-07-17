@@ -60,7 +60,6 @@ testthat::test_that('species mix bernoulli', {
   disty <- 1
   size <- rep(1,nrow(y))
 
-
   # test a single bernoulli model
   i <- 1
   testthat::expect_length(ecomix:::apply_glm_sam_inits(i, y, X, W, site_spp_weights, offset, y_is_na, disty, size),4)
@@ -79,6 +78,10 @@ testthat::test_that('species mix bernoulli', {
   pis <- rep(1/G, G)
   taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
   taus <- ecomix:::shrink_taus(taus, max_tau=1/G + 0.1, G)
+
+  # gg <- 1
+  # dat.tau <- rep(taus[,gg],nrow(y))
+  # glm.fit(x=as.matrix(X),y=as.matrix(y),weights=dat.tau,family="binomial")
 
   ## get to this in a bit
   gg <- 1
