@@ -25,21 +25,22 @@ testthat::test_that('species_mix negative binomial', {
   S <- ncol(y)
   control <- species_mix.control()
   disty <- 4
+  size <- rep(1,nrow(y))
 
 
   # test a single bernoulli model
   i <- 1
   # for(i in 1:S)
-  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W, site_spp_weights, offset, y_is_na, disty),4)
+  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W, site_spp_weights, offset, y_is_na, disty, size),4)
   fm_negative_binomialint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam_inits,
                                                    y, X, W, site_spp_weights, offset,
-                                                   y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
+                                                   y_is_na, disty, size, .parallel = control$cores, .verbose = !control$quiet)
   testthat::expect_length(do.call(cbind,fm_negative_binomialint)[1,],S)
 
   #get the taus
-  starting_values <- ecomix:::initiate_fit_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
+  starting_values <- ecomix:::initiate_fit_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control)
   fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,gamma=starting_values$gamma,theta=starting_values$theta)
-  first_fit <- list(y = y, x = X, W = W, weights=site_spp_weights, offset=offset)
+  first_fit <- list(y = y, x = X, W = W, weights=site_spp_weights, offset=offset, size=size)
 
   # get the loglikelihood based on these values
   logls <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
@@ -48,9 +49,9 @@ testthat::test_that('species_mix negative binomial', {
   taus <- ecomix:::shrink_taus(taus, max_tau=1/G + 0.1, G)
 
   # ## now let's try and fit the optimisation
-  sv <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, control)
-  tmp <- ecomix:::sam_optimise(y, X, W, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, start_vals = sv, control)
-  testthat::expect_length(tmp,19)
+  sv <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty,size, control)
+  tmp <- ecomix:::sam_optimise(y, X, W, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty,size, start_vals = sv, control)
+  testthat::expect_length(tmp,18)
 
   sp_form <- ~1
   fm1 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'negative_binomial',
