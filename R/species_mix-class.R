@@ -1738,7 +1738,7 @@
     outcomes <- as.matrix(y[ids_i,ss])
   }
   if (disty==7){
-    outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]))
+    outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]-y[ids_i,ss]))
   }
 
   if(ncol(X)==1){
@@ -1831,7 +1831,7 @@
    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
   }
   if (disty==7){
-    outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]))
+    outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]-y[ids_i,ss]))
   }
 
   if(ncol(X)==1){
@@ -1848,7 +1848,7 @@
   if( disty %in% c(1,2,3,4,6,7)){
     # lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
 
-    ft_sp <- try(glm.fit(y=outcomes, x=df,weights=as.numeric(site_spp_weights[ids_i,ss]),
+    ft_sp <- try(glm.fit(y=outcomes, x=df,#weights=as.numeric(site_spp_weights[ids_i,ss]),
                         family=fam, offset=offset[ids_i]), silent=FALSE)
     if (any(class(ft_sp)[1] %in% 'try-error')){
       my_coefs <- rep(NA, ncol(X[ids_i,]))
@@ -1907,7 +1907,7 @@
     outcomes <-y[ids_i,ss]
   }
   if (disty==7){
-    outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]))
+    outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]-y[ids_i,ss]))
   }
 
   out1 <- kronecker(rep( 1, G), outcomes)
@@ -2002,7 +2002,7 @@
     Y_taus <- as.matrix(Y_taus)
   }
   if(disty==7){
-    Y_taus <- as.matrix(cbind((Y_taus),(size_taus)))
+    Y_taus <- as.matrix(cbind(Y_taus,size_taus-Y_taus))
   }
 
   if(disty%in%c(1,2,4)) Y_taus <- as.integer(Y_taus)
