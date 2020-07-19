@@ -36,9 +36,10 @@ testthat::test_that('testing partial species mix bernoulli ', {
   inits <- NULL
   control <- species_mix.control(quiet = FALSE)
   offset <- rep(0,nrow(X))
+  size <- rep(1,nrow(y))
 
   fm_sp_mods <-  surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam_inits, y, X, W,
-                                       site_spp_weights, offset, y_is_na, disty,
+                                       site_spp_weights, offset, y_is_na, disty, size,
                                        .parallel = control$cores, .verbose = FALSE)
 
 
@@ -47,7 +48,7 @@ testthat::test_that('testing partial species mix bernoulli ', {
                                                      site_spp_weights = site_spp_weights,
                                                      offset = offset, y_is_na = y_is_na,
                                                      G = G, S = S,
-                                                     disty = disty,
+                                                     disty = disty,size = size,
                                                      control = control)
 
 
@@ -61,12 +62,12 @@ testthat::test_that('testing partial species mix bernoulli ', {
   ss <- 1
   spp_conditional_max <- ecomix:::apply_glm_spp_coefs_sams(ss, y, X, W, G, taus,
                                                            site_spp_weights,
-                                                           offset, y_is_na, disty, fits)
+                                                           offset, y_is_na, disty, fits, size)
 
   fm_spp_coefs <- surveillance::plapply(seq_len(S),
                                         ecomix:::apply_glm_spp_coefs_sams,
                                         y, X, W, G, taus, site_spp_weights,
-                                        offset, y_is_na, disty, fits,
+                                        offset, y_is_na, disty, fits, size,
                                         .parallel = control$cores,
                                         .verbose = FALSE)
 
@@ -74,18 +75,18 @@ testthat::test_that('testing partial species mix bernoulli ', {
   mix_conditional_max <- ecomix:::apply_glm_mix_coefs_sams(gg, y, X, W,
                                                            site_spp_weights,
                                                            offset, y_is_na, disty,
-                                                           taus, fits, logls_mus$fitted)
+                                                           taus, fits, logls_mus$fitted, size)
 
   fm_mix_coefs <- surveillance::plapply(seq_len(G),
                                         ecomix:::apply_glm_mix_coefs_sams,
                                         y, X, W,
                                         site_spp_weights, offset, y_is_na, disty,
-                                        taus, fits, logls_mus$fitted,
+                                        taus, fits, logls_mus$fitted, size,
                                         .parallel = control$cores,
                                         .verbose = FALSE)
 
   partial_ECM <- ecomix:::fitmix_ECM_sam(y, X, W, spp_weights, site_spp_weights,
-                                         offset, y_is_na, G, S, disty,
+                                         offset, y_is_na, G, S, disty, size,
                                          control=species_mix.control(em_steps=10))
 
   start_vals <- ecomix:::get_starting_values_sam(y = y, X = X, W = W,
@@ -94,21 +95,21 @@ testthat::test_that('testing partial species mix bernoulli ', {
                                                  offset = offset,
                                                  y_is_na = y_is_na,
                                                  G = G, S = S,
-                                                 disty = disty,
+                                                 disty = disty, size = size,
                                                  control = species_mix.control(em_steps = 10))
 
   tmp <- ecomix:::sam_optimise(y,X,W,offset,spp_weights,site_spp_weights,y_is_na,
-                               S,G,disty,start_vals,
+                               S,G,disty,size,start_vals,
                                control=ecomix:::species_mix.control(optimise_cpp = 0,loglOnly_cpp = 1))
   tmp[[1]]
 
 
   tmp <- ecomix:::sam_optimise(y,X,W,offset,spp_weights,site_spp_weights,y_is_na,
-                               S,G,disty,start_vals,
+                               S,G,disty,size,start_vals,
                                control=ecomix:::species_mix.control(optimise_cpp = 0,derivOnly_cpp = 1))
-
+  tmp$scores
   tmp <- ecomix:::sam_optimise(y,X,W,offset,spp_weights,site_spp_weights,y_is_na,
-                               S,G,disty,start_vals,
+                               S,G,disty,size,start_vals,
                                control=ecomix:::species_mix.control())
 
   test_part_sam <- species_mix(sam_form,sp_form,simulated_data,4,

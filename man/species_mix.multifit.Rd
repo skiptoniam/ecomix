@@ -76,6 +76,8 @@ vector n species long.}
 \item{bb_weights}{a numeric vector of n species long. This is used for
 undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
 
+\item{size}{The size of the sample for a binomial model (defaults to 1).}
+
 \item{control}{a list of control parameters for optimisation and calculation.
 See details. From \code{species_mix.control} for details on optimistaion
 parameters.}
@@ -114,6 +116,17 @@ The multiple starts will enable optimisation of the loglikelihood using multiple
 }
 \examples{
 \donttest{
+library(ecomix)
+set.seed(42)
+sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
+collapse = ','),")~x1+x2"))
+sp_form <- ~ 1
+beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,1.9),3,2,byrow=TRUE)
+dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
+x2=stats::rnorm(100,0,2.5))
+dat[,-1] <- scale(dat[,-1])
+simulated_data <- species_mix.simulate(archetype_formula=sam_form,
+ species_formula=sp_form, dat,beta=beta,dist="bernoulli")
 fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
                               distribution = 'bernoulli', nstart = 10,
                               n_mixtures=3)
