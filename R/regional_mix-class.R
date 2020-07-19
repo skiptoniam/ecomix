@@ -691,6 +691,8 @@
     abline( h=0)
 
   }
+  opar <- par(no.readonly =TRUE)
+  on.exit(par(opar))
 }
 
 #' @rdname plot.regional_mix_stab
@@ -744,6 +746,8 @@
   lines(c(0, x$oosSizeRange), c(mean(x$logl.sites), apply(x$predlogls,
                                                           1, mean, na.rm = TRUE)), lwd = 2, col = "black")
   invisible(TRUE)
+  opar <- par(no.readonly =TRUE)
+  on.exit(par(opar))
 }
 
 #' @rdname predict.regional_mix

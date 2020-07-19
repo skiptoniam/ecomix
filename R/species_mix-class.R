@@ -1070,7 +1070,8 @@
             {loggy <- ""})
     plot( preds, obs.resid, xlab="Fitted", ylab="RQR", main="Residual versus Fitted", sub="Colours separate species", pch=20, col=rep( 1:S, each=x$n), log=loggy)
     abline( h=0)
-
+    opar <- par(no.readonly =TRUE)
+    on.exit(par(opar))
   # }
 }
 
