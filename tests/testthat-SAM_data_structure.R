@@ -1,2 +1,2 @@
 library(testthat)
-test_check("ecomix",filter='SAM_data_structure')
+# test_check("ecomix",filter='SAM_data_structure')

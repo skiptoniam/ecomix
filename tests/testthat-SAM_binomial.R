@@ -1,4 +1,4 @@
 library(testthat)
 library(ecomix)
-test_check("ecomix",filter='SAM_binomial')
+# test_check("ecomix",filter='SAM_binomial')
 
