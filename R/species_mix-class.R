@@ -202,7 +202,7 @@
 
   if(distribution=='ippm'){
     if(!all(colnames(y)==colnames(site_spp_weights))){
-      stop(cat('When modelling a inhomogeneous poisson point process model,
+      stop(message('When modelling a inhomogeneous poisson point process model,
                \n species data colnames must match weights colnames.\n\n
                Species data colnames from "data" are:\n',colnames(y),'.\n\n
                While the colnames of the weights are:\n',
@@ -521,7 +521,7 @@
 
   if(distribution=='ippm'){
     if(!all(colnames(y)==colnames(site_spp_weights))){
-      stop(cat('When modelling a inhomogeneous poisson point process model,
+      stop(message('When modelling a inhomogeneous poisson point process model,
                \n species data colnames must match weights colnames.\n\n
                Species data colnames from "data" are:\n',colnames(y),'.\n\n
                While the colnames of the weights are:\n',
@@ -1443,17 +1443,6 @@
   res <- cbind(res, res[, 1]/res[, 2])
   res <- cbind(res, 2 * (1 - pnorm(abs(res[, 3]))))
   colnames(res) <- c("Estimate", "SE", "z-score", "p")
-
-  # if(!is.null(object$names$Wvars))
-  #   rownames(res) <- c(object$names$spp,
-  #                    paste0(object$names$Xvars,"_",rep(object$names$SAMs,each=object$npx)),
-  #                    paste0(object$names$Wvars,"_",rep(object$names$spp,each=object$npw)),
-  #                    paste0("eta",(object$G-1)))
-  # else
-  #   rownames(res) <- c(object$names$spp,
-  #                      paste0(object$names$Xvars,"_",rep(object$names$SAMs,each=object$npx)),
-  #                      paste0("eta",(object$G-1)))
-
   return(res)
 }
 
@@ -1802,7 +1791,6 @@
                             dfr=length(outcomes), eps=1e-4)
       if(tmp>2) tmp <- 2
       theta <- log( 1/tmp)
-      # cat(tmp,"\n")
     }
     if( disty == 6){
       preds <- as.numeric( predict(ft_sp, s=locat.s, type="link",
@@ -1879,7 +1867,6 @@
                             dfr=length(outcomes), eps=1e-4)
       if(tmp>2) tmp <- 2
       theta <- log( 1/tmp)
-      # cat(tmp,"\n")
     }
     if( disty == 6){
       preds <- as.numeric(ft_sp$linear.predictors)
@@ -2351,7 +2338,6 @@ starting values;\n starting values are generated using ',control$init_method,
   fits <- starting_values$fits
   taus <- starting_values$taus
   pis <- starting_values$pis
-  # cat('start pis', pis,'\n')
   first_fit <- starting_values$first_fit
   logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
   init_steps <- 3
@@ -2368,7 +2354,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
     if (any(pis < sqrt(.Machine$double.eps))) {
        if(restart_ite==1){
-         cat('Pis have gone to zero - restarting with new initialisation \n')
+         message('Pis have gone to zero - restarting with new initialisation \n')
          starting_values <- get_initial_values_sam(y = y, X = X, W = W,
                                                 spp_weights = spp_weights,
                                                 site_spp_weights = site_spp_weights,
@@ -2381,7 +2367,7 @@ starting values;\n starting values are generated using ',control$init_method,
       taus <- starting_values$taus
       first_fit <- starting_values$first_fit
       } else {
-        cat('Pis have gone to zero - restarting with random inits \n')
+        message('Pis have gone to zero - restarting with random inits \n')
       taus <- matrix(runif(S*G),S); taus <- taus/rowSums(taus);
       pis <- colSums(taus)/S;
       fits$beta <- matrix(rnorm(G*(ncol(X))),G,(ncol(X)))
@@ -2465,9 +2451,9 @@ starting values;\n starting values are generated using ',control$init_method,
     logl_old <- logl_new
     logl_new <- get_incomplete_logl_sam(eta = additive_logistic(pis,inv = TRUE)[-G],
                                         first_fit, fits, spp_weights, G, S, disty)
-    if(!control$quiet)cat("Iteration ",ite,"\n")
-    if(!control$quiet)cat("Loglike: ", logl_new,"\n")
-    if(!control$quiet)cat("Pis: ", pis,"\n")
+    if(!control$quiet)message("Iteration ",ite,"\n")
+    if(!control$quiet)message("Loglike: ", logl_new,"\n")
+    if(!control$quiet)message("Pis: ", pis,"\n")
     ite <- ite + 1
   }
 
@@ -2965,16 +2951,16 @@ starting values;\n starting values are generated using ',control$init_method,
 
 "print_starting_values" <-  function(S, G, npx, npw, n, alpha, beta, gamma,
                                      eta, theta){
-  cat(S, "species.\n")
-  cat(G, "groups.\n")
-  cat(npx, "archetype coefs.\n")
-  cat(npw, "species coefs.\n")
-  cat(n,"sites.\n")
-  cat("starting species intercepts:\n",alpha,"\n")
-  cat("starting archetype parameters:\n",beta,"\n")
-  cat("starting archetype membership:\n",additive_logistic(eta),"\n")
-  cat("starting species parameters:\n",gamma,"\n")
-  cat("starting species specific dispersion parameters:\n",theta,"\n")
+  message(S, "species.\n")
+  message(G, "groups.\n")
+  message(npx, "archetype coefs.\n")
+  message(npw, "species coefs.\n")
+  message(n,"sites.\n")
+  message("starting species intercepts:\n",alpha,"\n")
+  message("starting archetype parameters:\n",beta,"\n")
+  message("starting archetype membership:\n",additive_logistic(eta),"\n")
+  message("starting species parameters:\n",gamma,"\n")
+  message("starting species specific dispersion parameters:\n",theta,"\n")
 }
 
 "reltol_fun" <- function(logl_n1, logl_n){
@@ -3163,7 +3149,7 @@ starting values;\n starting values are generated using ',control$init_method,
     presence_data <- data.frame(po_matrix,const=1,po_covariatesX)
     bkdata <- cbind(absence_data,const=1,X)
   }
-  # cat(colnames(presence_data),colnames(bkdata))
+  # message(colnames(presence_data),colnames(bkdata))
   mm <- rbind(presence_data,bkdata)
 
   ## calculate out the weights for ippm
@@ -3178,7 +3164,7 @@ starting values;\n starting values are generated using ',control$init_method,
   presence_sites <- data.frame(presence_sites)
   background_sites <- data.frame(cell_id=1:ncol(X),
                                  matrix(rep(grid2D$cellArea,S),nrow(grid2D),S))
-  # cat(colnames(presence_sites),colnames(background_sites))
+  # message(colnames(presence_sites),colnames(background_sites))
   wts <- rbind(presence_sites[,-1],background_sites[,-1])
 
   return(list(mm=mm,weights=wts))
