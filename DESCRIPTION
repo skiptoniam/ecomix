@@ -1,7 +1,7 @@
 Package: ecomix
 Type: Package
 Title: Fitting Finite Mixture Models to Ecological Data
-Version: 0.0.3
+Version: 0.0.4
 Authors@R: c(person("Skipton", "Woolley", email = "skip.woolley@csiro.au", role = c("aut", "cre")),
              person("Scott", "Foster", email = "scott.foster@csiro.au", role = c("aut")),
              person("Piers", "Dunstan", email = "Piers.Dunstan@csiro.au",  role = c("aut")))
