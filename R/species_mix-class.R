@@ -2511,9 +2511,9 @@ starting values;\n starting values are generated using ',control$init_method,
   #   species_to_remove <- NA
   # }
 
-  # prev_min_sites <- control$minimum_sites_occurrence
-  # sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
-  # if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,,drop=FALSE]
+  prev_min_sites <- control$minimum_sites_occurrence
+  sel_omit_spp <- which(colSums(y>0, na.rm = TRUE) <= prev_min_sites)
+  if(length(sel_omit_spp)>0) beta <- beta[-sel_omit_spp,,drop=FALSE]
 
   if(G==1) control$init_method <- 'kmeans'
 
@@ -2557,13 +2557,13 @@ starting values;\n starting values are generated using ',control$init_method,
     taus <- matrix(1,nrow=ncol(y), ncol = G)
   } else {
   taus <- matrix(0,nrow=ncol(y), ncol= G)
-  # if(length(sel_omit_spp)>0){
-  #   for(j in 1:length((1:S)[-sel_omit_spp]))
-  #     taus[(1:S)[-sel_omit_spp][j],fmmvnorm$cluster[j]] <- 1
-  #     taus[sel_omit_spp,] <- matrix(runif(length(sel_omit_spp)*G),length(sel_omit_spp), G)
-  #     } else {
+  if(length(sel_omit_spp)>0){
+    for(j in 1:length((1:S)[-sel_omit_spp]))
+      taus[(1:S)[-sel_omit_spp][j],fmmvnorm$cluster[j]] <- 1
+      taus[sel_omit_spp,] <- matrix(runif(length(sel_omit_spp)*G),length(sel_omit_spp), G)
+      } else {
   for(j in seq_len(S))taus[j,fmmvnorm$cluster[j]] <- 1
-        # }
+        }
   }
 
   taus <- taus/rowSums(taus)
