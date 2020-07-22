@@ -2473,7 +2473,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
 
   # if(!disty%in%c(2,3,4))
-  fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glm_sam_inits, y, X, W,
+  fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W,
                                        site_spp_weights, offset, y_is_na, disty, size,
                                       .parallel = control$cores, .verbose = FALSE)
   # if(disty%in%c(2,3,4))fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W,
