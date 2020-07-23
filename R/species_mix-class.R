@@ -2331,7 +2331,7 @@ starting values;\n starting values are generated using ',control$init_method,
                                             site_spp_weights = site_spp_weights,
                                             offset = offset, y_is_na = y_is_na,
                                             G = G, S = S,
-                                            disty = disty, size =size,
+                                            disty = disty, size = size,
                                             control = control)
 
   # first e-step
@@ -2547,7 +2547,8 @@ starting values;\n starting values are generated using ',control$init_method,
     if(disty%in%c(4,6))theta <- random_coefs[[4]]
   }
 
- if(ncol(X[,,drop=FALSE])==1){ names(grp_coefs)[2] <- names(X[,,drop=FALSE])[2]
+ if(ncol(X[,,drop=FALSE])==1){
+   names(grp_coefs)[2] <- names(X[,,drop=FALSE])[2]
  } else {
    colnames(grp_coefs) <- colnames(X[,,drop=FALSE])
  }
@@ -2578,7 +2579,6 @@ starting values;\n starting values are generated using ',control$init_method,
   results$theta <- theta
   results$taus <- taus
   results$pis <- pis
-  # results$species_to_remove <- species_to_remove
 
   return(results)
 }
