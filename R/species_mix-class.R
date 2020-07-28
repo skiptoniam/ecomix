@@ -31,6 +31,10 @@
 #' for the archetype models. If you include a species specific formula which has
 #' more than an intercept you will be fitting a partial species archetype model
 #' which has species specific covariates and archetype specific covariates.
+#' @param bias_formula an object of class "formula", which is mean to represnet
+#'  a constant single set of covariates across all species, typically you might
+#'  use this an alternative to an offset, where there might be some bias in the
+#'  data which is relatively constant across all species.
 #' @param data a matrix of dataframe which contains the 'species_data'
 #' matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
 #' const, temperature, rainfall. dims of matirx should be
@@ -97,7 +101,9 @@
 #'  }
 
 "species_mix" <- function(archetype_formula = NULL,
-                          species_formula = stats::as.formula(~1), data,
+                          species_formula = stats::as.formula(~1),
+                          bias_formula = NULL, # will correspond with the design matrix U
+                          data,
                           n_mixtures = 3, distribution="bernoulli", offset=NULL,
                           weights=NULL, bb_weights=NULL, size= NULL, control=NULL,
                           inits=NULL, standardise = FALSE, titbits = TRUE){
@@ -3241,10 +3247,11 @@ starting values;\n starting values are generated using ',control$init_method,
     }
   }
 
-"clean_data_sam" <- function(data, form1, form2, distribution){
+"clean_data_sam" <- function(data, form1, form2, form3, distribution){
   if(distribution=='ippm') na_rule <- "na.pass"
   else  na_rule <- "na.exclude"
     mf.X <- stats::model.frame(form1, data = data, na.action = na_rule)
+    if(is.null(form3)){
     if( !is.null( form2)){
       mf.W <- stats::model.frame(form2, data = data, na.action = na_rule)
       ids <- c( rownames( mf.W), rownames( mf.X))[duplicated( c( rownames( mf.W), rownames( mf.X)))]  #those rows of data that are good for both parts of the model.
@@ -3254,6 +3261,9 @@ starting values;\n starting values are generated using ',control$init_method,
     else{
       mf.W <- NULL
       ids <- rownames( mf.X)
+    }
+    } else {
+
     }
     res <- list(ids=ids, mf.X=mf.X, mf.W=mf.W)
 

@@ -3,15 +3,20 @@
 sam_data::sam_data(){};
 sam_data::~sam_data(){};
 
-void sam_data::setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &Roffset,
-						SEXP &Rspp_wts, SEXP &Rsite_spp_wts, SEXP &Ry_not_na, SEXP &Rbinsize,
-						SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw,
+
+//slowly adding the bias formula design matrix. 
+
+void sam_data::setVals( SEXP &Ry, SEXP &RX, SEXP &RW, //SEXP &RU, 
+						SEXP &Roffset, SEXP &Rspp_wts, 
+						SEXP &Rsite_spp_wts, SEXP &Ry_not_na, SEXP &Rbinsize,
+						SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw, //SEXP &Rpu,
 						SEXP &RnObs, SEXP &Rdisty, SEXP &RoptiDisp, SEXP &RoptiPart){
 
 	nS = *(INTEGER( RS));
 	nG = *(INTEGER( RG));
 	nPX = *(INTEGER( Rpx));
 	nPW = *(INTEGER( Rpw));
+	//nPU = *(INTEGER( Rpu));
 	nObs = *(INTEGER( RnObs));
 	disty = *(INTEGER( Rdisty));
 	optiDisp = *(INTEGER( RoptiDisp));
@@ -21,6 +26,7 @@ void sam_data::setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &Roffset,
 	y = REAL( Ry);
 	X = REAL( RX);
 	W = REAL( RW);
+	//U = REAL( RU);
 	offset = REAL( Roffset);
 	spp_wts = REAL( Rspp_wts); // this is for the bayesian bootstrap
 	site_spp_wts = REAL( Rsite_spp_wts); //this is for the ippm
