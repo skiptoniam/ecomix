@@ -2210,11 +2210,11 @@ starting values;\n starting values are generated using ',control$init_method,
   return(logl)
 }
 
-"get_initial_values_sam" <- function(y, X, W, spp_weights, site_spp_weights,
+"get_initial_values_sam" <- function(y, X, W, U, spp_weights, site_spp_weights,
                                      offset, y_is_na, G, S, disty, size, control){
 
   # get intial model fits
-  starting_values <- initiate_fit_sam(y, X, W, spp_weights, site_spp_weights,
+  starting_values <- initiate_fit_sam(y, X, W, U, spp_weights, site_spp_weights,
                                       offset, y_is_na, G, S, disty, size, control)
 
   #if any are errors then remove them from the models forever.
@@ -2231,8 +2231,9 @@ starting values;\n starting values are generated using ',control$init_method,
   fits <- list(alpha=starting_values$alpha,
                beta=starting_values$beta,
                gamma=starting_values$gamma,
+               delta=starting_values$delta,
                theta=starting_values$theta)
-  first_fit <- list(y = y, x = X, W = W, spp_weights = spp_weights,
+  first_fit <- list(y = y, x = X, W = W, U = U, spp_weights = spp_weights,
                     site_spp_weights = site_spp_weights, offset = offset,
                     y_is_na = y_is_na, size = size)
 
@@ -2498,10 +2499,14 @@ starting values;\n starting values are generated using ',control$init_method,
 
 }
 
-"initiate_fit_sam" <- function(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control){
+"initiate_fit_sam" <- function(y, X, W, U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control){
 
 
-  # if(!disty%in%c(2,3,4))
+  # form <- paste0('cbind(',paste0(colnames(y),collapse = '+'),')~ -1 +',colnames(U))
+  # mm <- model.frame(form,cbind(y,U))
+  # model.response(mm)
+  # glm(form,data = cbind(y,U))
+
   fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W,
                                        site_spp_weights, offset, y_is_na, disty, size,
                                       .parallel = control$cores, .verbose = FALSE)
@@ -2844,6 +2849,14 @@ starting values;\n starting values are generated using ',control$init_method,
   return( W)
 }
 
+"get_U_sam" <- function(bias_formula, mf.U){
+  form.U <- bias_formula
+  if(length( form.U)>2)
+    form.W[[2]] <- NULL #get rid of outcomes
+  form.U <- update(form.U,~.-1)
+  U <- model.matrix( form.U, mf.U)
+  return(U)
+}
 
 "species_data_check" <- function(x){
   stopifnot(is.matrix(x)|is.data.frame(x))
@@ -3270,25 +3283,40 @@ starting values;\n starting values are generated using ',control$init_method,
     }
   }
 
-"clean_data_sam" <- function(data, form1, form2, form3, distribution){
+"clean_data_sam" <- function(data, form1, form2, form3=NULL, distribution){
   if(distribution=='ippm') na_rule <- "na.pass"
   else  na_rule <- "na.exclude"
     mf.X <- stats::model.frame(form1, data = data, na.action = na_rule)
     if(is.null(form3)){
-    if( !is.null( form2)){
+    mf.U <- NULL
+    if(is.null( form2)){
       mf.W <- stats::model.frame(form2, data = data, na.action = na_rule)
       ids <- c( rownames( mf.W), rownames( mf.X))[duplicated( c( rownames( mf.W), rownames( mf.X)))]  #those rows of data that are good for both parts of the model.
       mf.X <- mf.X[rownames( mf.X) %in% ids,, drop=FALSE]
       mf.W <- mf.W[rownames( mf.W) %in% ids,, drop=FALSE]
-    }
-    else{
-      mf.W <- NULL
-      ids <- rownames( mf.X)
-    }
+    } else{
+        mf.W <- NULL
+        ids <- rownames( mf.X)
+      }
     } else {
+      if( !is.null( form2)){
+        mf.W <- stats::model.frame(form2, data = data, na.action = na_rule)
+        mf.U <- stats::model.frame(form3, data = data, na.action = na_rule)
+        ids <- c( rownames( mf.W), rownames( mf.X), rownames( mf.U))[duplicated( c( rownames( mf.W), rownames( mf.X), rownames( mf.U)))]  #those rows of data that are good for both parts of the model.
+        mf.X <- mf.X[rownames( mf.X) %in% ids,, drop=FALSE]
+        mf.W <- mf.W[rownames( mf.W) %in% ids,, drop=FALSE]
+        mf.U <- mf.U[rownames( mf.U) %in% ids,, drop=FALSE]
+      } else{
+        mf.W <- NULL
+        mf.U <- stats::model.frame(form3, data = data, na.action = na_rule)
+        ids <- c( rownames( mf.U), rownames( mf.X))[duplicated( c( rownames( mf.U), rownames( mf.X)))]  #those rows of data that are good for both parts of the model.
+        mf.X <- mf.X[rownames( mf.X) %in% ids,, drop=FALSE]
+        mf.U <- mf.U[rownames( mf.U) %in% ids,, drop=FALSE]
+      }
+
 
     }
-    res <- list(ids=ids, mf.X=mf.X, mf.W=mf.W)
+    res <- list(ids=ids, mf.X=mf.X, mf.W=mf.W, mf.U=mf.U)
 
     return( res)
   }
