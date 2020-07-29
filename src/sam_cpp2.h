@@ -112,7 +112,7 @@ class sam_fits {
 	public:
 		sam_fits();
 		~sam_fits();
-		void initialise( const int &nObs, const int &nG, const int &nS, const int &nPX, const int &nPW, const int &NAnum);
+		void initialise( const int &nObs, const int &nG, const int &nS, const int &nPX, const int &nPW, const int &nPU, const int &NAnum);
 		void zero(const int &NAnum);
 
 		vector<double> allMus; 	//3D array for the fitted mus (note that indexing must be done with MATREF3D)
@@ -122,9 +122,9 @@ class sam_fits {
 		vector<double> dlogdalpha; 
 		vector<double> dlogdbeta;
 		vector<double> dlogdgamma;
+		vector<double> dlogddelta;
 		vector<double> dlogdpi;
 		vector<double> dlogdtheta;
-		vector<double> dlogddelta;
 
 };
 

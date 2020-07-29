@@ -820,12 +820,15 @@
 #' }
 ## need to update this to take the new formula framework and simulate ippm data.
 "species_mix.simulate" <-  function(archetype_formula,
-                                    species_formula, dat,
+                                    species_formula,
+                                    bias_formula,
+                                    dat,
                                     offset = NULL,
                                     n_mixtures = 3,
                                     alpha=NULL,
                                     beta=NULL,
                                     gamma=NULL,
+                                    delta=NULL,
                                     theta=NULL,
                                     size=NULL,
                                     distribution = "bernoulli"){
@@ -838,6 +841,21 @@
 
   sam_org <- archetype_formula
   spp_org <- species_formula
+
+  if(!is.null(bias_formula)){
+    bias_formula <- stats::as.formula(bias_formula)
+    bias_org <- bias_formula
+
+    #drop intercept from bias
+    bias_formula <- update(bias_formula,~.-1)
+    U <- stats::model.matrix(bias_formula, dat)
+    npu <- ncol(U)
+  } else {
+    bias_org <- NULL
+    npu <- 0
+    U <- NULL
+  }
+
 
   # how many species to simulate???
   S <- length(archetype_formula[[2]])-1
@@ -876,6 +894,12 @@
   } else {
     gamma <- matrix( as.numeric( gamma), nrow=S)
   }
+
+  if(is.null(delta) | length(delta) != (npu)){
+    message("Random values for delta")
+    delta <- rnorm(npu)
+  }
+
   if( distribution == "negative_binomial" & (is.null(theta) | length( theta) != S)){
     message( "Random values for overdispersions")
     theta <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
@@ -886,7 +910,7 @@
   }
 
   if(distribution %in% c('bernoulli','binomial')) link <- make.link('logit')
-  if(distribution %in% c('poisson','ippm','negative_binomial')) link <- make.link('log')
+  if(distribution %in% c('poisson','ippm','negative_binomial','tweedie')) link <- make.link('log')
   if(distribution %in% c('gaussian')) link <- make.link('identity')
   if(distribution %in% 'ippm') {
     grid <- simulate_ippm_grid(X,W)
@@ -898,11 +922,13 @@
   ## simulate the groups and fitted values.
   fitted <- matrix(0, dim(X)[1], S)
   group <- rep(0, S)
+  if(npu>0)eta_bias <- U %*% delta
+  else eta_bias <- rep(0,nrow(X))
   for (ss in seq_len(S)) {
     gg <- ceiling(stats::runif(1) * G)
     eta_spp <- W %*% c(alpha[ss],gamma[ss,])
     eta_mix <- X %*% beta[gg, ]
-    eta <- eta_spp + eta_mix + offset
+    eta <- eta_spp + eta_mix + eta_bias + offset
     fitted[, ss] <- link$linkinv(eta)
     group[ss] <- gg
   }
@@ -948,10 +974,12 @@
   attr(res, "alpha") <- alpha
   attr(res, "beta") <- beta
   attr(res, "gamma") <- gamma
+  attr(res, "delta") <- delta
   attr(res, "theta") <- theta
   attr(res, "mu") <- fitted
   attr(res, "ippm_weights") <- wts
   attr(res, "size") <- size
+  attr(res, "offset") <- offset
   return(res)
 }
 

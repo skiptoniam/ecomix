@@ -469,6 +469,7 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	vector<double> alphaDerivs(dat.nS, 0);//change to dat.NAN
 	vector<double> betaDerivs((dat.nG*dat.nPX), 0);
 	vector<double> gammaDerivs((dat.nS*dat.nPW), 0);
+	vector<double> deltaDerivs(dat.nPU, 0); // check there should only be g pis
 	vector<double> etaDerivs((dat.nG-1), 0); // check there should only be g pis
 	vector<double> thetaDerivs(dat.nS, 0);
 	double logl;
@@ -500,6 +501,9 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	calc_gamma_deriv(gammaDerivs, fits.dlogdgamma, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
 	//}
 
+	/// Insert here the derivate for dlogddelta (bias)
+
+
 	//derivate w.r.t thetas
 	//std::cout << dat.isDispersion() << '\n';
 	if( dat.isDispersion()){
@@ -516,7 +520,7 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	calc_eta_deriv(etaDerivs, fits.dlogdpi, parpi, dat);
 
 	//update the derivates.
-	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, thetaDerivs);
+	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
 	}
 
 /* Ok I'm going to try and generalise the derivate function across all distributions */
