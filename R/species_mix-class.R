@@ -821,7 +821,7 @@
 ## need to update this to take the new formula framework and simulate ippm data.
 "species_mix.simulate" <-  function(archetype_formula,
                                     species_formula,
-                                    bias_formula,
+                                    bias_formula=NULL,
                                     dat,
                                     offset = NULL,
                                     n_mixtures = 3,
