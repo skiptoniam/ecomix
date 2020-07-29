@@ -957,16 +957,11 @@
     colnames(fitted) <- all.vars(sam_org)[1:S]
     colnames(outcomes) <-  all.vars(sam_org)[1:S]
     if(ncol(W)>1){
-      if( !all( offset==0))
-        res <- data.frame(outcomes,const=1, X, W[,-1,drop=FALSE], offset=offset)
-      else
-        res <- data.frame(outcomes,const=1, X, W[,-1,drop=FALSE])
+      res <- data.frame(outcomes,const=1, X, W[,-1,drop=FALSE])
     } else {
-      if( !all( offset==0))
-        res <- data.frame(outcomes,const=1, X, offset=offset)
-      else
-        res <- data.frame(outcomes,const=1, X)
+      res <- data.frame(outcomes,const=1, X)
     }
+    if(npu>0) res <- cbind(res,U)
   wts <- NULL
   }
   attr(res, "SAMs") <- group
