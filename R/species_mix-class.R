@@ -1705,12 +1705,19 @@
   }else{
     eta_spp <- first_fit$W %*% c(fits$alpha[ss])
   }
+
+  if(!is.null(first_fit$U)){
+    eta_all <- first_fit$U %*% fits$delta
+  } else {
+    eta_all <- rep(0,nrow(first_fit$y))
+  }
+
   eta_mix <- first_fit$x %*% t(fits$beta)
   offy <- first_fit$offset
   y <- first_fit$y[,ss]
   logls <- rep( NA, G)
   for( gg in 1:G){
-    eta <- eta_spp + eta_mix[,gg] + offy
+    eta <- eta_spp + eta_mix[,gg] + eta_all + offy
     mus <- link$linkinv(eta)
     if(disty==4)logls[gg] <- sum( dnbinom(x = y, mu = mus, size = theta, log=TRUE))
     if(disty==6)logls[gg] <- sum( dnorm(x = y, mean = mus, sd = theta, log=TRUE))
@@ -2071,8 +2078,7 @@
 
 # just need one glmo
 "glm_all_coefs_sams" <- function(y, X, W, U, site_spp_weights, offset,
-                                       y_is_na, disty,
-                                       taus, fits, mus, size){
+                                 y_is_na, disty, taus, fits, mus, size){
 
   ### setup the data stucture for this model.
   ### This is going to be a huge model over S*G
@@ -2130,8 +2136,6 @@
     Y_SG <- as.matrix(cbind(Y_SG,size_SG-Y_SG))
   }
 
-  if(disty%in%c(1,2,4)) Y_taus <- as.integer(Y_taus)
-
   if(disty %in% c(1,2,3,6,7)){ #don't use for tweedie - try and fit negative_binomial using glm.fit.nbinom
     ft_all <- try(glm.fit(x = as.data.frame(U_SG),
                           y = Y_SG,
@@ -2139,7 +2143,7 @@
                           offset = offy,
                           family = fam), silent = TRUE)
     if (class(ft_all)[1] %in% 'try-error'){
-      all_coefs <- rep(NA, ncol(X_taus))
+      all_coefs <- rep(NA, ncol(U))
     } else {
       all_coefs <- ft_all$coefficients
     }
@@ -2420,8 +2424,8 @@ starting values;\n starting values are generated using ',control$init_method,
       taus <- matrix(runif(S*G),S); taus <- taus/rowSums(taus);
       pis <- colSums(taus)/S;
       fits$beta <- matrix(rnorm(G*(ncol(X))),G,(ncol(X)))
-      if(ncol(W)>1)fits$gamma <- matrix(rnorm(G*(ncol(W[,-1]))),S,(ncol(W[,-1])))
-      if(ncol(U)>0)fits$delta <- rnorm(ncol(U))
+      if(ncol(W)>1)fits$gamma <- matrix(rnorm(S*(ncol(W[,-1,drop=FALSE]))),S,ncol(W[,-1,drop=FALSE]))
+      if(!is.null(U))fits$delta <- rnorm(ncol(U))
       fits$alpha <- rnorm(S)
       if (disty%in%c(4,6)) fits$theta <- rep(0.05,S)
       }
@@ -2457,7 +2461,8 @@ starting values;\n starting values are generated using ',control$init_method,
     } else {
       fm_mix_coefs <- surveillance::plapply(seq_len(G),
                                           apply_glm_mix_coefs_sams,
-                                          y, X, W, site_spp_weights,
+                                          y, X, W, U,
+                                          site_spp_weights,
                                           offset, y_is_na, disty, taus,
                                           fits, logls_mus$fitted, size,
                                           .parallel = control$cores,
@@ -2466,6 +2471,16 @@ starting values;\n starting values are generated using ',control$init_method,
       fm_mix_coefs_mat <- do.call(rbind,fm_mix_coefs)
     }
     fits$beta <- update_coefs(fits$beta, fm_mix_coefs_mat)
+
+    ## update the deltas
+    if(!is.null(U)){
+      fm_all_coefs <- glm_all_coefs_sams(y, X, W, U,
+                                       site_spp_weights,
+                                       offset, y_is_na, disty, taus,
+                                       fits, logls_mus$fitted, size)
+      fits$delta <- update_coefs(fits$delta, fm_all_coefs)
+
+    }
 
     ## need a function here that updates the dispersion parameter.
     if(ite >= init_steps){
@@ -2522,7 +2537,7 @@ starting values;\n starting values are generated using ',control$init_method,
 "initiate_fit_sam" <- function(y, X, W, U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control){
 
 
-  fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W,
+  fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W, U,
                                        site_spp_weights, offset, y_is_na, disty, size,
                                       .parallel = control$cores, .verbose = FALSE)
 
