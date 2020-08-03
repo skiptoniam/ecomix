@@ -1799,7 +1799,7 @@
     df <- X[ids_i,,drop=FALSE]
   }
 
-  if(ncol(U)>0) df <- cbind(df,U)
+  if(ncol(U)>0) df <- cbind(df,U[ids_i,,drop=FALSE])
 
 
   if( disty %in% c(1,2,3,4,6,7)){
@@ -1948,7 +1948,7 @@
 
   ids_i <- !y_is_na[,ss]
 
-  if (disty %in% c(1,7)){
+  if (disty %in% c(7)){
     outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]-y[ids_i,ss]))
   }
   if (disty %in% c(2,4)){
@@ -1970,7 +1970,7 @@
 
   if(!is.null(U)){
     U1 <- kronecker(rep( 1, G), U[ids_i,,drop=FALSE])
-    offy3 <- U1 %*% t(fits$delta)
+    offy3 <- U1 %*% (fits$delta)
   } else {
     offy3 <- rep(0,nrow(W1))
   }
@@ -2012,36 +2012,39 @@
                                        taus, fits, mus, size){
 
   ### setup the data stucture for this model.
-  Y_taus <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
-  size_taus <- matrix(rep(size,ncol(y)),nrow(y),ncol(y))[!y_is_na]
+  # dim(y)
+  Y_s <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
+  size_s <- matrix(rep(size,ncol(y)),nrow(y),ncol(y))[!y_is_na]
   X_no_NA <- list()
   for (jj in 1:ncol(y)){
     X_no_NA[[jj]] <- X[!y_is_na[,jj],,drop=FALSE]
   }
-  X_taus <- do.call(rbind, X_no_NA)
+  X_s <- do.call(rbind, X_no_NA)
 
   if(!is.null(U)){
     U_no_NA <- list()
     for (jj in 1:ncol(y)){
       U_no_NA[[jj]] <- U[!y_is_na[,jj],,drop=FALSE]
     }
-  U_taus <- do.call(rbind, U_no_NA)
-  offy3 <- U_taus %*% fits$delta
+  U_s <- do.call(rbind, U_no_NA)
+  offy3 <- U_s %*% fits$delta
   } else {
-  offy3 <- rep(0,nrow(X_taus))
+  offy3 <- rep(0,nrow(X_s))
   }
 
   n_ys <- sapply(X_no_NA,nrow)
-  wts_taus <- rep(taus[,gg,drop=FALSE],c(n_ys))
-  site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
-  wts_tausXsite_weights <- wts_taus*site_weights
+  wts_s <- rep(taus[,gg,drop=FALSE],c(n_ys))
+  site_weights <- as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na])))
+  wts_sXsite_weights <- wts_s*site_weights
   offy_mat <- replicate(ncol(y),offset)
 
-  offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
-  if(ncol(W)>1) offy2 <- W %*% t(cbind(fits$alpha,fits$gamma))
-  else offy2 <- W %*% c(fits$alpha)
-  offy2 <- unlist(as.data.frame(offy2[!y_is_na]))
-
+  offy1 <- as.matrix(unlist(as.data.frame(offy_mat[!y_is_na])))
+  if(ncol(W)>1){
+    offy2 <- W %*% t(cbind(fits$alpha,fits$gamma))
+  } else {
+    offy2 <- W %*% c(fits$alpha)
+  }
+  offy2 <- as.matrix(unlist(as.data.frame(offy2[!y_is_na])))
   offy <- as.numeric(offy1 + offy2 + offy3)
 
   # which family to use?
@@ -2052,24 +2055,25 @@
   if( disty == 6)
     fam <- gaussian()
   if (disty==3){
-    Y_taus <- as.matrix(Y_taus/site_weights)
+    Y_s <- as.matrix(Y_s/site_weights)
   } else {
-    Y_taus <- as.matrix(Y_taus)
+    Y_s <- as.matrix(Y_s)
   }
-  if(disty%in%c(1,7)){
-    Y_taus <- as.matrix(cbind(Y_taus,size_taus-Y_taus))
+  if(disty%in%c(7)){
+    Y_s <- as.matrix(cbind(Y_s,size_s-Y_s))
   }
 
   if(disty %in% c(1,2,3,6,7)){ #don't use for tweedie - try and fit negative_binomial using glm.fit.nbinom
-    ft_mix <- try(glm.fit(x = as.data.frame(X_taus),
-                          y =Y_taus,
-                          weights = c(wts_tausXsite_weights),
+    # ft_mix <- try(glm(Y_s ~ X_s - 1, offset = offy, weights = wts_sXsite_weights, family = fam))
+    ft_mix <- try(glm.fit(x = as.data.frame(X_s),
+                          y =Y_s,
+                          weights = c(wts_sXsite_weights),
                           offset = offy,
                           family = fam), silent = TRUE)
     if (class(ft_mix)[1] %in% 'try-error'){
-      mix_coefs <- rep(NA, ncol(X_taus))
+      mix_coefs <- rep(NA, ncol(X_s))
     } else {
-      mix_coefs <- ft_mix$coefficients
+      mix_coefs <- ft_mix$coefficients#[-1]
     }
   }
 
@@ -2132,7 +2136,7 @@
   } else {
     Y_SG <- as.matrix(Y_SG)
   }
-  if(disty%in%c(1,7)){
+  if(disty%in%c(7)){
     Y_SG <- as.matrix(cbind(Y_SG,size_SG-Y_SG))
   }
 
@@ -2516,9 +2520,9 @@ starting values;\n starting values are generated using ',control$init_method,
     logl_old <- logl_new
     logl_new <- get_incomplete_logl_sam(eta = additive_logistic(pis,inv = TRUE)[-G],
                                         first_fit, fits, spp_weights, G, S, disty)
-    if(!control$quiet)message("Iteration ",ite,"\n")
-    if(!control$quiet)message("Loglike: ", logl_new,"\n")
-    if(!control$quiet)message("Pis: ", pis,"\n")
+    if(!control$quiet)message(paste0("Iteration ",ite,"\n"))
+    if(!control$quiet)message(paste0("Loglike: ", logl_new,"\n"))
+    if(!control$quiet)message(c("Pis: ", paste(pis," ")," \n"))
     ite <- ite + 1
   }
 
@@ -2528,7 +2532,7 @@ starting values;\n starting values are generated using ',control$init_method,
   eta <- additive_logistic(pis, TRUE)[-G]
 
   return(list(logl = logl_new, alpha = fits$alpha, beta = fits$beta,
-              gamma = fits$gamma, theta = fits$theta,
+              gamma = fits$gamma, delta = fits$delta, theta = fits$theta,
               eta = eta, pis = pis, taus = round(taus,4),
               first_fit = first_fit))
 
