@@ -100,7 +100,7 @@
 #'  distribution = 'bernoulli',  n_mixtures=3)
 #'  }
 
-"species_mix" <- function(archetype_formula = NULL,
+  "species_mix" <- function(archetype_formula = NULL,
                           species_formula = stats::as.formula(~1),
                           all_formula = NULL, # will correspond with the design matrix U
                           data,
@@ -2405,7 +2405,7 @@ starting values;\n starting values are generated using ',control$init_method,
   # first e-step
   fits <- starting_values$fits
   taus <- starting_values$taus
-  # taus <- ecomix:::shrink_taus(taus, max_tau = 1/G + 0.3, G)
+  if(!disty==3) taus <- ecomix:::shrink_taus(taus, max_tau = 1/G + 0.1, G)
   pis <- starting_values$pis
   first_fit <- starting_values$first_fit
   logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
