@@ -8,11 +8,12 @@ species_mix.control(
   quiet = FALSE,
   cores = 1,
   init_method = "random2",
-  init_sd = 1,
+  init_sd = 0.5,
   minimum_sites_occurrence = 10,
+  init_glmnet = TRUE,
   em_prefit = TRUE,
-  em_steps = 5,
-  em_refit = 2,
+  em_steps = 3,
+  em_refit = 1,
   em_reltol = reltol_fun,
   em_maxtau = 0.8,
   theta_range = c(0.001, 10),
@@ -43,6 +44,8 @@ species_mix.control(
 \item{init_sd}{The amount of noise to add to the initailisation the default is 1.}
 
 \item{minimum_sites_occurrence}{a integer which determins the number of minimum sites present for any species for it to be included in the initialisation step. This removes rare species from initial groupings. They are then included in the overall analysis.}
+
+\item{init_glmnet}{Use glmnet rather than glm to get the initial parameter estimates. This is default.}
 
 \item{em_prefit}{Logical if TRUE the model will run a slower EM algorithm fit to find starting values.}
 

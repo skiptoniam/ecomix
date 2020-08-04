@@ -597,6 +597,7 @@
 #'@param init_method The method to use for initialisation. The options are "random2", "kmeans", "kmed". The default uses random2, which is a kmeans with noise added to the cluster.
 #'@param init_sd The amount of noise to add to the initailisation the default is 1.
 #'@param minimum_sites_occurrence a integer which determins the number of minimum sites present for any species for it to be included in the initialisation step. This removes rare species from initial groupings. They are then included in the overall analysis.
+#'@param init_glmnet Use glmnet rather than glm to get the initial parameter estimates. This is default.
 #'@param em_prefit Logical if TRUE the model will run a slower EM algorithm fit to find starting values.
 #'@param em_steps int Default is 3, the number of EM iterations to get to starting values.
 #'@param em_refit int Default is 1, number of times to refit using EM.
@@ -624,12 +625,13 @@
                                   cores = 1,
                                   ## intialisation controls
                                   init_method = 'random2',
-                                  init_sd = 1,
+                                  init_sd = .5,
                                   minimum_sites_occurrence = 10,
+                                  init_glmnet = TRUE,
                                   ## EM algorithim controls
                                   em_prefit = TRUE,
-                                  em_steps = 5,
-                                  em_refit = 2,
+                                  em_steps = 3,
+                                  em_refit = 1,
                                   em_reltol = reltol_fun,
                                   em_maxtau = 0.8,
                                   ## partial mixture penalities
@@ -655,6 +657,7 @@
                #initialisation controls
                init_method = init_method, init_sd = init_sd,
                minimum_sites_occurrence = minimum_sites_occurrence,
+               init_glmnet = init_glmnet,
                #em controls
                em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps,
                em_reltol = em_reltol, em_maxtau = em_maxtau,
@@ -2453,8 +2456,8 @@ starting values;\n starting values are generated using ',control$init_method,
     logl_new <- get_incomplete_logl_sam(eta = additive_logistic(pis,inv = TRUE)[-G],
                                         first_fit, fits, spp_weights, G, S, disty)
     if(!control$quiet)message("Iteration ",ite,"\n")
-    if(!control$quiet)message("Loglike: ", logl_new,"\n")
-    if(!control$quiet)message("Pis: ", pis,"\n")
+    if(!control$quiet)message("Loglike: ", paste(logl_new),"\n")
+    if(!control$quiet)message("Pis: ", paste(pis," "),"\n")
     ite <- ite + 1
   }
 
@@ -2473,13 +2476,15 @@ starting values;\n starting values are generated using ',control$init_method,
 "initiate_fit_sam" <- function(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control){
 
 
-  # if(!disty%in%c(2,3,4))
-  fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glm_sam_inits, y, X, W,
+  if(control$init_glmnet){
+     fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W,
                                        site_spp_weights, offset, y_is_na, disty, size,
                                       .parallel = control$cores, .verbose = FALSE)
-  # if(disty%in%c(2,3,4))fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W,
-  #                                      site_spp_weights, offset, y_is_na, disty, size,
-  #                                      .parallel = control$cores, .verbose = FALSE)
+  } else {
+     fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glm_sam_inits, y, X, W,
+                                       site_spp_weights, offset, y_is_na, disty, size,
+                                       .parallel = control$cores, .verbose = FALSE)
+  }
 
   alpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
   if(ncol(X)==1){
