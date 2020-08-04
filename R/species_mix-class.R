@@ -1965,24 +1965,35 @@
   W1 <- kronecker(rep( 1, G), W[ids_i,,drop=FALSE])
   wts1 <- kronecker(rep( 1, G), as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,],each=length(site_spp_weights[ids_i,ss]))
   offy1 <- kronecker(rep( 1, G), offset[ids_i])
-  offy2 <- X[ids_i,] %*% t(fits$beta)
-  offy2 <- as.numeric(offy2)
+  offyGrp <- X[ids_i,] %*% t(fits$beta)
+  offyGrp <- as.numeric(offyGrp)
 
   if(!is.null(U)){
     U1 <- kronecker(rep( 1, G), U[ids_i,,drop=FALSE])
-    offy3 <- U1 %*% (fits$delta)
+    offyAll <- U1 %*% (fits$delta)
   } else {
-    offy3 <- rep(0,nrow(W1))
+    offyAll <- rep(0,nrow(W1))
   }
-  offy3 <- as.numeric(offy3)
-  offy <- offy1 + offy2 + offy3
+  offyAll <- as.numeric(offyAll)
+  offy <- offy1 + offyGrp + offyAll
 
+  # length(offy1)
+  # length(offyAll)
+  # dim(out1)
+  # dim(W1)
+  # dim(wts1)
   if(disty %in% c(1,2,3,6,7)){
-    ft_sp <- try(stats::glm.fit(x=as.data.frame(W1),
-                                y=as.matrix(out1),
-                                weights=as.numeric(wts1),
-                                offset=as.numeric(offy),
-                                family=fam), silent=FALSE)
+    tmpform <- as.formula('out1 ~ -1+W1+offset( offy1)+offset( offyGrp)+offset( offyAll)')
+    ft_sp <- try(stats::glm( tmpform, weights=wts1, family=fam),silent = TRUE)
+    # ft_sp <- try(stats::glm.fit(x=as.data.frame(W1),
+    #                             y=as.vector(out1),
+    #                             weights=as.numeric(wts1),
+    #                             offset=as.numeric(offy), #start = fits$alpha[ss],
+    #                             family=fam), silent=FALSE)
+    if(!ft_sp$converged){
+      tmpform <- as.formula('out1 ~ -1+W1+offset( offy1)+offset( offyGrp)+offset( offyAll)')
+      ft_sp <- try(mgcv::gam( tmpform, weights=wts1, family=fam), silent=FALSE)
+    }
     if (class(ft_sp)[1] %in% 'try-error'){
        my_coefs <- rep(NA, ncol(W1))
     } else {
@@ -2394,6 +2405,7 @@ starting values;\n starting values are generated using ',control$init_method,
   # first e-step
   fits <- starting_values$fits
   taus <- starting_values$taus
+  # taus <- ecomix:::shrink_taus(taus, max_tau = 1/G + 0.3, G)
   pis <- starting_values$pis
   first_fit <- starting_values$first_fit
   logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
