@@ -1951,6 +1951,8 @@
     }
   }
   if(disty %in% c(4)){
+    # tmpform <- as.formula( paste('out1','-1+W1+offset(offy)', sep='~'))
+    # nbglm::glm.nbinom(tmpform,)
     tmpform <- as.formula( paste('out1','-1+W1+offset(offy)', sep='~'))
     ft_sp <- try(mgcv::gam(tmpform, weights=wts1, family=mgcv::negbin(theta=exp(-fits$theta[ss]))))
     kount1 <- 1
