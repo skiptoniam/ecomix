@@ -640,7 +640,7 @@
                                   cores = 1,
                                   ## intialisation controls
                                   init_method = 'random2',
-                                  init_sd = .1,
+                                  init_sd = NULL,
                                   minimum_sites_occurrence = 0,
                                   ## EM algorithim controls
                                   em_prefit = TRUE,
@@ -3143,26 +3143,52 @@ starting values;\n starting values are generated using ',control$init_method,
   return(abs(logl_n1 - logl_n) > (abs(logl_n1 - logl_n) / abs(logl_n)))
 }
 
-"sam_random_inits" <- function(alpha, beta, gamma, delta, theta, S, G, X, W, U, disty, mult=0.3){
-                  my.sd <- mult*sd( alpha); if( is.na( my.sd)) my.sd <- 0.1
-                  alpha <- alpha + rnorm(S, sd = my.sd)
-                  my.sd <- mult*sd( beta); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
-                  beta <- beta + as.numeric(matrix(rnorm(G * ncol(X), mean = 0, sd = my.sd), ncol = ncol(X), nrow = G))
-                  if( ncol(W)>1){
-                    my.sd <- mult*sd(gamma); if(is.na(my.sd)|my.sd==0) my.sd <- 0.1
-                    gamma <- gamma + as.numeric( matrix(rnorm(S*ncol(W[,-1,drop=FALSE]), mean=0, my.sd), ncol=ncol(W[,-1,drop=FALSE]), nrow=S))
-                  }
-                  if( ncol(U)>0){
-                    my.sd <- mult*sd(delta); if(is.na(my.sd)|my.sd==0) my.sd <- 0.1
-                    delta <- delta + as.numeric( matrix(rnorm(S*ncol(U), mean=0, my.sd), ncol=ncol(U), nrow=S))
-                  }
-                  if(disty %in% c(4,6)){
-                    # my.sd <- mult*sd( theta); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
-                    # theta <- theta + as.numeric( rnorm( S, mean=0, my.sd))
-                  }
-                  if(disty %in% c(4,6)) return(list(alpha,beta,gamma,delta,theta))
-                  else return(list(alpha,beta,gamma,delta))
+# "sam_random_inits" <- function(alpha, beta, gamma, delta, theta, S, G, X, W, U, disty, mult=0.3){
+#                   my.sd <- mult*sd( alpha); if( is.na( my.sd)) my.sd <- 0.1
+#                   alpha <- alpha + rnorm(S, sd = my.sd)
+#                   my.sd <- mult*sd( beta); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
+#                   beta <- beta + as.numeric(matrix(rnorm(G * ncol(X), mean = 0, sd = my.sd), ncol = ncol(X), nrow = G))
+#                   if( ncol(W)>1){
+#                     my.sd <- mult*sd(gamma); if(is.na(my.sd)|my.sd==0) my.sd <- 0.1
+#                     gamma <- gamma + as.numeric( matrix(rnorm(S*ncol(W[,-1,drop=FALSE]), mean=0, my.sd), ncol=ncol(W[,-1,drop=FALSE]), nrow=S))
+#                   }
+#                   if( ncol(U)>0){
+#                     my.sd <- mult*sd(delta); if(is.na(my.sd)|my.sd==0) my.sd <- 0.1
+#                     delta <- delta + as.numeric( matrix(rnorm(S*ncol(U), mean=0, my.sd), ncol=ncol(U), nrow=S))
+#                   }
+#                   if(disty %in% c(4,6)){
+#                     # my.sd <- mult*sd( theta); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
+#                     # theta <- theta + as.numeric( rnorm( S, mean=0, my.sd))
+#                   }
+#                   if(disty %in% c(4,6)) return(list(alpha,beta,gamma,delta,theta))
+#                   else return(list(alpha,beta,gamma,delta))
+# }
+
+"sam_random_inits" <- function(alpha, beta, gamma, delta, theta, S, G, X, W, U, disty, mult=0.3, control.sd = control$init_sd){
+  if(is.null(control.sd)) my.sd <- mult*sd( alpha); if( is.na( my.sd)) my.sd <- 0.1
+  else my.sd <- control.sd
+  alpha <- alpha + rnorm(S, sd = my.sd)
+  if(is.null(control.sd)) my.sd <- mult*sd( beta); if( is.na( my.sd) | my.sd==0) my.sd <- control.sd
+  else my.sd <- control.sd
+  beta <- beta + as.numeric(matrix(rnorm(G * ncol(X), mean = 0, sd = my.sd), ncol = ncol(X), nrow = G))
+  if( ncol(W)>1){
+    if(is.null(control.sd)) my.sd <- mult*sd(gamma); if(is.na(my.sd)|my.sd==0) my.sd <- control.sd
+    else my.sd <- control.sd
+    gamma <- gamma + as.numeric( matrix(rnorm(S*ncol(W[,-1,drop=FALSE]), mean=0, my.sd), ncol=ncol(W[,-1,drop=FALSE]), nrow=S))
+  }
+  if( !is.null(U)){
+    if(is.null(control.sd)) my.sd <- mult*sd(delta); if(is.na(my.sd)|my.sd==0) my.sd <- 0.1
+    else my.sd <- control.sd
+    delta <- delta + as.numeric( matrix(rnorm(S*ncol(U), mean=0, my.sd), ncol=ncol(U), nrow=S))
+  }
+  if(disty %in% c(4,6)){
+    # my.sd <- mult*sd( theta); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
+    # theta <- theta + as.numeric( rnorm( S, mean=0, my.sd))
+  }
+  if(disty %in% c(4,6)) return(list(alpha,beta,gamma,delta,theta))
+  else return(list(alpha,beta,gamma,delta))
 }
+
 
 "sam_internal_pred_groups" <- function(alpha, beta, taus, gamma, G, S, X, W,
                                        offset = NULL, family){
