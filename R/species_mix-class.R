@@ -2077,6 +2077,7 @@
     }
   }
   if(disty %in% c(4)){
+
     tmpform <- as.formula( paste('out1','-1+W1+offset(offy)', sep='~'))
     ft_sp <- try(mgcv::gam(tmpform, weights=wts1, family=mgcv::negbin(theta=exp(-fits$theta[ss]))))
     kount1 <- 1
@@ -3165,20 +3166,32 @@ starting values;\n starting values are generated using ',control$init_method,
 # }
 
 "sam_random_inits" <- function(alpha, beta, gamma, delta, theta, S, G, X, W, U, disty, mult=0.3, control.sd = control$init_sd){
-  if(is.null(control.sd)) my.sd <- mult*sd( alpha); if( is.na( my.sd)) my.sd <- 0.1
-  else my.sd <- control.sd
+  if(is.null(control.sd)){
+    my.sd <- mult*sd( alpha); if( is.na( my.sd)) my.sd <- 0.1
+  } else {
+    my.sd <- control.sd
+  }
   alpha <- alpha + rnorm(S, sd = my.sd)
-  if(is.null(control.sd)) my.sd <- mult*sd( beta); if( is.na( my.sd) | my.sd==0) my.sd <- control.sd
-  else my.sd <- control.sd
+  if(is.null(control.sd)){
+    my.sd <- mult*sd( beta); if( is.na( my.sd) | my.sd==0) my.sd <- control.sd
+  } else {
+    my.sd <- control.sd
+  }
   beta <- beta + as.numeric(matrix(rnorm(G * ncol(X), mean = 0, sd = my.sd), ncol = ncol(X), nrow = G))
   if( ncol(W)>1){
-    if(is.null(control.sd)) my.sd <- mult*sd(gamma); if(is.na(my.sd)|my.sd==0) my.sd <- control.sd
-    else my.sd <- control.sd
+    if(is.null(control.sd)){
+      my.sd <- mult*sd(gamma); if(is.na(my.sd)|my.sd==0) my.sd <- control.sd
+    } else {
+      my.sd <- control.sd
+    }
     gamma <- gamma + as.numeric( matrix(rnorm(S*ncol(W[,-1,drop=FALSE]), mean=0, my.sd), ncol=ncol(W[,-1,drop=FALSE]), nrow=S))
   }
   if( !is.null(U)){
-    if(is.null(control.sd)) my.sd <- mult*sd(delta); if(is.na(my.sd)|my.sd==0) my.sd <- 0.1
-    else my.sd <- control.sd
+    if(is.null(control.sd)){
+      my.sd <- mult*sd(delta); if(is.na(my.sd)|my.sd==0) my.sd <- 0.1
+    } else {
+      my.sd <- control.sd
+    }
     delta <- delta + as.numeric( matrix(rnorm(S*ncol(U), mean=0, my.sd), ncol=ncol(U), nrow=S))
   }
   if(disty %in% c(4,6)){
@@ -3248,7 +3261,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
 }
 
-"setup_inits_sam" <- function(inits, S, G, X, W, disty, return_list=TRUE){
+"setup_inits_sam" <- function(inits, S, G, X, W, U, disty, return_list=TRUE){
   if(is.null(inits))res<-NULL
 
   npx <- ncol(X)
