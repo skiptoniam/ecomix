@@ -1857,6 +1857,81 @@
   return(list(alpha = alpha, beta = beta, gamma = gamma, delta = delta, theta = theta))
 }
 
+
+"apply_glm_sam_inits" <- function(ss, y, X, W, U=NULL, site_spp_weights,
+                                  offset, y_is_na, disty, size){
+
+  # which family to use?
+  if(disty == 1 | disty == 7 ) #binomials
+    fam <- binomial() #glmnet
+  if(disty == 2 | disty == 3 | disty == 4)
+    fam <- poisson()#"poisson"
+  if(disty == 6)
+    fam <- gaussian()#"gaussian"
+
+  #set up the index of NAs (this is for ppms)
+  ids_i <- !y_is_na[,ss]
+
+  if (disty==3){
+    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+  } else {
+    outcomes <- as.matrix(y[ids_i,ss])
+  }
+  if (disty==7){
+    outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]-y[ids_i,ss]))
+  }
+
+  if(ncol(X)==1){
+    X<-cbind(1,X[ids_i,,drop=FALSE])
+  }
+
+  if(ncol(W) > 1){
+    df <- cbind(X[ids_i,,drop=FALSE],W[ids_i,-1,drop=FALSE])
+  } else {
+    df <- X[ids_i,,drop=FALSE]
+  }
+
+  if(ncol(U)>0) df <- cbind(df,U[ids_i,,drop=FALSE])
+
+
+  if( disty %in% c(1,2,3,4,6,7)){
+    # lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
+
+    ft_sp <- try(glm.fit(y=outcomes, x=df,#weights=as.numeric(site_spp_weights[ids_i,ss]),
+                         family=fam, offset=offset[ids_i]), silent=FALSE)
+    if (any(class(ft_sp)[1] %in% 'try-error')){
+      my_coefs <- rep(NA, ncol(X[ids_i,]))
+      names(my_coefs) <- colnames(cbind(X[ids_i,,drop=FALSE],W[ids_i,,drop=FALSE]))
+    } else {
+      # if(ncol(X)==1) my_coefs <- t(as.matrix(my.coefs[-1]))
+      my_coefs <- coef(ft_sp)
+    }
+
+    ##estimate the starting dispersion parameter.
+    theta <- -99999
+    if( disty == 4){
+      tmp <- MASS::theta.mm(outcomes,ft_sp$fitted.values,
+                            weights=as.matrix(site_spp_weights[ids_i,ss]),
+                            dfr=length(outcomes), eps=1e-4)
+      if(tmp>2) tmp <- 2
+      theta <- log( 1/tmp)
+    }
+    if( disty == 6){
+      preds <- as.numeric(ft_sp$linear.predictors)
+      theta <- log( sqrt( sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard
+    }
+  }
+  # species intercpets
+  alpha <- my_coefs[1]
+  # mixture coefs
+  beta <- my_coefs[match(colnames(X), names(my_coefs))]
+  # species coefs apart from intercept
+  if(ncol(W)>1) gamma <-  my_coefs[match(colnames(W[,-1,drop=FALSE]), names(my_coefs))]
+  else gamma <- -99999
+
+  return(list(alpha = alpha, beta = beta, gamma = gamma, theta = theta))
+}
+
 ## function for starting values using penalities
 # "apply_glm_sam_inits" <- function(ss, y, X, W, site_spp_weights,
 #                                      offset, y_is_na, disty, size){
