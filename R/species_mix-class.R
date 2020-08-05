@@ -640,12 +640,12 @@
                                   cores = 1,
                                   ## intialisation controls
                                   init_method = 'random2',
-                                  init_sd = 1,
-                                  minimum_sites_occurrence = 10,
+                                  init_sd = .1,
+                                  minimum_sites_occurrence = 0,
                                   ## EM algorithim controls
                                   em_prefit = TRUE,
                                   em_steps = 5,
-                                  em_refit = 2,
+                                  em_refit = 1,
                                   em_reltol = reltol_fun,
                                   em_maxtau = 0.8,
                                   ## partial mixture penalities
@@ -2602,6 +2602,7 @@ starting values;\n starting values are generated using ',control$init_method,
     # e-step - get the log-likes and taus
     logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
     taus <- get_taus(pis, logls_mus$logl_sp, G, S)
+
 
     #update the likelihood
     logl_old <- logl_new
