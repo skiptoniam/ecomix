@@ -21,7 +21,7 @@ testthat::test_that('species mix poisson', {
   y <- as.matrix(simulated_data[,grep("spp",colnames(simulated_data))])
   X <- simulated_data[,-grep("spp",colnames(simulated_data))]
   W <- as.matrix(X[,1,drop=FALSE])
-  X <- as.matrix(X[,-1])
+  # X <- as.matrix(X[,-1])
   offset <- rep(0,nrow(y))
   weights <- rep(1,nrow(y))
   spp_weights <- rep(1,ncol(y))
@@ -51,6 +51,14 @@ testthat::test_that('species mix poisson', {
   pis <- rep(1/G, G)
   taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
   taus <- ecomix:::shrink_taus(taus, max_tau=1/G + 0.1, G)
+
+
+  set.seed(123)
+  tmp2 <- ecomix:::fitmix_ECM_sam(y=y, X=X, W=W, G=G, S=S,
+                                  spp_weights=spp_weights,
+                                  site_spp_weights=site_spp_weights,
+                                  offset=offset, disty=disty, y_is_na=y_is_na,size = size,
+                                  control=species_mix.control(em_refit = 5, em_steps = 5))
 
   ## get to this in a bit
   gg <- 1

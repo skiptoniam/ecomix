@@ -625,7 +625,7 @@
                                   cores = 1,
                                   ## intialisation controls
                                   init_method = 'random2',
-                                  init_sd = .2,
+                                  init_sd = NULL,
                                   minimum_sites_occurrence = 0,
                                   init_glmnet = FALSE,
                                   ## EM algorithim controls
@@ -2216,7 +2216,7 @@ starting values;\n starting values are generated using ',control$init_method,
   res$fits <- fits
   res$first_fit <- first_fit
   res$taus <- starting_values$taus
-  res$pis <- colSums(starting_values$taus)/S
+  res$pis <- starting_values$pis#colSums(starting_values$taus)/S
   return(res)
 }
 
@@ -2574,8 +2574,8 @@ starting values;\n starting values are generated using ',control$init_method,
         # }
   }
 
-  taus <- taus/rowSums(taus)
-  taus <- shrink_taus(taus,G=G)
+  # taus <- taus/rowSums(taus)
+  taus <- shrink_taus(taus,max_tau =1/G + 0.1, G=G)
   pis <- colMeans(taus)
 
   results <- list()
@@ -2976,15 +2976,24 @@ starting values;\n starting values are generated using ',control$init_method,
 }
 
 "sam_random_inits" <- function(alpha, beta, gamma, theta, S, G, X, W, disty, mult=0.3, control.sd = control$init_sd){
-                  if(is.null(control.sd)) my.sd <- mult*sd( alpha); if( is.na( my.sd)) my.sd <- 0.1
-                  else my.sd <- control.sd
+                  if(is.null(control.sd)){
+                    my.sd <- mult*sd( alpha); if( is.na( my.sd)) my.sd <- 0.1
+                  }else{
+                    my.sd <- control.sd
+                  }
                   alpha <- alpha + rnorm(S, sd = my.sd)
-                  if(is.null(control.sd)) my.sd <- mult*sd( beta); if( is.na( my.sd) | my.sd==0) my.sd <- control.sd
-                  else my.sd <- control.sd
+                  if(is.null(control.sd)){
+                    my.sd <- mult*sd( beta); if( is.na( my.sd) | my.sd==0) my.sd <- control.sd
+                  }else{
+                    my.sd <- control.sd
+                  }
                   beta <- beta + as.numeric(matrix(rnorm(G * ncol(X), mean = 0, sd = my.sd), ncol = ncol(X), nrow = G))
                   if( ncol(W)>1){
-                    if(is.null(control.sd)) my.sd <- mult*sd(gamma); if(is.na(my.sd)|my.sd==0) my.sd <- control.sd
-                    else my.sd <- control.sd
+                    if(is.null(control.sd)){
+                      my.sd <- mult*sd(gamma); if(is.na(my.sd)|my.sd==0) my.sd <- control.sd
+                    } else {
+                      my.sd <- control.sd
+                    }
                     gamma <- gamma + as.numeric( matrix(rnorm(S*ncol(W[,-1,drop=FALSE]), mean=0, my.sd), ncol=ncol(W[,-1,drop=FALSE]), nrow=S))
                   }
                   if(disty %in% c(4,6)){
