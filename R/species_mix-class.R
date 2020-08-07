@@ -642,6 +642,7 @@
                                   init_method = 'random2',
                                   init_sd = NULL,
                                   minimum_sites_occurrence = 0,
+                                  init_glmnet = FALSE,
                                   ## EM algorithim controls
                                   em_prefit = TRUE,
                                   em_steps = 5,
@@ -671,6 +672,7 @@
                #initialisation controls
                init_method = init_method, init_sd = init_sd,
                minimum_sites_occurrence = minimum_sites_occurrence,
+               init_glmnet = init_glmnet,
                #em controls
                em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps,
                em_reltol = em_reltol, em_maxtau = em_maxtau,
@@ -1881,27 +1883,18 @@
     outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]-y[ids_i,ss]))
   }
 
-  if(ncol(X)==1){
-    X<-cbind(1,X[ids_i,,drop=FALSE])
-  }
+  df <- cbind(W[ids_i,,drop=FALSE],X[ids_i,,drop=FALSE])
 
-  if(ncol(W) > 1){
-    df <- cbind(X[ids_i,,drop=FALSE],W[ids_i,-1,drop=FALSE])
-  } else {
-    df <- X[ids_i,,drop=FALSE]
-  }
-
-  if(ncol(U)>0) df <- cbind(df,U[ids_i,,drop=FALSE])
+  if(!is.null(U)) df <- cbind(df,U[ids_i,,drop=FALSE])
 
 
   if( disty %in% c(1,2,3,4,6,7)){
     # lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
-
-    ft_sp <- try(glm.fit(y=outcomes, x=df,#weights=as.numeric(site_spp_weights[ids_i,ss]),
+    ft_sp <- try(glm.fit(y=as.vector(outcomes), x=df, weights=as.numeric(site_spp_weights[ids_i,ss]),
                          family=fam, offset=offset[ids_i]), silent=FALSE)
     if (any(class(ft_sp)[1] %in% 'try-error')){
       my_coefs <- rep(NA, ncol(X[ids_i,]))
-      names(my_coefs) <- colnames(cbind(X[ids_i,,drop=FALSE],W[ids_i,,drop=FALSE]))
+      names(my_coefs) <- colnames(W[ids_i,,drop=FALSE],X[ids_i,,drop=FALSE],U)
     } else {
       # if(ncol(X)==1) my_coefs <- t(as.matrix(my.coefs[-1]))
       my_coefs <- coef(ft_sp)
@@ -2630,9 +2623,12 @@ starting values;\n starting values are generated using ',control$init_method,
 "initiate_fit_sam" <- function(y, X, W, U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control){
 
 
-  fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W, U,
+  if(control$init_glmnet)fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W, U,
                                        site_spp_weights, offset, y_is_na, disty, size,
                                       .parallel = control$cores, .verbose = FALSE)
+  else fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glm_sam_inits, y, X, W, U,
+                                                              site_spp_weights, offset, y_is_na, disty, size,
+                                                              .parallel = control$cores, .verbose = FALSE)
 
   alpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
   if(ncol(X)==1){
