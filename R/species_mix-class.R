@@ -1891,41 +1891,45 @@
 "apply_glm_spp_coefs_sams" <- function(ss, y, X, W, G, taus,
                                        site_spp_weights,
                                        offset, y_is_na, disty, fits, size){
-  if(disty == 1 | disty == 7)
+  if(disty %in% c(1,7))
     fam <- binomial()
-  if(disty == 2 | disty == 3 | disty == 4)
+  if(disty %in% c(2,3,4))
     fam <- poisson()
-  if(disty == 6)
+  if(disty %in% c(6))
     fam <- gaussian()
 
   ids_i <- !y_is_na[,ss]
 
-  if (disty==3){
-    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+  if (disty %in% 3){
+    outcomes <- y[ids_i,ss, drop=FALSE]/site_spp_weights[ids_i,ss, drop=FALSE]
   }
   if (disty == 6){
-    outcomes <- as.numeric(y[ids_i,ss])
+    outcomes <- y[ids_i,ss, drop=FALSE]
   }
   if (disty %in% c(1,2,4)){
-    outcomes <-y[ids_i,ss]
+    outcomes <- y[ids_i,ss , drop=FALSE]
   }
   if (disty==7){
-    outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]-y[ids_i,ss]))
+    outcomes <- cbind(y[ids_i,ss, drop=FALSE],size[ids_i]-y[ids_i,ss, drop=FALSE])
   }
 
   out1 <- kronecker(rep( 1, G), outcomes)
-  X1 <- kronecker(rep( 1, G), X[ids_i,,drop=FALSE])
+  # X1 <- kronecker(rep( 1, G), X[ids_i,,drop=FALSE])
   W1 <- kronecker(rep( 1, G), W[ids_i,,drop=FALSE])
-  wts1 <- kronecker(rep( 1, G), as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,],each=length(site_spp_weights[ids_i,ss]))
+  wts1 <- kronecker(rep( 1, G), site_spp_weights[ids_i,ss, drop=FALSE])*rep(taus[ss,],each=length(site_spp_weights[ids_i,ss]))
   offy1 <- kronecker(rep( 1, G), offset[ids_i])
   offy2 <- X[ids_i,] %*% t(fits$beta)
   offy2 <- as.numeric(offy2)
   offy <- offy1 + offy2
+  df <- data.frame(out1,W1,offy1,offy2)
 
   if(disty %in% c(1,2,3,6)){
-    ft_sp <- try(stats::glm.fit(x=as.data.frame(W1),
-                                y=as.matrix(out1),
-                                weights=as.numeric(wts1),
+    tmpform <-  as.formula( paste( paste( 'out1', sep=''), '1 + offset( offy1) + offset( offy2)', sep='~'))
+    fm <- try( glm(tmpform,data = df, weights = wts1, family=fam))
+    fm <- try( mgcv::gam(tmpform,data = df, weights = wts1, family=fam))
+    ft_sp <- try(stats::glm(x=as.data.frame(W1),
+                                y=out1,
+                                weights=wts1,
                                 offset=as.numeric(offy),
                                 family=fam), silent=FALSE)
     if (class(ft_sp)[1] %in% 'try-error'){
@@ -2216,7 +2220,7 @@ starting values;\n starting values are generated using ',control$init_method,
   res$fits <- fits
   res$first_fit <- first_fit
   res$taus <- starting_values$taus
-  res$pis <- starting_values$pis#colSums(starting_values$taus)/S
+  res$pis <- colSums(starting_values$taus)/S
   return(res)
 }
 
@@ -2342,7 +2346,8 @@ starting values;\n starting values are generated using ',control$init_method,
   # first e-step
   fits <- starting_values$fits
   taus <- starting_values$taus
-  if(!disty==3) taus <- shrink_taus(taus, max_tau = 1/G + 0.1, G)
+  taus <- round(taus)
+  # if(!disty==3) taus <- shrink_taus(taus, max_tau = 1/G + 0.1, G)
   pis <- starting_values$pis
   first_fit <- starting_values$first_fit
   logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
@@ -2386,6 +2391,26 @@ starting values;\n starting values are generated using ',control$init_method,
     }
 
     # m-step
+    ## update the betas
+    if(disty==4){
+      fm_mix_coefs <- nlminb(start=fits$beta, objective=incomplete_negbin_logl, gradient=NULL,
+                             hessian=NULL, pis=pis, first_fit=first_fit, fits=fits, G=G, S=S)
+      fm_mix_coefs_mat <- matrix(fm_mix_coefs$par,G,ncol(X))
+    } else {
+      fm_mix_coefs <- surveillance::plapply(seq_len(G),
+                                            apply_glm_mix_coefs_sams,
+                                            y, X, W, site_spp_weights,
+                                            offset, y_is_na, disty, taus,
+                                            fits, logls_mus$fitted, size,
+                                            .parallel = control$cores,
+                                            .verbose = FALSE)
+
+      fm_mix_coefs_mat <- do.call(rbind,fm_mix_coefs)
+      # print(fm_mix_coefs_mat)
+    }
+    fits$beta <- update_coefs(fits$beta, fm_mix_coefs_mat)
+
+    ## check this one out.
     fm_spp_coefs <- surveillance::plapply(seq_len(S),
                                           apply_glm_spp_coefs_sams,
                                           y, X, W, G, taus, site_spp_weights,
@@ -2404,24 +2429,6 @@ starting values;\n starting values are generated using ',control$init_method,
     } else {
       fits$gamma <- -99999
     }
-
-    ## update the betas
-    if(disty==4){
-      fm_mix_coefs <- nlminb(start=fits$beta, objective=incomplete_negbin_logl, gradient=NULL,
-                    hessian=NULL, pis=pis, first_fit=first_fit, fits=fits, G=G, S=S)
-      fm_mix_coefs_mat <- matrix(fm_mix_coefs$par,G,ncol(X))
-    } else {
-      fm_mix_coefs <- surveillance::plapply(seq_len(G),
-                                          apply_glm_mix_coefs_sams,
-                                          y, X, W, site_spp_weights,
-                                          offset, y_is_na, disty, taus,
-                                          fits, logls_mus$fitted, size,
-                                          .parallel = control$cores,
-                                          .verbose = FALSE)
-
-      fm_mix_coefs_mat <- do.call(rbind,fm_mix_coefs)
-    }
-    fits$beta <- update_coefs(fits$beta, fm_mix_coefs_mat)
 
     ## need a function here that updates the dispersion parameter.
     if(ite >= init_steps){
@@ -2452,6 +2459,7 @@ starting values;\n starting values are generated using ',control$init_method,
     # e-step - get the log-likes and taus
     logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
     taus <- get_taus(pis, logls_mus$logl_sp, G, S)
+    if(ite <3)taus <- shrink_taus(taus,G=G)
 
     #update the likelihood
     logl_old <- logl_new
@@ -2459,7 +2467,7 @@ starting values;\n starting values are generated using ',control$init_method,
                                         first_fit, fits, spp_weights, G, S, disty)
     if(!control$quiet)message("Iteration ",ite,"\n")
     if(!control$quiet)message("Loglike: ", paste(logl_new),"\n")
-    if(!control$quiet)message("Pis: ", paste(pis," "),"\n")
+    if(!control$quiet)cat("Pis: ", paste(pis," "),"\n")
     ite <- ite + 1
   }
 
@@ -2546,9 +2554,9 @@ starting values;\n starting values are generated using ',control$init_method,
     fmmvnorm <- stats::kmeans(beta, centers=G, nstart=100)
     tmp_grp <- fmmvnorm$cluster
     grp_coefs <- apply(beta, 2, function(x) tapply(x, tmp_grp, mean))
-    grp_coefs <- matrix(grp_coefs,nrow=G)
+    grp_coefs <- matrix(grp_coefs,nrow=G) # not check this...
 
-    random_coefs <- sam_random_inits(alpha, grp_coefs, gamma, theta, S, G, X, W, disty, mult=0.3)
+    random_coefs <- sam_random_inits(alpha, grp_coefs, gamma, theta, S, G, X, W, disty, mult=0.3, control$init_sd)
     alpha <- random_coefs[[1]]
     grp_coefs <- random_coefs[[2]]
     gamma <- random_coefs[[3]]
@@ -2574,8 +2582,8 @@ starting values;\n starting values are generated using ',control$init_method,
         # }
   }
 
-  # taus <- taus/rowSums(taus)
-  taus <- shrink_taus(taus,max_tau =1/G + 0.1, G=G)
+  taus <- taus/rowSums(taus)
+  taus <- shrink_taus(taus,G=G)
   pis <- colMeans(taus)
 
   results <- list()
@@ -2975,7 +2983,7 @@ starting values;\n starting values are generated using ',control$init_method,
   return(abs(logl_n1 - logl_n) > (abs(logl_n1 - logl_n) / abs(logl_n)))
 }
 
-"sam_random_inits" <- function(alpha, beta, gamma, theta, S, G, X, W, disty, mult=0.3, control.sd = control$init_sd){
+"sam_random_inits" <- function(alpha, beta, gamma, theta, S, G, X, W, disty, mult=0.3, control.sd=NULL){
                   if(is.null(control.sd)){
                     my.sd <- mult*sd( alpha); if( is.na( my.sd)) my.sd <- 0.1
                   }else{
