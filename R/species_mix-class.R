@@ -99,7 +99,7 @@
 "species_mix" <- function(archetype_formula = NULL,
                           species_formula = stats::as.formula(~1), data,
                           n_mixtures = 3, distribution="bernoulli", offset=NULL,
-                          weights=NULL, bb_weights=NULL, size= NULL, control=NULL,
+                            weights=NULL, bb_weights=NULL, size= NULL, control=NULL,
                           inits=NULL, standardise = FALSE, titbits = TRUE){
 
   data <- as.data.frame(data)
@@ -1924,10 +1924,10 @@
   df <- data.frame(out1,W1,offy1,offy2)
 
   if(disty %in% c(1,2,3,6)){
-    tmpform <-  as.formula( paste( paste( 'out1', sep=''), '1 + offset( offy1) + offset( offy2)', sep='~'))
-    fm <- try( glm(tmpform,data = df, weights = wts1, family=fam))
-    fm <- try( mgcv::gam(tmpform,data = df, weights = wts1, family=fam))
-    ft_sp <- try(stats::glm(x=as.data.frame(W1),
+    # tmpform <-  as.formula( paste( paste( 'out1', sep=''), '1 + offset( offy1) + offset( offy2)', sep='~'))
+    # fm <- try( glm(tmpform,data = df, weights = wts1, family=fam))
+    # fm <- try( mgcv::gam(tmpform,data = df, weights = wts1, family=fam))
+    ft_sp <- try(stats::glm.fit(x=as.data.frame(W1),
                                 y=out1,
                                 weights=wts1,
                                 offset=as.numeric(offy),
@@ -2043,6 +2043,67 @@
   }
   return(c(mix_coefs))
 }
+
+"apply_glm_spp_mix" <- function(gg, y, X, W, site_spp_weights, offset,
+                                y_is_na, disty, taus, fits, mus, size){
+
+  if(disty %in% c(1,7))
+    fam <- binomial()
+  if(disty %in% c(2,3))
+    fam <- poisson()
+  if(disty %in% c(6))
+    fam <- gaussian()
+
+  Y_taus <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
+  size_taus <- matrix(rep(size,ncol(y)),nrow(y),ncol(y))[!y_is_na]
+  X_no_NA <- list()
+  W_no_NA <- list()
+  for (jj in 1:ncol(y)){
+    X_no_NA[[jj]] <- X[!y_is_na[,jj],,drop=FALSE]
+    W_no_NA[[jj]] <- W[!y_is_na[,jj],,drop=FALSE]
+  }
+  X_taus <- do.call(rbind, X_no_NA)
+  W_taus <- do.call(rbind, W_no_NA)
+  n_ys <- sapply(X_no_NA,nrow)
+  wts_taus <- rep(taus[,gg,drop=FALSE],c(n_ys))
+  site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
+  wts_tausXsite_weights <- wts_taus*site_weights
+  offy_mat <- replicate(ncol(y),offset)
+  offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
+
+  # dat.tau <- rep(taus[,gg],each=n)
+  sp.name <- colnames(y)
+  sp <- rep(sp.name,n_ys)
+  sp.mat <- matrix(0,dim(X_taus)[1],length(sp.name))
+  for(i in 1:length(sp.name)){
+      sp.mat[sp==sp.name[i],i] <- 1
+  }
+  Xmix <- cbind(sp.mat,X_taus)
+  colnames(Xmix) <- c(colnames(y),colnames(X))
+
+  if(!disty%in%4){
+  f.mix <- stats::glm.fit(x= as.data.frame(Xmix),
+                          y= as.numeric(Y_taus),
+                          offset= as.numeric(offy1),
+                          weights = as.numeric(wts_tausXsite_weights),
+                          family = fam)
+  } else {
+  f.mix <- ecomix:::glm.fit.nbinom(x=as.matrix(Xmix),y=as.numeric(Y_taus),offset=as.numeric(offy1),
+                                     weights=as.numeric(wts_tausXsite_weights))
+  }
+
+  alpha <- f.mix$coef[1:length(sp.name)]
+  beta <- f.mix$coef[-1:-length(sp.name)]
+  if(disty==4){
+    theta <- f.mix$theta
+  } else {
+    theta <- -99999
+  }
+  return(list(alpha=alpha,beta=beta,theta=theta))
+
+}
+
+
 
 "get_starting_values_sam" <- function(y, X, W, spp_weights, site_spp_weights,
                                       offset, y_is_na, G, S, disty, size, control){
@@ -2348,10 +2409,10 @@ starting values;\n starting values are generated using ',control$init_method,
   taus <- starting_values$taus
   taus <- round(taus)
   # if(!disty==3) taus <- shrink_taus(taus, max_tau = 1/G + 0.1, G)
-  pis <- starting_values$pis
+  pis <- colMeans(taus)#starting_values$pis
   first_fit <- starting_values$first_fit
   logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-  init_steps <- 3
+  # init_steps <- 3
 
   while(control$em_reltol(logl_new,logl_old) & ite <= control$em_steps){
     if(restart_ite>10){
@@ -2598,6 +2659,63 @@ starting values;\n starting values are generated using ',control$init_method,
 
   return(results)
 }
+
+"glm.nbinom" <- function(form, data, weights=NULL, offset=NULL, mustart=NULL, est_var=FALSE){
+  X <- stats::model.matrix(form, data)
+  t1 <- stats::model.frame(form, data)
+  y <- stats::model.response(t1)
+  if(is.null(offset)) offset <- stats::model.offset(t1)
+  if(is.null(offset)) offset <- rep(0,length(y))
+  if(is.null(weights)) weights <- stats::model.weights(t1)
+  if(is.null(weights)) weights <- rep(1,length(y))
+
+  fit <- glm.fit.nbinom(X, y, offset, weights, mustart, est_var)
+
+  return(fit)
+
+}
+
+"glm.fit.nbinom" <- function(x, y, offset = NULL, weights = NULL,
+                             mustart = NULL, est_var = FALSE){
+  X <- x
+  if (is.null(offset))
+    offset <- 0
+  if (is.null(weights))
+    weights <- rep(1, length(y))
+  gradient <- rep(0, ncol(X) + 1)
+  if (is.null(mustart)) {
+    pars <- gradient + 1
+  }
+  else {
+    pars <- mustart
+  }
+  fitted.values <- rep(0, length(y))
+  logl <- .Call("Neg_Bin", pars, X, y, weights, offset, gradient,
+                fitted.values, PACKAGE = "ecomix")
+  vcov <- 0
+  se <- rep(0, length(pars))
+  if (est_var) {
+    calc_deriv <- function(p) {
+      gradient <- rep(0, length(pars))
+      ll <- .Call("Neg_Bin_Gradient", p, X, y, weights,
+                  offset, gradient, PACKAGE = "ecomix")
+      return(gradient)
+    }
+    hes <- numDeriv::jacobian(calc_deriv,pars)
+    # hes <- nd2(pars, calc.deriv)
+    dim(hes) <- rep(length(pars), 2)
+    vcov <- try(solve(hes))
+    se <- try(sqrt(diag(vcov)))
+    colnames(vcov) <- rownames(vcov) <- c("theta", colnames(X))
+  }
+  names(pars) <- names(se) <- names(gradient) <- c("theta",
+                                                   colnames(X))
+  return(list(logl = logl, coef = pars[-1], theta = pars[1],
+              se = se[-1], se.theta = se[1], fitted = fitted.values,
+              gradient = gradient, vcov = vcov))
+}
+
+
 
 "sam_optimise" <- function(y, X, W, offset, spp_weights, site_spp_weights, y_is_na,
                            S, G, disty, size, start_vals, control){
