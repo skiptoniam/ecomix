@@ -5,7 +5,7 @@ testthat::test_that('species mix poisson', {
 
   set.seed(42)
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~x1+x2"))
-  alpha <- rnorm(100,0, 0.5)
+  alpha <- rnorm(20,0, 0.5)
   beta <- matrix(c(-0.6,0.5,
                    -0.5,-0.5,
                    0.9,-0.9),
@@ -50,9 +50,9 @@ testthat::test_that('species mix poisson', {
   logls <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
   pis <- starting_values$pis
   taus <- starting_values$taus
+  taus <- round(taus)
   # taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
   # taus <- ecomix:::shrink_taus(taus, max_tau=.8, G)
-
 
   set.seed(123)
   tmp2 <- ecomix:::fitmix_ECM_sam(y=y, X=X, W=W, G=G, S=S,

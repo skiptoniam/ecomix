@@ -879,7 +879,7 @@
   }
   if( distribution=="gaussian" & (is.null( theta) | length( theta) != S)){
     message( "Random values for species' variance parameters")
-    theta <- log( 1 + rgamma( n+S, shape=1, scale=0.75))
+    theta <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
   }
 
   if(distribution %in% c('bernoulli','binomial')) link <- make.link('logit')
@@ -976,6 +976,8 @@
 #' @param \\dots Ignored
 #' @export
 
+
+## This needs fixing because it includes the null coefs.
 "BIC.species_mix" <-  function (object, ...){
   p <- length(unlist(object$coefs))
   k <- log(object$n)
@@ -1374,8 +1376,8 @@
 }
 
 #' @title Estimate residuals for a species_mix object
-#' @rdname species_mix.residuals
-#' @name species_mix.residuals
+#' @rdname residuals.species_mix
+#' @name residuals.species_mix
 #' @param object A returned species_mix model object.
 #' @param \dots additional calls for residual function
 #' @param type The type of residuals to estimate. Default is "RQR" (Random Quantile Residuals).
@@ -1634,20 +1636,6 @@
 ## offset is an offset
 ## disty is the distribution
 
-# "predict.glm.fit" <- function(glmfit, newmatrix, offset, disty){
-#
-#   if(disty == 1)
-#     fam <- binomial()
-#   if(disty == 2 | disty == 3 | disty == 4)
-#     fam <- poisson()
-#   if(disty == 6)
-#     fam <- gaussian()
-#
-#   coefs <- as.matrix(glmfit$coef)
-#   eta <- as.numeric(as.matrix(newmatrix) %*% as.numeric(coefs)) + offset
-#   preds <- fam$linkinv(eta)
-#   return(preds)
-# }
 
 "apply_optimise_spp_theta" <- function(ss, first_fit, fits,
                                        G, disty, pis,
@@ -1988,15 +1976,24 @@
   X_taus <- do.call(rbind, X_no_NA)
   W_taus <- do.call(rbind, W_no_NA)
   n_ys <- sapply(X_no_NA,nrow)
-  wts_taus <- rep(taus[,gg,drop=FALSE],c(n_ys))
-  site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
-  wts_tausXsite_weights <- wts_taus*site_weights
+
+  ## set up the weights
+  tau.weights <- rep(taus[,gg,drop=FALSE],c(n_ys))
+  if(disty %in% 4) tau.weights <- rep(taus[,gg,drop=FALSE],c(n_ys))/(1+rep(fits$theta,n_ys)*as.vector(mus[k,,]))
+  site.weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
+  obs.weights <- tau.weights*site.weights
+  # obs.weights <- obs.weights+1e-6
+
+  ## set up the offsets.
   offy_mat <- replicate(ncol(y),offset)
   offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
-  if(ncol(W)>1) offy2 <- W %*% t(cbind(fits$alpha,fits$gamma))
-  else offy2 <- W %*% c(fits$alpha)
-  offy2 <- unlist(as.data.frame(offy2[!y_is_na]))
-  offy <- as.numeric(offy1 + offy2)
+  if(ncol(W)>1){
+    offy2 <- W %*% t(cbind(fits$alpha,fits$gamma))
+  } else {
+    offy2 <- W %*% c(fits$alpha)
+  }
+  offy2 <- as.vector(unlist(offy2[!y_is_na]))
+  offy <- as.vector(offy1 + offy2)
 
   # which family to use?
   if( disty == 1 | disty == 7)
@@ -2006,41 +2003,26 @@
   if( disty == 6)
     fam <- gaussian()
   if (disty==3){
-    Y_taus <- as.matrix(Y_taus/site_weights)
+    Y_taus <- as.vector(Y_taus/site_weights)
   } else {
-    Y_taus <- as.matrix(Y_taus)
+    Y_taus <- as.vector(Y_taus)
   }
   if(disty==7){
     Y_taus <- as.matrix(cbind(Y_taus,size_taus-Y_taus))
   }
 
-  if(disty%in%c(1,2,4)) Y_taus <- as.integer(Y_taus)
-
-  if(disty %in% c(1,2,3,6)){ #don't use for tweedie - try and fit negative_binomial using glm.fit.nbinom
-    ft_mix <- try(glm.fit(x = as.data.frame(X_taus),
-                          y =Y_taus,
-                          weights = c(wts_tausXsite_weights),
-                          offset = offy,
-                          family = fam), silent = TRUE)
+   #don't use for tweedie - try and fit negative_binomial using glm.fit.nbinom
+   ft_mix <- try(glm.fit(x = as.data.frame(X_taus),
+                         y = Y_taus,
+                         weights = c(obs.weights),
+                         offset = offy,
+                         family = fam,
+                         intercept = FALSE), silent = TRUE)
     if (class(ft_mix)[1] %in% 'try-error'){
       mix_coefs <- rep(NA, ncol(X_taus))
     } else {
       mix_coefs <- ft_mix$coefficients
     }
-  }
-  if(disty %in% c(7)){
-    # tmpform <- as.formula( paste('Y_taus','-1+X_taus', sep='~'))
-    ft_mix <- try(glm.fit(y=Y_taus,x=X_taus,# tmpform,
-         weights = c(wts_tausXsite_weights),
-         offset = offy,
-         family = binomial()))
-    if (class(ft_mix)[1] %in% 'try-error'){
-      mix_coefs <- rep(NA, ncol(X_taus))
-    } else {
-      mix_coefs <- ft_mix$coefficients
-      names(mix_coefs) <- colnames(X)
-    }
-  }
   return(c(mix_coefs))
 }
 
@@ -2066,30 +2048,30 @@
   W_taus <- do.call(rbind, W_no_NA)
   n_ys <- sapply(X_no_NA,nrow)
   wts_taus <- rep(taus[,gg,drop=FALSE],c(n_ys))
+  wts_taus[which(wts_taus==0)] <- .Machine$double.eps
+  wts_taus[which(wts_taus==1)] <- 1 - .Machine$double.eps
   site_weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
-  wts_tausXsite_weights <- wts_taus*site_weights
-  offy_mat <- replicate(ncol(y),offset)
-  offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
+  dat.tau <- as.vector(wts_taus*site_weights)
 
-  # dat.tau <- rep(taus[,gg],each=n)
+  offy_mat <- replicate(ncol(y),offset)
+  offy1 <- as.vector(unlist(as.data.frame(offy_mat[!y_is_na])))
+
   sp.name <- colnames(y)
   sp <- rep(sp.name,n_ys)
   sp.mat <- matrix(0,dim(X_taus)[1],length(sp.name))
   for(i in 1:length(sp.name)){
       sp.mat[sp==sp.name[i],i] <- 1
   }
-  Xmix <- cbind(sp.mat,X_taus)
+  # sp.mat <- apply(sp.mat,2,as.factor)
+  Xmix <- data.frame(sp.mat,X_taus)
   colnames(Xmix) <- c(colnames(y),colnames(X))
 
-  if(!disty%in%4){
-  f.mix <- stats::glm.fit(x= as.data.frame(Xmix),
-                          y= as.numeric(Y_taus),
-                          offset= as.numeric(offy1),
-                          weights = as.numeric(wts_tausXsite_weights),
-                          family = fam)
+  if(!disty%in%c(2,4)){
+  f.mix <- glm.fit(x = as.matrix(Xmix),y=as.numeric(Y_taus),offset=as.numeric(offy1),
+                   weights=as.numeric(dat.tau), family = fam)
   } else {
   f.mix <- ecomix:::glm.fit.nbinom(x=as.matrix(Xmix),y=as.numeric(Y_taus),offset=as.numeric(offy1),
-                                     weights=as.numeric(wts_tausXsite_weights))
+                                     weights=as.numeric(dat.tau))
   }
 
   alpha <- f.mix$coef[1:length(sp.name)]
@@ -2407,12 +2389,9 @@ starting values;\n starting values are generated using ',control$init_method,
   # first e-step
   fits <- starting_values$fits
   taus <- starting_values$taus
-  taus <- round(taus)
-  # if(!disty==3) taus <- shrink_taus(taus, max_tau = 1/G + 0.1, G)
-  pis <- colMeans(taus)#starting_values$pis
+  pis <- starting_values$pis
   first_fit <- starting_values$first_fit
   logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-  # init_steps <- 3
 
   while(control$em_reltol(logl_new,logl_old) & ite <= control$em_steps){
     if(restart_ite>10){
