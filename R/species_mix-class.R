@@ -1792,7 +1792,7 @@
   }
 
   if(ncol(X)==1){
-    X<-cbind(1,X[ids_i,,drop=FALSE])
+    X<- cbind(1,X[ids_i,,drop=FALSE])
   }
 
   if(ncol(W) > 1){
@@ -1801,7 +1801,7 @@
     df <- X[ids_i,,drop=FALSE]
   }
 
-  if(ncol(U)>0) df <- cbind(df,U[ids_i,,drop=FALSE])
+  if(!is.null(U)) df <- cbind(df,U[ids_i,,drop=FALSE])
 
 
   if( disty %in% c(1,2,3,4,6,7)){
@@ -1854,7 +1854,7 @@
   beta <- my_coefs[match(colnames(X), colnames(my_coefs))]
   # species coefs apart from intercept
   if(ncol(W)>1) gamma <-  my_coefs[match(colnames(W[,-1,drop=FALSE]), colnames(my_coefs))] else gamma <- -99999
-  if(ncol(U)>0) delta <-  my_coefs[match(colnames(U), colnames(my_coefs))] else delta <- -99999
+  if(!is.null(U)) delta <-  my_coefs[match(colnames(U), colnames(my_coefs))] else delta <- -99999
 
   return(list(alpha = alpha, beta = beta, gamma = gamma, delta = delta, theta = theta))
 }
@@ -1883,15 +1883,16 @@
     outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]-y[ids_i,ss]))
   }
 
-  df <- cbind(W[ids_i,,drop=FALSE],X[ids_i,,drop=FALSE])
+  mm <- cbind(W[ids_i,-1,drop=FALSE],X[ids_i,,drop=FALSE])
+  if(!is.null(U)) mm <- cbind(mm,U[ids_i,,drop=FALSE])
 
-  if(!is.null(U)) df <- cbind(df,U[ids_i,,drop=FALSE])
-
+  offy <- as.numeric(offset[ids_i])
+  wts <- as.numeric(site_spp_weights[ids_i,ss])
+  dat <- data.frame(outcomes=outcomes, mm, offy=offy)
 
   if( disty %in% c(1,2,3,4,6,7)){
-    # lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
-    ft_sp <- try(glm.fit(y=as.vector(outcomes), x=df, weights=as.numeric(site_spp_weights[ids_i,ss]),
-                         family=fam, offset=offset[ids_i]), silent=FALSE)
+    tmpform <- as.formula(paste0('outcomes ~ 1 +', paste0(colnames(mm),collapse = "+"),' + offset(offy)'))
+    ft_sp <- try(glm(formula = tmpform, data = dat, weights=wts, family=fam), silent=FALSE)
     if (any(class(ft_sp)[1] %in% 'try-error')){
       my_coefs <- rep(NA, ncol(X[ids_i,]))
       names(my_coefs) <- colnames(W[ids_i,,drop=FALSE],X[ids_i,,drop=FALSE],U)
@@ -2032,7 +2033,7 @@
   out1 <- kronecker(rep( 1, G),  outcomes)
   W1 <- kronecker(rep( 1, G), W[ids_i,,drop=FALSE])
   wts1 <- kronecker(rep( 1, G), as.numeric(site_spp_weights[ids_i,ss]))*rep(taus[ss,],each=length(site_spp_weights[ids_i,ss]))
-  offy1 <- kronecker(rep( 1, G), offset[ids_i])
+  offyArea <- kronecker(rep( 1, G), offset[ids_i])
   offyGrp <- X[ids_i,] %*% t(fits$beta)
   offyGrp <- as.numeric(offyGrp)
 
@@ -2051,7 +2052,7 @@
   # dim(W1)
   # dim(wts1)
   if(disty %in% c(1,2,3,6,7)){
-    tmpform <- as.formula('out1 ~ -1+W1+offset( offy1)+offset( offyGrp)+offset( offyAll)')
+    tmpform <- as.formula('out1 ~ -1+W1+offset( offyArea)+offset( offyGrp)+offset( offyAll)')
     ft_sp <- try(stats::glm( tmpform, weights=wts1, family=fam),silent = TRUE)
     # ft_sp <- try(stats::glm.fit(x=as.data.frame(W1),
     #                             y=as.vector(out1),
@@ -2282,93 +2283,39 @@ starting values;\n starting values are generated using ',control$init_method,
   return(start_vals)
 }
 
-"get_incomplete_logl_sam" <- function(eta, first_fit, fits,
+"get_incomplete_logl_sam_V2" <- function(eta, first_fit, fits,
                                       spp_weights, G, S, disty){
 
   pis <- additive_logistic(eta)
-  if(is.null(spp_weights))spp_weights <- rep(1,S) #for bayesian Bootstrap.
+  # if(get_fitted) fitted_values <- array(0,dim=c(G,nrow(first_fit$y),S))
 
-  #bernoulli
-  if(disty==1){
-    logl_sp <- matrix(NA, nrow=S, ncol=G)
-    link <- stats::make.link(link = "logit")
-    for(ss in 1:S){
-      for(gg in 1:G){
-        eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
-        logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, link$linkinv(eta),log = TRUE))
-      }
-      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
-    }
-  }
-  #poisson
-  if(disty==2){
-    logl_sp <- matrix(NA, nrow=S, ncol=G)
-    link <- stats::make.link(link = "log")
-    for(ss in 1:S){
-      for(gg in 1:G){
-        eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1,drop=FALSE]) %*% fits$gamma[ss,]
-        logl_sp[ss,gg] <- sum(dpois(first_fit$y[,ss], lambda = link$linkinv(eta),log = TRUE))
-      }
-      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
-    }
-  }
-  #ippm
-  if(disty==3){
-    link <- stats::make.link(link = "log")
-    logl_sp <- matrix(NA, nrow=S, ncol=G)
-    for(ss in 1:S){
-      sp_idx<-!first_fit$y_is_na[,ss]
-      for(gg in 1:G){
-        #eta is the same as log_lambda (linear predictor)
-        eta <- fits$alpha[ss] + as.matrix(first_fit$x[sp_idx,]) %*% fits$beta[gg,] + first_fit$offset[sp_idx]
-        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[sp_idx,-1,drop=FALSE]) %*% fits$gamma[ss,]
-        logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$site_spp_weights[sp_idx,ss] %*% exp(eta)
-      }
-    }
-  }
+  #setup the right link function
+  if(disty%in%c(1,7)) link <- stats::make.link(link = "logit")
+  if(disty%in%c(2,3,4,5)) link <- stats::make.link(link = "log")
+  if(disty%in%c(6)) link <- stats::make.link(link = "identity")
 
-  #negative binomial
-  if(disty==4){
-    link <- stats::make.link(link = "log")
-    logl_sp <- matrix(NA, nrow=S, ncol=G)
-    for(ss in 1:S){
-      for(gg in 1:G){
-        #eta is the same as log_lambda (linear predictor)
-        eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1,drop=FALSE]) %*% fits$gamma[ss,]
-        logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss], mu=link$linkinv(eta), size = exp(-fits$theta[ss]), log=TRUE))
-      }
-      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
-    }
-  }
-  # gaussian
-  if(disty==6){
-    logl_sp <- matrix(NA, nrow=S, ncol=G)
-    for(ss in 1:S){
-      for(gg in 1:G){
-        #eta is the same as log_lambda (linear predictor)
-        eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1,drop=FALSE]) %*% fits$gamma[ss,]
-        logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=eta,sd=exp(fits$theta[ss]),log=TRUE))
-      }
-      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
-    }
-  }
+  logl_sp <- matrix(NA, nrow=S, ncol=G)
 
-  if(disty==7){
-    logl_sp <- matrix(NA, nrow=S, ncol=G)
-    link <- stats::make.link(link = "logit")
-    for(ss in 1:S){
-      for(gg in 1:G){
-        if(ncol(first_fit$x)==1) eta <- rep(fits$alpha[ss],nrow(first_fit$x)) + first_fit$offset
-        else eta <- fits$alpha[ss] + as.matrix(first_fit$x) %*% fits$beta[gg,] + first_fit$offset
-        if(ncol(first_fit$W)>1) eta <- eta + as.matrix(first_fit$W[,-1]) %*% fits$gamma[ss,]
-        logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], first_fit$size, link$linkinv(eta),log = TRUE))
-      }
-      logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
+  if(!is.null(first_fit$U))eta_all <- as.matrix(first_fit$U) %*% fits$delta
+  else eta_all <- rep(nrow(first_fit$x),0)
+
+  for(ss in 1:S){
+    sp_idx<-!first_fit$y_is_na[,ss]
+    for(gg in 1:G){
+      eta_mix <- as.matrix(first_fit$x[sp_idx,]) %*% fits$beta[gg,]
+      if(ncol(first_fit$W)>1) eta_spp <- as.matrix(first_fit$W[sp_idx,,drop=FALSE]) %*% c(fits$alpha[ss],fits$gamma[ss,])
+      else eta_spp <- fits$alpha[ss]
+      eta <- eta_spp + eta_mix + eta_all[sp_idx] + first_fit$offset[sp_idx]
+      # if(get_fitted) fitted_values[gg,sp_idx,ss] <- link$linkinv(eta)
+      if(disty==1) logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, link$linkinv(eta),log = TRUE))
+      if(disty==2) logl_sp[ss,gg] <- sum(dpois(first_fit$y[,ss], lambda = link$linkinv(eta),log = TRUE))
+      if(disty==3) logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$site_spp_weights[sp_idx,ss] %*% exp(eta)
+      if(disty==4) logl_sp[ss,gg] <- sum(dnbinom(first_fit$y[,ss], mu=link$linkinv(eta), size = exp(-fits$theta[ss]), log=TRUE))
+      if(disty==5) stop('No tweedie')
+      if(disty==6) logl_sp[ss,gg] <- sum(dnorm(first_fit$y[,ss],mean=eta,sd=exp(fits$theta[ss]),log=TRUE))
+      if(disty==7) logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], first_fit$size, link$linkinv(eta),log = TRUE))
     }
+    if(!disty%in%3)logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
   }
 
   ak <- logl_sp + matrix(rep(log( pis), each=S), nrow=S, ncol=G)
@@ -2427,7 +2374,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
    logl_sp <- matrix(NA, nrow=S, ncol=G)
 
-   if(ncol(first_fit$U)>0)eta_all <- as.matrix(first_fit$U) %*% fits$delta
+   if(!is.null(first_fit$U))eta_all <- as.matrix(first_fit$U) %*% fits$delta
    else eta_all <- rep(nrow(first_fit$x),0)
 
     for(ss in 1:S){
@@ -2438,6 +2385,15 @@ starting values;\n starting values are generated using ',control$init_method,
         else eta_spp <- fits$alpha[ss]
         eta <- eta_spp + eta_mix + eta_all[sp_idx] + first_fit$offset[sp_idx]
         if(get_fitted) fitted_values[gg,sp_idx,ss] <- link$linkinv(eta)
+        # logl_sp[ss,gg] <- switch(disty,
+        #                          1 = sum(dbinom(first_fit$y[,ss], 1, link$linkinv(eta),log = TRUE)),
+        #                          2 = sum(dpois(first_fit$y[,ss], lambda = link$linkinv(eta),log = TRUE)),
+        #                          3 = first_fit$y[sp_idx,ss] %*% eta - first_fit$site_spp_weights[sp_idx,ss] %*% exp(eta),
+        #                          4 =  sum(dnbinom(first_fit$y[,ss], mu=link$linkinv(eta), size = exp(-fits$theta[ss]), log=TRUE)),
+        #                          5 = stop('No tweedie'),
+        #                          6 = sum(dnorm(first_fit$y[,ss],mean=eta,sd=exp(fits$theta[ss]),log=TRUE)),
+        #                          7 = sum(dbinom(first_fit$y[,ss], first_fit$size, link$linkinv(eta),log = TRUE)))
+
         if(disty==1) logl_sp[ss,gg] <- sum(dbinom(first_fit$y[,ss], 1, link$linkinv(eta),log = TRUE))
         if(disty==2) logl_sp[ss,gg] <- sum(dpois(first_fit$y[,ss], lambda = link$linkinv(eta),log = TRUE))
         if(disty==3) logl_sp[ss,gg] <- first_fit$y[sp_idx,ss] %*% eta - first_fit$site_spp_weights[sp_idx,ss] %*% exp(eta)
@@ -2623,12 +2579,13 @@ starting values;\n starting values are generated using ',control$init_method,
 "initiate_fit_sam" <- function(y, X, W, U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control){
 
 
-  if(control$init_glmnet)fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W, U,
+  # if(control$init_glmnet)
+    fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W, U,
                                        site_spp_weights, offset, y_is_na, disty, size,
                                       .parallel = control$cores, .verbose = FALSE)
-  else fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glm_sam_inits, y, X, W, U,
-                                                              site_spp_weights, offset, y_is_na, disty, size,
-                                                              .parallel = control$cores, .verbose = FALSE)
+  # else fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glm_sam_inits, y, X, W, U,
+  #                                                             site_spp_weights, offset, y_is_na, disty, size,
+  #                                                             .parallel = control$cores, .verbose = FALSE)
 
   alpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
   if(ncol(X)==1){
@@ -2642,8 +2599,12 @@ starting values;\n starting values are generated using ',control$init_method,
   } else {
     gamma <- unlist(lapply(fm_sp_mods, `[[`, 3))
   }
-  if(ncol(U)>1){
-    delta_spp <- do.call(rbind,lapply(fm_sp_mods, `[[`, 4))
+  if(!is.null(U)){
+    if(ncol(U)>1){
+      delta_spp <- do.call(rbind,lapply(fm_sp_mods, `[[`, 4))
+    } else {
+      delta_spp <- matrix(unlist(lapply(fm_sp_mods, `[[`, 4)),ncol=1)
+    }
   } else {
     delta_spp <- matrix(unlist(lapply(fm_sp_mods, `[[`, 4)),ncol=1)
   }
