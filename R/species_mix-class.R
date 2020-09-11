@@ -12,7 +12,7 @@
 #' that allows for easier data input. The data frames are merged into
 #' the appropriate format for the use in species_mix.fit.
 #' Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
-#' 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative_binomial'
+#' 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative.binomial'
 #'  and 'normal' distributions can be fitted using the species_mix function.
 #' @param archetype_formula an object of class "formula" (or an object that can
 #' be coerced to that class). The response variable (left hand side of the
@@ -38,7 +38,7 @@
 #' @param n_mixtures The number of mixing components (groups) to fit.
 #' @param distribution The family of statistical distribution to use within
 #' the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
-#' "negative_binomial" and "gaussian" distributions are possible and applicable
+#' "negative.binomial" and "gaussian" distributions are possible and applicable
 #' to specific types of data.
 #' @param offset a numeric vector of length nrow(data) (n sites) that is
 #' included into the model as an offset. It is included into the conditional
@@ -185,7 +185,7 @@
   }
 
   #get distribution
-  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian","binomial")
+  disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
 
   disty <- get_distribution_sam(disty_cases, distribution)
 
@@ -284,7 +284,7 @@
 #'@param site_spp_weights These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.
 #'@param offset this is a vector of site specific offsets, this might be something like area sampled at sites.
 #'@param y_is_na This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!
-#'@param disty the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are available - internal conversion of distribution to a integer.
+#'@param disty the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.
 #'@param size The size of each of binomial sample at each site. Length should be the number of sites.
 #'@param control this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.
 #'@param inits This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).
@@ -353,7 +353,7 @@
 #' @param n_mixtures The number of mixing components (groups) to fit.
 #' @param distribution The family of statistical distribution to use within
 #' the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
-#' "negative_binomial" and "gaussian" distributions are possible and applicable
+#' "negative.binomial" and "gaussian" distributions are possible and applicable
 #' to specific types of data.
 #' @param offset a numeric vector of length nrow(data) (n sites) that is
 #' included into the model as an offset. It is included into the conditional
@@ -503,7 +503,7 @@
   }
 
   #get distribution
-  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian","binomial")
+  disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
 
   disty <- get_distribution_sam(disty_cases, distribution)
 
@@ -603,7 +603,7 @@
 #'@param em_refit int Default is 1, number of times to refit using EM.
 #'@param em_reltol A function or value which gives the tolerance in the EM loglikeihood estimation.
 #'@param em_maxtau A cap on the maximum value of the species' taus in the first E-step of the EM algorithm, not used for subsequent iterations.
-#'@param theta_range Two positive values use as penalities for estimating the dispersion parameters (theta) in a negative_binomial SAM or PSAM.
+#'@param theta_range Two positive values use as penalities for estimating the dispersion parameters (theta) in a negative.binomial SAM or PSAM.
 #'@param pen_param A penality for the em fitting.
 #'@param update_kappa Penalities for how fast parameters update during each EM step.
 #'@param print_cpp_start_vals A call to check what parameter estimates are being passed to C++ for optimisation.
@@ -626,7 +626,7 @@
                                   ## intialisation controls
                                   init_method = 'random2',
                                   init_sd = NULL,
-                                  minimum_sites_occurrence = 0,
+                                  species_tolerance = 0.05,
                                   init_glmnet = FALSE,
                                   ## EM algorithim controls
                                   em_prefit = TRUE,
@@ -656,7 +656,7 @@
   rval <- list(quiet = quiet, cores = cores,
                #initialisation controls
                init_method = init_method, init_sd = init_sd,
-               minimum_sites_occurrence = minimum_sites_occurrence,
+               species_tolerance = species_tolerance,
                init_glmnet = init_glmnet,
                #em controls
                em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps,
@@ -737,7 +737,7 @@
 
   my.fun <- function(dummy){
     if( !quiet) setTxtProgressBar(pb, dummy)
-    disty_cases <- c("bernoulli","binomial","poisson", "ippm", "negative_binomial", "tweedie", "gaussian")
+    disty_cases <- c("bernoulli","binomial","poisson", "ippm", "negative.binomial", "tweedie", "gaussian")
     disty <- get_distribution_sam(disty_cases, object$dist)
     dumbOut <- capture.output(
       samp.object <- species_mix.fit(y=object$titbits$Y,
@@ -791,11 +791,11 @@
 #'  parameters. Each row is a different species archetype.
 #' @param gamma coefficents for each species archetype. Matrix of S x number of
 #'  parameters. Each row is a different species archetype.
-#' @param theta coefficents for the dispersion variables for negative_binomial
+#' @param theta coefficents for the dispersion variables for negative.binomial
 #' and gaussian distributions - should be number of species long
 #' @param size Is for the binomial model and this respresents the number of binomial trials per site, can be fixed or vary.
 #' @param distribution Which statistical distribution to simulate data for.
-#'  'bernoulli','binomial', 'gaussian', 'ippm', 'negative_binomial' and 'poisson'.
+#'  'bernoulli','binomial', 'gaussian', 'ippm', 'negative.binomial' and 'poisson'.
 #' @param offset used to offset sampling effort for abundance data (log link function).
 #' @export
 #' @examples
@@ -873,7 +873,7 @@
   } else {
     gamma <- matrix( as.numeric( gamma), nrow=S)
   }
-  if( distribution == "negative_binomial" & (is.null(theta) | length( theta) != S)){
+  if( distribution == "negative.binomial" & (is.null(theta) | length( theta) != S)){
     message( "Random values for overdispersions")
     theta <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
   }
@@ -883,7 +883,7 @@
   }
 
   if(distribution %in% c('bernoulli','binomial')) link <- make.link('logit')
-  if(distribution %in% c('poisson','ippm','negative_binomial')) link <- make.link('log')
+  if(distribution %in% c('poisson','ippm','negative.binomial')) link <- make.link('log')
   if(distribution %in% c('gaussian')) link <- make.link('identity')
   if(distribution %in% 'ippm') {
     grid <- simulate_ippm_grid(X,W)
@@ -912,7 +912,7 @@
     outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
   if( distribution=="ippm")
     outcomes <- simulate_ippm_outcomes(X, W, S, grid2D, fitted)
-  if( distribution=="negative_binomial")
+  if( distribution=="negative.binomial")
     outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp(theta), each=n)), nrow = n, ncol = S)
   if( distribution=="gaussian")
     outcomes <- matrix( rnorm( n=n*S, mean=as.numeric( fitted), sd=rep( exp(theta), each=n)), nrow=n, ncol=S)
@@ -1006,7 +1006,7 @@
     rownames(res$gamma) <- object$names$spp
     colnames(res$gamma) <- object$names$Wvars
   }
-  if(object$dist%in%c('negative_binomial','gaussian')){
+  if(object$dist%in%c('negative.binomial','gaussian')){
     res$theta <- object$coef$theta
     names(res$theta) <- object$names$spp
   }
@@ -1142,7 +1142,7 @@
   spp_wts <- object$titbits$spp_weights
   site_spp_wts <- object$titbits$site_spp_weights
 
-  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian","binomial")
+  disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
   disty <- get_distribution_sam(disty_cases, object$titbits$distribution)
   taus <- object$taus
   if (is.null(object2)) {
@@ -1400,12 +1400,12 @@
               bernoulli = { fn <- function(y,mu,logtheta) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
               poisson = { fn <- function(y,mu,logtheta) ppois( q=y, lambda=mu, lower.tail=TRUE)},
               ippm = { fn <- function(y,mu,logtheta) ppois( q=y, lambda=mu, lower.tail=TRUE)},
-              negative_binomial = { fn <- function(y,mu,logtheta) pnbinom( q=y, mu=mu, size=1/exp( logtheta), lower.tail=TRUE)},
+              negative.binomial = { fn <- function(y,mu,logtheta) pnbinom( q=y, mu=mu, size=1/exp( logtheta), lower.tail=TRUE)},
               gaussian = { fn <- function(y,mu,logtheta) pnorm( q=y, mean=mu, sd=exp( logtheta), lower.tail=TRUE)})
 
 
       for( ss in 1:object$S){
-        if( object$dist %in% c("bernoulli","poisson","ippm","negative_binomial")){
+        if( object$dist %in% c("bernoulli","poisson","ippm","negative.binomial")){
           tmpLower <- fn( object$titbits$Y[,ss]-1, object$mus[,ss,], object$coef$theta[ss])
           tmpUpper <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$theta[ss])
           tmpLower <- rowSums( tmpLower * object$pis)
@@ -1508,7 +1508,7 @@
     y_is_na <- object$titbits$y_is_na
     size <- object$titbits$size
     distribution <- object$titbits$distribution
-    disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian","binomial")
+    disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
     disty <- get_distribution_sam(disty_cases, distribution)
     S <- object$S
     G <- object$G
@@ -2011,7 +2011,7 @@
     Y_taus <- as.matrix(cbind(Y_taus,size_taus-Y_taus))
   }
 
-   #don't use for tweedie - try and fit negative_binomial using glm.fit.nbinom
+   #don't use for tweedie - try and fit negative.binomial using glm.fit.nbinom
    ft_mix <- try(glm.fit(x = as.data.frame(X_taus),
                          y = Y_taus,
                          weights = c(obs.weights),
@@ -2901,7 +2901,7 @@ starting values;\n starting values are generated using ',control$init_method,
                    "bernoulli" = 1,
                    "poisson" = 2,
                    "ippm" = 3,
-                   "negative_binomial" = 4,
+                   "negative.binomial" = 4,
                    "tweedie" = 5,
                    "gaussian" = 6,
                    "binomial" = 7,
@@ -3114,7 +3114,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
   if (family %in% c("bernoulli","binomial"))
     link.fun <- make.link("logit")
-  if (family %in% c("negative_binomial","poisson","ippm"))
+  if (family %in% c("negative.binomial","poisson","ippm"))
     link.fun <- make.link("log")
   if (family %in% "gaussian")
     link.fun <- make.link("identity")
@@ -3145,7 +3145,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
   if (family %in% c("bernoulli","binomial"))
     link.fun <- make.link("logit")
-  if (family %in% c("negative_binomial","poisson","ippm"))
+  if (family %in% c("negative.binomial","poisson","ippm"))
     link.fun <- make.link("log")
   if (family %in% "gaussian")
     link.fun <- make.link("identity")
