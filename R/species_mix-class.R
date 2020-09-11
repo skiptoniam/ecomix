@@ -630,8 +630,8 @@
                                   init_glmnet = FALSE,
                                   ## EM algorithim controls
                                   em_prefit = TRUE,
-                                  em_steps = 3,
-                                  em_refit = 1,
+                                  em_steps = 5,
+                                  em_refit = 3,
                                   em_reltol = reltol_fun,
                                   em_maxtau = 0.8,
                                   ## partial mixture penalities
@@ -2866,7 +2866,9 @@ starting values;\n starting values are generated using ',control$init_method,
 "shrink_taus" <- function( taus, max_tau=0.8, G){
   if( G==1)
     return( taus)
-  alpha <- (1-max_tau*G) / ( max_tau*(2-G)-1)
+  a <- (1-max_tau*G) / ( max_tau*(2-G)-1)
+  # magical.alpha <- (1-0.8*G)/(0.8*(2-G)-1) ## Dunstan et al., 2013, JABES
+  # taus_star <- (2*magical.alpha*taus-magical.alpha+1)/(2*magical.alpha - magical.alpha*G + G)
   tau_star <- ( 2*alpha*taus - alpha + 1 ) / ( 2*alpha - alpha*G + G)
   return(tau_star)
 }
