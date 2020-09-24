@@ -873,13 +873,17 @@
   } else {
     gamma <- matrix( as.numeric( gamma), nrow=S)
   }
-  if( distribution == "negative.binomial" & (is.null(theta) | length( theta) != S)){
+  if(distribution == "negative.binomial"){
+    if((is.null(theta) | length( theta) != S)){
     message( "Random values for overdispersions")
     theta <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
+    }
   }
-  if( distribution=="gaussian" & (is.null( theta) | length( theta) != S)){
+  if( distribution=="gaussian"){
+    if((is.null( theta) | length( theta) != S)){
     message( "Random values for species' variance parameters")
     theta <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
+    }
   }
 
   if(distribution %in% c('bernoulli','binomial')) link <- make.link('logit')
