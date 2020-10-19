@@ -2867,14 +2867,12 @@ starting values;\n starting values are generated using ',control$init_method,
 }
 
 
-"shrink_taus" <- function( taus, max_tau=0.8, G){
+"shrink_taus" <- function(taus, G){
   if( G==1)
     return( taus)
-  a <- (1-max_tau*G) / ( max_tau*(2-G)-1)
-  # magical.alpha <- (1-0.8*G)/(0.8*(2-G)-1) ## Dunstan et al., 2013, JABES
-  # taus_star <- (2*magical.alpha*taus-magical.alpha+1)/(2*magical.alpha - magical.alpha*G + G)
-  tau_star <- ( 2*alpha*taus - alpha + 1 ) / ( 2*alpha - alpha*G + G)
-  return(tau_star)
+  magical.alpha <- (1-0.8*G)/(0.8*(2-G)-1) ## Dunstan et al., 2013, JABES
+  taus_star <- (2*magical.alpha*taus-magical.alpha+1)/(2*magical.alpha - magical.alpha*G + G)
+  return(taus_star)
 }
 
 
