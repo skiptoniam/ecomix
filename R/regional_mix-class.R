@@ -1889,9 +1889,7 @@ function( site.logls, outcomes, distribution, coef, nRCP, type="deviance", power
 }
 
 
-"get_start_vals_rcp" <-
-function( outcomes, W, X, offy, wts, disty, G, S, power, inits, quiet=FALSE)
-{
+"get_start_vals_rcp" <- function( outcomes, W, X, offy, wts, disty, G, S, power, inits, quiet=FALSE){
   if( !quiet)
     message( "Obtaining starting values...")
 
