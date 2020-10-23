@@ -1670,14 +1670,86 @@
     return(vcov.mat)
   }
 
+###### ECM version for starting values - could use to fit ######
+
+"e.step" <- function(y, X, W, U=NULL, site_spp_weights, offy,
+                     new.betas, new.pis, new.sp.alphas,
+                     new.sp.gammas, new.delta, new.sp.phis, disty,
+                     get.fitted = FALSE) {
+  S <- ncol(y); n <- nrow(y); G <- length(new.pis)
+  out.taus <- matrix(0,S,G)
+  sp.logl <- rep(0,S) ## Species specific incomplete logL
+  if(get.fitted) fitted.values <- array(0,dim=c(G,n,S))
+
+  if(!is.null(U)) all.etas <- U%*%new.delta
+  else all.etas <- rep(0,n)
+
+  for(gg in seq_len(G)){
+    mix.etas <- X%*%new.betas[gg,]
+    for(ss in  seq_len(S)){
+      sp_idx <- !y_is_na[,ss]
+
+      if(ncol(W)>1) spp.etas <- W%*%c(new.sp.alphas[ss],new.sp.gammas[,ss])
+      else spp.etas <- new.sp.alphas[ss]
+
+      new.etas2 <- mix.etas + spp.etas + all.etas + offy
+
+      if(disty %in% 1) {
+        check.p <- binomial()$linkinv(new.etas2)
+        check.p[check.p < 1e-4] <- 1e-4; check.p[check.p > (1-1e-4)] <- (1-1e-4);
+        if(get.fitted) fitted.values[gg,,ss] <- check.p
+        out.taus[ss,gg] <- (sum(dbinom(y[,ss], 1, p = check.p, log = TRUE)))
+      }
+      if(disty %in% 2) {
+        if(get.fitted) fitted.values[gg,,ss] <- exp(new.etas2)
+        out.taus[ss,gg] <- (sum(dpois(y[,ss], lambda = exp(new.etas2), log = TRUE)))
+      }
+      if(disty %in% 3) {
+        if(get.fitted) fitted.values[gg,,ss] <- exp(new.etas2)
+        out.taus[ss,gg] <- (y[sp_idx,ss] %*% new.etas2 - site_spp_weights[sp_idx,ss] %*% exp(new.etas2))
+      }
+      if(disty %in% 4) {
+        if(get.fitted) fitted.values[gg,,ss] <- exp(new.etas2)
+        out.taus[ss,gg] <- (sum(dnbinom(y[,ss], mu = exp(new.etas2), size = 1/new.sp.thetas[ss], log = TRUE)))
+      }
+      if(disty %in% 5) {
+        if(get.fitted) fitted.values[gg,,ss] <- exp(new.etas2)
+        out.taus[ss,gg] <- (sum(fishMod::dTweedie(y[,ss], mu = exp(new.etas2), phi = new.sp.thetas[ss] , log = TRUE)))
+      }
+      if(disty %in% 6) {
+        if(get.fitted) fitted.values[gg,,ss] <- new.etas2
+        out.taus[ss,gg] <- (sum(dnorm(y[,ss], mean = new.etas2, sd = sqrt(new.sp.thetas[ss]), log = TRUE)))
+      }
+      if(disty %in% 7) {
+        check.p <- binomial()$linkinv(new.etas2)
+        check.p[check.p < 1e-4] <- 1e-4; check.p[check.p > (1-1e-4)] <- (1-1e-4);
+        if(get.fitted) fitted.values[gg,,ss] <- check.p
+        out.taus[ss,gg] <- (sum(dbinom(y[,ss], size, p = check.p, log = TRUE)))
+      }
+    }
+  }
+
+  for(ss in seq_len(S)) {
+    eps <- max(out.taus[ss,])
+    sp.logl[ss] <- log(sum(new.pis*exp(out.taus[ss,]-eps))) + eps
+  }
+  for(ss in seq_len(S)) {
+    for(gg in seq_len(G)) {
+      out.taus[ss,gg] <- exp((log(new.pis[gg]) + out.taus[ss,gg]) - sp.logl[ss])
+    }
+  }
+
+  full.logl <- sum(sp.logl)
+  out.list <- list(taus = out.taus, sp.logl = sp.logl, logl = full.logl)
+  if(get.fitted) out.list$fitted = fitted.values
+  return(out.list)
+}
+
+
 ###### SAM internal functions for fitting ######
-# replace this function with one that include eta (linear predictor) as an offset in when estimating the species-specific intercepts.
-## update the dispersion parameters if needed.
-## my own little function to predict from a glm.fit object.
-## glmfit object
-## newmatrix is a set of new observations or the original obs.
-## offset is an offset
-## disty is the distribution
+
+
+
 
 
 "apply_optimise_spp_theta" <- function(ss, first_fit, fits,
@@ -1763,14 +1835,14 @@
 
 ## function for starting values using penalities
 "apply_glmnet_sam_inits" <- function(ss, y, X, W, U = NULL, site_spp_weights,
-                                     offset, y_is_na, disty, size){
+                                     offset, y_is_na, disty, size, power){
 
   # which family to use?
-  if(disty == 1 | disty == 7 ) #binomials
+  if(disty %in% c(1,7)) #binomials
     fam <- "binomial" #glmnet
-  if(disty == 2 | disty == 3 | disty == 4)
+  if(disty %in% c(2,3,4))
     fam <- "poisson"
-  if(disty == 6)
+  if(disty %in% 6)
     fam <- "gaussian"
 
   ids_i <- !y_is_na[,ss]
@@ -1791,21 +1863,16 @@
   if(ncol(W) > 1){
     df <- cbind(X[ids_i,,drop=FALSE],W[ids_i,-1,drop=FALSE])
   } else {
-    df <- X[ids_i,,drop=FALSE]
+    df <-   X[ids_i,,drop=FALSE]
   }
 
   if(!is.null(U)) df <- cbind(df,U[ids_i,,drop=FALSE])
-<<<<<<< HEAD
 
+  if(!disty %in% c(5)){
 
-  if( !disty %in% c(5)){
-=======
-
-
-  if( disty %in% c(1,2,3,4,6,7)){
->>>>>>> 15bf1c52844c22263547cb700eee3e7460344c5f
-    lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1, to=.1, length=10))), decreasing=TRUE)
-
+    lambda.seq <- sort(unique( c( seq( from=1/0.001, to=1, length=25),
+                                   seq( from=1, to=.1, length=10))),
+                       decreasing=TRUE)
     ft_sp <- try(glmnet::glmnet(y=outcomes, x=as.matrix(df),
                                 family=fam, offset=offset[ids_i],
                                 weights=as.numeric(site_spp_weights[ids_i,ss]),
@@ -1828,8 +1895,6 @@
       if(ncol(X)==1) my_coefs <- t(as.matrix(my.coefs[-1]))
       my_coefs <- t(as.matrix(my.coefs))
     }
-
-    ##estimate the starting dispersion parameter.
     theta <- -99999
     if( disty == 4){
       tmp <- MASS::theta.mm(outcomes, as.numeric(predict(ft_sp, s=locat.s,
@@ -1838,20 +1903,23 @@
                                                          newoffset=offset[ids_i])),
                             weights=as.matrix(site_spp_weights[ids_i,ss]),
                             dfr=length(outcomes), eps=1e-4)
-      if(tmp>2) tmp <- 2
+      if(tmp>5) tmp <- 5
       theta <- tmp
     }
     if( disty == 6){
       preds <- as.numeric( predict(ft_sp, s=locat.s, type="link",
                                    newx=as.matrix(df), newoffset=offset[ids_i]))
-      theta <- log( sqrt( sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard
+      #should be something like the resid standard
+      theta <- log( sqrt( sum((outcomes - preds)^2)/length(outcomes)))
     }
   } else { #Tweedie needs an unconstrained fit.  May cause problems in some cases, especially if there is quasi-separation...
-      df3 <- as.data.frame( cbind( y=outcomes[,ss], offy=offy, df))
-      colnames( df3)[-(1:2)] <- c( paste( "grp", 1:G, sep=""), paste( "w",seq_len(ncol(W)), sep=""))
-      tmp.fm1 <- fishMod::tglm( y~-1+.-offy+offset( offy), wts=wts, data=df3, p=power[ss], vcov=FALSE, residuals=FALSE, trace=0)
-      my.coefs <- c( NA, tmp.fm1$coef)
-      disp[ss] <- log( tmp.fm1$coef["phi"])
+      df3 <- as.data.frame( cbind( y=outcomes[,ss], offy=offset, Intercept= 1, df))
+      tmp.fm1 <- fishMod::tglm(y~-1+.-offy+offset( offy),
+                               wts=site_spp_weights[,ss],
+                               data=df3, p=power[ss], vcov=FALSE,
+                               residuals=FALSE, trace=0)
+      my.coefs <- c(tmp.fm1$coef)
+      theta <- log(tmp.fm1$coef["phi"])
       my.coefs <- my.coefs[names( my.coefs) != "phi"]
     # }
   }
@@ -1866,83 +1934,8 @@
   return(list(alpha = alpha, beta = beta, gamma = gamma, delta = delta, theta = theta))
 }
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 15bf1c52844c22263547cb700eee3e7460344c5f
-"apply_glm_sam_inits" <- function(ss, y, X, W, U=NULL, site_spp_weights,
-                                  offset, y_is_na, disty, size){
-
-  # which family to use?
-  if(disty == 1 | disty == 7 ) #binomials
-    fam <- binomial() #glmnet
-  if(disty == 2 | disty == 3 | disty == 4)
-    fam <- poisson()#"poisson"
-  if(disty == 6)
-    fam <- gaussian()#"gaussian"
-
-  #set up the index of NAs (this is for ppms)
-  ids_i <- !y_is_na[,ss]
-
-  if (disty==3){
-    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
-  } else {
-    outcomes <- as.matrix(y[ids_i,ss])
-  }
-  if (disty==7){
-    outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]-y[ids_i,ss]))
-  }
-
-  mm <- cbind(W[ids_i,-1,drop=FALSE],X[ids_i,,drop=FALSE])
-  if(!is.null(U)) mm <- cbind(mm,U[ids_i,,drop=FALSE])
-
-  offy <- as.numeric(offset[ids_i])
-  wts <- as.numeric(site_spp_weights[ids_i,ss])
-  dat <- data.frame(outcomes=outcomes, mm, offy=offy)
-
-  if( disty %in% c(1,2,3,4,6,7)){
-    tmpform <- as.formula(paste0('outcomes ~ 1 +', paste0(colnames(mm),collapse = "+"),' + offset(offy)'))
-    ft_sp <- try(glm(formula = tmpform, data = dat, weights=wts, family=fam), silent=FALSE)
-    if (any(class(ft_sp)[1] %in% 'try-error')){
-      my_coefs <- rep(NA, ncol(X[ids_i,]))
-      names(my_coefs) <- colnames(W[ids_i,,drop=FALSE],X[ids_i,,drop=FALSE],U)
-    } else {
-      # if(ncol(X)==1) my_coefs <- t(as.matrix(my.coefs[-1]))
-      my_coefs <- coef(ft_sp)
-    }
-
-    ##estimate the starting dispersion parameter.
-    theta <- -99999
-    if( disty == 4){
-      tmp <- MASS::theta.mm(outcomes,ft_sp$fitted.values,
-                            weights=as.matrix(site_spp_weights[ids_i,ss]),
-                            dfr=length(outcomes), eps=1e-4)
-      if(tmp>2) tmp <- 2
-      theta <- tmp#log( 1/tmp)
-    }
-    if( disty == 6){
-      preds <- as.numeric(ft_sp$linear.predictors)
-      theta <- log( sqrt( sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard
-    }
-  }
-  # species intercpets
-  alpha <- my_coefs[1]
-  # mixture coefs
-  beta <- my_coefs[match(colnames(X), names(my_coefs))]
-  # species coefs apart from intercept
-  if(ncol(W)>1) gamma <-  my_coefs[match(colnames(W[,-1,drop=FALSE]), names(my_coefs))]
-  else gamma <- -99999
-
-  if(!is.null(U)) delta <-  my_coefs[match(colnames(U), colnames(my_coefs))]
-  else delta <- -99999
-
-
-  return(list(alpha = alpha, beta = beta, gamma = gamma, delta = delta, theta = theta))
-}
-
-## function for starting values using penalities
-# "apply_glm_sam_inits" <- function(ss, y, X, W, site_spp_weights,
-#                                      offset, y_is_na, disty, size){
+# "apply_glm_sam_inits" <- function(ss, y, X, W, U=NULL, site_spp_weights,
+#                                   offset, y_is_na, disty, size){
 #
 #   # which family to use?
 #   if(disty == 1 | disty == 7 ) #binomials
@@ -1952,40 +1945,31 @@
 #   if(disty == 6)
 #     fam <- gaussian()#"gaussian"
 #
+#   #set up the index of NAs (this is for ppms)
 #   ids_i <- !y_is_na[,ss]
 #
-#   if(disty == 1 | disty == 2 | disty == 4){
-#     outcomes <- as.matrix(y[ids_i,ss])
-#   }
 #   if (disty==3){
-#    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
-#   }
-#   if(disty == 6){
-#    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+#     outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+#   } else {
+#     outcomes <- as.matrix(y[ids_i,ss])
 #   }
 #   if (disty==7){
 #     outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]-y[ids_i,ss]))
 #   }
 #
-#   if(ncol(X)==1){
-#     X<-cbind(1,X[ids_i,,drop=FALSE])
-#   }
+#   mm <- cbind(W[ids_i,-1,drop=FALSE],X[ids_i,,drop=FALSE])
+#   if(!is.null(U)) mm <- cbind(mm,U[ids_i,,drop=FALSE])
 #
-#   if(ncol(W) > 1){
-#     df <- cbind(X[ids_i,,drop=FALSE],W[ids_i,-1,drop=FALSE])
-#   } else {
-#     df <- cbind(1,X[ids_i,,drop=FALSE])
-#   }
-#
+#   offy <- as.numeric(offset[ids_i])
+#   wts <- as.numeric(site_spp_weights[ids_i,ss])
+#   dat <- data.frame(outcomes=outcomes, mm, offy=offy)
 #
 #   if( disty %in% c(1,2,3,4,6,7)){
-#     # lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
-#
-#     ft_sp <- try(glm.fit(y=outcomes, x=df,#weights=as.numeric(site_spp_weights[ids_i,ss]),
-#                         family=fam, offset=offset[ids_i]), silent=FALSE)
+#     tmpform <- as.formula(paste0('outcomes ~ 1 +', paste0(colnames(mm),collapse = "+"),' + offset(offy)'))
+#     ft_sp <- try(glm(formula = tmpform, data = dat, weights=wts, family=fam), silent=FALSE)
 #     if (any(class(ft_sp)[1] %in% 'try-error')){
 #       my_coefs <- rep(NA, ncol(X[ids_i,]))
-#       names(my_coefs) <- colnames(cbind(X[ids_i,,drop=FALSE],W[ids_i,,drop=FALSE]))
+#       names(my_coefs) <- colnames(W[ids_i,,drop=FALSE],X[ids_i,,drop=FALSE],U)
 #     } else {
 #       # if(ncol(X)==1) my_coefs <- t(as.matrix(my.coefs[-1]))
 #       my_coefs <- coef(ft_sp)
@@ -1998,7 +1982,7 @@
 #                             weights=as.matrix(site_spp_weights[ids_i,ss]),
 #                             dfr=length(outcomes), eps=1e-4)
 #       if(tmp>2) tmp <- 2
-#       theta <- log( 1/tmp)
+#       theta <- tmp#log( 1/tmp)
 #     }
 #     if( disty == 6){
 #       preds <- as.numeric(ft_sp$linear.predictors)
@@ -2013,8 +1997,14 @@
 #   if(ncol(W)>1) gamma <-  my_coefs[match(colnames(W[,-1,drop=FALSE]), names(my_coefs))]
 #   else gamma <- -99999
 #
-#   return(list(alpha = alpha, beta = beta, gamma = gamma, theta = theta))
+#   if(!is.null(U)) delta <-  my_coefs[match(colnames(U), colnames(my_coefs))]
+#   else delta <- -99999
+#
+#
+#   return(list(alpha = alpha, beta = beta, gamma = gamma, delta = delta, theta = theta))
 # }
+
+
 
 #get the conditional maxima for species specific parameters.
 "apply_glm_spp_coefs_sams" <- function(ss, y, X, W, U=NULL,
@@ -2182,102 +2172,82 @@
   return(c(mix_coefs))
 }
 
-# just need one glmo
-"glm_all_coefs_sams" <- function(y, X, W, U, site_spp_weights, offset,
-                                 y_is_na, disty, taus, fits, mus, size){
-
-  ### setup the data stucture for this model.
-  ### This is going to be a huge model over S*G
-  G <- ncol(taus)
-  S <- nrow(taus)
-  Y_allspp <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
-  size_allspp <- as.matrix(matrix(rep(size,ncol(y)),nrow(y),ncol(y))[!y_is_na], ncol=1)
-  X_no_NA <- list()
-  U_no_NA <- list()
-  for (jj in 1:ncol(y)){
-    X_no_NA[[jj]] <- X[!y_is_na[,jj],,drop=FALSE]
-    U_no_NA[[jj]] <- U[!y_is_na[,jj],,drop=FALSE]
-  }
-  X_allspp <- do.call(rbind, X_no_NA)
-  U_allspp <- do.call(rbind, U_no_NA)
-  n_ys <- sapply(X_no_NA,nrow)
-
-  ## Set up the giant glm
-  Y_SG <- kronecker(rep(1,G),Y_allspp)
-  size_SG <- kronecker(rep(1,G),size_allspp)
-  U_SG <- kronecker(rep(1,G),U_allspp)
-  tausSG <- rep(as.vector(taus),rep(c(n_ys),G))
-
-  site_weights <- kronecker(rep(1,G),as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
-  wts_tausXsite_weights <- tausSG*site_weights  ## weird things could be happening here ippms
-  offy_mat <- replicate(ncol(y)*G,offset)
-  offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
-
-
-  ## species etas
-  if(ncol(W)>1) offy2 <- W %*% t(cbind(fits$alpha,fits$gamma))
-  else offy2 <- W %*% c(fits$alpha)
-  offy2 <- unlist(as.data.frame(offy2[!y_is_na]))
-  offy2 <- kronecker(rep(1,G),offy2)
-
-  ## mix etas
-  offy3 <- X_allspp %*% t(fits$beta)
-  offy3 <- unlist(as.data.frame(offy2[!y_is_na]))
-
-  # sum all the etas together.
-  offy <- as.numeric(offy1 + offy2 + offy3)
-
-
-  # which family to use?
-  if( disty == 1 | disty == 7)
-    fam <- binomial()
-  if( disty == 2 | disty == 3 |disty == 4)
-    fam <- poisson()
-  if( disty == 6)
-    fam <- gaussian()
-  if (disty==3){
-    Y_SG <- as.matrix(Y_SG/site_weights)
-  } else {
-    Y_SG <- as.matrix(Y_SG)
-  }
-  if(disty%in%c(7)){
-    Y_SG <- as.matrix(cbind(Y_SG,size_SG-Y_SG))
-  }
-
-  if(disty %in% c(1,2,3,6,7)){ #don't use for tweedie - try and fit negative_binomial using glm.fit.nbinom
-    ft_all <- try(glm.fit(x = as.data.frame(U_SG),
-                          y = Y_SG,
-                          weights = c(wts_tausXsite_weights),
-                          offset = offy,
-                          family = fam), silent = TRUE)
-    if (class(ft_all)[1] %in% 'try-error'){
-      all_coefs <- rep(NA, ncol(U))
-    } else {
-      all_coefs <- ft_all$coefficients
-    }
-  return(c(mix_coefs))
-}
-
-"apply_glm_spp_mix" <- function(gg, y, X, W, site_spp_weights, offset,
-                                y_is_na, disty, taus, fits, mus, size){
-
-  if(disty %in% c(1,7))
-    fam <- binomial()
-  if(disty %in% c(2,3))
-    fam <- poisson()
-  if(disty %in% c(6))
-    fam <- gaussian()
-
-  Y_taus <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
-  size_taus <- matrix(rep(size,ncol(y)),nrow(y),ncol(y))[!y_is_na]
-  X_no_NA <- list()
-  W_no_NA <- list()
-  for (jj in 1:ncol(y)){
-    X_no_NA[[jj]] <- X[!y_is_na[,jj],,drop=FALSE]
-    W_no_NA[[jj]] <- W[!y_is_na[,jj],,drop=FALSE]
-  }
-  return(c(all_coefs))
-}
+# # just need one glmo
+# "glm_all_coefs_sams" <- function(y, X, W, U, site_spp_weights, offset,
+#                                  y_is_na, disty, taus, fits, mus, size){
+#
+#   ### setup the data stucture for this model.
+#   ### This is going to be a huge model over S*G
+#   G <- ncol(taus)
+#   S <- nrow(taus)
+#   Y_allspp <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
+#   size_allspp <- as.matrix(matrix(rep(size,ncol(y)),nrow(y),ncol(y))[!y_is_na], ncol=1)
+#   X_no_NA <- list()
+#   U_no_NA <- list()
+#   for (jj in 1:ncol(y)){
+#     X_no_NA[[jj]] <- X[!y_is_na[,jj],,drop=FALSE]
+#     U_no_NA[[jj]] <- U[!y_is_na[,jj],,drop=FALSE]
+#   }
+#   X_allspp <- do.call(rbind, X_no_NA)
+#   U_allspp <- do.call(rbind, U_no_NA)
+#   n_ys <- sapply(X_no_NA,nrow)
+#
+#   ## Set up the giant glm
+#   Y_SG <- kronecker(rep(1,G),Y_allspp)
+#   size_SG <- kronecker(rep(1,G),size_allspp)
+#   U_SG <- kronecker(rep(1,G),U_allspp)
+#   tausSG <- rep(as.vector(taus),rep(c(n_ys),G))
+#
+#   site_weights <- kronecker(rep(1,G),as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
+#   wts_tausXsite_weights <- tausSG*site_weights  ## weird things could be happening here ippms
+#   offy_mat <- replicate(ncol(y)*G,offset)
+#   offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
+#
+#
+#   ## species etas
+#   if(ncol(W)>1) offy2 <- W %*% t(cbind(fits$alpha,fits$gamma))
+#   else offy2 <- W %*% c(fits$alpha)
+#   offy2 <- unlist(as.data.frame(offy2[!y_is_na]))
+#   offy2 <- kronecker(rep(1,G),offy2)
+#
+#   ## mix etas
+#   offy3 <- X_allspp %*% t(fits$beta)
+#   offy3 <- unlist(as.data.frame(offy2[!y_is_na]))
+#
+#   # sum all the etas together.
+#   offy <- as.numeric(offy1 + offy2 + offy3)
+#
+#
+#   # which family to use?
+#   if( disty == 1 | disty == 7)
+#     fam <- binomial()
+#   if( disty == 2 | disty == 3 |disty == 4)
+#     fam <- poisson()
+#   if( disty == 6)
+#     fam <- gaussian()
+#   if (disty==3){
+#     Y_SG <- as.matrix(Y_SG/site_weights)
+#   } else {
+#     Y_SG <- as.matrix(Y_SG)
+#   }
+#   if(disty%in%c(7)){
+#     Y_SG <- as.matrix(cbind(Y_SG,size_SG-Y_SG))
+#   }
+#
+#   if(disty %in% c(1,2,3,6,7)){ #don't use for tweedie - try and fit negative_binomial using glm.fit.nbinom
+#     ft_all <- try(glm.fit(x = as.data.frame(U_SG),
+#                           y = Y_SG,
+#                           weights = c(wts_tausXsite_weights),
+#                           offset = offy,
+#                           family = fam), silent = TRUE)
+#     if (class(ft_all)[1] %in% 'try-error'){
+#       all_coefs <- rep(NA, ncol(U))
+#     } else {
+#       all_coefs <- ft_all$coefficients
+#     }
+#   }
+#   return(c(mix_coefs))
+# }
 
 "get_starting_values_sam" <- function(y, X, W, U, spp_weights, site_spp_weights,
                                       offset, y_is_na, G, S, disty, size, control){
