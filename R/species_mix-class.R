@@ -917,8 +917,8 @@
 
     message( "Random values for overdispersions")
     theta <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
-    }
   }
+
   if( distribution=="gaussian"){
     if((is.null( theta) | length( theta) != S)){
     message( "Random values for species' variance parameters")
@@ -939,8 +939,11 @@
   ## simulate the groups and fitted values.
   fitted <- matrix(0, dim(X)[1], S)
   group <- rep(0, S)
-  if(npu>0)eta_all <- U %*% delta
-  else eta_all <- rep(0,nrow(X))
+  if(npu>0) {
+    eta_all <- U %*% delta
+  } else {
+    eta_all <- rep(0,nrow(X))
+  }
   for (ss in seq_len(S)) {
     gg <- ceiling(stats::runif(1) * G)
     eta_spp <- W %*% c(alpha[ss],gamma[ss,])
@@ -1005,6 +1008,9 @@
 #' @export
 
 "AIC.species_mix" <- function (object, k=NULL, ...){
+
+  effect.param <- length(object$beta) + G + S + ifelse(disty %in%  "negative.binomial",S,0)
+
   p <- length(unlist(object$coefs))
   if (is.null(k))
     k <- 2
@@ -1793,11 +1799,6 @@
   am <- max(ak)
   ak <- exp( ak-am)
   sppLogls <- am + log( sum( ak))
-
-  # pen.max <- theta.range[2]
-  # pen.min <- theta.range[1]
-  # shape1 <- shape2 <- 1.25
-  # if(disty==4)  sppLogls <- sppLogls + dbeta( (theta-pen.min) / (pen.max-pen.min), shape1, shape2, log=TRUE)
 
   return(sppLogls)
 }
