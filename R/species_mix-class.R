@@ -12,8 +12,8 @@
 #' that allows for easier data input. The data frames are merged into
 #' the appropriate format for the use in species_mix.fit.
 #' Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
-#' 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative.binomial'
-#'  and 'normal' distributions can be fitted using the species_mix function.
+#' 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative.binomial', 'tweedie'
+#'  and 'gaussian' distributions can be fitted using the species_mix function.
 #' @param archetype_formula an object of class "formula" (or an object that can
 #' be coerced to that class). The response variable (left hand side of the
 #' formula) needs to be either 'occurrence', 'abundance',
@@ -1716,7 +1716,7 @@
 }
 
 ## function for starting values using penalities
-"apply_glmnet_sam_inits" <- function(ss, y, X, W, site_spp_weights,
+"apply_glmnet_sam_inits" <- function(ss, y, X, W, U = NULL, site_spp_weights,
                                      offset, y_is_na, disty, size){
 
   # which family to use?
@@ -1739,7 +1739,7 @@
   }
 
   if(ncol(X)==1){
-    X<-cbind(1,X[ids_i,,drop=FALSE])
+    X<- cbind(1,X[ids_i,,drop=FALSE])
   }
 
   if(ncol(W) > 1){
@@ -1748,9 +1748,11 @@
     df <- X[ids_i,,drop=FALSE]
   }
 
+  if(!is.null(U)) df <- cbind(df,U[ids_i,,drop=FALSE])
 
-  if( disty %in% c(1,2,3,4,6,7)){
-    lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
+
+  if( !disty %in% c(5)){
+    lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1, to=.1, length=10))), decreasing=TRUE)
 
     ft_sp <- try(glmnet::glmnet(y=outcomes, x=as.matrix(df),
                                 family=fam, offset=offset[ids_i],
@@ -1769,7 +1771,7 @@
     }
     if (any(class(ft_sp) %in% 'try-error')){
       my_coefs <- rep(NA, ncol(X[ids_i,]))
-      names(my_coefs) <- colnames(cbind(X[ids_i,,drop=FALSE],W[ids_i,,drop=FALSE]))
+      names(my_coefs) <- colnames(cbind(X[ids_i,,drop=FALSE],W[ids_i,,drop=FALSE],U[ids_i,,drop=FALSE]))
     } else {
       if(ncol(X)==1) my_coefs <- t(as.matrix(my.coefs[-1]))
       my_coefs <- t(as.matrix(my.coefs))
@@ -1785,13 +1787,21 @@
                             weights=as.matrix(site_spp_weights[ids_i,ss]),
                             dfr=length(outcomes), eps=1e-4)
       if(tmp>2) tmp <- 2
-      theta <- log( 1/tmp)
+      theta <- tmp
     }
     if( disty == 6){
       preds <- as.numeric( predict(ft_sp, s=locat.s, type="link",
                                    newx=as.matrix(df), newoffset=offset[ids_i]))
       theta <- log( sqrt( sum((outcomes - preds)^2)/length(outcomes)))  #should be something like the resid standard
     }
+  } else { #Tweedie needs an unconstrained fit.  May cause problems in some cases, especially if there is quasi-separation...
+      df3 <- as.data.frame( cbind( y=outcomes[,ss], offy=offy, df))
+      colnames( df3)[-(1:2)] <- c( paste( "grp", 1:G, sep=""), paste( "w",seq_len(ncol(W)), sep=""))
+      tmp.fm1 <- fishMod::tglm( y~-1+.-offy+offset( offy), wts=wts, data=df3, p=power[ss], vcov=FALSE, residuals=FALSE, trace=0)
+      my.coefs <- c( NA, tmp.fm1$coef)
+      disp[ss] <- log( tmp.fm1$coef["phi"])
+      my.coefs <- my.coefs[names( my.coefs) != "phi"]
+    # }
   }
   # species intercpets
   alpha <- my_coefs[1]
@@ -1799,13 +1809,13 @@
   beta <- my_coefs[match(colnames(X), colnames(my_coefs))]
   # species coefs apart from intercept
   if(ncol(W)>1) gamma <-  my_coefs[match(colnames(W[,-1,drop=FALSE]), colnames(my_coefs))] else gamma <- -99999
+  if(!is.null(U)) delta <-  my_coefs[match(colnames(U), colnames(my_coefs))] else delta <- -99999
 
-  return(list(alpha = alpha, beta = beta, gamma = gamma, theta = theta))
+  return(list(alpha = alpha, beta = beta, gamma = gamma, delta = delta, theta = theta))
 }
 
-## function for starting values using penalities
-"apply_glm_sam_inits" <- function(ss, y, X, W, site_spp_weights,
-                                     offset, y_is_na, disty, size){
+"apply_glm_sam_inits" <- function(ss, y, X, W, U=NULL, site_spp_weights,
+                                  offset, y_is_na, disty, size){
 
   # which family to use?
   if(disty == 1 | disty == 7 ) #binomials
@@ -1815,40 +1825,31 @@
   if(disty == 6)
     fam <- gaussian()#"gaussian"
 
+  #set up the index of NAs (this is for ppms)
   ids_i <- !y_is_na[,ss]
 
-  if(disty == 1 | disty == 2 | disty == 4){
-    outcomes <- as.matrix(y[ids_i,ss])
-  }
   if (disty==3){
-   outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
-  }
-  if(disty == 6){
-   outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+    outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+  } else {
+    outcomes <- as.matrix(y[ids_i,ss])
   }
   if (disty==7){
     outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]-y[ids_i,ss]))
   }
 
-  if(ncol(X)==1){
-    X<-cbind(1,X[ids_i,,drop=FALSE])
-  }
+  mm <- cbind(W[ids_i,-1,drop=FALSE],X[ids_i,,drop=FALSE])
+  if(!is.null(U)) mm <- cbind(mm,U[ids_i,,drop=FALSE])
 
-  if(ncol(W) > 1){
-    df <- cbind(X[ids_i,,drop=FALSE],W[ids_i,-1,drop=FALSE])
-  } else {
-    df <- cbind(1,X[ids_i,,drop=FALSE])
-  }
-
+  offy <- as.numeric(offset[ids_i])
+  wts <- as.numeric(site_spp_weights[ids_i,ss])
+  dat <- data.frame(outcomes=outcomes, mm, offy=offy)
 
   if( disty %in% c(1,2,3,4,6,7)){
-    # lambda.seq <- sort( unique( c( seq( from=1/0.001, to=1, length=25), seq( from=1/0.1, to=1, length=10))), decreasing=TRUE)
-
-    ft_sp <- try(glm.fit(y=outcomes, x=df,#weights=as.numeric(site_spp_weights[ids_i,ss]),
-                        family=fam, offset=offset[ids_i]), silent=FALSE)
+    tmpform <- as.formula(paste0('outcomes ~ 1 +', paste0(colnames(mm),collapse = "+"),' + offset(offy)'))
+    ft_sp <- try(glm(formula = tmpform, data = dat, weights=wts, family=fam), silent=FALSE)
     if (any(class(ft_sp)[1] %in% 'try-error')){
       my_coefs <- rep(NA, ncol(X[ids_i,]))
-      names(my_coefs) <- colnames(cbind(X[ids_i,,drop=FALSE],W[ids_i,,drop=FALSE]))
+      names(my_coefs) <- colnames(W[ids_i,,drop=FALSE],X[ids_i,,drop=FALSE],U)
     } else {
       # if(ncol(X)==1) my_coefs <- t(as.matrix(my.coefs[-1]))
       my_coefs <- coef(ft_sp)
@@ -1861,7 +1862,7 @@
                             weights=as.matrix(site_spp_weights[ids_i,ss]),
                             dfr=length(outcomes), eps=1e-4)
       if(tmp>2) tmp <- 2
-      theta <- log( 1/tmp)
+      theta <- tmp#log( 1/tmp)
     }
     if( disty == 6){
       preds <- as.numeric(ft_sp$linear.predictors)
@@ -1876,7 +1877,11 @@
   if(ncol(W)>1) gamma <-  my_coefs[match(colnames(W[,-1,drop=FALSE]), names(my_coefs))]
   else gamma <- -99999
 
-  return(list(alpha = alpha, beta = beta, gamma = gamma, theta = theta))
+  if(!is.null(U)) delta <-  my_coefs[match(colnames(U), colnames(my_coefs))]
+  else delta <- -99999
+
+
+  return(list(alpha = alpha, beta = beta, gamma = gamma, delta = delta, theta = theta))
 }
 
 #get the conditional maxima for species specific parameters.
