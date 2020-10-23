@@ -12,7 +12,7 @@
 #' that allows for easier data input. The data frames are merged into
 #' the appropriate format for the use in species_mix.fit.
 #' Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
-#' 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative_binomial'
+#' 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative.binomial'
 #'  and 'normal' distributions can be fitted using the species_mix function.
 #' @param archetype_formula an object of class "formula" (or an object that can
 #' be coerced to that class). The response variable (left hand side of the
@@ -42,7 +42,7 @@
 #' @param n_mixtures The number of mixing components (groups) to fit.
 #' @param distribution The family of statistical distribution to use within
 #' the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
-#' "negative_binomial" and "gaussian" distributions are possible and applicable
+#' "negative.binomial" and "gaussian" distributions are possible and applicable
 #' to specific types of data.
 #' @param offset a numeric vector of length nrow(data) (n sites) that is
 #' included into the model as an offset. It is included into the conditional
@@ -105,7 +105,7 @@
                           all_formula = NULL, # will correspond with the design matrix U
                           data,
                           n_mixtures = 3, distribution="bernoulli", offset=NULL,
-                          weights=NULL, bb_weights=NULL, size= NULL, control=NULL,
+                            weights=NULL, bb_weights=NULL, size= NULL, control=NULL,
                           inits=NULL, standardise = FALSE, titbits = TRUE){
 
   data <- as.data.frame(data)
@@ -200,7 +200,7 @@
   }
 
   #get distribution
-  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian","binomial")
+  disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
 
   disty <- get_distribution_sam(disty_cases, distribution)
 
@@ -300,7 +300,7 @@
 #'@param site_spp_weights These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.
 #'@param offset this is a vector of site specific offsets, this might be something like area sampled at sites.
 #'@param y_is_na This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!
-#'@param disty the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are available - internal conversion of distribution to a integer.
+#'@param disty the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.
 #'@param size The size of each of binomial sample at each site. Length should be the number of sites.
 #'@param control this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.
 #'@param inits This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).
@@ -369,7 +369,7 @@
 #' @param n_mixtures The number of mixing components (groups) to fit.
 #' @param distribution The family of statistical distribution to use within
 #' the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
-#' "negative_binomial" and "gaussian" distributions are possible and applicable
+#' "negative.binomial" and "gaussian" distributions are possible and applicable
 #' to specific types of data.
 #' @param offset a numeric vector of length nrow(data) (n sites) that is
 #' included into the model as an offset. It is included into the conditional
@@ -519,7 +519,7 @@
   }
 
   #get distribution
-  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian","binomial")
+  disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
 
   disty <- get_distribution_sam(disty_cases, distribution)
 
@@ -613,12 +613,13 @@
 #'@param init_method The method to use for initialisation. The options are "random2", "kmeans", "kmed". The default uses random2, which is a kmeans with noise added to the cluster.
 #'@param init_sd The amount of noise to add to the initailisation the default is 1.
 #'@param minimum_sites_occurrence a integer which determins the number of minimum sites present for any species for it to be included in the initialisation step. This removes rare species from initial groupings. They are then included in the overall analysis.
+#'@param init_glmnet Use glmnet rather than glm to get the initial parameter estimates. This is default.
 #'@param em_prefit Logical if TRUE the model will run a slower EM algorithm fit to find starting values.
 #'@param em_steps int Default is 3, the number of EM iterations to get to starting values.
 #'@param em_refit int Default is 1, number of times to refit using EM.
 #'@param em_reltol A function or value which gives the tolerance in the EM loglikeihood estimation.
 #'@param em_maxtau A cap on the maximum value of the species' taus in the first E-step of the EM algorithm, not used for subsequent iterations.
-#'@param theta_range Two positive values use as penalities for estimating the dispersion parameters (theta) in a negative_binomial SAM or PSAM.
+#'@param theta_range Two positive values use as penalities for estimating the dispersion parameters (theta) in a negative.binomial SAM or PSAM.
 #'@param pen_param A penality for the em fitting.
 #'@param update_kappa Penalities for how fast parameters update during each EM step.
 #'@param print_cpp_start_vals A call to check what parameter estimates are being passed to C++ for optimisation.
@@ -646,7 +647,7 @@
                                   ## EM algorithim controls
                                   em_prefit = TRUE,
                                   em_steps = 5,
-                                  em_refit = 1,
+                                  em_refit = 3,
                                   em_reltol = reltol_fun,
                                   em_maxtau = 0.8,
                                   ## partial mixture penalities
@@ -752,7 +753,7 @@
 
   my.fun <- function(dummy){
     if( !quiet) setTxtProgressBar(pb, dummy)
-    disty_cases <- c("bernoulli","binomial","poisson", "ippm", "negative_binomial", "tweedie", "gaussian")
+    disty_cases <- c("bernoulli","binomial","poisson", "ippm", "negative.binomial", "tweedie", "gaussian")
     disty <- get_distribution_sam(disty_cases, object$dist)
     dumbOut <- capture.output(
       samp.object <- species_mix.fit(y=object$titbits$Y,
@@ -806,11 +807,11 @@
 #'  parameters. Each row is a different species archetype.
 #' @param gamma coefficents for each species archetype. Matrix of S x number of
 #'  parameters. Each row is a different species archetype.
-#' @param theta coefficents for the dispersion variables for negative_binomial
+#' @param theta coefficents for the dispersion variables for negative.binomial
 #' and gaussian distributions - should be number of species long
 #' @param size Is for the binomial model and this respresents the number of binomial trials per site, can be fixed or vary.
 #' @param distribution Which statistical distribution to simulate data for.
-#'  'bernoulli','binomial', 'gaussian', 'ippm', 'negative_binomial' and 'poisson'.
+#'  'bernoulli','binomial', 'gaussian', 'ippm', 'negative.binomial' and 'poisson'.
 #' @param offset used to offset sampling effort for abundance data (log link function).
 #' @export
 #' @examples
@@ -912,17 +913,21 @@
     delta <- rnorm(npu)
   }
 
-  if( distribution == "negative_binomial" & (is.null(theta) | length( theta) != S)){
+  if( distribution == "negative.binomial" & (is.null(theta) | length( theta) != S)){
+
     message( "Random values for overdispersions")
     theta <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
+    }
   }
-  if( distribution=="gaussian" & (is.null( theta) | length( theta) != S)){
+  if( distribution=="gaussian"){
+    if((is.null( theta) | length( theta) != S)){
     message( "Random values for species' variance parameters")
-    theta <- log( 1 + rgamma( n+S, shape=1, scale=0.75))
+    theta <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
+    }
   }
 
   if(distribution %in% c('bernoulli','binomial')) link <- make.link('logit')
-  if(distribution %in% c('poisson','ippm','negative_binomial','tweedie')) link <- make.link('log')
+  if(distribution %in% c('poisson','ippm','negative.binomial','tweedie')) link <- make.link('log')
   if(distribution %in% c('gaussian')) link <- make.link('identity')
   if(distribution %in% 'ippm') {
     grid <- simulate_ippm_grid(X,W)
@@ -953,7 +958,7 @@
     outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
   if( distribution=="ippm")
     outcomes <- simulate_ippm_outcomes(X, W, S, grid2D, fitted)
-  if( distribution=="negative_binomial")
+  if( distribution=="negative.binomial")
     outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp(theta), each=n)), nrow = n, ncol = S)
   if( distribution=="gaussian")
     outcomes <- matrix( rnorm( n=n*S, mean=as.numeric( fitted), sd=rep( exp(theta), each=n)), nrow=n, ncol=S)
@@ -1014,6 +1019,8 @@
 #' @param \\dots Ignored
 #' @export
 
+
+## This needs fixing because it includes the null coefs.
 "BIC.species_mix" <-  function (object, ...){
   p <- length(unlist(object$coefs))
   k <- log(object$n)
@@ -1042,7 +1049,7 @@
     rownames(res$gamma) <- object$names$spp
     colnames(res$gamma) <- object$names$Wvars
   }
-  if(object$dist%in%c('negative_binomial','gaussian')){
+  if(object$dist%in%c('negative.binomial','gaussian')){
     res$theta <- object$coef$theta
     names(res$theta) <- object$names$spp
   }
@@ -1178,7 +1185,7 @@
   spp_wts <- object$titbits$spp_weights
   site_spp_wts <- object$titbits$site_spp_weights
 
-  disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian","binomial")
+  disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
   disty <- get_distribution_sam(disty_cases, object$titbits$distribution)
   taus <- object$taus
   if (is.null(object2)) {
@@ -1412,8 +1419,8 @@
 }
 
 #' @title Estimate residuals for a species_mix object
-#' @rdname species_mix.residuals
-#' @name species_mix.residuals
+#' @rdname residuals.species_mix
+#' @name residuals.species_mix
 #' @param object A returned species_mix model object.
 #' @param \dots additional calls for residual function
 #' @param type The type of residuals to estimate. Default is "RQR" (Random Quantile Residuals).
@@ -1436,12 +1443,12 @@
               bernoulli = { fn <- function(y,mu,logtheta) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
               poisson = { fn <- function(y,mu,logtheta) ppois( q=y, lambda=mu, lower.tail=TRUE)},
               ippm = { fn <- function(y,mu,logtheta) ppois( q=y, lambda=mu, lower.tail=TRUE)},
-              negative_binomial = { fn <- function(y,mu,logtheta) pnbinom( q=y, mu=mu, size=1/exp( logtheta), lower.tail=TRUE)},
+              negative.binomial = { fn <- function(y,mu,logtheta) pnbinom( q=y, mu=mu, size=1/exp( logtheta), lower.tail=TRUE)},
               gaussian = { fn <- function(y,mu,logtheta) pnorm( q=y, mean=mu, sd=exp( logtheta), lower.tail=TRUE)})
 
 
       for( ss in 1:object$S){
-        if( object$dist %in% c("bernoulli","poisson","ippm","negative_binomial")){
+        if( object$dist %in% c("bernoulli","poisson","ippm","negative.binomial")){
           tmpLower <- fn( object$titbits$Y[,ss]-1, object$mus[,ss,], object$coef$theta[ss])
           tmpUpper <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$theta[ss])
           tmpLower <- rowSums( tmpLower * object$pis)
@@ -1544,7 +1551,7 @@
     y_is_na <- object$titbits$y_is_na
     size <- object$titbits$size
     distribution <- object$titbits$distribution
-    disty_cases <- c("bernoulli","poisson","ippm","negative_binomial","tweedie","gaussian","binomial")
+    disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
     disty <- get_distribution_sam(disty_cases, distribution)
     S <- object$S
     G <- object$G
@@ -1672,20 +1679,6 @@
 ## offset is an offset
 ## disty is the distribution
 
-# "predict.glm.fit" <- function(glmfit, newmatrix, offset, disty){
-#
-#   if(disty == 1)
-#     fam <- binomial()
-#   if(disty == 2 | disty == 3 | disty == 4)
-#     fam <- poisson()
-#   if(disty == 6)
-#     fam <- gaussian()
-#
-#   coefs <- as.matrix(glmfit$coef)
-#   eta <- as.numeric(as.matrix(newmatrix) %*% as.numeric(coefs)) + offset
-#   preds <- fam$linkinv(eta)
-#   return(preds)
-# }
 
 "apply_optimise_spp_theta" <- function(ss, first_fit, fits,
                                        G, disty, pis,
@@ -2006,13 +1999,12 @@
 "apply_glm_spp_coefs_sams" <- function(ss, y, X, W, U=NULL,
                                        G, taus,
                                        site_spp_weights,
-                                       offset, y_is_na,
-                                       disty, fits, size){
-  if(disty == 1 | disty == 7)
+                                       offset, y_is_na, disty, fits, size){
+  if(disty %in% c(1,7))
     fam <- binomial()
-  if(disty == 2 | disty == 3 | disty == 4)
+  if(disty %in% c(2,3,4))
     fam <- poisson()
-  if(disty == 6)
+  if(disty %in% c(6))
     fam <- gaussian()
 
   ids_i <- !y_is_na[,ss]
@@ -2025,9 +2017,10 @@
   }
   if (disty == 3){
     outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
+
   }
   if (disty == 6){
-    outcomes <- as.numeric(y[ids_i,ss])
+    outcomes <- y[ids_i,ss, drop=FALSE]
   }
 
   out1 <- kronecker(rep( 1, G),  outcomes)
@@ -2062,6 +2055,7 @@
     if(!ft_sp$converged){
       tmpform <- as.formula('out1 ~ -1+W1+offset( offy1)+offset( offyGrp)+offset( offyAll)')
       ft_sp <- try(mgcv::gam( tmpform, weights=wts1, family=fam), silent=FALSE)
+
     }
     if (class(ft_sp)[1] %in% 'try-error'){
        my_coefs <- rep(NA, ncol(W1))
@@ -2071,7 +2065,6 @@
     }
   }
   if(disty %in% c(4)){
-
     tmpform <- as.formula( paste('out1','-1+W1+offset(offy)', sep='~'))
     ft_sp <- try(mgcv::gam(tmpform, weights=wts1, family=mgcv::negbin(theta=exp(-fits$theta[ss]))))
     kount1 <- 1
@@ -2114,9 +2107,16 @@
   }
 
   n_ys <- sapply(X_no_NA,nrow)
-  wts_s <- rep(taus[,gg,drop=FALSE],c(n_ys))
-  site_weights <- as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na])))
-  wts_sXsite_weights <- wts_s*site_weights
+
+
+  ## set up the weights
+  tau.weights <- rep(taus[,gg,drop=FALSE],c(n_ys))
+  if(disty %in% 4) tau.weights <- rep(taus[,gg,drop=FALSE],c(n_ys))/(1+rep(fits$theta,n_ys)*as.vector(mus[k,,]))
+  site.weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
+  obs.weights <- tau.weights*site.weights
+  # obs.weights <- obs.weights+1e-6
+
+  ## set up the offsets.
   offy_mat <- replicate(ncol(y),offset)
 
   offy1 <- as.matrix(unlist(as.data.frame(offy_mat[!y_is_na])))
@@ -2192,6 +2192,7 @@
   offy_mat <- replicate(ncol(y)*G,offset)
   offy1 <- unlist(as.data.frame(offy_mat[!y_is_na]))
 
+
   ## species etas
   if(ncol(W)>1) offy2 <- W %*% t(cbind(fits$alpha,fits$gamma))
   else offy2 <- W %*% c(fits$alpha)
@@ -2204,6 +2205,7 @@
 
   # sum all the etas together.
   offy <- as.numeric(offy1 + offy2 + offy3)
+
 
   # which family to use?
   if( disty == 1 | disty == 7)
@@ -2232,6 +2234,26 @@
     } else {
       all_coefs <- ft_all$coefficients
     }
+  return(c(mix_coefs))
+}
+
+"apply_glm_spp_mix" <- function(gg, y, X, W, site_spp_weights, offset,
+                                y_is_na, disty, taus, fits, mus, size){
+
+  if(disty %in% c(1,7))
+    fam <- binomial()
+  if(disty %in% c(2,3))
+    fam <- poisson()
+  if(disty %in% c(6))
+    fam <- gaussian()
+
+  Y_taus <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
+  size_taus <- matrix(rep(size,ncol(y)),nrow(y),ncol(y))[!y_is_na]
+  X_no_NA <- list()
+  W_no_NA <- list()
+  for (jj in 1:ncol(y)){
+    X_no_NA[[jj]] <- X[!y_is_na[,jj],,drop=FALSE]
+    W_no_NA[[jj]] <- W[!y_is_na[,jj],,drop=FALSE]
   }
   return(c(all_coefs))
 }
@@ -2434,7 +2456,6 @@ starting values;\n starting values are generated using ',control$init_method,
   pis <- starting_values$pis
   first_fit <- starting_values$first_fit
   logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-  init_steps <- 3
 
   while(control$em_reltol(logl_new,logl_old) & ite <= control$em_steps){
     if(restart_ite>10){
@@ -2475,6 +2496,26 @@ starting values;\n starting values are generated using ',control$init_method,
     }
 
     # m-step
+    ## update the betas
+    if(disty==4){
+      fm_mix_coefs <- nlminb(start=fits$beta, objective=incomplete_negbin_logl, gradient=NULL,
+                             hessian=NULL, pis=pis, first_fit=first_fit, fits=fits, G=G, S=S)
+      fm_mix_coefs_mat <- matrix(fm_mix_coefs$par,G,ncol(X))
+    } else {
+      fm_mix_coefs <- surveillance::plapply(seq_len(G),
+                                            apply_glm_mix_coefs_sams,
+                                            y, X, W, site_spp_weights,
+                                            offset, y_is_na, disty, taus,
+                                            fits, logls_mus$fitted, size,
+                                            .parallel = control$cores,
+                                            .verbose = FALSE)
+
+      fm_mix_coefs_mat <- do.call(rbind,fm_mix_coefs)
+      # print(fm_mix_coefs_mat)
+    }
+    fits$beta <- update_coefs(fits$beta, fm_mix_coefs_mat)
+
+    ## check this one out.
     fm_spp_coefs <- surveillance::plapply(seq_len(S),
                                           apply_glm_spp_coefs_sams,
                                           y, X, W, U, G, taus, site_spp_weights,
@@ -2523,6 +2564,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
     }
 
+
     ## need a function here that updates the dispersion parameter.
     if(ite >= init_steps){
       if(disty%in%c(4)){
@@ -2552,15 +2594,18 @@ starting values;\n starting values are generated using ',control$init_method,
     # e-step - get the log-likes and taus
     logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
     taus <- get_taus(pis, logls_mus$logl_sp, G, S)
+    if(ite <3)taus <- shrink_taus(taus,G=G)
 
 
     #update the likelihood
     logl_old <- logl_new
     logl_new <- get_incomplete_logl_sam(eta = additive_logistic(pis,inv = TRUE)[-G],
                                         first_fit, fits, spp_weights, G, S, disty)
+
     if(!control$quiet)message(paste0("Iteration ",ite,"\n"))
     if(!control$quiet)message(paste0("Loglike: ", logl_new,"\n"))
     if(!control$quiet)message(c("Pis: ", paste(pis," ")," \n"))
+
     ite <- ite + 1
   }
 
@@ -2586,6 +2631,7 @@ starting values;\n starting values are generated using ',control$init_method,
   # else fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glm_sam_inits, y, X, W, U,
   #                                                             site_spp_weights, offset, y_is_na, disty, size,
   #                                                             .parallel = control$cores, .verbose = FALSE)
+
 
   alpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
   if(ncol(X)==1){
@@ -2654,9 +2700,10 @@ starting values;\n starting values are generated using ',control$init_method,
     fmmvnorm <- stats::kmeans(beta, centers=G, nstart=100)
     tmp_grp <- fmmvnorm$cluster
     grp_coefs <- apply(beta, 2, function(x) tapply(x, tmp_grp, mean))
-    grp_coefs <- matrix(grp_coefs,nrow=G)
+    grp_coefs <- matrix(grp_coefs,nrow=G) # not check this...
 
     random_coefs <- sam_random_inits(alpha, grp_coefs, gamma, delta_spp, theta, S, G, X, W, U, disty, mult=0.3)
+
     alpha <- random_coefs[[1]]
     grp_coefs <- random_coefs[[2]]
     gamma <- random_coefs[[3]]
@@ -2876,12 +2923,12 @@ starting values;\n starting values are generated using ',control$init_method,
 }
 
 
-"shrink_taus" <- function( taus, max_tau=0.8, G){
+"shrink_taus" <- function(taus, G){
   if( G==1)
     return( taus)
-  alpha <- (1-max_tau*G) / ( max_tau*(2-G)-1)
-  tau_star <- ( 2*alpha*taus - alpha + 1 ) / ( 2*alpha - alpha*G + G)
-  return(tau_star)
+  magical.alpha <- (1-0.8*G)/(0.8*(2-G)-1) ## Dunstan et al., 2013, JABES
+  taus_star <- (2*magical.alpha*taus-magical.alpha+1)/(2*magical.alpha - magical.alpha*G + G)
+  return(taus_star)
 }
 
 
@@ -2914,7 +2961,7 @@ starting values;\n starting values are generated using ',control$init_method,
                    "bernoulli" = 1,
                    "poisson" = 2,
                    "ippm" = 3,
-                   "negative_binomial" = 4,
+                   "negative.binomial" = 4,
                    "tweedie" = 5,
                    "gaussian" = 6,
                    "binomial" = 7,
@@ -3101,27 +3148,6 @@ starting values;\n starting values are generated using ',control$init_method,
   return(abs(logl_n1 - logl_n) > (abs(logl_n1 - logl_n) / abs(logl_n)))
 }
 
-# "sam_random_inits" <- function(alpha, beta, gamma, delta, theta, S, G, X, W, U, disty, mult=0.3){
-#                   my.sd <- mult*sd( alpha); if( is.na( my.sd)) my.sd <- 0.1
-#                   alpha <- alpha + rnorm(S, sd = my.sd)
-#                   my.sd <- mult*sd( beta); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
-#                   beta <- beta + as.numeric(matrix(rnorm(G * ncol(X), mean = 0, sd = my.sd), ncol = ncol(X), nrow = G))
-#                   if( ncol(W)>1){
-#                     my.sd <- mult*sd(gamma); if(is.na(my.sd)|my.sd==0) my.sd <- 0.1
-#                     gamma <- gamma + as.numeric( matrix(rnorm(S*ncol(W[,-1,drop=FALSE]), mean=0, my.sd), ncol=ncol(W[,-1,drop=FALSE]), nrow=S))
-#                   }
-#                   if( ncol(U)>0){
-#                     my.sd <- mult*sd(delta); if(is.na(my.sd)|my.sd==0) my.sd <- 0.1
-#                     delta <- delta + as.numeric( matrix(rnorm(S*ncol(U), mean=0, my.sd), ncol=ncol(U), nrow=S))
-#                   }
-#                   if(disty %in% c(4,6)){
-#                     # my.sd <- mult*sd( theta); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
-#                     # theta <- theta + as.numeric( rnorm( S, mean=0, my.sd))
-#                   }
-#                   if(disty %in% c(4,6)) return(list(alpha,beta,gamma,delta,theta))
-#                   else return(list(alpha,beta,gamma,delta))
-# }
-
 "sam_random_inits" <- function(alpha, beta, gamma, delta, theta, S, G, X, W, U, disty, mult=0.3, control.sd = control$init_sd){
   if(is.null(control.sd)){
     my.sd <- mult*sd( alpha); if( is.na( my.sd)) my.sd <- 0.1
@@ -3165,7 +3191,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
   if (family %in% c("bernoulli","binomial"))
     link.fun <- make.link("logit")
-  if (family %in% c("negative_binomial","poisson","ippm"))
+  if (family %in% c("negative.binomial","poisson","ippm"))
     link.fun <- make.link("log")
   if (family %in% "gaussian")
     link.fun <- make.link("identity")
@@ -3196,7 +3222,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
   if (family %in% c("bernoulli","binomial"))
     link.fun <- make.link("logit")
-  if (family %in% c("negative_binomial","poisson","ippm"))
+  if (family %in% c("negative.binomial","poisson","ippm"))
     link.fun <- make.link("log")
   if (family %in% "gaussian")
     link.fun <- make.link("identity")
@@ -3454,3 +3480,101 @@ starting values;\n starting values are generated using ',control$init_method,
 
     return( res)
   }
+
+
+"plapply" <- function (X, FUN, ..., .parallel = 1, .seed = NULL, .verbose = TRUE) {
+  if (!(useCluster <- inherits(.parallel, "cluster"))) {
+    stopifnot(length(.parallel) == 1L, is.vector(.parallel,
+                                                 "numeric"), .parallel >= 1)
+    .parallel <- as.vector(.parallel, mode = "integer")
+    if (.Platform$OS.type == "windows" && .parallel > 1L) {
+      useCluster <- TRUE
+      .parallel <- parallel::makeCluster(.parallel)
+      on.exit(parallel::stopCluster(.parallel))
+    }
+  }
+  FUN <- match.fun(FUN)
+  .FUN <- if (useCluster || is.primitive(FUN)) {
+    FUN
+  }
+  else {
+    verboseExpr <- if (isTRUE(.verbose)) {
+      if (.parallel == 1L && interactive()) {
+        env <- new.env(hash = FALSE, parent = environment(FUN))
+        environment(FUN) <- env
+        env$pb <- txtProgressBar(min = 0, max = length(X),
+                                 initial = 0, style = 3)
+        on.exit(close(env$pb), add = TRUE)
+        quote(setTxtProgressBar(pb, pb$getVal() + 1L))
+      }
+      else {
+        on.exit(cat("\n"), add = TRUE)
+        quote(cat("."))
+      }
+    }
+    else if (is.call(.verbose) || is.expression(.verbose)) {
+      .verbose
+    }
+    else if (is.character(.verbose)) {
+      on.exit(cat("\n"), add = TRUE)
+      substitute(cat(.verbose))
+    }
+    do.call(add.on.exit, list(FUN, verboseExpr))
+  }
+  if (!is.null(.seed)) {
+    if (useCluster) {
+      parallel::clusterSetRNGStream(cl = .parallel, iseed = .seed)
+    }
+    else {
+      if (!exists(".Random.seed", envir = .GlobalEnv,
+                  inherits = FALSE)) {
+        set.seed(NULL)
+      }
+      .orig.seed <- get(".Random.seed", envir = .GlobalEnv)
+      on.exit(assign(".Random.seed", .orig.seed, envir = .GlobalEnv),
+              add = TRUE)
+      if (.parallel == 1L) {
+        set.seed(seed = .seed)
+      }
+      else {
+        stopifnot(requireNamespace("parallel", quietly = TRUE))
+        set.seed(seed = .seed, kind = "L'Ecuyer-CMRG")
+        parallel::mc.reset.stream()
+      }
+    }
+  }
+  if (useCluster) {
+    parallel::parLapply(cl = .parallel, X = X, fun = .FUN,
+                        ...)
+  }
+  else if (.parallel == 1L) {
+    lapply(X = X, FUN = .FUN, ...)
+  }
+  else {
+    parallel::mclapply(X = X, FUN = .FUN, ..., mc.preschedule = TRUE,
+                       mc.set.seed = TRUE, mc.silent = FALSE, mc.cores = .parallel)
+  }
+}
+
+"add.on.exit" <- function (FUN, expr){
+  FUN <- match.fun(FUN)
+  if (is.null(expr <- substitute(expr))) {
+    return(FUN)
+  }
+  if (is.primitive(FUN)) {
+    stop("not implemented for primitive functions")
+  }
+  onexitexpr <- substitute(on.exit(expr))
+  obody <- body(FUN)
+  body(FUN) <- if (is.call(obody) && identical(as.name("{"),
+                                               obody[[1L]])) {
+    as.call(append(x = as.list(obody), values = onexitexpr,
+                   after = 1L))
+  }
+  else {
+    as.call(c(as.name("{"), onexitexpr, obody))
+  }
+  FUN
+}
+
+

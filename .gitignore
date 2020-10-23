@@ -11,6 +11,7 @@ developing_sams_src/
 developing_src/
 cpp_compile_scripts/
 binary_builds/
+dev/
 src/*.o
 src/*.so
 src/*.dll

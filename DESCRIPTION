@@ -22,9 +22,9 @@ Imports:
     scales,
     numDeriv,
     surveillance,
-    progress,
     kmed,
-    mvtnorm
+    mvtnorm,
+    mvabund
 Suggests:
     knitr,
     rmarkdown,

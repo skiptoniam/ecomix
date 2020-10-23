@@ -5,10 +5,10 @@ testthat::test_that('species mix poisson', {
 
   set.seed(42)
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~x1+x2"))
-  alpha <- rnorm(20,1, 0.5)
-  beta <- matrix(c(-2.6,0.5,
-                   -0.9,1.0,
-                   0.9,-1.9),
+  alpha <- rnorm(20,0, 0.5)
+  beta <- matrix(c(-0.6,0.5,
+                   -0.5,-0.5,
+                   0.9,-0.9),
                  3,2,byrow=TRUE)
   dat <- data.frame(y=1, x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   simulated_data <- species_mix.simulate(archetype_formula = sam_form,
@@ -48,9 +48,18 @@ testthat::test_that('species mix poisson', {
 
   # get the loglikelihood based on these values
   logls <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-  pis <- rep(1/G, G)
-  taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
-  taus <- ecomix:::shrink_taus(taus, max_tau=1/G + 0.1, G)
+  pis <- starting_values$pis
+  taus <- starting_values$taus
+  taus <- round(taus)
+  # taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
+  # taus <- ecomix:::shrink_taus(taus, max_tau=.8, G)
+
+  set.seed(123)
+  tmp2 <- ecomix:::fitmix_ECM_sam(y=y, X=X, W=W, G=G, S=S,
+                                  spp_weights=spp_weights,
+                                  site_spp_weights=site_spp_weights,
+                                  offset=offset, disty=disty, y_is_na=y_is_na,size = size,
+                                  control=species_mix.control(em_refit = 1, em_steps = 1000))
 
   ## get to this in a bit
   gg <- 1
