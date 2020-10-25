@@ -842,7 +842,8 @@
                                     beta=NULL,
                                     gamma=NULL,
                                     delta=NULL,
-                                    theta=NULL,
+                                    logTheta=NULL,
+                                    powers=NULL,
                                     size=NULL,
                                     distribution = "bernoulli"){
 
@@ -913,12 +914,19 @@
     delta <- rnorm(npu)
   }
 
-  if( distribution == "negative.binomial" & (is.null(theta) | length( theta) != S)){
+  if( distribution == "negative.binomial" & (is.null(logTheta) | length(logTheta) != S)){
 
     message( "Random values for overdispersions")
     theta <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
   }
-
+  if (distribution == "tweedie" & (is.null(logTheta) | length(logTheta) != S)) {
+    message("Random values for species' dispersion parameters")
+    logTheta <- log(1 + rgamma(n = S, shape = 1, scale = 0.75))
+  }
+  if (distribution == "tweedie" & (is.null(powers) | length(powers) != S)) {
+    message("Power parameter assigned to 1.6 for each species")
+    powers <- rep(1.6, S)
+  }
   if( distribution=="gaussian"){
     if((is.null( theta) | length( theta) != S)){
     message( "Random values for species' variance parameters")
@@ -963,6 +971,10 @@
     outcomes <- simulate_ippm_outcomes(X, W, S, grid2D, fitted)
   if( distribution=="negative.binomial")
     outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp(theta), each=n)), nrow = n, ncol = S)
+  if (distribution=="tweedie")
+    outcomes <- matrix(fishMod::rTweedie(n * S, mu = as.numeric(fitted),
+                                         phi = rep(exp(logTheta), each = n),
+                                         p = rep(powers, each = n)), nrow = n, ncol = S)
   if( distribution=="gaussian")
     outcomes <- matrix( rnorm( n=n*S, mean=as.numeric( fitted), sd=rep( exp(theta), each=n)), nrow=n, ncol=S)
 
@@ -990,7 +1002,8 @@
   attr(res, "beta") <- beta
   attr(res, "gamma") <- gamma
   attr(res, "delta") <- delta
-  attr(res, "theta") <- theta
+  attr(res, "logTheta") <- logTheta
+  attr(res, "power") <- powers
   attr(res, "mu") <- fitted
   attr(res, "ippm_weights") <- wts
   attr(res, "size") <- size
