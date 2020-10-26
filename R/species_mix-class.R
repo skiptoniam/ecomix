@@ -1691,7 +1691,7 @@
 
 ###### ECM version for starting values - could use to fit ######
 
-e.step <- function(y, X, W, U, site_spp_weights, offset, y_is_na, disty,#data
+"e.step" <- function(y, X, W, U, site_spp_weights, offset, y_is_na, disty,#data
                    new.mix.betas, new.mix.pis,
                    new.sp.alphas, new.sp.gammas, new.sp.thetas,
                    new.all.deltas, sp.powers,
@@ -1935,15 +1935,13 @@ e.step <- function(y, X, W, U, site_spp_weights, offset, y_is_na, disty,#data
       theta <- log( sqrt( sum((outcomes - preds)^2)/length(outcomes)))
     }
   } else { #Tweedie needs an unconstrained fit.  May cause problems in some cases, especially if there is quasi-separation...
-      df3 <- as.data.frame( cbind( y=outcomes[,ss], offy=offset, Intercept= 1, df))
+      df3 <- data.frame(y=outcomes, offy=offset, Intercept= 1, df)
       tmp.fm1 <- fishMod::tglm(y~-1+.-offy+offset( offy),
-                               wts=site_spp_weights[,ss],
+                               wts=c(site_spp_weights[,ss]),
                                data=df3, p=power[ss], vcov=FALSE,
                                residuals=FALSE, trace=0)
-      my.coefs <- c(tmp.fm1$coef)
+      my_coefs <- t(as.matrix(tmp.fm1$coef,ncol=1))
       theta <- log(tmp.fm1$coef["phi"])
-      my.coefs <- my.coefs[names( my.coefs) != "phi"]
-    # }
   }
   # species intercpets
   alpha <- my_coefs[1]
