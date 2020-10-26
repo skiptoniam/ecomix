@@ -3186,13 +3186,13 @@ starting values;\n starting values are generated using ',control$init_method,
     } else {
       my.sd <- control.sd
     }
-    delta <- delta + as.numeric( matrix(rnorm(S*ncol(U), mean=0, my.sd), ncol=ncol(U), nrow=S))
+    delta <- delta + rnorm(ncol(U), mean=0, my.sd)
   }
-  if(disty %in% c(4,6)){
-    # my.sd <- mult*sd( theta); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
-    # theta <- theta + as.numeric( rnorm( S, mean=0, my.sd))
+  if(disty %in% c(4,5,6)){
+    my.sd <- mult*sd( theta); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
+    theta <- theta + as.numeric( rnorm( S, mean=0, my.sd))
   }
-  if(disty %in% c(4,6)) return(list(alpha,beta,gamma,delta,theta))
+  if(disty %in% c(4,5,6)) return(list(alpha,beta,gamma,delta,theta))
   else return(list(alpha,beta,gamma,delta))
 }
 
