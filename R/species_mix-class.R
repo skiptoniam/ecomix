@@ -1691,69 +1691,77 @@
 
 ###### ECM version for starting values - could use to fit ######
 
-"e.step" <- function(y, X, W, U=NULL, site_spp_weights, offy,
-                     new.betas, new.pis, new.sp.alphas,
-                     new.sp.gammas, new.delta, new.sp.phis, disty,
-                     get.fitted = FALSE) {
+e.step <- function(y, X, W, U, site_spp_weights, offset, y_is_na, disty,#data
+                   new.mix.betas, new.mix.pis,
+                   new.sp.alphas, new.sp.gammas, new.sp.thetas,
+                   new.all.deltas, sp.powers,
+                   get.fitted = FALSE) {
   S <- ncol(y); n <- nrow(y); G <- length(new.pis)
   out.taus <- matrix(0,S,G)
   sp.logl <- rep(0,S) ## Species specific incomplete logL
+
+  if(disty%in%c(1,7)) link <- make.link('logit')
+  if(disty%in%c(2,3,4,5)) link <- make.link('log')
+  if(disty%in%6) link <- make.link('identity')
+
   if(get.fitted) fitted.values <- array(0,dim=c(G,n,S))
 
-  if(!is.null(U)) all.etas <- U%*%new.delta
+  if(!is.null(U)) all.etas <- U%*%new.all.deltas
   else all.etas <- rep(0,n)
 
-  for(gg in seq_len(G)){
+  for(gg in 1:G) {
     mix.etas <- X%*%new.betas[gg,]
-    for(ss in  seq_len(S)){
+
+    for(ss in 1:S) {
       sp_idx <- !y_is_na[,ss]
-
-      if(ncol(W)>1) spp.etas <- W%*%c(new.sp.alphas[ss],new.sp.gammas[,ss])
-      else spp.etas <- new.sp.alphas[ss]
-
-      new.etas2 <- mix.etas + spp.etas + all.etas + offy
-
+      if(ncol(W)>1){
+        spp.etas <- W %*% c(alpha[ss],gamma[ss,])
+      }else{
+        spp.etas <- W %*% c(alpha[ss])
+      }
+      new.etas <- all.etas + mix.etas + spp.etas + offset
       if(disty %in% 1) {
-        check.p <- binomial()$linkinv(new.etas2)
+        check.p <- link$linkinv(new.etas)
         check.p[check.p < 1e-4] <- 1e-4; check.p[check.p > (1-1e-4)] <- (1-1e-4);
         if(get.fitted) fitted.values[gg,,ss] <- check.p
         out.taus[ss,gg] <- (sum(dbinom(y[,ss], 1, p = check.p, log = TRUE)))
       }
       if(disty %in% 2) {
-        if(get.fitted) fitted.values[gg,,ss] <- exp(new.etas2)
-        out.taus[ss,gg] <- (sum(dpois(y[,ss], lambda = exp(new.etas2), log = TRUE)))
+        if(get.fitted) fitted.values[gg,,ss] <- link$linkinv(new.etas)
+        out.taus[ss,gg] <- (sum(dpois(y[,ss], lambda = link$linkinv(new.etas), log = TRUE)))
       }
       if(disty %in% 3) {
-        if(get.fitted) fitted.values[gg,,ss] <- exp(new.etas2)
-        out.taus[ss,gg] <- (y[sp_idx,ss] %*% new.etas2 - site_spp_weights[sp_idx,ss] %*% exp(new.etas2))
+        if(get.fitted) fitted.values[gg,,ss] <- link$linkinv(new.etas)
+        out.taus[ss,gg] <- (y[sp_idx,ss] %*% new.etas - site_spp_weights[sp_idx,ss] %*% link$linkinv(new.etas))
       }
       if(disty %in% 4) {
-        if(get.fitted) fitted.values[gg,,ss] <- exp(new.etas2)
-        out.taus[ss,gg] <- (sum(dnbinom(y[,ss], mu = exp(new.etas2), size = 1/new.sp.thetas[ss], log = TRUE)))
+        if(get.fitted) fitted.values[gg,,ss] <- link$linkinv(new.etas)
+        out.taus[ss,gg] <- (sum(dnbinom(y[,ss], mu = link$linkinv(new.etas), size = 1/new.sp.thetas[ss], log = TRUE)))
       }
       if(disty %in% 5) {
-        if(get.fitted) fitted.values[gg,,ss] <- exp(new.etas2)
-        out.taus[ss,gg] <- (sum(fishMod::dTweedie(y[,ss], mu = exp(new.etas2), phi = new.sp.thetas[ss] , log = TRUE)))
+        if(get.fitted) fitted.values[gg,,ss] <- link$linkinv(new.etas)
+        out.taus[ss,gg] <- (sum(fishMod::dTweedie(y[,ss], mu = link$linkinv(new.etas), phi = new.sp.thetas[ss], p = powers[ss], log = TRUE)))
       }
       if(disty %in% 6) {
-        if(get.fitted) fitted.values[gg,,ss] <- new.etas2
-        out.taus[ss,gg] <- (sum(dnorm(y[,ss], mean = new.etas2, sd = sqrt(new.sp.thetas[ss]), log = TRUE)))
+        if(get.fitted) fitted.values[gg,,ss] <- link$linkinv(new.etas)
+        out.taus[ss,gg] <- (sum(dnorm(y[,ss], mean = link$linkinv(new.etas), sd = sqrt(new.sp.thetas[ss]), log = TRUE)))
       }
       if(disty %in% 7) {
-        check.p <- binomial()$linkinv(new.etas2)
+        check.p <- link$linkinv(new.etas)
         check.p[check.p < 1e-4] <- 1e-4; check.p[check.p > (1-1e-4)] <- (1-1e-4);
         if(get.fitted) fitted.values[gg,,ss] <- check.p
         out.taus[ss,gg] <- (sum(dbinom(y[,ss], size, p = check.p, log = TRUE)))
       }
+
     }
   }
 
-  for(ss in seq_len(S)) {
+  for(ss in 1:S) {
     eps <- max(out.taus[ss,])
     sp.logl[ss] <- log(sum(new.pis*exp(out.taus[ss,]-eps))) + eps
   }
-  for(ss in seq_len(S)) {
-    for(gg in seq_len(G)) {
+  for(ss in 1:S) {
+    for(gg in 1:G) {
       out.taus[ss,gg] <- exp((log(new.pis[gg]) + out.taus[ss,gg]) - sp.logl[ss])
     }
   }
