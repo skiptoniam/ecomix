@@ -307,25 +307,24 @@
 #'@export
 
 "species_mix.fit" <- function(y, X, W, U, G, S, spp_weights, site_spp_weights,
-                              offset, y_is_na, disty, size, control, inits=NULL){
+                              offset, y_is_na, disty, size, powers, control, inits=NULL){
 
   if(G==1){
-    tmp <- fitmix_ECM_sam(y, X, W, U, spp_weights, site_spp_weights,
-                         offset, y_is_na, G, S, disty, size, control)
-    tmp <- clean_ECM_output_one_group(tmp, G, S, disty)
+    tmp <- fit.ecm.sam(y, X, W, U, spp_weights, site_spp_weights,
+                       offset, y_is_na, G, S, disty, size, powers,
+                       control=species_mix.control(em_refit = 1))
     return(tmp)
   }
 
   if(is.null(inits)){
-    starting_values  <-  get_starting_values_sam(y = y, X = X, W = W, U = U,
-                                                 spp_weights = spp_weights,
-                                                 site_spp_weights = site_spp_weights,
-                                                 offset = offset,
-                                                 y_is_na = y_is_na,
-                                                 G = G, S = S,
-                                                 disty = disty,
-                                                 size = size,
-                                                 control = control)
+    starting_values  <- starting_values_wrapper(y = y, X = X, W = W, U = U,
+                                                site_spp_weights = site_spp_weights,
+                                                offset = offset,
+                                                y_is_na = y_is_na,
+                                                G = G, S = S,
+                                                disty = disty,
+                                                size = size,
+                                                control = control)
 
   } else {
     if(!control$quiet)message('Be careful! You are using your own initial starting values to optimise the species_mix model.')
@@ -1794,8 +1793,7 @@
       ## E-step
       do.estep <- try(e.step(y, X, W, U, site_spp_weights,
                              offset, y_is_na, disty,
-                             fits$beta, fits$pis, fits$alpha,
-                             fits$gamma, fits$theta, fits$delta, powers),
+                             fits, powers),
                       silent=TRUE)
       if(!is.finite(do.estep$logl)) {
         mod <- list(logl = -Inf); break;
@@ -1846,7 +1844,7 @@
                      y_is_na, disty,#data
                      fits, sp.powers,
                      get.fitted = FALSE) {
-  S <- ncol(y); n <- nrow(y); G <- length(new.mix.pis)
+  S <- ncol(y); n <- nrow(y); G <- length(fits$pis)
   out.taus <- matrix(0,S,G)
   sp.logl <- rep(0,S) ## Species specific incomplete logL
 
@@ -1859,10 +1857,10 @@
   if(!is.null(U)) all.etas <- as.matrix(U)%*%c(fits$delta)
   else all.etas <- rep(0,n)
 
-  for(gg in 1:G) {
+  for(gg in seq_len(G)) {
     mix.etas <- as.matrix(X)%*%fits$beta[gg,]
 
-    for(ss in 1:S) {
+    for(ss in seq_len(S)) {
       sp_idx <- !y_is_na[,ss]
       if(ncol(W)>1){
         spp.etas <- as.matrix(W) %*% c(fits$alpha[ss],fits$gamma[ss,])
@@ -1906,13 +1904,13 @@
     }
   }
 
-  for(ss in 1:S) {
+  for(ss in seq_len(S)) {
     eps <- max(out.taus[ss,])
-    sp.logl[ss] <- log(sum(new.mix.pis*exp(out.taus[ss,]-eps))) + eps
+    sp.logl[ss] <- log(sum(fits$pis*exp(out.taus[ss,]-eps))) + eps
   }
-  for(ss in 1:S) {
-    for(gg in 1:G) {
-      out.taus[ss,gg] <- exp((log(new.mix.pis[gg]) + out.taus[ss,gg]) - sp.logl[ss])
+  for(ss in seq_len(S)) {
+    for(gg in seq_len(G)) {
+      out.taus[ss,gg] <- exp((log(fits$pis[gg]) + out.taus[ss,gg]) - sp.logl[ss])
     }
   }
 
@@ -2047,6 +2045,8 @@
 
 "llogl.thetaParams" <- function(x, ss, y, X, W, U, taus, fits, site_spp_weights, offy, disty, size, powers) {
 
+  n <- nrow(y)
+  out <- 0
   if(disty%in%c(4,5)) link <- make.link('log')
   if(disty%in%6) link <- make.link('identity')
 
@@ -2063,12 +2063,11 @@
   for(gg in seq_len(G)){
     eta <- spp.etas + mix.etas[,gg] + all.etas + offy
    if(disty==4)
-      cw.out <- sum(taus[ss,gg]*dnbinom(y[,ss], mu = link$linkinv(eta), size = 1/x, log = TRUE));
-    if(disty==5)
-      cw.out <- sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu = link$linkinv(eta), phi = x, p = powers[ss], LOG = TRUE));
-    if(disty==6)
-      cw.out <- sum(taus[ss,gg]*dnorm(y[,ss], mean = link$linkinv(eta), sd = sqrt(x), log = TRUE))
-    out <- out + cw.out
+     out <- out + sum(taus[ss,gg]*dnbinom(y[,ss], mu = link$linkinv(eta), size = 1/x, log = TRUE));
+   if(disty==5)
+     out <- out + sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu = link$linkinv(eta), phi = x, p = powers[ss], LOG = TRUE));
+   if(disty==6)
+     out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean = link$linkinv(eta), sd = sqrt(x), log = TRUE))
   }
   return(out)
 }
@@ -2123,6 +2122,51 @@
 
 
 ###### SAM internal functions for fitting ######
+"starting_values_wrapper" <- function(y, X, W, U, spp_weights, site_spp_weights,
+                                      offset, y_is_na, G, S, disty, size, control){
+  if(isTRUE(control$em_prefit)){
+    if(!control$quiet)message('Using ECM algorithm to find starting values; using ',
+                              control$em_refit,'refits\n')
+    emfits <- fit.ecm.sam(y, X, W, U, spp_weights, site_spp_weights,
+                            offset, y_is_na, G, S, disty, size, powers, control)
+    # bf <- which.max(vapply(emfits,function(x)c(x$logl),c(logl=0)))
+    # emfit <- emfits[[bf]]
+    start_vals <- list(alpha = (emfits$alpha),
+                       beta = (emfits$beta),
+                       gamma = (emfits$gamma),
+                       delta = (emfits$delta),
+                       theta = (emfits$theta),
+                       pis = (emfits$pis))
+  } else {
+    message('If you are choosing to not use the ECM algorithm to estimate starting values\nwe recommend that you at least run a multifits to optimise the loglikelihood, see "species_mix.multifit".')
+    if(!control$quiet)message('You are not using the EM algorith to find
+starting values;\n starting values are generated using ',control$init_method,
+                              '.\n')
+    starting_values <- get_initial_values_sam(y = y, X = X, W= W, U = U,
+                                              # spp_weights = spp_weights,
+                                              site_spp_weights = site_spp_weights,
+                                              offset = offset, y_is_na = y_is_na,
+                                              G = G, S = S,
+                                              disty=disty,size=size,powers = powers,
+                                              control = control)
+    start_vals <- list(alpha=(starting_values$alpha),
+                       beta=(starting_values$beta),
+                       gamma=(starting_values$gamma),
+                       delta=(starting_values$delta),
+                       theta=(starting_values$theta),
+                       pis=(starting_values$pis))
+  }
+
+  ## all the things we need to c++ optimisation.
+  start_vals$eta <- additive_logistic(start_vals$pis, inv = TRUE)[-G]
+  start_vals$nS <- S
+  start_vals$nG <- G
+  start_vals$nObs <- nrow(y)
+  return(start_vals)
+}
+
+
+
 
 # "apply_optimise_spp_theta" <- function(ss, first_fit, fits,
 #                                        G, disty, pis,
@@ -2211,7 +2255,7 @@
   if(length(sel.omit.spp)==0) sel.omit.spp <- -1*(1:S)
 
   starting.sam <- list(alpha = rep(0,S), theta = rep(1,S));
-  cat("Initialising starting values \n")
+  message("Initialising starting values \n")
 
 
   if(is.null(U)){
@@ -2291,7 +2335,7 @@
   if(G==1) control$init_method <- 'kmeans'
 
   if(control$init_method=='kmeans'){
-    if(!control$quiet) cat( "Initial groups parameter estimates by K-means clustering\n")
+    if(!control$quiet) message( "Initial groups parameter estimates by K-means clustering\n")
     fmmvnorm <- stats::kmeans(spp.beta, centers=G, iter.max = 200, nstart = 100)
     tmp_grp <- fmmvnorm$cluster
     grp_coefs <- apply(spp.beta, 2, function(x) tapply(x, tmp_grp, mean))
@@ -2301,7 +2345,7 @@
   }
 
   if(control$init_method=='kmed'){
-    if(!control$quiet) cat( "Initial groups parameter estimates by K-medoids\n")
+    if(!control$quiet) message( "Initial groups parameter estimates by K-medoids\n")
     mrwdist <- kmed::distNumeric(spp.beta, sp.beta, method = "mrw")
     fmmvnorm <- kmed::fastkmed(mrwdist, ncluster = G, iterate = 100)
     tmp_grp <- fmmvnorm$cluster
@@ -2312,7 +2356,7 @@
   }
 
   if(control$init_method=='random2'){
-    if(!control$quiet) cat( "Initial groups parameter estimates by K-means clustering with random noise\n")
+    if(!control$quiet) message( "Initial groups parameter estimates by K-means clustering with random noise\n")
     fmmvnorm <- stats::kmeans(spp.beta, centers=G, nstart=50, iter.max = 100)
     tmp_grp <- fmmvnorm$cluster
     grp_coefs <- apply(spp.beta, 2, function(x) tapply(x, tmp_grp, mean))
@@ -2813,52 +2857,6 @@
 #   return(c(mix_coefs))
 # }
 
-# "get_starting_values_sam" <- function(y, X, W, U, spp_weights, site_spp_weights,
-#                                       offset, y_is_na, G, S, disty, size, control){
-#   if(isTRUE(control$em_prefit)){
-#     if(!control$quiet)message('Using ECM algorithm to find starting values; using ',
-#                               control$em_refit,'refits\n')
-#     emfits <- list()
-#     for(ii in seq_len(control$em_refit)){
-#       if(!control$quiet)message('ECM fit: ',ii,'\n')
-#       emfits[[ii]] <- fitmix_ECM_sam(y, X, W, U, spp_weights, site_spp_weights,
-#                                      offset, y_is_na, G, S, disty, size, control)
-#     }
-#     bf <- which.max(vapply(emfits,function(x)c(x$logl),c(logl=0)))
-#     emfit <- emfits[[bf]]
-#     start_vals <- list(alpha = (emfit$alpha),
-#                        beta = (emfit$beta),
-#                        gamma = (emfit$gamma),
-#                        theta = (emfit$theta),
-#                        pis = (emfit$pis),
-#                        first_fit = emfit$first_fit)
-#   } else {
-#     message('If you are choosing to not use the ECM algorithm to estimate starting values\nwe recommend that you at least run a multifits to optimise the loglikelihood, see "species_mix.multifit".')
-#     if(!control$quiet)message('You are not using the EM algorith to find
-# starting values;\n starting values are generated using ',control$init_method,
-#                               '.\n')
-#     starting_values <- get_initial_values_sam(y = y, X = X, W= W,
-#                                               spp_weights = spp_weights,
-#                                               site_spp_weights = site_spp_weights,
-#                                               offset = offset, y_is_na = y_is_na,
-#                                               G = G, S = S,
-#                                               disty=disty,size=size,
-#                                               control = control)
-#     start_vals <- list(alpha=(starting_values$fits$alpha),
-#                        beta=(starting_values$fits$beta),
-#                        gamma=(starting_values$fits$gamma),
-#                        theta=(starting_values$fits$theta),
-#                        pis=(starting_values$pis),
-#                        first_fit = starting_values$first_fit)
-#   }
-#
-#   ## all the things we need to c++ optimisation.
-#   start_vals$eta <- additive_logistic(start_vals$pis, inv = TRUE)[-G]
-#   start_vals$nS <- S
-#   start_vals$nG <- G
-#   start_vals$nObs <- nrow(y)
-#   return(start_vals)
-# }
 
 # "get_incomplete_logl_sam_V2" <- function(eta, first_fit, fits,
 #                                       spp_weights, G, S, disty){
@@ -3431,25 +3429,6 @@
 }
 
 
-
-
-# "clean_ECM_output_one_group" <- function(em_fit, G, S, disty){
-#
-#   np <- ncol(em_fit$first_fit$x[,-1,drop=FALSE])
-#   n <- nrow(em_fit$first_fit$x[,-1,drop=FALSE])
-#
-#   if(!disty%in%c(4,6))
-#     em_fit$coefs <- list(alpha = em_fit$alpha, beta = matrix(em_fit$beta,G,np), eta = em_fit$eta)
-#   else
-#     em_fit$coefs <- list(alpha = em_fit$alpha, beta = matrix(em_fit$beta,G,np), eta = em_fit$eta, theta = em_fit$theta)
-#
-#   em_fit$names <- list(spp=colnames(em_fit$first_fit$y), SAMs=paste("SAM", 1:G, sep=""), Xvars=colnames(em_fit$first_fit$X[,-1,drop=FALSE]))
-#
-#   em_fit$S <- S; em_fit$G <- G; em_fit$np <- np; em_fit$n <- n;
-#   em_fit$removed_species <- em_fit$first_fit$removed_species
-#
-#   return(em_fit)
-# }
 
 
 ###### SAM internal functions ######
