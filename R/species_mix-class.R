@@ -39,10 +39,10 @@
 #' matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
 #' const, temperature, rainfall. dims of matirx should be
 #' nsites*(nspecies+const+covariates).
-#' @param n_mixtures The number of mixing components (groups) to fit.
-#' @param distribution The family of statistical distribution to use within
+#' @param nArchetypes The number of archetypes (mixing components/groups) to estimate from the data.
+#' @param family The family of statistical family to use within
 #' the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
-#' "negative.binomial" and "gaussian" distributions are possible and applicable
+#' "negative.binomial" and "gaussian" familys are possible and applicable
 #' to specific types of data.
 #' @param offset a numeric vector of length nrow(data) (n sites) that is
 #' included into the model as an offset. It is included into the conditional
@@ -59,7 +59,7 @@
 #' See details. From \code{species_mix.control} for details on optimistaion
 #' parameters.
 #' @param inits NULL a numeric vector that provides approximate starting values
-#' for species_mix coefficents. These are distribution specific, but at a
+#' for species_mix coefficents. These are family specific, but at a
 #' minimum you will need pis (additive_logitic transformed), alpha
 #' (intercepts) and beta (mixing coefs).
 #' @param standardise Booliean. If TRUE, standarise the covariate data.
@@ -97,14 +97,14 @@
 #' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
 #'  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
 #' fm1 <- species_mix(sam_form, sp_form, simulated_data,
-#'  distribution = 'bernoulli',  n_mixtures=3)
+#'  family = 'bernoulli',  nArchetypes=3)
 #'  }
 
   "species_mix" <- function(archetype_formula = NULL,
                           species_formula = stats::as.formula(~1),
                           all_formula = NULL, # will correspond with the design matrix U
                           data,
-                          n_mixtures = 3, distribution="bernoulli", offset=NULL,
+                          nArchetypes = 3, family="bernoulli", offset=NULL,
                             weights=NULL, bb_weights=NULL, size= NULL, control=NULL,
                           inits=NULL, standardise = FALSE, titbits = TRUE){
 
@@ -127,7 +127,7 @@
     species_formula <- stats::as.formula(species_formula)
 
     mf <- match.call(expand.dots = FALSE)
-  if(distribution=="ippm"){
+  if(family=="ippm"){
     m <- match(c("data","offset"), names(mf), 0L)
   } else {
     m <- match(c("data","offset","weights"), names(mf), 0L)
@@ -136,7 +136,7 @@
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
 
-  if(distribution=="ippm"){
+  if(family=="ippm"){
     mf$na.action <- "na.pass"
   } else {
     mf$na.action <- "na.exclude"
@@ -147,7 +147,7 @@
 
   # need this for the na.omit step
   rownames(mf)<-seq_len(nrow(mf))
-  dat <- clean_data_sam(mf, archetype_formula, species_formula, distribution)
+  dat <- clean_data_sam(mf, archetype_formula, species_formula, family)
 
   # get responses
   y <- stats::model.response(dat$mf.X)
@@ -164,7 +164,7 @@
     return(NULL)
   }
   if( !control$quiet)
-    message( "There are ", n_mixtures, " archetypes to group the species into")
+    message( "There are ", nArchetypes, " archetypes to group the species into")
 
   # get archetype model matrix
   X <- get_X_sam(archetype_formula = archetype_formula, mf.X = dat$mf.X)
@@ -191,7 +191,7 @@
       w.means <- stand.W$dat.means
       w.sds <- stand.W$dat.sds
     }
-    if(ncol(U)>0){
+    if(!is.null(U)){
       stand.W <- standardise.U(U)
       U <- as.matrix(stand.U$U)
       u.means <- stand.U$dat.means
@@ -199,10 +199,12 @@
     }
   }
 
-  #get distribution
-  disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
+  #get family
+  disty_cases <- c("bernoulli","poisson","ippm",
+                   "negative.binomial","tweedie",
+                   "gaussian","binomial")
 
-  disty <- get_distribution_sam(disty_cases, distribution)
+  disty <- get_family_sam(disty_cases, family)
 
   # get offsets
   offset <- get_offset_sam(dat$mf.X)
@@ -210,12 +212,12 @@
   # get the weights
   species_names <- colnames(y)
   site_spp_weights <- get_site_spp_weights_sam(mf,weights,species_names,
-                                               distribution)
+                                               family)
   spp_weights <- check_spp_weights(bb_weights,S)
 
   size <- check_size_binomial(size,nrow(dat$mf.X))
 
-  if(distribution=='ippm'){
+  if(family=='ippm'){
     if(!all(colnames(y)==colnames(site_spp_weights))){
       stop(message('When modelling a inhomogeneous poisson point process model,
                \n species data colnames must match weights colnames.\n\n
@@ -231,12 +233,13 @@
   }
 
   # summarising data to console
-  if(!control$quiet) print_input_sam(y, X, W, S, archetype_formula,
-                                     species_formula, distribution,
+  if(!control$quiet) print_input_sam(y, X, W, U, S, archetype_formula,
+                                     species_formula, all_formula,
+                                     family,
                                      quiet=control$quiet)
 
   # fit species mix.
-  G <- n_mixtures
+  G <- nArchetypes
   tmp <- species_mix.fit(y=y, X=X, W=W, U=U, G=G, S=S,
                          spp_weights=spp_weights,
                          site_spp_weights=site_spp_weights,
@@ -245,7 +248,7 @@
 
   tmp$dist <- disty_cases[disty]
 
-  if(n_mixtures==1){
+  if(nArchetypes==1){
     tmp$pis <- tmp$pis
   }else{
     tmp$pis <- additive_logistic(tmp$eta)
@@ -254,7 +257,7 @@
   # get logls from parameters
 
   #calc posterior porbs and pis.
-  if(n_mixtures>1){
+  if(nArchetypes>1){
     fits <- tmp$coefs
     first_fit <- list(y = y, x = X, W = W, U = U,
                       spp_weights = spp_weights,
@@ -365,8 +368,8 @@
 #' matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
 #' const, temperature, rainfall. dims of matirx should be
 #' nsites*(nspecies+const+covariates).
-#' @param n_mixtures The number of mixing components (groups) to fit.
-#' @param distribution The family of statistical distribution to use within
+#' @param nArchetypes The number of mixing components (groups) to fit.
+#' @param family The family of statistical distribution to use within
 #' the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
 #' "negative.binomial" and "gaussian" distributions are possible and applicable
 #' to specific types of data.
@@ -424,13 +427,13 @@
 #' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
 #'  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
 #' fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
-#'                               distribution = 'bernoulli', nstart = 10,
-#'                               n_mixtures=3)
+#'                               family = 'bernoulli', nstart = 10,
+#'                               nArchetypes=3)
 #' }
 "species_mix.multifit" <- function(archetype_formula = NULL,
                                    species_formula = stats::as.formula(~1),
-                                   data, n_mixtures = 3, nstart = 10,
-                                   mc.cores=1, distribution="bernoulli",
+                                   data, nArchetypes = 3, nstart = 10,
+                                   mc.cores=1, family="bernoulli",
                                    offset=NULL, weights=NULL, bb_weights=NULL,
                                    size= NULL, control=species_mix.control(),
                                    inits=NULL, standardise = TRUE, titbits = TRUE){
@@ -454,7 +457,7 @@
     species_formula <- stats::as.formula(species_formula)
 
   mf <- match.call(expand.dots = FALSE)
-  if(distribution=="ippm"){
+  if(family=="ippm"){
     m <- match(c("data","offset"), names(mf), 0L)
   } else {
     m <- match(c("data","offset","weights"), names(mf), 0L)
@@ -463,7 +466,7 @@
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
 
-  if(distribution=="ippm"){
+  if(family=="ippm"){
     mf$na.action <- "na.pass"
   } else {
     mf$na.action <- "na.exclude"
@@ -474,7 +477,7 @@
 
   # need this for the na.omit step
   rownames(mf)<-seq_len(nrow(mf))
-  dat <- clean_data_sam(mf, archetype_formula, species_formula, distribution)
+  dat <- clean_data_sam(mf, archetype_formula, species_formula, family)
 
   # get responses
   y <- stats::model.response(dat$mf.X)
@@ -491,7 +494,7 @@
     return(NULL)
   }
   if( !control$quiet)
-    message( "There are ", n_mixtures, " archetypes to group the species into")
+    message( "There are ", nArchetypes, " archetypes to group the species into")
 
   # get archetype model matrix
   X <- get_X_sam(archetype_formula = archetype_formula, mf.X = dat$mf.X)
@@ -517,10 +520,10 @@
     x.sds <- stand.X$dat.sds
   }
 
-  #get distribution
+  #get family
   disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
 
-  disty <- get_distribution_sam(disty_cases, distribution)
+  disty <- get_family_sam(disty_cases, family)
 
   # get offsets
   offset <- get_offset_sam(dat$mf.X)
@@ -531,10 +534,10 @@
   # get the weights
   species_names <- colnames(y)
   site_spp_weights <- get_site_spp_weights_sam(mf,weights,species_names,
-                                               distribution)
+                                               family)
   spp_weights <- check_spp_weights(bb_weights,S)
 
-  if(distribution=='ippm'){
+  if(family=='ippm'){
     if(!all(colnames(y)==colnames(site_spp_weights))){
       stop(message('When modelling a inhomogeneous poisson point process model,
                \n species data colnames must match weights colnames.\n\n
@@ -551,7 +554,7 @@
 
   # summarising data to console
   if(!control$quiet) print_input_sam(y, X, W, S, archetype_formula,
-                                     species_formula, distribution,
+                                     species_formula, family,
                                      quiet=control$quiet)
 
   tmp_fun <- function(x){
@@ -560,7 +563,7 @@
         tmpQuiet <- control$quiet
         control$quiet <- TRUE
       # fit species mix.
-        tmp <- species_mix.fit(y=y, X=X, W=W, G=n_mixtures, S=S,
+        tmp <- species_mix.fit(y=y, X=X, W=W, G=nArchetypes, S=S,
                                spp_weights=spp_weights,
                                site_spp_weights=site_spp_weights,
                                offset=offset, disty=disty, y_is_na=y_is_na,
@@ -568,11 +571,11 @@
 
         tmp$dist <- disty_cases[disty]
 
-        if(n_mixtures==1) tmp$pis <- tmp$pis
+        if(nArchetypes==1) tmp$pis <- tmp$pis
         else tmp$pis <- additive_logistic(tmp$eta)
 
         #calc posterior porbs and pis.
-        if(n_mixtures>1)
+        if(nArchetypes>1)
           tmp$taus <- calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
 
         tmp$pis <- colSums(tmp$taus)/S
@@ -709,7 +712,7 @@
                                     mc.cores=1, quiet=FALSE){
 
   if(object$dist=='ippm'){
-    message('Using parameteric bootstrap to distribution of parameters for IPPM model\n')
+    message('Using parameteric bootstrap to family of parameters for IPPM model\n')
     if(is.null(object$vcov)){
       message('Variance-Covariance matrix is missing, will attempt to calculate now, this will be slow...')
       object$vcov <- vcov(object)
@@ -727,7 +730,7 @@
     stop( "Unknown Bootstrap type, choices are BayesBoot and SimpleBoot.")
   n.reorder <- 0
   object$titbits$control$optimise <- TRUE #just in case it was turned off
-  if(object$titbits$distribution=='ippm')
+  if(object$titbits$family=='ippm')
     stop('IPPM vcov matrix needs to estimated using FiniteDifference method.\n')
 
   if( !quiet){
@@ -752,7 +755,7 @@
   my.fun <- function(dummy){
     if( !quiet) setTxtProgressBar(pb, dummy)
     disty_cases <- c("bernoulli","binomial","poisson", "ippm", "negative.binomial", "tweedie", "gaussian")
-    disty <- get_distribution_sam(disty_cases, object$dist)
+    disty <- get_family_sam(disty_cases, object$dist)
     dumbOut <- capture.output(
       samp.object <- species_mix.fit(y=object$titbits$Y,
                                      X=object$titbits$X,
@@ -799,7 +802,7 @@
 #' @param species_formula formula to simulate species_mix species-specific
 #' responses, e.g: ~1
 #' @param dat a matrix of variables to simulate data from.
-#' @param n_mixtures number of groups to simulate.
+#' @param nArchetypes number of groups to simulate.
 #' @param alpha coefficents for each species archetype. vector S long.
 #' @param beta coefficents for each species archetype. Matrix of G x number of
 #'  parameters. Each row is a different species archetype.
@@ -808,7 +811,7 @@
 #' @param theta coefficents for the dispersion variables for negative.binomial
 #' and gaussian distributions - should be number of species long
 #' @param size Is for the binomial model and this respresents the number of binomial trials per site, can be fixed or vary.
-#' @param distribution Which statistical distribution to simulate data for.
+#' @param family Which statistical distribution to simulate data for.
 #'  'bernoulli','binomial', 'gaussian', 'ippm', 'negative.binomial' and 'poisson'.
 #' @param offset used to offset sampling effort for abundance data (log link function).
 #' @export
@@ -826,8 +829,8 @@
 #'                   x1=stats::runif(100,0,2.5),
 #'                   x2=stats::rnorm(100,0,2.5))
 #' simulated_data <- species_mix.simulate(archetype_formula,species_formula,
-#'                                        dat, n_mixtures = 4, beta=beta,
-#'                                        distribution="bernoulli")
+#'                                        dat, nArchetypes = 4, beta=beta,
+#'                                        family="bernoulli")
 #' }
 
 ## need to update this to take the new formula framework and simulate ippm data.
@@ -836,7 +839,7 @@
                                     all_formula=NULL,
                                     dat,
                                     offset = NULL,
-                                    n_mixtures = 3,
+                                    nArchetypes = 3,
                                     alpha=NULL,
                                     beta=NULL,
                                     gamma=NULL,
@@ -844,7 +847,7 @@
                                     logTheta=NULL,
                                     powers=NULL,
                                     size=NULL,
-                                    distribution = "bernoulli"){
+                                    family = "bernoulli"){
 
   #update the formula to old format.
   if(!is.null(archetype_formula))
@@ -872,7 +875,7 @@
 
   # how many species to simulate???
   S <- length(archetype_formula[[2]])-1
-  G <- n_mixtures
+  G <- nArchetypes
 
   archetype_formula <- update(archetype_formula,y~.-1)
   archetype_formula[[2]] <- NULL
@@ -913,30 +916,30 @@
     delta <- rnorm(npu)
   }
 
-  if( distribution == "negative.binomial" & (is.null(logTheta) | length(logTheta) != S)){
+  if( family == "negative.binomial" & (is.null(logTheta) | length(logTheta) != S)){
 
     message( "Random values for overdispersions")
     logTheta <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
   }
-  if (distribution == "tweedie" & (is.null(logTheta) | length(logTheta) != S)) {
+  if (family == "tweedie" & (is.null(logTheta) | length(logTheta) != S)) {
     message("Random values for species' dispersion parameters")
     logTheta <- log(1 + rgamma(n = S, shape = 1, scale = 0.75))
   }
-  if (distribution == "tweedie" & (is.null(powers) | length(powers) != S)) {
+  if (family == "tweedie" & (is.null(powers) | length(powers) != S)) {
     message("Power parameter assigned to 1.6 for each species")
     powers <- rep(1.6, S)
   }
-  if( distribution=="gaussian"){
+  if( family=="gaussian"){
     if((is.null( logTheta) | length( logTheta) != S)){
     message( "Random values for species' variance parameters")
     logTheta <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
     }
   }
 
-  if(distribution %in% c('bernoulli','binomial')) link <- make.link('logit')
-  if(distribution %in% c('poisson','ippm','negative.binomial','tweedie')) link <- make.link('log')
-  if(distribution %in% c('gaussian')) link <- make.link('identity')
-  if(distribution %in% 'ippm') {
+  if(family %in% c('bernoulli','binomial')) link <- make.link('logit')
+  if(family %in% c('poisson','ippm','negative.binomial','tweedie')) link <- make.link('log')
+  if(family %in% c('gaussian')) link <- make.link('identity')
+  if(family %in% 'ippm') {
     grid <- simulate_ippm_grid(X,W)
     grid2D <- grid$grid2D
     X <- grid$X
@@ -960,26 +963,26 @@
     group[ss] <- gg
   }
 
-  if( distribution=="bernoulli")
+  if( family=="bernoulli")
     outcomes <- matrix(rbinom(n * S, 1, as.numeric( fitted)), nrow = n, ncol = S)
-  if( distribution=="binomial")
+  if( family=="binomial")
     outcomes <- matrix(rbinom(n * S, rep(size, S), as.numeric( fitted)), nrow = n, ncol = S)
-  if( distribution=="poisson")
+  if( family=="poisson")
     outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
-  if( distribution=="ippm")
+  if( family=="ippm")
     outcomes <- simulate_ippm_outcomes(X, W, S, grid2D, fitted)
-  if( distribution=="negative.binomial")
+  if( family=="negative.binomial")
     outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp(logTheta), each=n)), nrow = n, ncol = S)
-  if (distribution=="tweedie")
+  if (family=="tweedie")
     outcomes <- matrix(fishMod::rTweedie(n * S, mu = as.numeric(fitted),
                                          phi = rep(exp(logTheta), each = n),
                                          p = rep(powers, each = n)), nrow = n, ncol = S)
-  if( distribution=="gaussian")
+  if( family=="gaussian")
     outcomes <- matrix( rnorm( n=n*S, mean=as.numeric( fitted), sd=rep( exp(logTheta), each=n)), nrow=n, ncol=S)
 
   pi <- tapply(group, group, length)/S
 
-  if (distribution=='ippm'){
+  if (family=='ippm'){
     res <- outcomes$mm
     wts <- outcomes$weights
     colnames(wts) <- all.vars(sam_org)[1:S]
@@ -1169,7 +1172,7 @@
 #' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
 #'  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
 #' fm1 <- species_mix(sam_form, sp_form, simulated_data,
-#'  distribution = 'bernoulli',  n_mixtures=3)
+#'  family = 'bernoulli',  nArchetypes=3)
 #'preds_fm1 <- predict(fm1)
 #'}
 
@@ -1204,7 +1207,7 @@
   site_spp_wts <- object$titbits$site_spp_weights
 
   disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
-  disty <- get_distribution_sam(disty_cases, object$titbits$distribution)
+  disty <- get_family_sam(disty_cases, object$titbits$family)
   taus <- object$taus
   if (is.null(object2)) {
     if (nboot > 0) {
@@ -1403,11 +1406,11 @@
 #' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
 #'  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
 #' fm1 <- species_mix(sam_form, sp_form, simulated_data,
-#'  distribution = 'bernoulli',  n_mixtures=3)
+#'  family = 'bernoulli',  nArchetypes=3)
 #'print(fm1)}
 
 "print.species_mix" <-  function (x,...){
-  cat(x$titbits$distribution, "species_mix model\n")
+  cat(x$titbits$family, "species_mix model\n")
   cat("\nMixing probabilities\n")
   print(x$pi)
   cat("\nCoefficents\n")
@@ -1428,7 +1431,7 @@
 #'}
 
 "print.species_mix.multifit" <-  function (x,...){
-  cat(x[[1]]$titbits$distribution,"species_mix model\n")
+  cat(x[[1]]$titbits$family,"species_mix model\n")
   cat("\nMixing probabilities\n")
   print(x$pi)
   cat("\nCoefficents\n")
@@ -1547,7 +1550,7 @@
 #' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
 #'  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
 #' fm1 <- species_mix(sam_form, sp_form, simulated_data,
-#'  distribution = 'bernoulli',  n_mixtures=3)
+#'  family = 'bernoulli',  nArchetypes=3)
 #' vcov(fm1)}
 "vcov.species_mix" <- function (object, object2=NULL, method = "BayesBoot",
                                 nboot = 10, mc.cores = 1, ...){
@@ -1568,9 +1571,9 @@
     y <- object$titbits$Y
     y_is_na <- object$titbits$y_is_na
     size <- object$titbits$size
-    distribution <- object$titbits$distribution
+    family <- object$titbits$family
     disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
-    disty <- get_distribution_sam(disty_cases, distribution)
+    disty <- get_family_sam(disty_cases, family)
     S <- object$S
     G <- object$G
     n <- object$n
@@ -3453,11 +3456,11 @@ starting values;\n starting values are generated using ',control$init_method,
 
 
 "print_input_sam" <- function(y, X, W, U, S, archetype_formula, species_formula,
-                              all_formula, distribution, quiet=FALSE){
+                              all_formula, family, quiet=FALSE){
   if( quiet)
     return( NULL)
   n.tot <- nrow(y)
-  if(distribution=='ippm'){
+  if(family=='ippm'){
     n_pres <- sum(unlist(y)==1,na.rm=TRUE)
     n_bkgrd <- sum(unlist(y[,1])==0,na.rm=TRUE)
     message("There are ", n_pres, " presence observations for ", S," species")
@@ -3473,12 +3476,12 @@ starting values;\n starting values are generated using ',control$init_method,
     message("The model for the species is ", Reduce( "paste", deparse(species_formula)))
   if(!is.null(U))
     message("The model for the entire dataset is ", Reduce( "paste", deparse(all_formula)))
-  message("You are implementing a ", distribution, " Species Archetype Model.")
-  # else message("You are implementing a ", distribution, " Partial Species Archetype Model.")
+  message("You are implementing a ", family, " Species Archetype Model.")
+  # else message("You are implementing a ", family, " Partial Species Archetype Model.")
 }
 
-"get_distribution_sam" <- function( disty_cases, dist1) {
-  error.msg <- paste( c( "Distribution not implemented. Options are: ", disty_cases, "-- Exitting Now"), collapse=" ")
+"get_family_sam" <- function( disty_cases, dist1) {
+  error.msg <- paste( c( "Family not implemented. Options are: ", disty_cases, "-- Exitting Now"), collapse=" ")
   disty <- switch( dist1,
                    "bernoulli" = 1,
                    "poisson" = 2,
@@ -3558,13 +3561,13 @@ starting values;\n starting values are generated using ',control$init_method,
 
 "get_titbits_sam" <- function(titbits, y, X, W, spp_weights, site_spp_weights, offset,
                                y_is_na, size, archetype_formula, species_formula,
-                               control, distribution,removed_species)  {
+                               control, family,removed_species)  {
     if( titbits==TRUE)
       titbits <- list( Y = y, X = X, W = W, spp_weights = spp_weights,
                        site_spp_weights = site_spp_weights, offset = offset,
                        y_is_na = y_is_na, size = size, archetype_formula =  archetype_formula,
                        species_formula = species_formula, control = control,
-                       distribution = distribution, removed_species = removed_species)
+                       family = family, removed_species = removed_species)
     else{
       titbits <- list()
       if( "Y" %in% titbits)
@@ -3589,20 +3592,20 @@ starting values;\n starting values are generated using ',control$init_method,
         titbits$species_formula <- species_formula
       if( "control" %in% titbits)
         titbits$control <- control
-      if( "distribution" %in% titbits)
-        titbits$distribution <- distribution
+      if( "family" %in% titbits)
+        titbits$family <- family
       if( "removed_species" %in% titbits)
         titbits$removed_species <- removed_species
     }
     return( titbits)
 }
 
-"get_site_spp_weights_sam"  <- function(mf, site_spp_weights, sp_names, distribution){
+"get_site_spp_weights_sam"  <- function(mf, site_spp_weights, sp_names, family){
 
   # site_spp_wts <- model.weights(mf)
   if(is.null(site_spp_weights))site_spp_weights <- model.weights(mf)
 
-  if(distribution=='ippm'){
+  if(family=='ippm'){
       if(!is.null(site_spp_weights)){
         site_spp_weights <- subset(site_spp_weights, select = colnames(site_spp_weights)%in%sp_names)
       } else {
@@ -3984,8 +3987,8 @@ starting values;\n starting values are generated using ',control$init_method,
     }
   }
 
-"clean_data_sam" <- function(data, form1, form2, form3=NULL, distribution){
-  if(distribution=='ippm') na_rule <- "na.pass"
+"clean_data_sam" <- function(data, form1, form2, form3=NULL, family){
+  if(family=='ippm') na_rule <- "na.pass"
   else  na_rule <- "na.exclude"
     mf.X <- stats::model.frame(form1, data = data, na.action = na_rule)
     if(is.null(form3)){
