@@ -312,7 +312,7 @@
   if(G==1){
     tmp <- fit.ecm.sam(y, X, W, U, spp_weights, site_spp_weights,
                        offset, y_is_na, G, S, disty, size, powers,
-                       control=species_mix.control(em_refit = 1))
+                       control=species_mix.control(ecm_refit = 1))
     return(tmp)
   }
 
@@ -612,12 +612,11 @@
 #'@param init_method The method to use for initialisation. The options are "random2", "kmeans", "kmed". The default uses random2, which is a kmeans with noise added to the cluster.
 #'@param init_sd The amount of noise to add to the initailisation the default is 1.
 #'@param minimum_sites_occurrence a integer which determins the number of minimum sites present for any species for it to be included in the initialisation step. This removes rare species from initial groupings. They are then included in the overall analysis.
-#'@param init_glmnet Use glmnet rather than glm to get the initial parameter estimates. This is default.
-#'@param em_prefit Logical if TRUE the model will run a slower EM algorithm fit to find starting values.
-#'@param em_steps int Default is 3, the number of EM iterations to get to starting values.
-#'@param em_refit int Default is 1, number of times to refit using EM.
-#'@param em_reltol A function or value which gives the tolerance in the EM loglikeihood estimation.
-#'@param em_maxtau A cap on the maximum value of the species' taus in the first E-step of the EM algorithm, not used for subsequent iterations.
+#'@param ecm_prefit Logical if TRUE the model will run a slower EM algorithm fit to find starting values.
+#'@param ecm_steps int Default is 3, the number of EM iterations to get to starting values.
+#'@param ecm_refit int Default is 1, number of times to refit using EM.
+#'@param ecm_reltol A function or value which gives the tolerance in the EM loglikeihood estimation.
+#'@param ecm_maxtau A cap on the maximum value of the species' taus in the first E-step of the EM algorithm, not used for subsequent iterations.
 #'@param theta_range Two positive values use as penalities for estimating the dispersion parameters (theta) in a negative.binomial SAM or PSAM.
 #'@param pen_param A penality for the em fitting.
 #'@param update_kappa Penalities for how fast parameters update during each EM step.
@@ -644,11 +643,11 @@
                                   minimum_sites_occurrence = 0,
                                   init_glmnet = FALSE,
                                   ## EM algorithim controls
-                                  em_prefit = TRUE,
-                                  em_steps = 5,
-                                  em_refit = 3,
-                                  em_reltol = reltol_fun,
-                                  em_maxtau = 0.8,
+                                  ecm_prefit = TRUE,
+                                  ecm_steps = 5,
+                                  ecm_refit = 3,
+                                  ecm_reltol = reltol_fun,
+                                  ecm_maxtau = 0.8,
                                   ## partial mixture penalities
                                   theta_range = c(0.001,10),
                                   pen_param = 1.25,
@@ -674,8 +673,8 @@
                minimum_sites_occurrence = minimum_sites_occurrence,
                init_glmnet = init_glmnet,
                #em controls
-               em_prefit = em_prefit, em_refit = em_refit, em_steps = em_steps,
-               em_reltol = em_reltol, em_maxtau = em_maxtau,
+               ecm_prefit = ecm_prefit, ecm_refit = ecm_refit, ecm_steps = ecm_steps,
+               ecm_reltol = ecm_reltol, ecm_maxtau = ecm_maxtau,
                # partial controls
                theta_range = theta_range,
                pen_param = pen_param,
@@ -690,8 +689,8 @@
                loglOnly_cpp = loglOnly_cpp, derivOnly_cpp = derivOnly_cpp,
                getscores_cpp = getscores_cpp)
   rval <- c(rval, list(...))
-  if (is.null(rval$em_reltol))
-    rval$em_reltol <- sqrt(.Machine$double.eps)
+  if (is.null(rval$ecm_reltol))
+    rval$ecm_reltol <- sqrt(.Machine$double.eps)
   rval
 }
 
@@ -1696,8 +1695,8 @@
   n <- nrow(y)
   starting.sam <-  NULL
   bestOfAllMods <- list( logl=-Inf)
-  for(t in seq_len(control$em_refit)) {
-    message(paste0("ECM restart ",t," of ", control$em_refit," \n"))
+  for(t in seq_len(control$ecm_refit)) {
+    message(paste0("ECM restart ",t," of ", control$ecm_refit,""))
     starting.sam <- get_initial_values_sam(y = y, X = X, W = W, U = U,
                                            site_spp_weights = site_spp_weights,
                                            offset = offset, y_is_na = y_is_na,
@@ -1720,7 +1719,7 @@
     mod <- list(logl = -Inf)
 
     counter <- 1
-    while((diff.logl < 1-1e-4 | diff.logl > 1+1e-4) & counter <= control$em_steps) {
+    while((diff.logl < 1-1e-4 | diff.logl > 1+1e-4) & counter <= control$ecm_steps) {
       # if(diff.logl > 1) break;
       ## If any pi hits 0, restart with new random starts
     if(any(fits$pis < 0.0005)) {
@@ -2124,9 +2123,9 @@
 ###### SAM internal functions for fitting ######
 "starting_values_wrapper" <- function(y, X, W, U, spp_weights, site_spp_weights,
                                       offset, y_is_na, G, S, disty, size, control){
-  if(isTRUE(control$em_prefit)){
+  if(isTRUE(control$ecm_prefit)){
     if(!control$quiet)message('Using ECM algorithm to find starting values; using ',
-                              control$em_refit,'refits\n')
+                              control$ecm_refit,'refits')
     emfits <- fit.ecm.sam(y, X, W, U, spp_weights, site_spp_weights,
                             offset, y_is_na, G, S, disty, size, powers, control)
     # bf <- which.max(vapply(emfits,function(x)c(x$logl),c(logl=0)))
@@ -2141,7 +2140,7 @@
     message('If you are choosing to not use the ECM algorithm to estimate starting values\nwe recommend that you at least run a multifits to optimise the loglikelihood, see "species_mix.multifit".')
     if(!control$quiet)message('You are not using the EM algorith to find
 starting values;\n starting values are generated using ',control$init_method,
-                              '.\n')
+                              '.')
     starting_values <- get_initial_values_sam(y = y, X = X, W= W, U = U,
                                               # spp_weights = spp_weights,
                                               site_spp_weights = site_spp_weights,
@@ -2255,7 +2254,7 @@ starting values;\n starting values are generated using ',control$init_method,
   if(length(sel.omit.spp)==0) sel.omit.spp <- -1*(1:S)
 
   starting.sam <- list(alpha = rep(0,S), theta = rep(1,S));
-  message("Initialising starting values \n")
+  message("Initialising starting values")
 
 
   if(is.null(U)){
@@ -2335,7 +2334,7 @@ starting values;\n starting values are generated using ',control$init_method,
   if(G==1) control$init_method <- 'kmeans'
 
   if(control$init_method=='kmeans'){
-    if(!control$quiet) message( "Initial groups parameter estimates by K-means clustering\n")
+    if(!control$quiet) message("Initial groups parameter estimates by K-means clustering")
     fmmvnorm <- stats::kmeans(spp.beta, centers=G, iter.max = 200, nstart = 100)
     tmp_grp <- fmmvnorm$cluster
     grp_coefs <- apply(spp.beta, 2, function(x) tapply(x, tmp_grp, mean))
@@ -2345,7 +2344,7 @@ starting values;\n starting values are generated using ',control$init_method,
   }
 
   if(control$init_method=='kmed'){
-    if(!control$quiet) message( "Initial groups parameter estimates by K-medoids\n")
+    if(!control$quiet) message("Initial groups parameter estimates by K-medoids")
     mrwdist <- kmed::distNumeric(spp.beta, sp.beta, method = "mrw")
     fmmvnorm <- kmed::fastkmed(mrwdist, ncluster = G, iterate = 100)
     tmp_grp <- fmmvnorm$cluster
@@ -2356,7 +2355,7 @@ starting values;\n starting values are generated using ',control$init_method,
   }
 
   if(control$init_method=='random2'){
-    if(!control$quiet) message( "Initial groups parameter estimates by K-means clustering with random noise\n")
+    if(!control$quiet) message("Initial groups parameter estimates by K-means clustering with random noise")
     fmmvnorm <- stats::kmeans(spp.beta, centers=G, nstart=50, iter.max = 100)
     tmp_grp <- fmmvnorm$cluster
     grp_coefs <- apply(spp.beta, 2, function(x) tapply(x, tmp_grp, mean))
@@ -3010,7 +3009,7 @@ starting values;\n starting values are generated using ',control$init_method,
 #   first_fit <- starting_values$first_fit
 #   logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
 #
-#   while(control$em_reltol(logl_new,logl_old) & ite <= control$em_steps){
+#   while(control$ecm_reltol(logl_new,logl_old) & ite <= control$ecm_steps){
 #     if(restart_ite>10){
 #       message('cannot find good starting values with initialisation\n
 #               and random starting values\n\n
@@ -3927,6 +3926,9 @@ starting values;\n starting values are generated using ',control$init_method,
 }
 
 "calc_info_crit_sam" <-  function(tmp) {
+
+    # K <- length(tmp$beta) + tmp$G + tmp$S + ifelse(ncol(W)>1,ncol(W)-1,0) + ifelse(!is.null(U),ncol(U),0) + ifelse(disty %in% c(4,5,6),S,0)
+
     k <- length(unlist(tmp$coefs))
     tmp$BIC <- -2 * tmp$logl + log(tmp$n) * k
     tmp$AIC <- -2 * tmp$logl + 2 * k
