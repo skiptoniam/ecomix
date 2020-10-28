@@ -3453,7 +3453,8 @@ starting values;\n starting values are generated using ',control$init_method,
 
 
 
-"print_input_sam" <- function(y, X, W=NULL, S, archetype_formula, species_formula, distribution, quiet=FALSE){
+"print_input_sam" <- function(y, X, W, U, S, archetype_formula, species_formula,
+                              all_formula, distribution, quiet=FALSE){
   if( quiet)
     return( NULL)
   n.tot <- nrow(y)
@@ -3470,9 +3471,11 @@ starting values;\n starting values are generated using ',control$init_method,
   archetype_formula[[2]] <- NULL
   message("The model for the archetype (grouping) is ", Reduce( "paste", deparse(archetype_formula)))
   if(!is.null(species_formula))
-  message("The model for the species is ", Reduce( "paste", deparse(species_formula)))
-  if(ncol(W)<2) message("You are implementing a ", distribution, " Species Archetype Model.")
-  else message("You are implementing a ", distribution, " Partial Species Archetype Model.")
+    message("The model for the species is ", Reduce( "paste", deparse(species_formula)))
+  if(!is.null(U))
+    message("The model for the entire dataset is ", Reduce( "paste", deparse(all_formula)))
+  message("You are implementing a ", distribution, " Species Archetype Model.")
+  # else message("You are implementing a ", distribution, " Partial Species Archetype Model.")
 }
 
 "get_distribution_sam" <- function( disty_cases, dist1) {
