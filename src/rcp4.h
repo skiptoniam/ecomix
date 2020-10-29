@@ -6,7 +6,7 @@
 #include<Rinternals.h>
 #include<R_ext/Applic.h>
 #include<vector>
-//#include"Tweedie.h"
+#include"Tweedie.h"
 
 #undef length
 #include <iostream>
