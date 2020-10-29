@@ -305,6 +305,7 @@
 #'@param y_is_na This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!
 #'@param disty the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.
 #'@param size The size of each of binomial sample at each site. Length should be the number of sites.
+#'@param powers The power parameters for the Tweedie distribution.
 #'@param control this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.
 #'@param inits This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).
 #'@export
@@ -2127,8 +2128,6 @@
 }
 
 
-
-###### SAM internal functions for fitting ######
 "starting_values_wrapper" <- function(y, X, W, U, spp_weights, site_spp_weights,
                                       offset, y_is_na, G, S, disty, size, control){
   if(isTRUE(control$ecm_prefit)){
@@ -2136,8 +2135,6 @@
                               control$ecm_refit,'refits')
     emfits <- fit.ecm.sam(y, X, W, U, spp_weights, site_spp_weights,
                             offset, y_is_na, G, S, disty, size, powers, control)
-    # bf <- which.max(vapply(emfits,function(x)c(x$logl),c(logl=0)))
-    # emfit <- emfits[[bf]]
     start_vals <- list(alpha = (emfits$alpha),
                        beta = (emfits$beta),
                        gamma = (emfits$gamma),
@@ -2150,7 +2147,6 @@
 starting values;\n starting values are generated using ',control$init_method,
                               '.')
     starting_values <- get_initial_values_sam(y = y, X = X, W= W, U = U,
-                                              # spp_weights = spp_weights,
                                               site_spp_weights = site_spp_weights,
                                               offset = offset, y_is_na = y_is_na,
                                               G = G, S = S,
@@ -3443,7 +3439,7 @@ starting values;\n starting values are generated using ',control$init_method,
   return(ret)
 }
 
-sam_optimise_tweedie <- function( outcomes, X, W, offy, wts, S, nRCP, p.x, p.w, n, disty, start.vals, power, control){
+"sam_optimise_tweedie" <- function( outcomes, X, W, offy, wts, S, nRCP, p.x, p.w, n, disty, start.vals, power, control){
     Tw.phi.func <- function( phi1, spp3){
       disp3 <- disp
       disp3[spp3] <- phi1
