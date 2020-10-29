@@ -5,7 +5,7 @@
 extern "C" {
 	SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP RU, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rbinsize,
 					     SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart,
-						 SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rdelta, SEXP Rtheta,
+						 SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rdelta, SEXP Rtheta, SEXP Rpowers,
 						 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsGamma, SEXP RderivsDelta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
 						 SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
 						 SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
@@ -245,9 +245,9 @@ void calc_sam_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam
 					if(dat.disty==4){ // negative binomial
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_negative_binomial_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 						}
-					//if(dat.disty==5){ // tweedie
-
-					//}
+					if(dat.disty==5){ // tweedie
+						loglSG.at(MATREF2D(g,s,dat.nG)) += log_tweedie_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp(params.Theta[s]), params.Powers[s]);
+					}
 					if(dat.disty==6){ // normal
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_normal_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 						}
@@ -383,7 +383,6 @@ double log_negative_binomial_deriv_theta_sam(const double &y, const double &mu, 
 
     }
 
-
 double log_negative_binomial_deriv_mu_sam( const double &y, const double &mu, const double &od){
 	double tmp, theta;
 	theta = 1/exp( od);
@@ -391,6 +390,30 @@ double log_negative_binomial_deriv_mu_sam( const double &y, const double &mu, co
 	tmp += y/mu;
 	return( tmp);
 }
+
+double log_tweedie_sam( const double &y, const double &mu, const double &phi, const double &p){
+ 	double lambda, alpha, tau, muZ, tmp, phi1;
+ 	phi1 = exp( phi);
+ 	lambda = R_pow( mu, (2-p)) / ( phi1*(2-p));
+ 	alpha = ( 2-p) / ( p-1);
+ 	tau = phi1*(p-1)*R_pow(mu,(p-1));
+ 	muZ = alpha * tau;
+
+ 	tmp = dTweedie( y, lambda, muZ, alpha, 1);
+ 	return( tmp);
+}
+
+ double log_tweedie_deriv_sam( double y, double fit, double dispParm , double p){
+ 	double phi, tmp;
+
+ 	phi = exp( dispParm);
+
+ 	tmp = dTweediePhi( y, fit, phi, p);
+ 	tmp *= phi;
+
+ 	return( tmp);
+ }
+
 
 double log_normal_sam( const double &y, const double &mu, const double &sig){
 	double tmp = 0.0, sig1;
@@ -546,9 +569,9 @@ void calc_mu_deriv( vector<double> &mu_derivs, const vector<double> &fits, const
 				if(dat.disty==4){
 					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_negative_binomial_deriv_mu_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 				}
-				//if(dat.disty==5){
-				 	//mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_tweedie_deriv_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp( params.Theta[s]), params.Power[s]);
-				//}
+				if(dat.disty==5){
+				 	mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_tweedie_deriv_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp( params.Theta[s]), params.Power[s]);
+				}
 				if(dat.disty==6){
 					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_normal_deriv_mu_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 				}

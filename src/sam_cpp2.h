@@ -6,6 +6,8 @@
 #include<Rinternals.h>
 #include<R_ext/Applic.h>
 #include<vector>
+#include"Tweedie.h"
+
 
 #undef length
 #include <iostream>
@@ -59,7 +61,7 @@ class sam_params {
 	public:
 		sam_params();
 		~sam_params();
-		void setVals( const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Reta, SEXP &Rgamma, SEXP &Rdelta, SEXP &Rtheta);
+		void setVals( const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Reta, SEXP &Rgamma, SEXP &Rdelta, SEXP &Rtheta, SEXP &Rpowers);
 		void getArray(double *parArr, const sam_data &dat);
 		void update(double *parArr, const sam_data &dat);
 		void printParms( const sam_data &dat);
@@ -194,6 +196,8 @@ double log_ippm_deriv_sam( const double &y, const double &mu, const double &st_s
 double log_negative_binomial_sam( const double &y, const double &mu, const double &od);
 double log_negative_binomial_deriv_mu_sam( const double &y, const double &mu, const double &od);
 double log_negative_binomial_deriv_theta_sam(const double &y, const double &mu, const double &od);
+double log_tweedie_sam( const double &y, const double &mu, const double &phi, const double &p);
+double log_tweedie_deriv_sam( double y, double fit, double dispParm , double p);
 double log_normal_sam( const double &y, const double &mu, const double &sig);
 double log_normal_deriv_mu_sam( const double &y, const double &mu, const double &sig);
 double log_normal_deriv_theta_sam( const double &y, const double &mu, const double &sig);

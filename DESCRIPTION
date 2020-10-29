@@ -21,7 +21,6 @@ Imports:
     raster,
     scales,
     numDeriv,
-    surveillance,
     kmed,
     mvtnorm,
     mvabund
