@@ -628,7 +628,6 @@
 #'@param ecm_steps int Default is 3, the number of EM iterations to get to starting values.
 #'@param ecm_refit int Default is 1, number of times to refit using EM.
 #'@param ecm_reltol A function or value which gives the tolerance in the EM loglikeihood estimation.
-#'@param theta_range Two positive values use as penalities for estimating the dispersion parameters (theta) in a negative.binomial SAM or PSAM.
 #'@param pen_param A penality for the em fitting.
 #'@param update_kappa Penalities for how fast parameters update during each EM step.
 #'@param print_cpp_start_vals A call to check what parameter estimates are being passed to C++ for optimisation.
@@ -652,14 +651,13 @@
                                   init_method = 'random2',
                                   init_sd = NULL,
                                   minimum_sites_occurrence = 0,
-                                  init_glmnet = FALSE,
-                                  ## EM algorithim controls
+                                  ## ECM algorithim controls
                                   ecm_prefit = TRUE,
                                   ecm_steps = 5,
-                                  ecm_refit = 3,
+                                  ecm_refit = 1,
                                   ecm_reltol = 1e-6,
                                   ## partial mixture penalities
-                                  theta_range = c(0.001,10),
+                                  # theta_range = c(0.001,10),
                                   pen_param = 1.25,
                                   update_kappa = c(1,0.5,1),
                                   ## c++ controls
@@ -681,14 +679,14 @@
                #initialisation controls
                init_method = init_method, init_sd = init_sd,
                minimum_sites_occurrence = minimum_sites_occurrence,
-               init_glmnet = init_glmnet,
+               # init_glmnet = init_glmnet,
                #em controls
                ecm_prefit = ecm_prefit,
                ecm_refit = ecm_refit,
                ecm_steps = ecm_steps,
                ecm_reltol = ecm_reltol,
                # partial controls
-               theta_range = theta_range,
+               # theta_range = theta_range,
                pen_param = pen_param,
                update_kappa = update_kappa,
                #cpp controls
@@ -1824,8 +1822,10 @@
     }
 
     if(new.logl > mod$logl) {
-      mod <- list(logl = new.logl,alpha = fits$alpha, beta = fits$beta, gamma = fits$gamma,
-                  delta = fits$delta, theta = fits$theta, pis = fits$pis, taus = taus)
+      mod <- list(logl = new.logl, alpha = fits$alpha, beta = fits$beta,
+                  eta = additive_logistic(fits$pis, inv = TRUE)[-G],
+                  gamma = fits$gamma, delta = fits$delta,
+                  theta = fits$theta, pis = fits$pis, taus = taus)
       mod$diff.logl <- diff.logl
       mod$counter <- counter
       names(mod$pis) <- paste("Archetype", 1:G, sep = "");
@@ -3322,10 +3322,14 @@ starting values;\n starting values are generated using ',control$init_method,
   inits <- c(start_vals$alpha, start_vals$beta, start_vals$eta, start_vals$gamma,
              start_vals$delta, start_vals$theta)
   npx <- as.integer(ncol(X))
-  if(ncol(W)>1) npw <- as.integer(ncol(W[,-1,drop=FALSE])) else npw <- as.integer(0)
-  if(!is.null(U)) npu <- as.integer(ncol(U)) else npu <- as.integer(0)
-
   n <- as.integer(nrow(X))
+
+  if(ncol(W)>1) npw <- as.integer(ncol(W[,-1,drop=FALSE])) else npw <- as.integer(0)
+  if(!is.null(U)) {npu <- as.integer(ncol(U))
+  }else{
+  npu <- as.integer(0)
+  U <- matrix(NA,nrow = n,ncol=1)
+  }
 
   # parameters to optimise
   alpha <- as.numeric(start_vals$alpha)
@@ -3341,21 +3345,16 @@ starting values;\n starting values are generated using ',control$init_method,
   beta.score <- as.numeric(rep(NA, length(beta)))
   eta.score <- as.numeric(rep(NA, length(eta)))
   if( npw > 0){
-    gamma.score <- as.numeric(matrix( NA, nrow=S, ncol=ncol(W)))
+    control$optiPart <- as.integer(1)
+    gamma.score <- as.numeric(matrix(NA, nrow=S, ncol=ncol(W)))
   } else {
+    control$optiPart <- as.integer(0)
     gamma.score <- -999999
   }
   if( npu > 0){
     delta.score <- as.numeric(matrix(NA, ncol=ncol(U)))
   } else {
     delta.score <- -999999
-  }
-  if( npw > 0){
-    control$optiPart <- as.integer(1)
-    gamma.score <- as.numeric(rep(NA, length(gamma)))
-  } else {
-    control$optiPart <- as.integer(0)
-    gamma.score <- -999999
   }
   if(disty%in%c(4,6)){
     control$optiDisp <- as.integer(1)
@@ -3374,7 +3373,7 @@ starting values;\n starting values are generated using ',control$init_method,
   loglikeS <- as.numeric(rep(NA, S))
   loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
 
-  if(control$print_cpp_start_vals)print_starting_values(as.integer(S),
+  if(control$print_cpp_start_vals)ecomix:::print_starting_values(as.integer(S),
                                                         as.integer(G),
                                                         as.integer(npx),
                                                         as.integer(npw),
@@ -3382,14 +3381,14 @@ starting values;\n starting values are generated using ',control$init_method,
                                                         as.integer(n),
                                                         as.double(alpha),
                                                         as.double(beta),
-                                                        as.double(eta),
                                                         as.double(gamma),
+                                                        as.double(eta),
                                                         as.double(delta),
                                                         as.double(theta))
 
   #c++ call to optimise the model (needs pretty good starting values)
   tmp <- .Call("species_mix_cpp",
-               as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(U), as.numeric(offset),
+               as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(as.matrix(U)), as.numeric(offset),
                as.numeric(spp_weights), as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)), as.numeric(size),
                # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
                as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(npu), as.integer(n),
@@ -3442,7 +3441,7 @@ starting values;\n starting values are generated using ',control$init_method,
   ret$start.vals <- inits
   ret$loglikeSG <- matrix(loglikeSG,  nrow = S, ncol = G)  #for residuals
   ret$loglikeS <- loglikeS  #for residuals
-  ret$removed_species <- start_vals$first_fit$removed_species
+  # ret$removed_species <- start_vals$first_fit$removed_species
   gc()
   return(ret)
 }

@@ -12,7 +12,8 @@ testthat::test_that('species mix one covariate and one group', {
                    0.2,-0.4),4,2,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat,
+  simulated_data <- species_mix.simulate(sam_form, ~1,
+                                         dat = dat,
                                          beta = beta,
                                          nArchetypes = 4,
                                          family="bernoulli")
