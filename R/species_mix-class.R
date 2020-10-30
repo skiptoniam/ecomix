@@ -1,5 +1,4 @@
 ##### Main species mix functions to export #####
-
 #' @title This is how you fit a species archetype model (SAM) in ecomix.
 #' @rdname species_mix
 #' @name species_mix
@@ -217,6 +216,9 @@
 
   size <- check_size_binomial(size,nrow(dat$mf.X))
 
+  ## check powers
+  powers <- get_power_sam(disty,power,S)
+
   if(family=='ippm'){
     if(!all(colnames(y)==colnames(site_spp_weights))){
       stop(message('When modelling a inhomogeneous poisson point process model,
@@ -244,7 +246,7 @@
                          spp_weights=spp_weights,
                          site_spp_weights=site_spp_weights,
                          offset=offset, disty=disty, y_is_na=y_is_na,
-                         size=size, control=control, inits=inits)
+                         size=size, powers=powers, control=control, inits=inits)
 
   tmp$dist <- disty_cases[disty]
 
@@ -259,12 +261,13 @@
   #calc posterior porbs and pis.
   if(nArchetypes>1){
     fits <- tmp$coefs
-    first_fit <- list(y = y, x = X, W = W, U = U,
-                      spp_weights = spp_weights,
-                      site_spp_weights = site_spp_weights,
-                      offset = offset, y_is_na = y_is_na, size = size)
-    logls_mus <- get_logls_sam(first_fit, fits, spp_weights, G, S,
-                               disty, get_fitted = FALSE)
+    logls_mus <- get_logls_sam(y = y, X = X, W = W, U = U, G = G,
+                               S = S, spp_weights = spp_weights,
+                               site_spp_weights = site_spp_weights,
+                               offset = offset, y_is_na = y_is_na,
+                               disty = disty, size = size,
+                               powers = powers, control=control,
+                               fits = fits, get_fitted = FALSE)
     tmp$taus <- get_taus(tmp$pis,logls_mus$logl_sp,G,S)
     tmp$pis <- colSums(tmp$taus)/S
   }
@@ -273,10 +276,10 @@
   tmp <- calc_info_crit_sam(tmp)
 
   #titbits object, if wanted/needed.
-  tmp$titbits <- get_titbits_sam(titbits, y, X, W, spp_weights,
-                                 site_spp_weights, offset, y_is_na, size,
-                                 archetype_formula, species_formula, control,
-                                 disty_cases[disty], tmp$removed_species)
+  tmp$titbits <- get_titbits_sam(titbits, y, X, W, U, spp_weights,
+                                 site_spp_weights, offset, y_is_na, size, powers,
+                                 archetype_formula, species_formula, all_formula,
+                                 control, disty_cases[disty], tmp$removed_species)
 
   # remove large annoying object if titbits == FALSE
   if(!titbits)
@@ -328,6 +331,7 @@
                                                 G = G, S = S,
                                                 disty = disty,
                                                 size = size,
+                                                powers = powers,
                                                 control = control)
 
   } else {
@@ -337,8 +341,12 @@
     starting_values <- inits
   }
 
-  tmp <- sam_optimise(y, X, W, U, offset, spp_weights, site_spp_weights,
-                      y_is_na, S, G, disty, size, powers, start_vals, control)
+  tmp <- sam_optimise(y = y, X = X, W = W, U = U, offset = offset,
+                      spp_weights = spp_weights,
+                      site_spp_weights = site_spp_weights,
+                      y_is_na = y_is_na, S = S, G = G, disty = disty,
+                      size = size, powers = powers, start_vals = starting_values,
+                      control = control)
 
   return(tmp)
 }
@@ -598,9 +606,9 @@
     pb <- txtProgressBar(min = 1, max = nstart, style = 3, char = "c[_] ")
 
    #Fit the model many times
-   many_starts <- surveillance::plapply(seq_len(nstart), tmp_fun,
-                                        .parallel = mc.cores,
-                                        .verbose = !control$quiet)
+   many_starts <- plapply(seq_len(nstart), tmp_fun,
+                         .parallel = mc.cores,
+                          .verbose = !control$quiet)
 
    class(many_starts) <- c("species_mix.multifit")
 
@@ -786,7 +794,7 @@
   }
 
   if( flag){
-    tmp <- surveillance::plapply(seq_len(nboot), my.fun, .parallel = mc.cores)
+    tmp <- plapply(seq_len(nboot), my.fun, .parallel = mc.cores)
     boot.estis <- do.call( "rbind", tmp)
   }
   }
@@ -2129,7 +2137,7 @@
 
 
 "starting_values_wrapper" <- function(y, X, W, U, spp_weights, site_spp_weights,
-                                      offset, y_is_na, G, S, disty, size, control){
+                                      offset, y_is_na, G, S, disty, size, powers, control){
   if(isTRUE(control$ecm_prefit)){
     if(!control$quiet)message('Using ECM algorithm to find starting values; using ',
                               control$ecm_refit,'refits')
@@ -2150,7 +2158,7 @@ starting values;\n starting values are generated using ',control$init_method,
                                               site_spp_weights = site_spp_weights,
                                               offset = offset, y_is_na = y_is_na,
                                               G = G, S = S,
-                                              disty=disty,size=size,powers = powers,
+                                              disty=disty,size=size, powers = powers,
                                               control = control)
     start_vals <- list(alpha=(starting_values$alpha),
                        beta=(starting_values$beta),
@@ -3058,7 +3066,7 @@ starting values;\n starting values are generated using ',control$init_method,
 #                              hessian=NULL, pis=pis, first_fit=first_fit, fits=fits, G=G, S=S)
 #       fm_mix_coefs_mat <- matrix(fm_mix_coefs$par,G,ncol(X))
 #     } else {
-#       fm_mix_coefs <- surveillance::plapply(seq_len(G),
+#       fm_mix_coefs <- plapply(seq_len(G),
 #                                             apply_glm_mix_coefs_sams,
 #                                             y, X, W, site_spp_weights,
 #                                             offset, y_is_na, disty, taus,
@@ -3072,7 +3080,7 @@ starting values;\n starting values are generated using ',control$init_method,
 #     fits$beta <- update_coefs(fits$beta, fm_mix_coefs_mat)
 #
 #     ## check this one out.
-#     fm_spp_coefs <- surveillance::plapply(seq_len(S),
+#     fm_spp_coefs <- plapply(seq_len(S),
 #                                           apply_glm_spp_coefs_sams,
 #                                           y, X, W, U, G, taus, site_spp_weights,
 #                                           offset, y_is_na, disty, fits, size,
@@ -3097,7 +3105,7 @@ starting values;\n starting values are generated using ',control$init_method,
 #                     hessian=NULL, pis=pis, first_fit=first_fit, fits=fits, G=G, S=S)
 #       fm_mix_coefs_mat <- matrix(fm_mix_coefs$par,G,ncol(X))
 #     } else {
-#       fm_mix_coefs <- surveillance::plapply(seq_len(G),
+#       fm_mix_coefs <- plapply(seq_len(G),
 #                                           apply_glm_mix_coefs_sams,
 #                                           y, X, W, U,
 #                                           site_spp_weights,
@@ -3125,7 +3133,7 @@ starting values;\n starting values are generated using ',control$init_method,
 #     if(ite >= init_steps){
 #       if(disty%in%c(4)){
 #         fits$theta <- exp(-fits$theta)
-#         fm_theta <- surveillance::plapply(seq_len(S), apply_optimise_spp_theta,
+#         fm_theta <- plapply(seq_len(S), apply_optimise_spp_theta,
 #                                          first_fit, fits,
 #                                          G, disty, pis,
 #                                          .parallel = control$cores,
@@ -3137,7 +3145,7 @@ starting values;\n starting values are generated using ',control$init_method,
 #
 #       if(disty%in%c(6)){
 #         fits$theta <- exp(fits$theta)
-#         fm_theta <- surveillance::plapply(seq_len(S), apply_optimise_spp_theta,
+#         fm_theta <- plapply(seq_len(S), apply_optimise_spp_theta,
 #                                           first_fit, fits,
 #                                           G, disty, pis,
 #                                           .parallel = control$cores,
@@ -3181,10 +3189,10 @@ starting values;\n starting values are generated using ',control$init_method,
 #
 #
 #   # if(control$init_glmnet)
-#     fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W, U,
+#     fm_sp_mods <-  plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W, U,
 #                                        site_spp_weights, offset, y_is_na, disty, size,
 #                                       .parallel = control$cores, .verbose = FALSE)
-#   # else fm_sp_mods <-  surveillance::plapply(seq_len(S), apply_glm_sam_inits, y, X, W, U,
+#   # else fm_sp_mods <-  plapply(seq_len(S), apply_glm_sam_inits, y, X, W, U,
 #   #                                                             site_spp_weights, offset, y_is_na, disty, size,
 #   #                                                             .parallel = control$cores, .verbose = FALSE)
 #
@@ -3696,8 +3704,9 @@ starting values;\n starting values are generated using ',control$init_method,
   return( disty)
 }
 
-"get_logls_sam" <- function(y, X, W, U, offset, site_spp_weights, y_is_na,
-                            fits, spp_weights, G, S, disty, get_fitted=TRUE){
+"get_logls_sam" <- function(y, X, W, U, G, S, spp_weights, site_spp_weights,
+                            offset, y_is_na, disty, size, powers, control,
+                            fits, get_fitted=TRUE){
 
    if(get_fitted) fitted_values <- array(0,dim=c(G,nrow(y),S))
 
