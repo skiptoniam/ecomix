@@ -279,7 +279,7 @@
   tmp$titbits <- get_titbits_sam(titbits, y, X, W, U, spp_weights,
                                  site_spp_weights, offset, y_is_na, size, powers,
                                  archetype_formula, species_formula, all_formula,
-                                 control, disty_cases[disty], tmp$removed_species)
+                                 control, disty_cases[disty])
 
   # remove large annoying object if titbits == FALSE
   if(!titbits)
@@ -3798,14 +3798,17 @@ starting values;\n starting values are generated using ',control$init_method,
 }
 
 "get_titbits_sam" <- function(titbits, y, X, W, U, spp_weights, site_spp_weights, offset,
-                              y_is_na, size, archetype_formula, species_formula,
-                              control, family,removed_species)  {
+                              y_is_na, size, powers, archetype_formula, species_formula, all_formula,
+                              control, family)  {
   if( titbits==TRUE)
-    titbits <- list( Y = y, X = X, W = W, U = U, spp_weights = spp_weights,
-                     site_spp_weights = site_spp_weights, offset = offset,
-                     y_is_na = y_is_na, size = size, archetype_formula =  archetype_formula,
-                     species_formula = species_formula, control = control,
-                     family = family, removed_species = removed_species)
+    titbits <- list(Y = y, X = X, W = W, U = U, spp_weights = spp_weights,
+                    site_spp_weights = site_spp_weights, offset = offset,
+                    y_is_na = y_is_na, size = size, powers=powers,
+                    archetype_formula =  archetype_formula,
+                    species_formula = species_formula,
+                    all_formula = all_formula,
+                    control = control,
+                    family = family)
   else{
     titbits <- list()
     if( "Y" %in% titbits)
@@ -3826,16 +3829,18 @@ starting values;\n starting values are generated using ',control$init_method,
       titbits$y_is_na <- y_is_na
     if( "size" %in% titbits)
       titbits$size <- size
+    if( "powers" %in% titbits)
+      titbits$powers <- powers
     if( "archetype_formula" %in% titbits)
       titbits$archetype_formula <- archetype_formula
     if( "species_formula" %in% titbits)
       titbits$species_formula <- species_formula
+    if( "all_formula" %in% titbits)
+      titbits$all_formula <- all_formula
     if( "control" %in% titbits)
       titbits$control <- control
     if( "family" %in% titbits)
       titbits$family <- family
-    if( "removed_species" %in% titbits)
-      titbits$removed_species <- removed_species
   }
   return( titbits)
 }

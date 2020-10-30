@@ -16,7 +16,7 @@ testthat::test_that('species mix one covariate and one group', {
                                          beta = beta,
                                          nArchetypes = 4,
                                          family="bernoulli")
-  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~x1"))
+  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~x1+x2"))
   sp_form <- ~ 1
   all_form <- NULL
   fm1 <- species_mix(sam_form, sp_form, all_form, simulated_data,
