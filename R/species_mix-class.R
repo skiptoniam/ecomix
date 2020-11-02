@@ -3752,6 +3752,50 @@ starting values;\n starting values are generated using ',control$init_method,
    return(out.list)
 }
 
+"get_logls_spp_sam" <- function(y, X, W, U, G, S, spp_weights, site_spp_weights,
+                            offset, y_is_na, disty, size, powers, control,
+                            fits, get_fitted=TRUE){
+
+  if(get_fitted) fitted_values <- array(0,dim=c(G,nrow(y),S))
+
+  #setup the right link function
+  if(disty%in%c(1,7)) link <- stats::make.link(link = "logit")
+  if(disty%in%c(2,3,4,5)) link <- stats::make.link(link = "log")
+  if(disty%in%c(6)) link <- stats::make.link(link = "identity")
+
+  logl_sp <- matrix(NA, nrow=S, ncol=G)
+
+  if(!is.null(U))eta_all <- as.matrix(U) %*% fits$delta
+  else eta_all <- rep(nrow(X),0)
+
+  for(ss in 1:S){
+    sp_idx<-!y_is_na[,ss]
+    for(gg in 1:G){
+      eta_mix <- as.matrix(X[sp_idx,]) %*% fits$beta[gg,]
+      if(ncol(W)>1) eta_spp <- as.matrix(W[sp_idx,,drop=FALSE]) %*% c(fits$alpha[ss],fits$gamma[ss,])
+      else eta_spp <- fits$alpha[ss]
+      eta <- eta_spp + eta_mix + eta_all[sp_idx] + offset[sp_idx]
+      if(get_fitted) fitted_values[gg,sp_idx,ss] <- link$linkinv(eta)
+
+      if(disty==1) logl_sp[ss,gg] <- sum(dbinom(y[,ss], 1, link$linkinv(eta),log = TRUE))
+      if(disty==2) logl_sp[ss,gg] <- sum(dpois(y[,ss], lambda = link$linkinv(eta),log = TRUE))
+      if(disty==3) logl_sp[ss,gg] <- y[sp_idx,ss] %*% eta - site_spp_weights[sp_idx,ss] %*% exp(eta)
+      if(disty==4) logl_sp[ss,gg] <- sum(dnbinom(y[,ss], mu=link$linkinv(eta), size = exp(-fits$theta[ss]), log=TRUE))
+      if(disty==5) logl_sp[ss,gg] <- sum(fishMod::dTweedie(y[,ss], mu =  link$linkinv(cw.eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
+      if(disty==6) logl_sp[ss,gg] <- sum(dnorm(y[,ss],mean=eta,sd=exp(fits$theta[ss]),log=TRUE))
+      if(disty==7) logl_sp[ss,gg] <- sum(dbinom(y[,ss], size, link$linkinv(eta),log = TRUE))
+    }
+    if(!disty%in%3)logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
+  }
+
+  ak <- logl_sp + matrix(rep(log(pis), each=S), nrow=S, ncol=G)
+  am <- apply( ak, 1, max)
+  ak <- exp( ak-am)
+  sppLogls <- am + log( rowSums( ak))
+  return(sppLogls)
+
+}
+
 "get_offset_sam"  <- function(mf){
   offset <- stats::model.offset(mf)
   if(any(offset!=0))
