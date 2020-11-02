@@ -180,7 +180,7 @@ void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data
 	double lp;	//the lin pred for the gth group, sth species and ith site
 	// double lp_sppEta=0.0;   // split the linear predictor into two components.
 	
-	if(dat.optiAll==1){
+	if(dat.optiAll>0){
 		for(int i=0; i<dat.nObs; i++){
 			for(int d=0; d<dat.nPU; d++){ 
 				 etaAll[i] += dat.U[MATREF2D(i,d,dat.nObs)]*params.Delta[d];
@@ -528,13 +528,16 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	calc_beta_deriv(betaDerivs, fits.dlogdbeta, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
 
    	//derivate w.r.t gamma
-   	//if(dat.isPartial()){
+   	if(dat.optiPart>0){
    	calc_dlog_dgamma(fits.dlogdgamma, eta_mu_derivs, dat);
 	calc_gamma_deriv(gammaDerivs, fits.dlogdgamma, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
-	//}
+	}
 
-	/// Insert here the derivate for dlogddelta (bias)
-
+	// derivate w.r.t delta
+   	if(dat.optiAll>0){
+   	calc_dlog_ddelta(fits.dlogddelta, eta_mu_derivs, dat);
+	calc_delta_deriv(deltaDerivs, fits.dlogddelta, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
+	}
 
 	//derivate w.r.t thetas
 	//std::cout << dat.isDispersion() << '\n';
@@ -787,6 +790,21 @@ void calc_beta_deriv( vector<double> &betaDerivs, vector<double> const &dlogdbet
 			for(int s=0; s<(dat.nS); s++){
 			// calculate for betas.
 			betaDerivs.at(MATREF2D(g,j,dat.nG)) +=  exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s) + log(pis.at(g))) * dlogdbeta.at(MATREF3D(g,j,s,dat.nG,dat.nPX));
+			}
+		}
+	}
+
+}
+
+
+void calc_delta_deriv( vector<double> &deltaDerivs, vector<double> const &dlogddelta, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
+
+	//betaDerivs.assign(betaDerivs.size(), 0.0);
+	for(int g=0; g<(dat.nG); g++){
+	    for(int u=0; u<(dat.nPU); u++){
+			for(int s=0; s<(dat.nS); s++){
+			// calculate for betas.
+			deltaDerivs.at(u) +=  exp(llSG.at(MATREF2D(g,s,dat.nG)) - llS.at(s) + log(pis.at(g))) * dlogddelta.at(MATREF3D(g,u,s,dat.nG,dat.nPU));
 			}
 		}
 	}

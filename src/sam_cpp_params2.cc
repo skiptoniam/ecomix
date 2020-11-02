@@ -26,7 +26,7 @@ void sam_params::setVals(const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta,
 	else
 		ntheta = 0;
 
-	nTot = nalpha + nbeta + ngamma + neta + ntheta + ndelta; 
+	nTot = nalpha + nbeta + ngamma + neta + ntheta + ndelta;
 }
 
 void sam_params::getArray(double *parArr, const sam_data &dat){
@@ -39,18 +39,22 @@ void sam_params::getArray(double *parArr, const sam_data &dat){
 		parArr[kount] = Beta[i];
 		kount++;
 	}
-	for( int i=0; i<((dat.nG-1)); i++){ 
+	for( int i=0; i<((dat.nG-1)); i++){
 		parArr[kount] = Eta[i];
 		kount++;
 	}
+	if( dat.optiPart>0){
 	for( int i=0; i<((dat.nS*dat.nPW)); i++){
 			parArr[kount] = Gamma[i];
 			kount++;
 		}
+	}
+	if( dat.optiAll>0){
 	for( int i=0; i<((dat.nPU)); i++){
 			parArr[kount] = Delta[i];
 			kount++;
-		}	
+		}
+	}
 	if( dat.isDispersion()){
 		for( int i=0; i<dat.nS; i++){
 				parArr[kount] = Theta[i];
@@ -73,24 +77,28 @@ void sam_params::update( double *parArr, const sam_data &dat){
 		Eta[i] = parArr[kount];
 		kount++;
 	}
-	for( int i=0; i<((dat.nS*dat.nPW)); i++){
-		Gamma[i] = parArr[kount];
-		kount++;
+	if( dat.optiPart>0){
+		for( int i=0; i<((dat.nS*dat.nPW)); i++){
+			Gamma[i] = parArr[kount];
+			kount++;
+		}
 	}
-	for( int i=0; i<(dat.nPU); i++){
-		Delta[i] = parArr[kount];
-		kount++;
+	if( dat.optiAll>0){
+		for( int i=0; i<(dat.nPU); i++){
+			Delta[i] = parArr[kount];
+			kount++;
+		}
 	}
 	if( dat.isDispersion() & dat.doOptiDisp()){
 		for( int i=0; i<dat.nS; i++){
 			Theta[i] = parArr[kount];
 			kount++;
 		}
-	}	
+	}
 }
 
 void sam_params::printParms( const sam_data &dat){
-	
+
 	Rprintf( "ALPHA:\n");
 	for( int i=0; i<dat.nS; i++)
 		Rprintf( "%3.2f\t", Alpha[i]);
@@ -106,21 +114,25 @@ void sam_params::printParms( const sam_data &dat){
 		Rprintf( "%3.2f\t", Eta[g]);
 		Rprintf( "\n");
 	}
+	if( dat.optiPart>0){
 	Rprintf( "GAMMA:\n");
 		for( int s=0; s<(dat.nS); s++){
 			for( int i=0; i<dat.nPW; i++)
 				Rprintf( "%3.2f\t", Gamma[MATREF2D(s,i,(dat.nS))]);
 				Rprintf( "\n");
 		}
+	}
+	if( dat.optiAll>0){
 	Rprintf( "DELTA:\n");
 		for( int i=0; i<dat.nPW; i++)
 				Rprintf( "%3.2f\t", Delta[i]);
-				Rprintf( "\n");	
+				Rprintf( "\n");
+	}
 	if( dat.isDispersion()==true){
 		Rprintf("DISPERSION:\n");
 		for( int i=0; i<dat.nS; i++)
 		Rprintf( "%3.2f\t", Theta[i]);
 		Rprintf( "\n");
 	}
-		
+
 }

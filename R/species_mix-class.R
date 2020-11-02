@@ -3754,9 +3754,8 @@ starting values;\n starting values are generated using ',control$init_method,
 
 "get_logls_spp_sam" <- function(y, X, W, U, G, S, spp_weights, site_spp_weights,
                             offset, y_is_na, disty, size, powers, control,
-                            fits, get_fitted=TRUE){
+                            fits){
 
-  if(get_fitted) fitted_values <- array(0,dim=c(G,nrow(y),S))
 
   #setup the right link function
   if(disty%in%c(1,7)) link <- stats::make.link(link = "logit")
@@ -3775,7 +3774,6 @@ starting values;\n starting values are generated using ',control$init_method,
       if(ncol(W)>1) eta_spp <- as.matrix(W[sp_idx,,drop=FALSE]) %*% c(fits$alpha[ss],fits$gamma[ss,])
       else eta_spp <- fits$alpha[ss]
       eta <- eta_spp + eta_mix + eta_all[sp_idx] + offset[sp_idx]
-      if(get_fitted) fitted_values[gg,sp_idx,ss] <- link$linkinv(eta)
 
       if(disty==1) logl_sp[ss,gg] <- sum(dbinom(y[,ss], 1, link$linkinv(eta),log = TRUE))
       if(disty==2) logl_sp[ss,gg] <- sum(dpois(y[,ss], lambda = link$linkinv(eta),log = TRUE))

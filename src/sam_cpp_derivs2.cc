@@ -22,10 +22,12 @@ void sam_derivs::zeroDerivs( const sam_data &dat){
 		Beta[i] = 0.0;
 	for( int i=0; i<(dat.nG-1); i++)
 		Eta[i] = 0.0;
-	for( int i=0; i<((dat.nS*dat.nPW)); i++)
-		Gamma[i] = 0.0;
-	for( int i=0; i<(dat.nPU); i++)
-		Delta[i] = 0.0;
+	if( dat.optiPart>0)
+		for( int i=0; i<((dat.nS*dat.nPW)); i++)
+			Gamma[i] = 0.0;
+	if( dat.optiAll>0)
+		for( int i=0; i<(dat.nPU); i++)
+			Delta[i] = 0.0;
 	if(dat.isDispersion() & dat.doOptiDisp())
 		for( int i=0; i<(dat.nS); i++)
 			Theta[i] = 0.0;
@@ -49,13 +51,17 @@ void sam_derivs::updateDerivs( const sam_data &dat, const vector<double> &alphaD
 			Eta[g] = etaDerivs.at(g);
 			//Rprintf( " %f", Eta[g],"\n");
 			}
-    for(int s=0; s<(dat.nS); s++){
-		for( int p=0; p<(dat.nPW); p++){
-			Gamma[MATREF2D(s,p,(dat.nS))] = gammaDerivs.at(MATREF2D(s,p,(dat.nS)));
+	if( dat.optiPart>0){
+		for(int s=0; s<(dat.nS); s++){
+			for( int p=0; p<(dat.nPW); p++){
+				Gamma[MATREF2D(s,p,(dat.nS))] = gammaDerivs.at(MATREF2D(s,p,(dat.nS)));
+			}
 		}
 	}
-	for( int p=0; p<(dat.nPU); p++){
+	if( dat.optiAll>0){
+		for( int p=0; p<(dat.nPU); p++){
 			Delta[p] = gammaDerivs.at(p);
+		}
 	}
 	if( dat.isDispersion() & dat.doOptiDisp())
 		for( int s=0; s<dat.nS; s++)
@@ -97,13 +103,17 @@ void sam_derivs::update( double *grArr, const sam_data &dat){
 		Eta[i] = grArr[kount];
 		kount++;
 	}
-	for( int i=0; i<(dat.nS*dat.nPW); i++){
-		Gamma[i] = grArr[kount];
-		kount++;
+	if( dat.optiPart>0){
+		for( int i=0; i<(dat.nS*dat.nPW); i++){
+			Gamma[i] = grArr[kount];
+			kount++;
+		}
 	}
-	for( int i=0; i<(dat.nPU); i++){
-		Delta[i] = grArr[kount];
-		kount++;
+	if( dat.optiAll>0){
+		for( int i=0; i<(dat.nPU); i++){
+			Delta[i] = grArr[kount];
+			kount++;
+		}
 	}
 	if( dat.isDispersion()){
 		for( int s=0; s<dat.nS; s++){
@@ -127,13 +137,17 @@ void sam_derivs::getArray( double *grArr, const sam_data &dat){
 		grArr[kount] = Eta[i];
 		kount++;
 	}
+	if( dat.optiPart>0){
 	for( int i=0; i<(dat.nS*dat.nPW); i++){
 		grArr[kount] = Gamma[i];
 		kount++;
 	}
+	}
+	if( dat.optiAll>0){
 	for( int i=0; i<(dat.nPU); i++){
 		grArr[kount] = Delta[i];
 		kount++;
+	}
 	}
 	if( dat.isDispersion()){
 		for( int s=0; s<dat.nS; s++){
