@@ -30,10 +30,10 @@
 #' for the archetype models. If you include a species specific formula which has
 #' more than an intercept you will be fitting a partial species archetype model
 #' which has species specific covariates and archetype specific covariates.
-#' @param all_formula an object of class "formula", which is mean to represnet
+#' @param all_formula an object of class "formula", which is meant to represnet
 #'  a constant single set of covariates across all species and groups, typically you might
 #'  use this an alternative to an offset, where there might be some bias in the
-#'  data which is relatively constant across all species.
+#'  data which is relatively constant and might arise as an atrifact of how the data was collected.
 #' @param data a matrix of dataframe which contains the 'species_data'
 #' matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
 #' const, temperature, rainfall. dims of matirx should be
@@ -54,6 +54,7 @@
 #' @param bb_weights a numeric vector of n species long. This is used for
 #' undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.
 #' @param size The size of the sample for a binomial model (defaults to 1).
+#' @param power The power parameter for a Tweedie model. Default is 1.6, and this is assigned to all species
 #' @param control a list of control parameters for optimisation and calculation.
 #' See details. From \code{species_mix.control} for details on optimistaion
 #' parameters.
@@ -393,6 +394,7 @@
 #' @param bb_weights a numeric vector of n species long. This is used for
 #' undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.
 #' @param size The size of the sample for a binomial model (defaults to 1).
+#' @param powers
 #' @param control a list of control parameters for optimisation and calculation.
 #' See details. From \code{species_mix.control} for details on optimistaion
 #' parameters.
@@ -3727,14 +3729,6 @@ starting values;\n starting values are generated using ',control$init_method,
         else eta_spp <- fits$alpha[ss]
         eta <- eta_spp + eta_mix + eta_all[sp_idx] + offset[sp_idx]
         if(get_fitted) fitted_values[gg,sp_idx,ss] <- link$linkinv(eta)
-        # logl_sp[ss,gg] <- switch(disty,
-        #                          1 = sum(dbinom(y[,ss], 1, link$linkinv(eta),log = TRUE)),
-        #                          2 = sum(dpois(y[,ss], lambda = link$linkinv(eta),log = TRUE)),
-        #                          3 = y[sp_idx,ss] %*% eta - site_spp_weights[sp_idx,ss] %*% exp(eta),
-        #                          4 =  sum(dnbinom(y[,ss], mu=link$linkinv(eta), size = exp(-fits$theta[ss]), log=TRUE)),
-        #                          5 = stop('No tweedie'),
-        #                          6 = sum(dnorm(y[,ss],mean=eta,sd=exp(fits$theta[ss]),log=TRUE)),
-        #                          7 = sum(dbinom(y[,ss], size, link$linkinv(eta),log = TRUE)))
 
         if(disty==1) logl_sp[ss,gg] <- sum(dbinom(y[,ss], 1, link$linkinv(eta),log = TRUE))
         if(disty==2) logl_sp[ss,gg] <- sum(dpois(y[,ss], lambda = link$linkinv(eta),log = TRUE))
@@ -3743,6 +3737,7 @@ starting values;\n starting values are generated using ',control$init_method,
         if(disty==5) logl_sp[ss,gg] <- sum(fishMod::dTweedie(y[,ss], mu =  link$linkinv(cw.eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
         if(disty==6) logl_sp[ss,gg] <- sum(dnorm(y[,ss],mean=eta,sd=exp(fits$theta[ss]),log=TRUE))
         if(disty==7) logl_sp[ss,gg] <- sum(dbinom(y[,ss], size, link$linkinv(eta),log = TRUE))
+
       }
       if(!disty%in%3)logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
