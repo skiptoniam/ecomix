@@ -2108,9 +2108,9 @@
 
     sp_idx <- !y_is_na[,ss]
     if(ncol(W)>1){
-      spp.etas <- W %*% c(fits$alpha[ss],fits$gamma[ss,])
+      spp.etas <- as.matrix(W) %*% c(fits$alpha[ss],fits$gamma[ss,])
     }else{
-      spp.etas <- W %*% c(fits$alpha[ss])
+      spp.etas <- as.matrix(W) %*% c(fits$alpha[ss])
     }
 
     for(gg in seq_len(G)) {
