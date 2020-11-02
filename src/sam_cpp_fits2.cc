@@ -46,6 +46,7 @@ void sam_fits::zero(const int &NAnum){
 	dlogdalpha.assign(dlogdalpha.size(), NAnum);
 	dlogdbeta.assign(dlogdbeta.size(), NAnum);
 	dlogdgamma.assign(dlogdgamma.size(), NAnum);
+	dlogddelta.assign(dlogddelta.size(), NAnum);
 	dlogdpi.assign(dlogdpi.size(), NAnum);
 	dlogdtheta.assign(dlogdtheta.size(), NAnum);
 			

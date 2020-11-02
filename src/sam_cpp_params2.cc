@@ -18,11 +18,9 @@ void sam_params::setVals(const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta,
 	nalpha = dat.nS;
 	nbeta = dat.nG*dat.nPX;
 	neta = (dat.nG-1);
-	//if(dat.isPartial())
 	ngamma = dat.nS*dat.nPW;
 	ndelta = dat.nPU;
-	//else
-		//ngamma = 0;	
+
 	if(dat.isDispersion())
 		ntheta = dat.nS;
 	else
