@@ -3326,11 +3326,16 @@ starting values;\n starting values are generated using ',control$init_method,
   npx <- as.integer(ncol(X))
   n <- as.integer(nrow(X))
 
-  if(ncol(W)>1) npw <- as.integer(ncol(W[,-1,drop=FALSE])) else npw <- as.integer(0)
-  if(!is.null(U)) {npu <- as.integer(ncol(U))
+  if(ncol(W)>1){
+    npw <- as.integer(ncol(W[,-1,drop=FALSE]))
+    } else {
+      npw <- as.integer(0)
+    }
+  if(!is.null(U)) {
+    npu <- as.integer(ncol(U))
   }else{
-  npu <- as.integer(0)
-  U <- matrix(NA,nrow = n,ncol=1)
+    npu <- as.integer(0)
+    U <- matrix(NA,nrow = n,ncol=1)
   }
 
   # parameters to optimise
@@ -3352,11 +3357,15 @@ starting values;\n starting values are generated using ',control$init_method,
   } else {
     control$optiPart <- as.integer(0)
     gamma.score <- -999999
+    npw <- as.integer(1)
   }
   if( npu > 0){
+    control$optiAll <- as.integer(1)
     delta.score <- as.numeric(matrix(NA, ncol=ncol(U)))
   } else {
     delta.score <- -999999
+    control$optiAll <- as.integer(0)
+    npu <- 1
   }
   if(disty%in%c(4,6)){
     control$optiDisp <- as.integer(1)
@@ -3394,7 +3403,7 @@ starting values;\n starting values are generated using ',control$init_method,
                as.numeric(spp_weights), as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)), as.numeric(size),
                # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
                as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(npu), as.integer(n),
-               as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),
+               as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),as.integer(control$optiAll),
                # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
                as.double(alpha), as.double(beta), as.double(eta), as.double(gamma), as.double(delta), as.double(theta), as.double(powers),
                # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
@@ -3957,6 +3966,7 @@ starting values;\n starting values are generated using ',control$init_method,
   message(G, " groups.")
   message(npx, " archetype coefs.")
   message(npw, " species coefs.")
+  message(npu, " all coefs.")
   message(n," sites.")
   message("starting species intercepts:\n",paste(round(alpha,3)," "))
   message("starting archetype parameters:\n",paste(round(beta,3)," "))

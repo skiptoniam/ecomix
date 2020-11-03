@@ -68,20 +68,24 @@ extern "C" {
 	for( int g=0; g<(all.data.nG-1);g++) REAL(Reta_hat)[g] = all.params.Eta[g];
 	UNPROTECT(1);
 	SEXP Rgamma_hat =PROTECT(allocVector(REALSXP, all.data.nS*all.data.nPW));
-		if(all.data.nPW>0){
+	if(all.data.optiPart>0){
 		for( int j=0; j<(all.data.nS*all.data.nPW);j++) REAL(Rgamma_hat)[j] = all.params.Gamma[j];
 			}else{
 		for( int j=0; j<(all.data.nS*all.data.nPW);j++) REAL(Rgamma_hat)[j] = -999999;
+		//for( int j=0; j<(all.data.nS*all.data.nPW);j++) Rprintf( " %f", (REAL(Rgamma_hat))[j]);
 	}
+	UNPROTECT(1);
 	SEXP Rdelta_hat =PROTECT(allocVector(REALSXP, all.data.nPU));
-		if(all.data.nPU>0){
+		if(all.data.optiAll>0){
 		for( int j=0; j<(all.data.nPU);j++) REAL(Rdelta_hat)[j] = all.params.Delta[j];
 			}else{
 		for( int j=0; j<(all.data.nPU);j++) REAL(Rdelta_hat)[j] = -999999;
+		//for( int j=0; j<(all.data.nPU);j++) Rprintf( " %f", (REAL(Rdelta_hat))[j]);
 	}
 	UNPROTECT(1);
 	SEXP Rtheta_hat =PROTECT(allocVector(REALSXP, all.data.nS));
 	for( int s=0; s<(all.data.nS);s++) REAL(Rtheta_hat)[s] = all.params.Theta[s];
+	
 	UNPROTECT(1);
 
 
@@ -201,7 +205,7 @@ void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data
 				for( int j=0;j<dat.nPX; j++){
 							lp += params.Beta[MATREF2D(g,j,(dat.nG))] * dat.X[MATREF2D(i,j,dat.nObs)];
 				}
-				if(dat.nPW>0){
+				if(dat.optiPart>0){
 					for( int l=0;l<dat.nPW; l++){
 							lp += params.Gamma[MATREF2D(s,l,(dat.nS))] * dat.W[MATREF2D(i,l,dat.nObs)];
 							}
