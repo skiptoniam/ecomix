@@ -846,7 +846,7 @@
 "species_mix.simulate" <-  function(archetype_formula,
                                     species_formula,
                                     all_formula=NULL,
-                                    dat,
+                                    data,
                                     offset = NULL,
                                     nArchetypes = 3,
                                     alpha=NULL,
@@ -873,7 +873,7 @@
 
     #drop intercept from all
     all_formula <- update(all_formula,~.-1)
-    U <- stats::model.matrix(all_formula, dat)
+    U <- stats::model.matrix(all_formula, data)
     npu <- ncol(U)
   } else {
     all_org <- NULL
@@ -889,8 +889,8 @@
   archetype_formula <- update(archetype_formula,y~.-1)
   archetype_formula[[2]] <- NULL
 
-  X <- stats::model.matrix(archetype_formula, dat)
-  W <- stats::model.matrix(species_formula, dat)
+  X <- stats::model.matrix(archetype_formula, data)
+  W <- stats::model.matrix(species_formula, data)
   if(is.null(offset)) offset <- rep(0,nrow(X))
 
   n <- nrow(X)
@@ -3321,8 +3321,8 @@ starting values;\n starting values are generated using ',control$init_method,
 "sam_optimise" <- function(y, X, W, U, offset, spp_weights, site_spp_weights, y_is_na,
                            S, G, disty, size, powers, start_vals, control){
 
-  inits <- c(start_vals$alpha, start_vals$beta, start_vals$eta, start_vals$gamma,
-             start_vals$delta, start_vals$theta)
+  inits <- unname(c(start_vals$alpha, start_vals$beta, start_vals$eta, start_vals$gamma,
+             start_vals$delta, start_vals$theta))
   npx <- as.integer(ncol(X))
   n <- as.integer(nrow(X))
 
@@ -3356,23 +3356,23 @@ starting values;\n starting values are generated using ',control$init_method,
     gamma.score <- as.numeric(matrix(NA, nrow=S, ncol=ncol(W)))
   } else {
     control$optiPart <- as.integer(0)
-    gamma.score <- -999999
+    gamma.score <- as.numeric(rep(NA,S))
     npw <- as.integer(1)
   }
   if( npu > 0){
     control$optiAll <- as.integer(1)
     delta.score <- as.numeric(matrix(NA, ncol=ncol(U)))
   } else {
-    delta.score <- -999999
+    delta.score <- NA
     control$optiAll <- as.integer(0)
-    npu <- 1
+    npu <- as.integer(1) # a dummy variable to stop c++ issues.
   }
   if(disty%in%c(4,6)){
     control$optiDisp <- as.integer(1)
     theta.score <- as.numeric(rep(NA, length(theta)))
   }else{
     control$optiDisp <- as.integer(0)
-    theta.score <- -999999
+    theta.score <- as.numeric(rep(NA,S))
   }
   scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,
                                        gamma.score,delta.score,theta.score))))
