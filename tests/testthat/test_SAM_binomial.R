@@ -67,7 +67,7 @@ testthat::test_that('species mix binomial', {
 
   # test a single binomial model
   i <- 1
-  testthat::expect_length(ecomix:::apply_glm_sam_inits(i, y, X, W, site_spp_weights, offset, y_is_na, disty, size),4)
+  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W, U, site_spp_weights, offset, y_is_na, disty, size),4)
   fm_binomialint <- surveillance::plapply(1:S, ecomix:::apply_glm_sam_inits,
                                            y, X, W, site_spp_weights, offset,
                                            y_is_na, disty, size, .parallel = control$cores, .verbose = !control$quiet)
