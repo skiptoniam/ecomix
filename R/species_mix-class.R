@@ -3335,7 +3335,7 @@ starting values;\n starting values are generated using ',control$init_method,
     npu <- as.integer(ncol(U))
   }else{
     npu <- as.integer(0)
-    U <- matrix(NA,nrow = n,ncol=1)
+    U <- matrix(0,nrow = n,ncol=1)
   }
 
   # parameters to optimise
