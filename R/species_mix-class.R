@@ -6,7 +6,7 @@
 #' models (SAMs).
 #' @details species_mix is used to fit mixtures of glms to multivariate
 #' species data. The function uses BFGS to optimise the mixture likelihood.
-#' There is the option to use EM algorithm to get appropriate starting
+#' There is the option to use ECM algorithm to get appropriate starting
 #' parameters. `species_mix` acts as a wrapper for species_mix.fit
 #' that allows for easier data input. The data frames are merged into
 #' the appropriate format for the use in species_mix.fit.
