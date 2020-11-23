@@ -7,15 +7,18 @@
 species_mix.simulate(
   archetype_formula,
   species_formula,
-  dat,
+  all_formula = NULL,
+  data,
   offset = NULL,
-  n_mixtures = 3,
+  nArchetypes = 3,
   alpha = NULL,
   beta = NULL,
   gamma = NULL,
-  theta = NULL,
+  delta = NULL,
+  logTheta = NULL,
+  powers = NULL,
   size = NULL,
-  distribution = "bernoulli"
+  family = "bernoulli"
 )
 }
 \arguments{
@@ -25,11 +28,9 @@ the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
 \item{species_formula}{formula to simulate species_mix species-specific
 responses, e.g: ~1}
 
-\item{dat}{a matrix of variables to simulate data from.}
-
 \item{offset}{used to offset sampling effort for abundance data (log link function).}
 
-\item{n_mixtures}{number of groups to simulate.}
+\item{nArchetypes}{number of groups to simulate.}
 
 \item{alpha}{coefficents for each species archetype. vector S long.}
 
@@ -39,13 +40,15 @@ parameters. Each row is a different species archetype.}
 \item{gamma}{coefficents for each species archetype. Matrix of S x number of
 parameters. Each row is a different species archetype.}
 
-\item{theta}{coefficents for the dispersion variables for negative_binomial
-and gaussian distributions - should be number of species long}
-
 \item{size}{Is for the binomial model and this respresents the number of binomial trials per site, can be fixed or vary.}
 
-\item{distribution}{Which statistical distribution to simulate data for.
-'bernoulli','binomial', 'gaussian', 'ippm', 'negative_binomial' and 'poisson'.}
+\item{family}{Which statistical distribution to simulate data for.
+'bernoulli','binomial', 'gaussian', 'ippm', 'negative.binomial' and 'poisson'.}
+
+\item{dat}{a matrix of variables to simulate data from.}
+
+\item{theta}{coefficents for the dispersion variables for negative.binomial
+and gaussian distributions - should be number of species long}
 }
 \description{
 Simulate species mix data for model fitting.
@@ -64,7 +67,7 @@ dat <- data.frame(y=rep(1,100),
                   x1=stats::runif(100,0,2.5),
                   x2=stats::rnorm(100,0,2.5))
 simulated_data <- species_mix.simulate(archetype_formula,species_formula,
-                                       dat, n_mixtures = 4, beta=beta,
-                                       distribution="bernoulli")
+                                       dat, nArchetypes = 4, beta=beta,
+                                       family="bernoulli")
 }
 }

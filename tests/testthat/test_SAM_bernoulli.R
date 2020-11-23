@@ -13,7 +13,7 @@ testthat::test_that('species mix bernoulii functions work', {
                     x2=stats::rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
   model_data <- species_mix.simulate(archetype_formula=sam_form,
-                                     species_formula=sp_form,dat = dat,
+                                     species_formula=sp_form,data = dat,
                                      beta=beta,family="bernoulli")
   testthat::expect_message(fm1 <- species_mix(NULL, sp_form,data = model_data,
                                               family = 'bernoulli',
@@ -42,7 +42,7 @@ testthat::test_that('species mix bernoulli', {
                     x2=stats::rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
   simulated_data <- species_mix.simulate(archetype_formula=sam_form,
-                                     species_formula=sp_form,dat = dat,
+                                     species_formula=sp_form,data = dat,
                                      beta=beta,family="bernoulli")
   y <- as.matrix(simulated_data[,grep("spp",colnames(simulated_data))])
   X <- simulated_data[,-grep("spp",colnames(simulated_data))]
@@ -61,7 +61,7 @@ testthat::test_that('species mix bernoulli', {
 
   # test a single bernoulli model
   i <- 1
-  testthat::expect_length(ecomix:::apply_glm_sam_inits(i, y, X, W, site_spp_weights, offset, y_is_na, disty, size),4)
+  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W, U, site_spp_weights, offset, y_is_na, disty, size),4)
   fm_bernoulliint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam_inits,
                                            y, X, W, site_spp_weights, offset,
                                            y_is_na, disty, size, .parallel = control$cores, .verbose = !control$quiet)

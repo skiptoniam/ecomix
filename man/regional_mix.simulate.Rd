@@ -51,7 +51,7 @@ regional_mix.simulate(
 
 \item{offset}{Numeric vector of size n. Specifies any offset to be included into the species level model.}
 
-\item{distribution}{Text string. Specifies the distribution of the species data. Current options are "bernoulli" (default), "poisson", "negative_binomial", "tweedie" and "gaussian.}
+\item{distribution}{Text string. Specifies the distribution of the species data. Current options are "bernoulli" (default), "poisson", "negative.binomial", "tweedie" and "gaussian.}
 }
 \description{
 Simulates a data set from a mixture-of-experts model for RCP (for region of common profile) types.
@@ -63,7 +63,7 @@ set.seed( 151)
 n <- 100
 S <- 10
 nRCP <- 3
-my.dist <- "negative_binomial"
+my.dist <- "negative.binomial"
 X <- as.data.frame( cbind( x1=runif( n, min=-10, max=10),
                           x2=runif( n, min=-10, max=10)))
 Offy <- log( runif( n, min=30, max=60))

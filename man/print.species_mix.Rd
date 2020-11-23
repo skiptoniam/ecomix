@@ -30,6 +30,6 @@ dat[,-1] <- scale(dat[,-1])
 simulated_data <- species_mix.simulate(archetype_formula=sam_form,
  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
 fm1 <- species_mix(sam_form, sp_form, simulated_data,
- distribution = 'bernoulli',  n_mixtures=3)
+ family = 'bernoulli',  nArchetypes=3)
 print(fm1)}
 }

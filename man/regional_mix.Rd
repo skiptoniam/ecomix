@@ -44,7 +44,7 @@ regional_mix.multifit(
 
 \item{nRCP}{The number of mixing components (groups) to fit.}
 
-\item{distribution}{The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "negative_binomial" and "gaussian" distributions are possible and applicable to specific types of data.}
+\item{distribution}{The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "negative.binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data.}
 
 \item{offset}{a numeric vector of length nrow( data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the unobserved RCP type. Note that offsets cannot be included as part of the rcp_formula or species_formula arguments ??? only through this argument.}
 

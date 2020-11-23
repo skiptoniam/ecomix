@@ -10,13 +10,10 @@ species_mix.control(
   init_method = "random2",
   init_sd = NULL,
   minimum_sites_occurrence = 0,
-  init_glmnet = FALSE,
-  em_prefit = TRUE,
-  em_steps = 3,
-  em_refit = 1,
-  em_reltol = reltol_fun,
-  em_maxtau = 0.8,
-  theta_range = c(0.001, 10),
+  ecm_prefit = TRUE,
+  ecm_steps = 5,
+  ecm_refit = 1,
+  ecm_reltol = 1e-06,
   pen_param = 1.25,
   update_kappa = c(1, 0.5, 1),
   print_cpp_start_vals = FALSE,
@@ -45,19 +42,13 @@ species_mix.control(
 
 \item{minimum_sites_occurrence}{a integer which determins the number of minimum sites present for any species for it to be included in the initialisation step. This removes rare species from initial groupings. They are then included in the overall analysis.}
 
-\item{init_glmnet}{Use glmnet rather than glm to get the initial parameter estimates. This is default.}
+\item{ecm_prefit}{Logical if TRUE the model will run a slower EM algorithm fit to find starting values.}
 
-\item{em_prefit}{Logical if TRUE the model will run a slower EM algorithm fit to find starting values.}
+\item{ecm_steps}{int Default is 3, the number of EM iterations to get to starting values.}
 
-\item{em_steps}{int Default is 3, the number of EM iterations to get to starting values.}
+\item{ecm_refit}{int Default is 1, number of times to refit using EM.}
 
-\item{em_refit}{int Default is 1, number of times to refit using EM.}
-
-\item{em_reltol}{A function or value which gives the tolerance in the EM loglikeihood estimation.}
-
-\item{em_maxtau}{A cap on the maximum value of the species' taus in the first E-step of the EM algorithm, not used for subsequent iterations.}
-
-\item{theta_range}{Two positive values use as penalities for estimating the dispersion parameters (theta) in a negative_binomial SAM or PSAM.}
+\item{ecm_reltol}{A function or value which gives the tolerance in the EM loglikeihood estimation.}
 
 \item{pen_param}{A penality for the em fitting.}
 

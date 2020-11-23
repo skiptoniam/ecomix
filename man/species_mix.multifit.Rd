@@ -9,10 +9,10 @@ species_mix.multifit(
   archetype_formula = NULL,
   species_formula = stats::as.formula(~1),
   data,
-  n_mixtures = 3,
+  nArchetypes = 3,
   nstart = 10,
   mc.cores = 1,
-  distribution = "bernoulli",
+  family = "bernoulli",
   offset = NULL,
   weights = NULL,
   bb_weights = NULL,
@@ -50,7 +50,7 @@ matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
 const, temperature, rainfall. dims of matirx should be
 nsites*(nspecies+const+covariates).}
 
-\item{n_mixtures}{The number of mixing components (groups) to fit.}
+\item{nArchetypes}{The number of mixing components (groups) to fit.}
 
 \item{nstart}{for species_mix.multifit only. The number of random starts to
 perform for re-fitting. Default is 10, which will need increasing for serious use.}
@@ -58,9 +58,9 @@ perform for re-fitting. Default is 10, which will need increasing for serious us
 \item{mc.cores}{for species_mix.multifit only. The number of cores to spread
 the re-fitting over.}
 
-\item{distribution}{The family of statistical distribution to use within
+\item{family}{The family of statistical distribution to use within
 the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
-"negative_binomial" and "gaussian" distributions are possible and applicable
+"negative.binomial" and "gaussian" distributions are possible and applicable
 to specific types of data.}
 
 \item{offset}{a numeric vector of length nrow(data) (n sites) that is
@@ -108,6 +108,8 @@ setting titbits=TRUE may give users problems with memory.}
 
 \item{x}{A species mix multifit object}
 
+\item{powers}{powers for tweedie distribution}
+
 \item{\\dots}{Ignored}
 }
 \description{
@@ -128,8 +130,8 @@ dat[,-1] <- scale(dat[,-1])
 simulated_data <- species_mix.simulate(archetype_formula=sam_form,
  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
 fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
-                              distribution = 'bernoulli', nstart = 10,
-                              n_mixtures=3)
+                              family = 'bernoulli', nstart = 10,
+                              nArchetypes=3)
 }
 
 #Print information about a species_mix model

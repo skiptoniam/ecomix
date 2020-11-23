@@ -7,13 +7,15 @@
 species_mix(
   archetype_formula = NULL,
   species_formula = stats::as.formula(~1),
+  all_formula = NULL,
   data,
-  n_mixtures = 3,
-  distribution = "bernoulli",
+  nArchetypes = 3,
+  family = "bernoulli",
   offset = NULL,
   weights = NULL,
   bb_weights = NULL,
   size = NULL,
+  power = 1.6,
   control = NULL,
   inits = NULL,
   standardise = FALSE,
@@ -40,16 +42,21 @@ for the archetype models. If you include a species specific formula which has
 more than an intercept you will be fitting a partial species archetype model
 which has species specific covariates and archetype specific covariates.}
 
+\item{all_formula}{an object of class "formula", which is meant to represnet
+a constant single set of covariates across all species and groups, typically you might
+use this an alternative to an offset, where there might be some bias in the
+data which is relatively constant and might arise as an atrifact of how the data was collected.}
+
 \item{data}{a matrix of dataframe which contains the 'species_data'
 matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
 const, temperature, rainfall. dims of matirx should be
 nsites*(nspecies+const+covariates).}
 
-\item{n_mixtures}{The number of mixing components (groups) to fit.}
+\item{nArchetypes}{The number of archetypes (mixing components/groups) to estimate from the data.}
 
-\item{distribution}{The family of statistical distribution to use within
+\item{family}{The family of statistical family to use within
 the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
-"negative_binomial" and "gaussian" distributions are possible and applicable
+"negative.binomial" and "gaussian" familys are possible and applicable
 to specific types of data.}
 
 \item{offset}{a numeric vector of length nrow(data) (n sites) that is
@@ -67,12 +74,14 @@ undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
 
 \item{size}{The size of the sample for a binomial model (defaults to 1).}
 
+\item{power}{The power parameter for a Tweedie model. Default is 1.6, and this is assigned to all species}
+
 \item{control}{a list of control parameters for optimisation and calculation.
 See details. From \code{species_mix.control} for details on optimistaion
 parameters.}
 
 \item{inits}{NULL a numeric vector that provides approximate starting values
-for species_mix coefficents. These are distribution specific, but at a
+for species_mix coefficents. These are family specific, but at a
 minimum you will need pis (additive_logitic transformed), alpha
 (intercepts) and beta (mixing coefs).}
 
@@ -96,19 +105,19 @@ for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then
 setting titbits=TRUE may give users problems with memory.}
 }
 \description{
-Fits a finite mixture model to identify species archetype
+Fits a mixture-of-regressions to identify species archetype
 models (SAMs).
 }
 \details{
 species_mix is used to fit mixtures of glms to multivariate
 species data. The function uses BFGS to optimise the mixture likelihood.
-There is the option to use EM algorithm to get appropriate starting
+There is the option to use ECM algorithm to get appropriate starting
 parameters. `species_mix` acts as a wrapper for species_mix.fit
 that allows for easier data input. The data frames are merged into
 the appropriate format for the use in species_mix.fit.
 Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
-'poisson', 'ippm' (inhomogenous Poisson point process), 'negative_binomial'
- and 'normal' distributions can be fitted using the species_mix function.
+'poisson', 'ippm' (inhomogenous Poisson point process), 'negative.binomial', 'tweedie'
+ and 'gaussian' distributions can be fitted using the species_mix function.
 }
 \examples{
 \donttest{
@@ -122,8 +131,8 @@ dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
 x2=stats::rnorm(100,0,2.5))
 dat[,-1] <- scale(dat[,-1])
 simulated_data <- species_mix.simulate(archetype_formula=sam_form,
- species_formula=sp_form, dat,beta=beta,dist="bernoulli")
+species_formula=sp_form, dat, beta=beta,family="bernoulli")
 fm1 <- species_mix(sam_form, sp_form, simulated_data,
- distribution = 'bernoulli',  n_mixtures=3)
+ family = 'bernoulli',  nArchetypes=3)
  }
 }
