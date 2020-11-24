@@ -30,7 +30,7 @@ testthat::test_that('species mix bernoulii functions work', {
 
 testthat::test_that('species mix bernoulli', {
 
-
+ library(ecomix)
   rm(list = ls())
   set.seed(42)
   sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
@@ -48,6 +48,7 @@ testthat::test_that('species mix bernoulli', {
   X <- simulated_data[,-grep("spp",colnames(simulated_data))]
   W <- as.matrix(X[,1,drop=FALSE])
   X <- as.matrix(X[,-1])
+  U <- NULL
   offset <- rep(0,nrow(y))
   weights <- rep(1,nrow(y))
   spp_weights <- rep(1,ncol(y))
@@ -58,37 +59,34 @@ testthat::test_that('species mix bernoulli', {
   control <- species_mix.control()
   disty <- 1
   size <- rep(1,nrow(y))
+  powers <- rep(1.5,S)#attr(simulated_data,"powers") # yeah baby
+
 
   # test a single bernoulli model
   i <- 1
-  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W, U, site_spp_weights, offset, y_is_na, disty, size),4)
-  fm_bernoulliint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam_inits,
-                                           y, X, W, site_spp_weights, offset,
-                                           y_is_na, disty, size, .parallel = control$cores, .verbose = !control$quiet)
+  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W, U, site_spp_weights, offset, y_is_na, disty, size, powers),5)
+  fm_bernoulliint <- ecomix:::plapply(1:S, ecomix:::apply_glmnet_sam_inits,
+                                           y, X, W, U, site_spp_weights, offset, y_is_na, disty, size, powers, .parallel = control$cores, .verbose = !control$quiet)
   testthat::expect_length(do.call(cbind,fm_bernoulliint)[1,],S)
 
   #get the taus
-  starting_values <- ecomix:::initiate_fit_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control)
-  fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,gamma=starting_values$gamma,theta=starting_values$theta)
-  first_fit <- list(y = y, x = X, W = W, weights=site_spp_weights, offset=offset, size = size)
+  sv <- ecomix:::get_initial_values_sam(y, as.data.frame(X), as.data.frame(W), U, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control)
 
   # get the loglikelihood based on these values
-  logls <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
+  logls <- ecomix:::get_logls_sam(y, X, W, U, G, S, spp_weights,
+                                  site_spp_weights, offset, y_is_na, disty,
+                                  size, powers, control, sv, get_fitted = FALSE)
   pis <- rep(1/G, G)
   taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
-  taus <- ecomix:::shrink_taus(taus, max_tau=1/G + 0.1, G)
-
-  # gg <- 1
-  # dat.tau <- rep(taus[,gg],nrow(y))
-  # glm.fit(x=as.matrix(X),y=as.matrix(y),weights=dat.tau,family="binomial")
+  taus <- ecomix:::shrink_taus(taus, G)
 
   ## get to this in a bit
-  gg <- 1
-  testthat::expect_length(ecomix:::apply_glm_mix_coefs_sams(gg, y, X, W, site_spp_weights, offset, y_is_na, disty, taus, fits, logls$fitted, size),2)
+  # gg <- 1
+  # testthat::expect_length(ecomix:::apply_glm_mix_coefs_sams(gg, y, X, W, site_spp_weights, offset, y_is_na, disty, taus, fits, logls$fitted, size),2)
 
   # ## now let's try and fit the optimisation
-  sv <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control)
-  tmp <- ecomix:::sam_optimise(y, X, W, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, size, start_vals = sv, control)
+  start_vals <- ecomix:::starting_values_wrapper(y, as.data.frame(X), as.data.frame(W), U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control)
+  tmp <- ecomix:::sam_optimise(y, X, W, U, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, size, powers, start_vals = start_vals, control)
   testthat::expect_length(tmp,18)
 
   ## test species mix fit

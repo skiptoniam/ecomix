@@ -3326,18 +3326,6 @@ starting values;\n starting values are generated using ',control$init_method,
   npx <- as.integer(ncol(X))
   n <- as.integer(nrow(X))
 
-  if(ncol(W)>1){
-    npw <- as.integer(ncol(W[,-1,drop=FALSE]))
-    } else {
-      npw <- as.integer(0)
-    }
-  if(!is.null(U)) {
-    npu <- as.integer(ncol(U))
-  }else{
-    npu <- as.integer(0)
-    U <- matrix(0,nrow = n,ncol=1)
-  }
-
   # parameters to optimise
   alpha <- as.numeric(start_vals$alpha)
   beta <- as.numeric(start_vals$beta)
@@ -3351,28 +3339,38 @@ starting values;\n starting values are generated using ',control$init_method,
   alpha.score <- as.numeric(rep(NA, length(alpha)))
   beta.score <- as.numeric(rep(NA, length(beta)))
   eta.score <- as.numeric(rep(NA, length(eta)))
-  if( npw > 0){
+
+  # sort of the species formula structures for cpp
+  if(ncol(W)>1){
+    npw <- as.integer(ncol(W[,-1,drop=FALSE]))
     control$optiPart <- as.integer(1)
     gamma.score <- as.numeric(matrix(NA, nrow=S, ncol=ncol(W)))
+    Wcpp <- W[,-1,drop=FALSE]
   } else {
-    control$optiPart <- as.integer(0)
-    gamma.score <- as.numeric(rep(NA,S))
     npw <- as.integer(1)
+    control$optiPart <- as.integer(0)
+    gamma.score <- -99999
+    Wcpp <- matrix(1,nrow = n, ncol=1)
   }
-  if( npu > 0){
+
+if(!is.null(U)) {
+    Ucpp <- U
+    npu <- as.integer(ncol(U))
     control$optiAll <- as.integer(1)
     delta.score <- as.numeric(matrix(NA, ncol=ncol(U)))
   } else {
-    delta.score <- NA
+    delta.score <- -99999
     control$optiAll <- as.integer(0)
+    Ucpp <- matrix(1,nrow = n,ncol=1)
     npu <- as.integer(1) # a dummy variable to stop c++ issues.
   }
+
   if(disty%in%c(4,6)){
     control$optiDisp <- as.integer(1)
     theta.score <- as.numeric(rep(NA, length(theta)))
   }else{
     control$optiDisp <- as.integer(0)
-    theta.score <- as.numeric(rep(NA,S))
+    theta.score <- -99999
   }
   scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,
                                        gamma.score,delta.score,theta.score))))
@@ -3399,15 +3397,14 @@ starting values;\n starting values are generated using ',control$init_method,
 
   #c++ call to optimise the model (needs pretty good starting values)
   tmp <- .Call("species_mix_cpp",
-               as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(as.matrix(U)), as.numeric(offset),
-               as.numeric(spp_weights), as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)), as.numeric(size),
-               # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
-               as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(npu), as.integer(n),
+               as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(Wcpp)), as.numeric(as.matrix(Ucpp)),
+               as.numeric(offset), as.numeric(spp_weights), as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
+               as.numeric(size), as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(npu), as.integer(n),
                as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),as.integer(control$optiAll),
                # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
                as.double(alpha), as.double(beta), as.double(eta), as.double(gamma), as.double(delta), as.double(theta), as.double(powers),
                # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
-               alpha.score, beta.score, eta.score, gamma.score, delta.score, theta.score, as.integer(control$getscores), scores,
+               alpha.score, beta.score, eta.score, gamma.score, delta.score, theta.score, as.integer(control$getscores_cpp), as.numeric(scores),
                # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
                pis_out, mus, loglikeS, loglikeSG,
                # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
@@ -3727,7 +3724,7 @@ starting values;\n starting values are generated using ',control$init_method,
    logl_sp <- matrix(NA, nrow=S, ncol=G)
 
    if(!is.null(U))eta_all <- as.matrix(U) %*% fits$delta
-   else eta_all <- rep(nrow(X),0)
+   else eta_all <- rep(0,nrow(X))
 
     for(ss in 1:S){
       sp_idx<-!y_is_na[,ss]

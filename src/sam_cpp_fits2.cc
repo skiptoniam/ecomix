@@ -27,7 +27,7 @@ void sam_fits::initialise( const int &nObs, const int &nG, const int &nS, const 
 	dlogdgamma.resize(nG*nPW*nS, NAnum); // This is actually nG*nP*nSP
 	
 	// array for catching dlogdgamma
-	dlogddelta.resize(nPU, NAnum); // This is actually nPU
+	dlogddelta.resize(nPU*nS*nG, NAnum); // This is actually nPU
 	
 	// array for catching for dlogdpi
 	dlogdpi.resize(nG, NAnum);

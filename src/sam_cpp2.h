@@ -34,8 +34,8 @@ class sam_data {
 		void printVals( int printX, int printW, int printy);
 
 		int nPX,      //the number of parameters in each of the (G-1) habitat lps, same as lpar
-			nPW,      //the number of parameters in the species level moodel
-			nPU,      //the number of parameters in the bias moodel *** yet to be implemented ***
+			nPW,      //the number of parameters in the species level model
+			nPU,      //the number of parameters in the bias model
 			nG,	      //the number of habitats
 			nS,       //the number of species
 			nObs,     //the number of observations

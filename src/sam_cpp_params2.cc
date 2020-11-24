@@ -12,7 +12,7 @@ void sam_params::setVals(const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta,
 	Beta = REAL( Rbeta);
 	Eta = REAL( Reta);
 	Gamma = REAL( Rgamma);
-	Delta = REAL( Rgamma);
+	Delta = REAL( Rdelta);
 	Theta = REAL( Rtheta);
 	Power = REAL( Rpowers);
 	nalpha = dat.nS;
