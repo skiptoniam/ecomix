@@ -14,13 +14,13 @@ testthat::test_that('species mix poisson', {
   simulated_data <- species_mix.simulate(archetype_formula = sam_form,
                                          species_formula = ~1,
                                          dat = dat,
-                                         n_mixtures = 3,
+                                         nArchetypes = 3,
                                          alpha=alpha,
-                                         beta=beta,
-                                         distribution = "poisson")
+                                         beta=beta, family = "poisson")
   y <- as.matrix(simulated_data[,grep("spp",colnames(simulated_data))])
   X <- simulated_data[,-grep("spp",colnames(simulated_data))]
   W <- as.matrix(X[,1,drop=FALSE])
+  U <- NULL
   X <- as.matrix(X[,-1])
   offset <- rep(0,nrow(y))
   weights <- rep(1,nrow(y))
@@ -32,52 +32,51 @@ testthat::test_that('species mix poisson', {
   control <- species_mix.control()
   disty <- 2
   size <- rep(1,nrow(y))
+  powers <- rep(1.5,nrow(y))
 
-  # test a single gaussian model
   i <- 1
-  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W, site_spp_weights, offset, y_is_na, disty,size),4)
-  fm_poissonint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam_inits,
-                                         y, X, W, site_spp_weights, offset,
-                                         y_is_na, disty, size, .parallel = control$cores, .verbose = !control$quiet)
+  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W, U, site_spp_weights, offset, y_is_na, disty, size, powers),5)
+  fm_poissonint <- ecomix:::plapply(1:S, ecomix:::apply_glmnet_sam_inits,
+                                      y, X, W, U, site_spp_weights, offset, y_is_na, disty, size, powers, .parallel = control$cores, .verbose = !control$quiet)
   testthat::expect_length(do.call(cbind,fm_poissonint)[1,],S)
 
   #get the taus
-  starting_values <- ecomix:::initiate_fit_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control)
-  fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,gamma=starting_values$gamma,theta=starting_values$theta)
-  first_fit <- list(y = y, x = X, W = W, weights=site_spp_weights, offset=offset,size=size)
+  sv <- ecomix:::get_initial_values_sam(y, as.data.frame(X), as.data.frame(W), U, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control)
 
   # get the loglikelihood based on these values
-  logls <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-  pis <- starting_values$pis
-  taus <- starting_values$taus
-  taus <- round(taus)
-  # taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
-  # taus <- ecomix:::shrink_taus(taus, max_tau=.8, G)
-
-  set.seed(123)
-  tmp2 <- ecomix:::fitmix_ECM_sam(y=y, X=X, W=W, G=G, S=S,
-                                  spp_weights=spp_weights,
-                                  site_spp_weights=site_spp_weights,
-                                  offset=offset, disty=disty, y_is_na=y_is_na,size = size,
-                                  control=species_mix.control(em_refit = 1, em_steps = 1000))
+  logls <- ecomix:::get_logls_sam(y, X, W, U, G, S, spp_weights,
+                                  site_spp_weights, offset, y_is_na, disty,
+                                  size, powers, control, sv, get_fitted = FALSE)
+  pis <- rep(1/G, G)
+  taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
+  taus <- ecomix:::shrink_taus(taus, G)
 
   ## get to this in a bit
-  gg <- 1
-  testthat::expect_length(ecomix:::apply_glm_mix_coefs_sams(gg, y, X, W, site_spp_weights, offset, y_is_na, disty, taus, fits, logls$fitted, size),2)
+  # gg <- 1
+  # testthat::expect_length(ecomix:::apply_glm_mix_coefs_sams(gg, y, X, W, site_spp_weights, offset, y_is_na, disty, taus, fits, logls$fitted, size),2)
 
   # ## now let's try and fit the optimisation
-  sv <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control)
-  tmp <- ecomix:::sam_optimise(y, X, W, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, size, start_vals = sv, control)
-  testthat::expect_length(tmp,18)
+  start_vals <- ecomix:::starting_values_wrapper(y, as.data.frame(X), as.data.frame(W), U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control)
+  tmp <- ecomix:::sam_optimise(y, X, W, U, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, size, powers, start_vals = start_vals, control)
+  testthat::expect_length(tmp,20)
+
+  set.seed(123)
+  tmp <- ecomix:::species_mix.fit(y=y, X=as.data.frame(X), W=as.data.frame(W), U=U, G=G, S=S,
+                                  spp_weights=spp_weights,
+                                  site_spp_weights=site_spp_weights,
+                                  offset=offset, disty=disty, y_is_na=y_is_na, size=size, powers=powers,
+                                  control=species_mix.control(print_cpp_start_vals = TRUE))
 
   sp_form <- ~1
-  fm1 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'poisson',
-                     n_mixtures=3)
+  fm1 <- species_mix(archetype_formula = sam_form, species_formula = sp_form,
+                     data = simulated_data, family = 'poisson',
+                     nArchetypes = 3)
   testthat::expect_s3_class(fm1,'species_mix')
 
-  fm2 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'poisson',
-                     n_mixtures=3,control=species_mix.control(em_prefit = FALSE),
+  fm2 <- species_mix(sam_form, sp_form, data = simulated_data, family = 'poisson',
+                     nArchetypes = 3,control=species_mix.control(em_prefit = FALSE),
                      standardise = FALSE)
   testthat::expect_s3_class(fm2,'species_mix')
+
 })
 

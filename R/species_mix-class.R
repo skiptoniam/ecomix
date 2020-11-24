@@ -3418,34 +3418,25 @@ if(!is.null(U)) {
   ret <- tmp
   ret$logl <- ret$logl * -1
   ret$mus <- array(mus, dim=c(n, S, G))
-  if(npw>0){
-    if(!disty%in%c(4,6))
-      ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
-                        eta = ret$eta,gamma = matrix(ret$gamma,S,npw))
-    else
-      ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
-                        eta = ret$eta,gamma = matrix(ret$gamma,S,npw),
-                        theta = ret$theta)
-  } else {
-    if(!disty%in%c(4,6))
-      ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
-                        eta = ret$eta)
-    else
-      ret$coefs <- list(alpha = ret$alpha, beta = matrix(ret$beta,G,npx),
-                        eta = ret$eta, theta = ret$theta)
-  }
-  ret$names <- list(spp=colnames(y), SAMs=paste("SAM", 1:G, sep=""),
-                    Xvars=colnames(X), Wvars=colnames(W[,-1,drop=FALSE]))
 
-  if(!disty%in%c(4,6))
-    ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score,
-                       eta.scores=eta.score,gamma.scores = gamma.score)
-  else
-    ret$scores <- list(alpha.scores = alpha.score, beta.scores = beta.score,
-                       eta.scores=eta.score,gamma.scores = gamma.score,
-                       theta.scores=theta.score)
+  ret$coefs <- list(alpha = ret$alpha,
+                    beta = matrix(ret$beta,G,npx),
+                    eta = ret$eta,
+                    gamma = matrix(ret$gamma,S,npw),
+                    delta = ret$delta,
+                    theta = ret$theta)
 
-  ret$S <- S; ret$G <- G; ret$npx <- npx; ret$npw <- npw; ret$n <- n;
+  ret$names <- list(spp=colnames(y), SAMs=paste("Archetype.", seq_len(G), sep=""),
+                    Xvars=colnames(X), Wvars=colnames(Wcpp), Uvars = colnames(Ucpp))
+
+  ret$scores <- list(alpha.scores = alpha.score,
+                     beta.scores = beta.score,
+                     eta.scores=eta.score,
+                     gamma.scores = gamma.score,
+                     delta.scores=delta.score,
+                     theta.scores=theta.score)
+
+  ret$S <- S; ret$G <- G; ret$npx <- npx; ret$npw <- npw; ret$npu <- npu; ret$n <- n;
   ret$start.vals <- inits
   ret$loglikeSG <- matrix(loglikeSG,  nrow = S, ncol = G)  #for residuals
   ret$loglikeS <- loglikeS  #for residuals

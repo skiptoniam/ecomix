@@ -87,43 +87,23 @@ testthat::test_that('species mix bernoulli', {
   # ## now let's try and fit the optimisation
   start_vals <- ecomix:::starting_values_wrapper(y, as.data.frame(X), as.data.frame(W), U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control)
   tmp <- ecomix:::sam_optimise(y, X, W, U, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, size, powers, start_vals = start_vals, control)
-  testthat::expect_length(tmp,18)
+  testthat::expect_length(tmp,20)
 
-  ## test species mix fit
-  inits <- NULL
-  # tmp <- ecomix:::species_mix.fit(y=y, X=X, W=W, G=G, S=S,
-  #                        spp_weights=spp_weights,
-  #                        site_spp_weights=site_spp_weights,
-  #                        offset=offset, disty=disty, y_is_na=y_is_na,
-  #                        control=control, inits=inits)
   set.seed(123)
-  tmp1 <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights,
-                                           offset, y_is_na, G, S, disty, size,
-                                           control=species_mix.control(em_refit = 1, em_steps = 100))
-  set.seed(123)
-  tmp2 <- ecomix:::fitmix_ECM_sam(y=y, X=X, W=W, G=G, S=S,
+  tmp <- ecomix:::species_mix.fit(y=y, X=as.data.frame(X), W=as.data.frame(W), U=U, G=G, S=S,
                          spp_weights=spp_weights,
                          site_spp_weights=site_spp_weights,
-                         offset=offset, disty=disty, y_is_na=y_is_na,size = size,
-                         control=species_mix.control(em_refit = 1, em_steps = 100))
-  set.seed(123)
-  tmp3 <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights,
-                                           offset, y_is_na, G, S, disty, size,
-                                           control = species_mix.control(em_prefit = FALSE))
-  set.seed(123)
-  tmp <- ecomix:::species_mix.fit(y=y, X=X, W=W, G=G, S=S,
-                         spp_weights=spp_weights,
-                         site_spp_weights=site_spp_weights,
-                         offset=offset, disty=disty, y_is_na=y_is_na, size=size,
-                         control=species_mix.control(print_cpp_start_vals = TRUE), inits=inits)
+                         offset=offset, disty=disty, y_is_na=y_is_na, size=size, powers=powers,
+                         control=species_mix.control(print_cpp_start_vals = TRUE))
 
   sp_form <- ~1
-  fm1 <- species_mix(sam_form, sp_form, simulated_data, family = 'bernoulli',
-                     n_mixtures=4)
+  fm1 <- species_mix(archetype_formula = sam_form, species_formula = sp_form,
+                     data = simulated_data, family = 'bernoulli',
+                     nArchetypes = 3)
   testthat::expect_s3_class(fm1,'species_mix')
 
-  fm2 <- species_mix(sam_form, sp_form, simulated_data, family = 'bernoulli',
-                     n_mixtures=4,control=species_mix.control(em_prefit = FALSE),
+  fm2 <- species_mix(sam_form, sp_form, data = simulated_data, family = 'bernoulli',
+                     nArchetypes = 3,control=species_mix.control(em_prefit = FALSE),
                      standardise = FALSE)
   testthat::expect_s3_class(fm2,'species_mix')
 
