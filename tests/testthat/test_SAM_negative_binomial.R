@@ -1,30 +1,49 @@
 context('species_mix generic functions negative binomial functions')
-library(ecomix)
+
 
 
 testthat::test_that('species_mix negative binomial', {
 
+  library(ecomix)
   set.seed(42)
-  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~x1+x2"))
-  alpha <- rnorm(20,0, 0.5)
-  beta <- matrix(c(-0.6,0.5,
-                   -0.5,-0.5,
-                   0.9,-0.9),
+  nsp <- 100
+  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:nsp),collapse = ','),")~x1+x2"))
+  alpha <- rnorm(nsp,-0.5, .5)
+  beta <- matrix(c(3.6,-3.6,
+                   -2.5,-2.5,
+                   1,-4.5),
                  3,2,byrow=TRUE)
-  dat <- data.frame(y=1, x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
+  # delta <- -.4
+  x <- runif(200,-2.5,2.5)
+  # u <- rnorm(400)
+  xpred <- seq(-2.5,2.5,length.out = 100)
+  upred <- matrix(seq(-2.5,2.5,length.out = 100),ncol=1)
+  matplot(xpred,(exp((cbind(xpred,xpred^2)%*%t(beta)))))
+  matplot(xpred,(exp((cbind(xpred,xpred^2)%*%t(beta))-c(upred%*%delta))))
+  # matlines(xpred,)
+
+  dat <- data.frame(y=1, x1=x, x2=I(x)^2)#, u)
   simulated_data <- species_mix.simulate(archetype_formula = sam_form,
                                          species_formula = ~1,
+                                         all_formula = NULL,
                                          dat = dat,
                                          nArchetypes = 3,
                                          alpha=alpha,
-                                         beta=beta, family = "negative.binomial")
+                                         beta=beta,
+                                         # delta = delta,
+                                         family = "negative.binomial")
   y <- as.matrix(simulated_data[,grep("spp",colnames(simulated_data))])
+  colSums(y>0)
   X <- simulated_data[,-grep("spp",colnames(simulated_data))]
-  W <- as.matrix(X[,1,drop=FALSE])
   U <- NULL
-  X <- as.matrix(X[,-1])
+  # U <- X[,4,drop=FALSE]
+  # X <- X[,-4, drop=FALSE]
+  W <- as.data.frame(X[,1,drop=FALSE])
+  X <- as.data.frame(X[,-1])
+
   offset <- rep(0,nrow(y))
   weights <- rep(1,nrow(y))
+
   spp_weights <- rep(1,ncol(y))
   site_spp_weights <- matrix(1,nrow(y),ncol(y))
   y_is_na <- matrix(FALSE,nrow(y),ncol(y))
@@ -33,31 +52,13 @@ testthat::test_that('species_mix negative binomial', {
   control <- species_mix.control()
   disty <- 4
   size <- rep(1,nrow(y))
-  powers <- rep(1.5,nrow(y))
+  powers <- attr(simulated_data,"powers") # yeah baby
+  options(warn=1)
+  fm <- ecomix:::fit.ecm.sam(y, X, W, U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control = species_mix.control(em_refit = 3,em_steps = 100))
 
-  i <- 1
-  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W, U, site_spp_weights, offset, y_is_na, disty, size, powers),5)
-  fm_negative.binomialint <- ecomix:::plapply(1:S, ecomix:::apply_glmnet_sam_inits,
-                                    y, X, W, U, site_spp_weights, offset, y_is_na, disty, size, powers, .parallel = control$cores, .verbose = !control$quiet)
-  testthat::expect_length(do.call(cbind,fm_negative.binomialint)[1,],S)
-
-  #get the taus
-  sv <- ecomix:::get_initial_values_sam(y, as.data.frame(X), as.data.frame(W), U, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control)
-
-  # get the loglikelihood based on these values
-  logls <- ecomix:::get_logls_sam(y, X, W, U, G, S, spp_weights,
-                                  site_spp_weights, offset, y_is_na, disty,
-                                  size, powers, control, sv, get_fitted = FALSE)
-  pis <- rep(1/G, G)
-  taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
-  taus <- ecomix:::shrink_taus(taus, G)
-
-  ## get to this in a bit
-  # gg <- 1
-  # testthat::expect_length(ecomix:::apply_glm_mix_coefs_sams(gg, y, X, W, site_spp_weights, offset, y_is_na, disty, taus, fits, logls$fitted, size),2)
-
-  # ## now let's try and fit the optimisation
+  ## now let's try and fit the optimisation
   start_vals <- ecomix:::starting_values_wrapper(y, as.data.frame(X), as.data.frame(W), U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control)
+
   tmp <- ecomix:::sam_optimise(y, X, W, U, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, size, powers, start_vals = start_vals, control)
   testthat::expect_length(tmp,20)
 

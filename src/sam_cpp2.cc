@@ -738,6 +738,9 @@ void calc_dlog_dtheta(vector<double> &dldt, vector<double> const &mus, const sam
 
 	// dlda = dlogalpha passed as fits.dflogdalpha(dat.nG*dat.nS, dat.NAnum) from function call
 	// mus = all the fitted values.
+	
+	if( !dat.isDispersion())
+		return;	//nothing to do here, move along please
 
 	for(int g=0; g<dat.nG; g++){
 		for(int s=0;s<dat.nS; s++){
@@ -746,7 +749,7 @@ void calc_dlog_dtheta(vector<double> &dldt, vector<double> const &mus, const sam
 					if(dat.disty==4){ // negative binomial
 						dldt.at(MATREF2D(g,s,dat.nG)) += log_negative_binomial_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Theta[s]);
 					}
-					if(dat.disty==4){ // tweedie
+					if(dat.disty==5){ // tweedie
 						dldt.at(MATREF2D(g,s,dat.nG)) += log_tweedie_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Theta[s], params.Power[s]);
 				    }
 					if(dat.disty==6){ // normal
