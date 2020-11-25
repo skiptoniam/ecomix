@@ -1774,7 +1774,7 @@
       if(disty %in% c(4,5,6)) {
         fm_theta <- plapply(seq_len(S), apply_optimise_thetaParams,
                             y, X, W, U, taus, fits,
-                            site_spp_weights, offset,
+                            site_spp_weights, offset, y_is_na,
                             disty, size, powers,
                             .parallel = control$cores,
                             .verbose = FALSE)
@@ -1952,7 +1952,7 @@
   update.theta <- optimize(f = llogl.thetaParams, interval = c(-30,30), maximum = TRUE, ss = ss,
                            y = y, X = X, W = W, U=U, taus = taus, fits = fits,
                            site_spp_weights = site_spp_weights,
-                           offy = offset, disty = disty, size = size, powers = powers)$maximum
+                           offset = offy, disty = disty, size = size, powers = powers)$maximum
   return(update.theta)
 }
 
