@@ -76,7 +76,7 @@ testthat::test_that('species_mix negative binomial', {
   testthat::expect_s3_class(fm1,'species_mix')
 
   fm2 <- species_mix(sam_form, sp_form, data = simulated_data, family = 'negative.binomial',
-                     nArchetypes = 3,control=species_mix.control(em_prefit = FALSE),
+                     nArchetypes = 3,control=species_mix.control(ecm_prefit = FALSE),
                      standardise = FALSE)
   testthat::expect_s3_class(fm2,'species_mix')
 })

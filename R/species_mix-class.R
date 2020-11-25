@@ -1713,7 +1713,7 @@
   bestOfAllMods <- list( logl=-Inf)
   for(t in seq_len(control$ecm_refit)) {
     message(paste0("ECM restart ",t," of ", control$ecm_refit,""))
-    starting.sam <- get_initial_values_sam(y = y, X = X, W = W, U = U,
+    starting.sam <- ecomix:::get_initial_values_sam(y = y, X = X, W = W, U = U,
                                            site_spp_weights = site_spp_weights,
                                            offset = offset, y_is_na = y_is_na,
                                            G = G, S = S,
@@ -1758,7 +1758,7 @@
 
       ## CM-step
       ## optimise the spp coefs - alpha & gamma if present
-      fm_sppParam <- plapply(seq_len(S), apply_optimise_sppParam,
+      fm_sppParam <- ecomix:::plapply(seq_len(S), ecomix:::apply_optimise_sppParam,
                              y, X, W, U, taus, fits,
                              site_spp_weights, offset, y_is_na,
                              disty, size, powers,
@@ -1940,7 +1940,7 @@
 "apply_optimise_sppParam" <- function(ss, y, X, W, U, taus, fits,
                                       site_spp_weights, offset, y_is_na,
                                       disty, size, powers){
-  update.sppParams <- optimize(f = llogl.sppParams, interval = c(-30,30), maximum = TRUE, ss = ss,
+  update.sppParams <- optimize(f = llogl.sppParams, interval = c(-1000,1000), maximum = TRUE, ss = ss,
                                y = y, X = X, W = W, U=U, taus = taus, fits = fits,
                                site_spp_weights = site_spp_weights,
                                offset = offset, y_is_na = y_is_na,
@@ -1951,7 +1951,7 @@
 "apply_optimise_thetaParams" <- function(ss, y, X, W, U, taus, fits,
                                    site_spp_weights, offy, y_is_na,
                                    disty, size, powers){
-  update.theta <- suppressWarnings(optimize(f = llogl.thetaParams, interval = c(-30,30), maximum = TRUE, ss = ss,
+  update.theta <- suppressWarnings(optimize(f = llogl.thetaParams, interval = c(0.001,100), maximum = TRUE, ss = ss,
                            y = y, X = X, W = W, U=U, taus = taus, fits = fits,
                            site_spp_weights = site_spp_weights,
                            offset = offy, disty = disty, size = size, powers = powers)$maximum)
@@ -1963,11 +1963,11 @@
 
   n <- nrow(y)
   if(disty %in% c(2,3,4,5))
-    glmnet.family <- "poisson"; glm.family <- poisson();
-    if(disty %in% c(1,7))
-      glmnet.family <- "binomial"; glm.family <- binomial();
-      if(disty %in% c(6))
-        glmnet.family <- "gaussian"; glm.family <- gaussian();
+  glmnet.family <- "poisson"; glm.family <- poisson();
+  if(disty %in% c(1,7))
+  glmnet.family <- "binomial"; glm.family <- binomial();
+  if(disty %in% c(6))
+  glmnet.family <- "gaussian"; glm.family <- gaussian();
 
         if(disty %in% 4) get.mus <- e.step(y, X, W, U, site_spp_weights,
                                            offset, y_is_na, disty,
@@ -2035,7 +2035,7 @@
 
   if(disty%in%c(1,7)) link <- make.link('logit')
   if(disty%in%c(2,3,4,5)) link <- make.link('log')
-  if(disty%in%6) link <- make.link('identity')
+  # if(disty%in%6) link <- make.link('identity')
 
   if(!is.null(U)) all.etas <- as.matrix(U)%*%c(fits$delta)
   else all.etas <- rep(0,n)
@@ -2055,7 +2055,7 @@
     if(disty %in%  5)
       out <- out + sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(cw.eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
     if(disty %in%  6)
-      out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean =  link$linkinv(cw.eta), sd = sqrt(fits$theta[ss]), log = TRUE))
+      out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean =  (cw.eta), sd = sqrt(fits$theta[ss]), log = TRUE))
     if(disty %in%  7)
       out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = size, p = link$linkinv(cw.eta), log = TRUE))
   }
@@ -2087,7 +2087,7 @@
    if(disty==5)
      out <- out + sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu = link$linkinv(eta), phi = x, p = powers[ss], LOG = TRUE));
    if(disty==6)
-     out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean = link$linkinv(eta), sd = sqrt(x), log = TRUE))
+     out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean = eta, sd = sqrt(x), log = TRUE))
   }
   return(out)
 }
@@ -2129,7 +2129,7 @@
       if(disty %in%  5)
         out <- out + sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(cw.eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
       if(disty %in%  6)
-        out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean =  link$linkinv(cw.eta), sd = sqrt(fits$theta[ss]), log = TRUE))
+        out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean =  (cw.eta), sd = sqrt(fits$theta[ss]), log = TRUE))
       if(disty %in%  7)
         out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = size, p = link$linkinv(cw.eta), log = TRUE))
     }
@@ -2141,7 +2141,7 @@
 
 "starting_values_wrapper" <- function(y, X, W, U, spp_weights, site_spp_weights,
                                       offset, y_is_na, G, S, disty, size, powers, control){
-  if(isTRUE(control$ecm_prefit)){
+  if(control$ecm_prefit){
     if(!control$quiet)message('Using ECM algorithm to find starting values; using ',
                               control$ecm_refit,'refits')
     emfits <- fit.ecm.sam(y, X, W, U, spp_weights, site_spp_weights,
@@ -2177,7 +2177,7 @@ starting values;\n starting values are generated using ',control$init_method,
   start_vals$nG <- G
   start_vals$nObs <- nrow(y)
   #put dispersion parameters on the log-scale for c++
-  if(disty%in%c(4,5,6)) start_vals$theta <- transform.theta(start_vals$theta,max.theta = control$max.theta)
+  if(disty%in%c(4,5,6)) start_vals$theta <- transform.theta(start_vals$theta, disty=disty, max.theta = control$max.theta)
   return(start_vals)
 }
 
@@ -2229,8 +2229,9 @@ starting values;\n starting values are generated using ',control$init_method,
     coefs <- fit1$coefficients
   }
   if(disty%in%6){ # gaussian
-    fit1 <- mvabund::manylm(tmpform,data = datX)
+    fit1 <- suppressWarnings(mvabund::manylm(tmpform,data = datX))
     starting.sam$theta <- (deviance(fit1)/fit1$df.residual)
+    # log( sqrt( colSums((y - fit1$fitted.values)^2)/nrow(y)))
     coefs <- t(fit1$coefficients)
   }
   if(disty%in%7){  # binomial - with variable size
@@ -2727,10 +2728,18 @@ if(!is.null(U)) {
     return( ret)
   }
 
-"transform.theta" <- function(thetas, max.theta = NULL){
+"transform.theta" <- function(thetas, disty, max.theta = NULL){
 
-  if(!is.null(max.theta)) {
-    thetas <- ifelse(thetas>max.theta,max.theta,thetas)
+  if(disty%in%4){
+    if(!is.null(max.theta)) {
+      thetas <- ifelse(thetas>max.theta,max.theta,thetas)
+    }
+  }
+  if(disty%in%5){
+
+  }
+  if(disty%in%6){
+    thetas <- sqrt(thetas)
   }
 
   log.new.thetas <- log(thetas)
