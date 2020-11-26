@@ -32,15 +32,16 @@ testthat::test_that('species mix bernoulii functions work', {
 testthat::test_that('species mix binomial', {
 
   set.seed(42)
+  rm(list=ls())
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~x1+x2"))
-  alpha <- rnorm(20,0, 0.5)
+  sp_form <- ~1
+  # alpha <- rnorm(20,0, 0.5)
   beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,7.9),3,2,byrow=TRUE)
-
   dat <- data.frame(y=1, x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   simulated_data <- species_mix.simulate(archetype_formula=sam_form,
                                          species_formula=sp_form,data = dat,
-                                         alpha = alpha,
-                                         beta=beta,size = rep(100,nrow(dat)),family="binomial")
+                                         # alpha = alpha,
+                                         beta=beta,size = rep(1,nrow(dat)),family="binomial")
   y <- as.matrix(simulated_data[,grep("spp",colnames(simulated_data))])
   X <- simulated_data[,-grep("spp",colnames(simulated_data))]
   W <- as.matrix(X[,1,drop=FALSE])
@@ -55,7 +56,7 @@ testthat::test_that('species mix binomial', {
   S <- ncol(y)
   control <- species_mix.control()
   disty <- 7
-  size <- rep(100,nrow(y))
+  size <- rep(1,nrow(y))
   powers <- rep(1.5,S)#attr(simulated_data,"powers") # yeah baby
 
 

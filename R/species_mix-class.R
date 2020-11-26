@@ -1858,7 +1858,7 @@
 }
 
 "e.step" <- function(y, X, W, U, site_spp_weights, offset,
-                     y_is_na, disty,#data
+                     y_is_na, disty,
                      fits, sp.powers,
                      get.fitted = FALSE) {
   S <- ncol(y); n <- nrow(y); G <- length(fits$pis)
@@ -1913,7 +1913,7 @@
       }
       if(disty %in% 7) {
         check.p <- link$linkinv(new.etas)
-        check.p[check.p < 1e-4] <- 1e-4; check.p[check.p > (1-1e-4)] <- (1-1e-4);
+        # check.p[check.p < 1e-6] <- 1e-6; check.p[check.p > (1-1e-6)] <- (1-1e-6);
         if(get.fitted) fitted.values[gg,,ss] <- check.p
         out.taus[ss,gg] <- (sum(dbinom(y[,ss], size, p = check.p, log = TRUE)))
       }
@@ -2015,14 +2015,16 @@
           Y_s <- as.vector(Y_s/site_weights)
         }
         if(disty%in%c(7)){
-          Y_s <- as.matrix(cbind(Y_s,size_s-Y_s))
+          Y_s <- as.matrix(cbind(Y_s,size_s))
         }
 
         if(ncol(X_s)==1) X_s <- cbind(1,X_s)
 
-        fit1 <- glmnet::glmnet(x = as.matrix(X_s), y = Y_s, family = glmnet.family, weights = obs.weights, offset = offy, nlambda = 100, intercept = FALSE)
+        # if (disty==7) fit1 <- glmnet::glmnet(x = as.matrix(X_s), y = Y_s, family = glmnet.family, weights = obs.weights+1e-6, offset = offy, lambda = 0, intercept = FALSE)
+        # else
+        fit1 <- glmnet::glmnet(x = as.matrix(X_s), y = Y_s, family = glmnet.family, weights = obs.weights+1e-6, offset = offy, nlambda = 100, intercept = FALSE)
         new.betas <- coef(fit1)[,ncol(coef(fit1))][-1]
-        # print(new.betas)
+        print(new.betas)
         if(ncol(X)==1)new.betas <- new.betas[-1]
 
         return(new.betas)
