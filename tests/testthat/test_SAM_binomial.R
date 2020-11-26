@@ -41,7 +41,7 @@ testthat::test_that('species mix binomial', {
   simulated_data <- species_mix.simulate(archetype_formula=sam_form,
                                          species_formula=sp_form,data = dat,
                                          # alpha = alpha,
-                                         beta=beta,size = rep(1,nrow(dat)),family="binomial")
+                                         beta=beta,size = rep(10,nrow(dat)),family="binomial")
   y <- as.matrix(simulated_data[,grep("spp",colnames(simulated_data))])
   X <- simulated_data[,-grep("spp",colnames(simulated_data))]
   W <- as.matrix(X[,1,drop=FALSE])
@@ -56,7 +56,7 @@ testthat::test_that('species mix binomial', {
   S <- ncol(y)
   control <- species_mix.control()
   disty <- 7
-  size <- rep(1,nrow(y))
+  size <- rep(10,nrow(y))
   powers <- rep(1.5,S)#attr(simulated_data,"powers") # yeah baby
 
 
