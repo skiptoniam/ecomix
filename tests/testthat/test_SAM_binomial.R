@@ -34,10 +34,8 @@ testthat::test_that('species mix binomial', {
   set.seed(42)
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:20),collapse = ','),")~x1+x2"))
   alpha <- rnorm(20,0, 0.5)
-  beta <- matrix(c(-0.6,0.5,
-                   -0.5,-0.5,
-                   0.9,-0.9),
-                 3,2,byrow=TRUE)
+  beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,7.9),3,2,byrow=TRUE)
+
   dat <- data.frame(y=1, x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   simulated_data <- species_mix.simulate(archetype_formula=sam_form,
                                          species_formula=sp_form,data = dat,
@@ -75,7 +73,7 @@ testthat::test_that('species mix binomial', {
   logls <- ecomix:::get_logls_sam(y, X, W, U, G, S, spp_weights,
                                   site_spp_weights, offset, y_is_na, disty,
                                   size, powers, control, sv, get_fitted = FALSE)
-  pis <- rep(1/G, G)
+  pis <- sv$pis
   taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
   taus <- ecomix:::shrink_taus(taus, G)
 

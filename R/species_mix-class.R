@@ -2237,7 +2237,7 @@ starting values;\n starting values are generated using ',control$init_method,
     coefs <- t(fit1$coefficients)
   }
   if(disty%in%7){  # binomial - with variable size
-    fit1 <- many.fit(y, X, W, U, site_spp_weights,
+    fit1 <- ecomix:::many.fit(y, X, W, U, site_spp_weights,
                      offset, y_is_na, G, S, disty, size, powers, control)
     coefs <- fit1$coefficients
     starting.sam$theta <- rep(-99999,S)
@@ -2425,6 +2425,7 @@ starting values;\n starting values are generated using ',control$init_method,
     lambda.seq <- sort(unique( c( seq( from=1/0.001, to=1, length=25),
                                    seq( from=1, to=.1, length=10))),
                        decreasing=TRUE)
+    if(disty==7) lambda.seq <- 0
     ft_sp <- try(glmnet::glmnet(y=outcomes, x=as.matrix(df),
                                 family=fam, offset=offset[ids_i],
                                 weights=as.numeric(site_spp_weights[ids_i,ss]),
