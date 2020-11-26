@@ -1797,7 +1797,7 @@
       }
 
       ## Update archetype-specific coefficients
-      fm_beta <- plapply(seq_len(G), apply_optimise_betas,
+      fm_beta <- ecomix:::plapply(seq_len(G), ecomix:::apply_optimise_betas,
                          y, X, W, U, site_spp_weights, offset,
                          y_is_na, disty, taus, fits, size, powers,
                          .parallel = control$cores,
@@ -1940,7 +1940,9 @@
 "apply_optimise_sppParam" <- function(ss, y, X, W, U, taus, fits,
                                       site_spp_weights, offset, y_is_na,
                                       disty, size, powers){
-  update.sppParams <- optimize(f = llogl.sppParams, interval = c(-1000,1000), maximum = TRUE, ss = ss,
+  if(disty%in%6) intercept.range <- c(-200,200)
+  else intercept.range <- c(-30,30)
+  update.sppParams <- optimize(f = llogl.sppParams, interval = intercept.range, maximum = TRUE, ss = ss,
                                y = y, X = X, W = W, U=U, taus = taus, fits = fits,
                                site_spp_weights = site_spp_weights,
                                offset = offset, y_is_na = y_is_na,
@@ -2018,7 +2020,7 @@
 
         if(ncol(X_s)==1) X_s <- cbind(1,X_s)
 
-        fit1 <- glmnet::glmnet(x = as.matrix(X_s), y = Y_s, family = glmnet.family, weights = obs.weights+1e-6, offset = offy, nlambda = 100, intercept = FALSE)
+        fit1 <- glmnet::glmnet(x = as.matrix(X_s), y = Y_s, family = glmnet.family, weights = obs.weights, offset = offy, nlambda = 100, intercept = FALSE)
         new.betas <- coef(fit1)[,ncol(coef(fit1))][-1]
         # print(new.betas)
         if(ncol(X)==1)new.betas <- new.betas[-1]
@@ -2909,13 +2911,13 @@ if(!is.null(U)) {
         eta <- eta_spp + eta_mix + eta_all[sp_idx] + offset[sp_idx]
         if(get_fitted) fitted_values[gg,sp_idx,ss] <- link$linkinv(eta)
 
-        if(disty==1) logl_sp[ss,gg] <- sum(dbinom(y[,ss], 1, link$linkinv(eta),log = TRUE))
+        if(disty==1) logl_sp[ss,gg] <- sum(dbinom(y[,ss], size =  1, prob =  link$linkinv(eta),log = TRUE))
         if(disty==2) logl_sp[ss,gg] <- sum(dpois(y[,ss], lambda = link$linkinv(eta),log = TRUE))
         if(disty==3) logl_sp[ss,gg] <- y[sp_idx,ss] %*% eta - site_spp_weights[sp_idx,ss] %*% exp(eta)
         if(disty==4) logl_sp[ss,gg] <- sum(dnbinom(y[,ss], mu=link$linkinv(eta), size = exp(-fits$theta[ss]), log=TRUE))
         if(disty==5) logl_sp[ss,gg] <- sum(fishMod::dTweedie(y[,ss], mu =  link$linkinv(cw.eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
         if(disty==6) logl_sp[ss,gg] <- sum(dnorm(y[,ss],mean=eta,sd=exp(fits$theta[ss]),log=TRUE))
-        if(disty==7) logl_sp[ss,gg] <- sum(dbinom(y[,ss], size, link$linkinv(eta),log = TRUE))
+        if(disty==7) logl_sp[ss,gg] <- sum(dbinom(y[,ss],size =  size, prob = link$linkinv(eta),log = TRUE))
 
       }
       if(!disty%in%3)logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
