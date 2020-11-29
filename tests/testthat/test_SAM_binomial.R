@@ -84,7 +84,7 @@ testthat::test_that('species mix binomial', {
 
   # ## now let's try and fit the optimisation
   start_vals <- ecomix:::starting_values_wrapper(y, as.data.frame(X), as.data.frame(W), U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers,
-                                                 control = species_mix.control(ecm_steps = 20))
+                                                 control = species_mix.control())
   tmp <- ecomix:::sam_optimise(y, X, W, U, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, size, powers, start_vals = start_vals, control)
   testthat::expect_length(tmp,20)
 
@@ -97,7 +97,7 @@ testthat::test_that('species mix binomial', {
 
   sp_form <- ~1
   fm1 <- species_mix(archetype_formula = sam_form, species_formula = sp_form,
-                     data = simulated_data, family = 'binomial',
+                     data = simulated_data, family = 'binomial',size = size,
                      nArchetypes = 3)
   testthat::expect_s3_class(fm1,'species_mix')
 

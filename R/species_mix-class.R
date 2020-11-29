@@ -1964,13 +1964,15 @@
                                    y_is_na, disty, taus, fits, size, powers){
 
   n <- nrow(y)
-  if(disty %in% c(2,3,4,5))
+  if(disty %in% c(2,3,4,5)){
   glmnet.family <- "poisson"; glm.family <- poisson();
-  if(disty %in% c(1,7))
+  }
+  if(disty %in% c(1,7)){
   glmnet.family <- "binomial"; glm.family <- binomial();
-  if(disty %in% c(6))
+  }
+  if(disty %in% c(6)){
   glmnet.family <- "gaussian"; glm.family <- gaussian();
-
+  }
         if(disty %in% 4) get.mus <- e.step(y, X, W, U, site_spp_weights,
                                            offset, y_is_na, disty,
                                            fits, powers,  get.fitted = TRUE)$fitted
@@ -2020,11 +2022,22 @@
 
         if(ncol(X_s)==1) X_s <- cbind(1,X_s)
 
-        # if (disty==7) fit1 <- glm2::glm.fit2(x = as.matrix(X_s), y = Y_s, family = glmnet.family, weights = obs.weights+1e-6, offset = offy,intercept = FALSE)
-        # else
-        fit1 <- glmnet::glmnet(x = as.matrix(X_s), y = Y_s, family = glmnet.family, weights = obs.weights+1e-6, offset = offy, nlambda = 100, intercept = FALSE)
+        if (disty==7){
+          # fit1 <- glm2::glm.fit2(x = as.matrix(X_s), y = Y_s, family = glmnet.family, weights = obs.weights+1e-6, offset = offy,intercept = FALSE)
+          fit1 <- try(glm2::glm.fit2(y=Y_s, x=as.data.frame(cbind(1,X_s)),weights=c(obs.weights+1e-6),
+                               family=glm.family, offset=offy), silent=FALSE)
+          if (any(class(fit1)[1] %in% 'try-error')){
+            new.betas <- rep(NA, ncol(X[ids_i,]))
+            names(new.betas) <- colnames(cbind(X[ids_i,,drop=FALSE],W[ids_i,,drop=FALSE]))
+          } else {
+            # if(ncol(X)==1) my_coefs <- t(as.matrix(my.coefs[-1]))
+            new.betas <- coef(fit1)[-1]
+          }
+        } else {
+          fit1 <- glmnet::glmnet(x = as.matrix(X_s), y = Y_s, family = glmnet.family, weights = obs.weights+1e-6, offset = offy, nlambda = 100, intercept = FALSE)
         new.betas <- coef(fit1)[,ncol(coef(fit1))][-1]
-        print(new.betas)
+        }
+        # print(new.betas)
         if(ncol(X)==1)new.betas <- new.betas[-1]
 
         return(new.betas)

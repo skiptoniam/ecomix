@@ -326,6 +326,7 @@ double log_binomial_sam( const double &y, const double &mu, const double &n){
 	return( tmp);
 }
 
+//binomial deriv
 //(y/mu) - ((n-y)/(1-mu))
 
 double log_binomial_deriv_sam(const double &y, const double &mu, const double &n){
@@ -845,6 +846,18 @@ void calc_theta_deriv( vector<double> &thetaDerivs, vector<double> const &dlogdt
 	}
 
 }
+
+//double calc_theta_pen( const sam_data &dat, const sam_params &params)
+//{
+	//double pen = 0.0, penContr = 0.0;//, sig;
+
+	//for( int s=0; s<dat.nS; s++){
+		//penContr = - (params.Theta[s]-params.ThetaLocat) * (params.Theta[s]-params.ThetaLocat) / (2*params.ThetaScale*params.ThetaScale);	//dispersions are log-normally distributed (params are normally distributed)
+////		Rprintf( "Species: %i, param: %f, penalty: %f, Cumulative %f \n", s, parms.Disp[s], penContr, pen);
+		//pen += penContr;
+	//}
+	//return( pen);
+//}
 
 // this should calculate the derivate w.r.t eta (transformed pi).
 void calc_eta_deriv( vector<double> &etaDerivs, vector<double> const &dlogdpi, vector<double> const eta, const sam_data &dat){
