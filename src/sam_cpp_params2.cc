@@ -5,7 +5,10 @@ sam_params::~sam_params(){};
 
 void sam_params::setVals(const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta,
 						 SEXP &Reta, SEXP &Rgamma, SEXP &Rdelta, SEXP &Rtheta,
-						 SEXP &Rpowers){
+						 SEXP &Rpowers,
+						 //penalities
+						 SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RgammaPen, 
+						 SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen){
 //	double *tmpD;
 
 	Alpha = REAL( Ralpha);
@@ -15,6 +18,12 @@ void sam_params::setVals(const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta,
 	Delta = REAL( Rdelta);
 	Theta = REAL( Rtheta);
 	Power = REAL( Rpowers);
+	AlphaPen = *(REAL(RalphaPen));
+	BetaPen = *(REAL(RbetaPen));
+	GammaPen = *(REAL(RgammaPen));
+	DeltaPen = *(REAL(RdeltaPen));
+	ThetaLocatPen = *(REAL(RthetaLocatPen));
+	ThetaScalePen = *(REAL(RthetaScalePen));
 	nalpha = dat.nS;
 	nbeta = dat.nG*dat.nPX;
 	neta = (dat.nG-1);

@@ -5,6 +5,8 @@
 #include<Rmath.h>
 #include<Rinternals.h>
 #include<R_ext/Applic.h>
+#include<gsl/gsl_rng.h>
+#include<gsl/gsl_randist.h>
 #include<vector>
 #include"Tweedie.h"
 
@@ -47,7 +49,7 @@ class sam_data {
 
 		double 	*y,	//the outcome matrix, in vector form (nObs x nS)
 				*X, //the design matrix in vector form (nObs x nP)
-				*W, //the design matrix in vector form for the species model (nObs x npw). 
+				*W, //the design matrix in vector form for the species model (nObs x npw).
 				*U, //the design matrix in vector form for the bias model (nObs x npu).
 				*offset, //the offset vector (length nObs)
 				*spp_wts,  //the wts for the logl dependent on the species - used for the bayesian bootstrap (typically all zero and of length nObs).
@@ -62,19 +64,26 @@ class sam_params {
 	public:
 		sam_params();
 		~sam_params();
-		void setVals( const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Reta, SEXP &Rgamma, SEXP &Rdelta, SEXP &Rtheta, SEXP &Rpowers);
+		void setVals( const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Reta, SEXP &Rgamma, SEXP &Rdelta, SEXP &Rtheta, SEXP &Rpowers,
+		SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RgammaPen, SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen);
 		void getArray(double *parArr, const sam_data &dat);
 		void update(double *parArr, const sam_data &dat);
 		void printParms( const sam_data &dat);
 
 
-		double 	*Alpha, //the species' prevalences 
+		double 	*Alpha, //the species' prevalences
 				*Beta,	//the habitats' free covariate params (G*xp)
 				*Eta,	//the pis - mmmmm pies.
 				*Gamma, //species x npw parameters form partial SAMs
-				*Delta, //bias 
+				*Delta, //bias
 				*Theta, //species specific dispersion parameter for negative binomial and guassian model nspp long.
-				*Power;
+				*Power, // powers for tweedie
+				AlphaPen, // penalites for alpha, beta, gamma, delta, dispersion.
+				BetaPen,
+				GammaPen,
+				DeltaPen,
+				ThetaLocatPen,
+				ThetaScalePen;
 		int nalpha, nbeta, ngamma, neta, ntheta, ndelta, nTot;
 };
 
@@ -99,7 +108,7 @@ class sam_derivs{
 				*Delta, //the derivatives of logl w.r.t. bias delta.
 				*Theta, //the derivatives of logl w.r.t. dispersion parameters.
 				*Scores;//the score contribution for each site (for empirical information)
-	
+
 };
 
 // control functions for species mix.
@@ -123,7 +132,7 @@ class sam_fits {
 		vector<double> log_like_species_group_contrib; // 2D array of loglikes species and groups.
 		vector<double> log_like_species_contrib; //vector of species logls.
 		vector<double> all_derivs_mu;
-		vector<double> dlogdalpha; 
+		vector<double> dlogdalpha;
 		vector<double> dlogdbeta;
 		vector<double> dlogdgamma;
 		vector<double> dlogddelta;
@@ -150,8 +159,9 @@ class sam_cpp_all_classes {
 ////////////////////////////////////////////////////////
 
 extern "C" SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW,  SEXP RU, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rbinsize,
-								SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll, 
+								SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll,
 								SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rdelta, SEXP Rtheta, SEXP Rpowers,
+								SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RgammaPen, SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen,
 								SEXP RderivsAlpha, SEXP RderivsBeta,  SEXP RderivsEta, SEXP RderivsGamma, SEXP RderivsDelta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
 								SEXP Rpis, SEXP Rmus, SEXP logliS, SEXP logliSG,
 								SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
@@ -183,10 +193,20 @@ void calc_dlog_dgamma(vector<double> &dldg, vector<double> const &mu_eta_derivs,
 void calc_dlog_dtheta(vector<double> &dldt, vector<double> const &mus, const sam_data &dat, const sam_params &params);
 void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llS, vector<double> const &llSG, const sam_data &dat);
 void calc_alpha_deriv( vector<double> &alphaDerivs, vector<double> const &dlogdalpha, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat);
+double calc_alpha_pen( const sam_data &dat, const sam_params &params);
+void calc_alpha_pen_deriv( vector<double> &alphaDerivs, const sam_data &dat, const sam_params &params);
 void calc_beta_deriv( vector<double> &betaDerivs, vector<double> const &dlogdbeta, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat);
+double calc_beta_pen(  const sam_data &dat, const sam_params &params);
+void calc_beta_pen_deriv( vector<double> &betaDerivs, const sam_data &dat, const sam_params &params);
 void calc_gamma_deriv( vector<double> &gammaDerivs, vector<double> const &dlogdgamma, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat);
+double calc_gamma_pen(  const sam_data &dat, const sam_params &params);
+void calc_gamma_pen_deriv( vector<double> &gammaDerivs, const sam_data &dat, const sam_params &params);
 void calc_delta_deriv( vector<double> &deltaDerivs, vector<double> const &dlogddelta, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat);
+double calc_delta_pen(  const sam_data &dat, const sam_params &params);
+void calc_delta_pen_deriv( vector<double> &deltaDerivs, const sam_data &dat, const sam_params &params);
 void calc_theta_deriv( vector<double> &thetaDerivs, vector<double> const &dlogdtheta, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat);
+double calc_theta_pen( const sam_data &dat, const sam_params &params);
+void calc_theta_pen_deriv(vector<double> &thetaDerivs, const sam_data &dat, const sam_params &params);
 void calc_eta_deriv( vector<double> &etaDerivs, vector<double> const &dlogdpi, vector<double> const eta, const sam_data &dat);
 
 
