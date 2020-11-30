@@ -6,6 +6,10 @@ extern "C" {
 	SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP RU, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rbinsize,
 					     SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll,
 						 SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rdelta, SEXP Rtheta, SEXP Rpowers,
+						 //penalities
+						 SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RgammaPen,
+						 SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen,
+						 //derivatives
 						 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsGamma, SEXP RderivsDelta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
 						 SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
 						 SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
@@ -15,7 +19,7 @@ extern "C" {
 
 	//initialise the data structures -- they are mostly just pointers to REAL()s...
 	all.data.setVals(Ry, RX, RW, RU, Roffset, Rspp_wts, Rsite_spp_wts, Ry_not_na, Rbinsize, RnS, RnG, Rpx, Rpw, Rpu, RnObs, Rdisty, RoptiDisp, RoptiPart, RoptiAll);	//read in the data
-	all.params.setVals(all.data, Ralpha, Rbeta, Reta, Rgamma, Rdelta, Rtheta, Rpowers);	//read in the parameters
+	all.params.setVals(all.data, Ralpha, Rbeta, Reta, Rgamma, Rdelta, Rtheta, Rpowers, RalphaPen, RbetaPen, RgammaPen, RdeltaPen, RthetaLocatPen, RthetaScalePen);	//read in the parameters
 	all.derivs.setVals(all.data, RderivsAlpha, RderivsBeta, RderivsEta, RderivsGamma, RderivsDelta, RderivsTheta, RgetScores, Rscores);
 	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv, Rprintparams);
 	all.fits.initialise(all.data.nObs, all.data.nG, all.data.nS, all.data.nPX, all.data.nPW, all.data.nPU, all.data.NAnum);
@@ -85,7 +89,7 @@ extern "C" {
 	UNPROTECT(1);
 	SEXP Rtheta_hat =PROTECT(allocVector(REALSXP, all.data.nS));
 	for( int s=0; s<(all.data.nS);s++) REAL(Rtheta_hat)[s] = all.params.Theta[s];
-	
+
 	UNPROTECT(1);
 
 
@@ -152,7 +156,7 @@ double optimise_function_sam(int n, double *par, void *ex){
 
 double sam_cpp_mix_loglike(const sam_data &dat, const sam_params &params, sam_fits &fits){
 
-	double tloglike = 0.0, loglike = 0.0;
+	double tloglike = 0.0, loglike = 0.0, penAlpha=0.0, penBeta = 0.0, penGamma = 0.0, penDelta = 0.0, penTheta = 0.0;
 	vector<double> par_pi(dat.nG-1,0);
 
 	fits.zero(0);
@@ -173,6 +177,29 @@ double sam_cpp_mix_loglike(const sam_data &dat, const sam_params &params, sam_fi
 		fits.log_like_species_contrib.at(s) = tloglike;
 		loglike += tloglike;
 	}
+
+	//penalities.
+	penAlpha = calc_alpha_pen( dat, params);
+	penBeta = calc_beta_pen( dat, params);
+
+	loglike += penAlpha;
+	loglike += penBeta;
+
+	if(dat.optiPart>0){
+	penGamma = calc_gamma_pen( dat, params);
+	loglike += penGamma;
+	}
+
+	if(dat.optiAll>0){
+	penDelta = calc_delta_pen( dat, params);
+	loglike += penDelta;
+	}
+
+	if( dat.isDispersion()){
+	penTheta = calc_theta_pen( dat, params);
+	loglike += penTheta;
+	}
+
 	return(loglike);
 }
 
@@ -183,13 +210,13 @@ void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data
 	vector<double> etaAll(dat.nObs,0); //linear predictor for bias/all parameters.
 	double lp;	//the lin pred for the gth group, sth species and ith site
 	// double lp_sppEta=0.0;   // split the linear predictor into two components.
-	
+
 	if(dat.optiAll>0){
 		for(int i=0; i<dat.nObs; i++){
-			for(int d=0; d<dat.nPU; d++){ 
+			for(int d=0; d<dat.nPU; d++){
 				 etaAll[i] += dat.U[MATREF2D(i,d,dat.nObs)]*params.Delta[d];
 			}
-		} 
+		}
 	}
 
 	//calcualte the G*S*n fits
@@ -501,14 +528,14 @@ void gradient_function_sam(int n, double *par, double *gr, void *ex){
 //// this function should work out the derivatives.
 void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_derivs &derivs, sam_fits &fits){
 
-	vector<double> parpi((dat.nG-1), 0);
-	vector<double> eta_mu_derivs((dat.nS*dat.nG*dat.nObs), 0);
-	vector<double> alphaDerivs(dat.nS, 0);//change to dat.NAN
-	vector<double> betaDerivs((dat.nG*dat.nPX), 0);
-	vector<double> gammaDerivs((dat.nS*dat.nPW), 0);
-	vector<double> deltaDerivs(dat.nPU, 0); // check there should only be g pis
-	vector<double> etaDerivs((dat.nG-1), 0); // check there should only be g pis
-	vector<double> thetaDerivs(dat.nS, 0);
+	vector<double> parpi((dat.nG-1), 0.0);
+	vector<double> eta_mu_derivs((dat.nS*dat.nG*dat.nObs), 0.0);
+	vector<double> alphaDerivs(dat.nS, 0.0);//change to dat.NAN
+	vector<double> betaDerivs((dat.nG*dat.nPX), 0.0);
+	vector<double> gammaDerivs((dat.nS*dat.nPW), 0.0);
+	vector<double> deltaDerivs(dat.nPU, 0.0); // check there should only be g pis
+	vector<double> etaDerivs((dat.nG-1), 0.0); // check there should only be g pis
+	vector<double> thetaDerivs(dat.nS, 0.0);
 	double logl;
 
     //calc loglike
@@ -558,6 +585,9 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	//derivate w.r.t pi/eta
 	calc_dlog_dpi(fits.dlogdpi, fits.log_like_species_group_contrib, fits.log_like_species_contrib, dat);
 	calc_eta_deriv(etaDerivs, fits.dlogdpi, parpi, dat);
+
+	// Add in the derivate penalites here.
+
 
 	//update the derivates.
 	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
@@ -739,7 +769,7 @@ void calc_dlog_dtheta(vector<double> &dldt, vector<double> const &mus, const sam
 
 	// dlda = dlogalpha passed as fits.dflogdalpha(dat.nG*dat.nS, dat.NAnum) from function call
 	// mus = all the fitted values.
-	
+
 	if( !dat.isDispersion())
 		return;	//nothing to do here, move along please
 
@@ -789,6 +819,23 @@ void calc_alpha_deriv( vector<double> &alphaDerivs, vector<double> const &dlogda
 
 }
 
+double calc_alpha_pen( const sam_data &dat, const sam_params &params){
+	double penAlpha = 0.0;
+
+	for( int s=0; s<dat.nS; s++){
+					penAlpha += - params.Alpha[s]*params.Alpha[s] / (2* params.AlphaPen*params.AlphaPen);
+    }
+
+	return( penAlpha);
+}
+
+void calc_alpha_pen_deriv( vector<double> &alphaDerivs, const sam_data &dat, const sam_params &params){
+
+	for( int s=0; s<dat.nS; s++)
+		alphaDerivs.at(s) += - params.Alpha[s] / (params.AlphaPen*params.AlphaPen);
+}
+
+
 // this should calculate the derivate w.r.t beta.
 void calc_beta_deriv( vector<double> &betaDerivs, vector<double> const &dlogdbeta, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
 
@@ -804,6 +851,22 @@ void calc_beta_deriv( vector<double> &betaDerivs, vector<double> const &dlogdbet
 
 }
 
+double calc_beta_pen(  const sam_data &dat, const sam_params &params){
+	double penBeta = 0.0;
+
+	for( int g=0; g<dat.nG; g++)
+		for( int p=0; p<dat.nPX; p++)
+			penBeta += - params.Beta[MATREF2D(g,p,dat.nG)]*params.Beta[MATREF2D(g,p,dat.nG)] / (2*params.BetaPen*params.BetaPen);
+
+	return( penBeta);
+}
+
+void calc_beta_pen_deriv( vector<double> &betaDerivs, const sam_data &dat, const sam_params &params){
+	//gammaDerivs.assign(gammaDerivs.size(), 0.0);// need to check this.
+	for( int g=0; g<dat.nG; g++)
+		for( int p=0; p<dat.nPX; p++)
+			betaDerivs.at( MATREF2D(g,p,dat.nG)) += - params.Beta[MATREF2D(g,p,dat.nG)] / (params.BetaPen*params.BetaPen);
+}
 
 void calc_delta_deriv( vector<double> &deltaDerivs, vector<double> const &dlogddelta, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
 
@@ -818,6 +881,26 @@ void calc_delta_deriv( vector<double> &deltaDerivs, vector<double> const &dlogdd
 	}
 
 }
+
+double calc_delta_pen(  const sam_data &dat, const sam_params &params){
+	double penDelta = 0.0;
+
+	//if(dat.optiAll>0){
+	for( int u=0; u<dat.nPU; u++){
+		penDelta += -params.Delta[u]*params.Delta[u] / (2*params.DeltaPen*params.DeltaPen);
+	}
+	return( penDelta);
+}
+
+void calc_delta_pen_deriv( vector<double> &deltaDerivs, const sam_data &dat, const sam_params &params){
+	//gammaDerivs.assign(gammaDerivs.size(), 0.0);// need to check this.
+	if(dat.optiAll>0){
+		for( int u=0; u<dat.nPU; u++){
+			deltaDerivs.at(u) += - params.Delta[u] / (params.DeltaPen*params.DeltaPen);
+		}
+	}
+}
+
 
 // this should calculate the derivate w.r.t gamma.
 void calc_gamma_deriv( vector<double> &gammaDerivs, vector<double> const &dlogdgamma, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
@@ -834,10 +917,34 @@ void calc_gamma_deriv( vector<double> &gammaDerivs, vector<double> const &dlogdg
 
 }
 
+double calc_gamma_pen(  const sam_data &dat, const sam_params &params){
+	double penGamma = 0.0;
+
+    if(dat.optiPart>0){
+		for(int s=0; s<(dat.nS); s++){
+			for( int w=0; w<dat.nPW; w++){
+				penGamma += -params.Gamma[MATREF2D(s,w,dat.nS)]*params.Gamma[MATREF2D(s,w,dat.nS)] / (2*params.GammaPen*params.GammaPen);
+			}
+		}
+	}
+	return( penGamma);
+}
+
+void calc_gamma_pen_deriv( vector<double> &gammaDerivs, const sam_data &dat, const sam_params &params){
+	//gammaDerivs.assign(gammaDerivs.size(), 0.0);// need to check this.
+    if(dat.optiPart>0){
+		for(int s=0; s<(dat.nS); s++){
+			for( int w=0; w<dat.nPW; w++){
+			gammaDerivs.at(MATREF2D(s,w,dat.nS)) += - params.Gamma[MATREF2D(s,w,dat.nPW)] / (params.GammaPen*params.GammaPen);
+			}
+		}
+	}
+}
+
 //// this should calculate the derivate w.r.t dispersion parameter.
 void calc_theta_deriv( vector<double> &thetaDerivs, vector<double> const &dlogdtheta, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat){
 
-	//thetaaDerivs.assign(thetaDerivs.size(), 0.0);
+	//thetaDerivs.assign(thetaDerivs.size(), 0.0);
 	for(int g=0; g<(dat.nG); g++){
 		for(int s=0;s<(dat.nS);s++){
 			//calculate for dispersion (thetas)
@@ -847,17 +954,24 @@ void calc_theta_deriv( vector<double> &thetaDerivs, vector<double> const &dlogdt
 
 }
 
-//double calc_theta_pen( const sam_data &dat, const sam_params &params)
-//{
-	//double pen = 0.0, penContr = 0.0;//, sig;
+double calc_theta_pen( const sam_data &dat, const sam_params &params){
+	double pen = 0.0, penContr = 0.0;//, sig;
 
-	//for( int s=0; s<dat.nS; s++){
-		//penContr = - (params.Theta[s]-params.ThetaLocat) * (params.Theta[s]-params.ThetaLocat) / (2*params.ThetaScale*params.ThetaScale);	//dispersions are log-normally distributed (params are normally distributed)
-////		Rprintf( "Species: %i, param: %f, penalty: %f, Cumulative %f \n", s, parms.Disp[s], penContr, pen);
-		//pen += penContr;
-	//}
-	//return( pen);
-//}
+	for( int s=0; s<dat.nS; s++){
+		penContr = - (params.Theta[s]-params.ThetaLocatPen) * (params.Theta[s]-params.ThetaLocatPen) / (2*params.ThetaScalePen*params.ThetaScalePen);	//dispersions are log-normally distributed (params are normally distributed)
+//		Rprintf( "Species: %i, param: %f, penalty: %f, Cumulative %f \n", s, parms.Disp[s], penContr, pen);
+		pen += penContr;
+	}
+	return( pen);
+}
+
+void calc_theta_pen_deriv(vector<double> &thetaDerivs, const sam_data &dat, const sam_params &params){
+	thetaDerivs.assign(thetaDerivs.size(), 0.0);
+	if( dat.isDispersion())
+		for( int s=0; s<dat.nS; s++)
+			thetaDerivs.at(s) = -(params.Theta[s]-params.ThetaLocatPen)/(params.ThetaScalePen*params.ThetaScalePen);
+}
+
 
 // this should calculate the derivate w.r.t eta (transformed pi).
 void calc_eta_deriv( vector<double> &etaDerivs, vector<double> const &dlogdpi, vector<double> const eta, const sam_data &dat){
