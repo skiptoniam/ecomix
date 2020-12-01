@@ -149,6 +149,8 @@ double calcGammaPen( const myData &dat, const myParms &parms)
 double calcPiPen( const vector<double> &logPis, const myData &dat, const myParms &parms)
 {
 	double pen=0.0;
+	
+
 
 	for( int g=0; g<dat.nG; g++)
 		pen += logPis.at(g);
