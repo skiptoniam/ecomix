@@ -54,7 +54,7 @@ testthat::test_that('species mix binomial', {
   y_is_na <- matrix(FALSE,nrow(y),ncol(y))
   G <- 3
   S <- ncol(y)
-  control <- species_mix.control()
+  control <- ecomix:::set_control_sam(list())
   disty <- 7
   size <- rep(10,nrow(y))
   powers <- rep(1.5,S)#attr(simulated_data,"powers") # yeah baby
@@ -84,7 +84,7 @@ testthat::test_that('species mix binomial', {
 
   # ## now let's try and fit the optimisation
   start_vals <- ecomix:::starting_values_wrapper(y, as.data.frame(X), as.data.frame(W), U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers,
-                                                 control = species_mix.control())
+                                                 control = control)
   tmp <- ecomix:::sam_optimise(y, X, W, U, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, size, powers, start_vals = start_vals, control)
   testthat::expect_length(tmp,20)
 

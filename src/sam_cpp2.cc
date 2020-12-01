@@ -156,7 +156,7 @@ double optimise_function_sam(int n, double *par, void *ex){
 
 double sam_cpp_mix_loglike(const sam_data &dat, const sam_params &params, sam_fits &fits){
 
-	double tloglike = 0.0, loglike = 0.0, penAlpha=0.0, penBeta = 0.0, penGamma = 0.0, penDelta = 0.0, penTheta = 0.0;
+	double tloglike = 0.0, loglike = 0.0, penAlpha=0.0, penBeta = 0.0, penPi = 0.0, penGamma = 0.0, penDelta = 0.0, penTheta = 0.0;
 	vector<double> par_pi(dat.nG-1,0);
 
 	fits.zero(0);
@@ -179,26 +179,28 @@ double sam_cpp_mix_loglike(const sam_data &dat, const sam_params &params, sam_fi
 	}
 
 	//penalities.
-	penAlpha = calc_alpha_pen( dat, params);
-	penBeta = calc_beta_pen( dat, params);
+	//penAlpha = calc_alpha_pen( dat, params);
+	//penBeta = calc_beta_pen( dat, params);
+	//penPi = calc_pi_pen(dat, params);
 
-	loglike += penAlpha;
-	loglike += penBeta;
+	//loglike += penAlpha;
+	//loglike += penBeta;
+	//loglike += penPi;
 
-	if(dat.optiPart>0){
-	penGamma = calc_gamma_pen( dat, params);
-	loglike += penGamma;
-	}
+	//if(dat.optiPart>0){
+	//penGamma = calc_gamma_pen( dat, params);
+	//loglike += penGamma;
+	//}
 
-	if(dat.optiAll>0){
-	penDelta = calc_delta_pen( dat, params);
-	loglike += penDelta;
-	}
+	//if(dat.optiAll>0){
+	//penDelta = calc_delta_pen( dat, params);
+	//loglike += penDelta;
+	//}
 
-	if( dat.isDispersion()){
-	penTheta = calc_theta_pen( dat, params);
-	loglike += penTheta;
-	}
+	//if( dat.isDispersion()){
+	//penTheta = calc_theta_pen( dat, params);
+	//loglike += penTheta;
+	//}
 
 	return(loglike);
 }
@@ -587,15 +589,15 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	calc_eta_deriv(etaDerivs, fits.dlogdpi, parpi, dat);
 
 	// update derives before penalities
-	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
+	//derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
 
 	// Add in the derivate penalites here.
-    calc_alpha_pen_deriv(alphaDerivs, dat, params);
-    calc_beta_pen_deriv(betaDerivs, dat, params);
-    calc_gamma_pen_deriv(gammaDerivs, dat, params);
-    calc_delta_pen_deriv(deltaDerivs, dat, params);
-    calc_theta_pen_deriv(thetaDerivs, dat, params);
-    etaDerivs.assign(etaDerivs.size(), 0.0);
+    //calc_alpha_pen_deriv(alphaDerivs, dat, params);
+    //calc_beta_pen_deriv(betaDerivs, dat, params);
+    //calc_gamma_pen_deriv(gammaDerivs, dat, params);
+    //calc_delta_pen_deriv(deltaDerivs, dat, params);
+    //calc_theta_pen_deriv(thetaDerivs, dat, params);
+    //etaDerivs.assign(etaDerivs.size(), 0.0);
 
 	//update the derivates after penalities
 	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
@@ -801,6 +803,24 @@ void calc_dlog_dtheta(vector<double> &dldt, vector<double> const &mus, const sam
 	}
 }
 
+
+double calc_pi_pen(const sam_data &dat, const sam_params &params){
+	double pen=0.0;
+	vector<double> pispen1((dat.nG-1), 0.0);
+	for(int g=0; g<(dat.nG-1); g++) pispen1.at(g) = params.Eta[g];
+	additive_logistic_sam(pispen1,1,dat.nG);
+
+	for( int g=0; g<dat.nG; g++)
+		pen += log(pispen1.at(g));
+	pen *= params.PiPen;
+
+    //Rprintf( "pi pen %f\n", pen);
+
+
+	return( pen);
+}
+
+
 void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llSG, vector<double> const &llS, const sam_data &dat, const sam_params &params){
 
 	for(int g=0; g<(dat.nG); g++){
@@ -814,14 +834,14 @@ void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llSG, vector<dou
 	}
 
 	// need to add in penalties here.
-	vector<double> pispen((dat.nG-1), 0.0);
-	for(int g=0; g<(dat.nG-1); g++) pispen.at(g) = params.Eta[g];
-	additive_logistic_sam(pispen,1,dat.nG);
+	//vector<double> pispen2((dat.nG-1), 0.0);
+	//for(int g=0; g<(dat.nG-1); g++) pispen2.at(g) = params.Eta[g];
+	//additive_logistic_sam(pispen2,1,dat.nG);
 
-	for( int g=0; g<dat.nG; g++){	
-      dldpi.at(g) += params.PiPen / pispen.at(g);
-      Rprintf( "pen %f\n", params.PiPen / pispen.at(g));
-	}
+	//for( int g=0; g<dat.nG; g++){	
+      //dldpi.at(g) += params.PiPen / pispen2.at(g);
+      //Rprintf( "pen %f\n", params.PiPen / pispen2.at(g));
+	//}
 
 }
 
@@ -850,7 +870,7 @@ double calc_alpha_pen( const sam_data &dat, const sam_params &params){
 
 void calc_alpha_pen_deriv( vector<double> &alphaDerivs, const sam_data &dat, const sam_params &params){
 
-	alphaDerivs.assign(alphaDerivs.size(), 0.0);
+	//alphaDerivs.assign(alphaDerivs.size(), 0.0);
 
 	for( int s=0; s<dat.nS; s++)
 		alphaDerivs.at(s) += - params.Alpha[s] / (params.AlphaPen*params.AlphaPen);
@@ -884,7 +904,7 @@ double calc_beta_pen(  const sam_data &dat, const sam_params &params){
 
 void calc_beta_pen_deriv( vector<double> &betaDerivs, const sam_data &dat, const sam_params &params){
 
-	betaDerivs.assign(betaDerivs.size(), 0.0);
+	//betaDerivs.assign(betaDerivs.size(), 0.0);
 
 	for( int g=0; g<dat.nG; g++)
 		for( int p=0; p<dat.nPX; p++)
@@ -917,7 +937,7 @@ double calc_delta_pen(  const sam_data &dat, const sam_params &params){
 
 void calc_delta_pen_deriv( vector<double> &deltaDerivs, const sam_data &dat, const sam_params &params){
 
-	deltaDerivs.assign(deltaDerivs.size(), 0.0);
+	//deltaDerivs.assign(deltaDerivs.size(), 0.0);
 
 	if(dat.optiAll>0){
 		for( int u=0; u<dat.nPU; u++){
@@ -957,7 +977,7 @@ double calc_gamma_pen(  const sam_data &dat, const sam_params &params){
 
 void calc_gamma_pen_deriv( vector<double> &gammaDerivs, const sam_data &dat, const sam_params &params){
 
-	gammaDerivs.assign(gammaDerivs.size(), 0.0);
+	//gammaDerivs.assign(gammaDerivs.size(), 0.0);
     if(dat.optiPart>0){
 		for(int s=0; s<(dat.nS); s++){
 			for( int w=0; w<dat.nPW; w++){

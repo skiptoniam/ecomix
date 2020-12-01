@@ -209,7 +209,7 @@ void calc_theta_deriv( vector<double> &thetaDerivs, vector<double> const &dlogdt
 double calc_theta_pen( const sam_data &dat, const sam_params &params);
 void calc_theta_pen_deriv(vector<double> &thetaDerivs, const sam_data &dat, const sam_params &params);
 void calc_eta_deriv( vector<double> &etaDerivs, vector<double> const &dlogdpi, vector<double> const eta, const sam_data &dat);
-
+double calc_pi_pen(const sam_data &dat, const sam_params &params);
 
 //distribution functions
 double log_bernoulli_sam( const double &y, const double &mu);
