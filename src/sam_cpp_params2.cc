@@ -7,7 +7,7 @@ void sam_params::setVals(const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta,
 						 SEXP &Reta, SEXP &Rgamma, SEXP &Rdelta, SEXP &Rtheta,
 						 SEXP &Rpowers,
 						 //penalities
-						 SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RgammaPen, 
+						 SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RpiPen, SEXP &RgammaPen, 
 						 SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen){
 //	double *tmpD;
 
@@ -20,10 +20,12 @@ void sam_params::setVals(const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta,
 	Power = REAL( Rpowers);
 	AlphaPen = *(REAL(RalphaPen));
 	BetaPen = *(REAL(RbetaPen));
+	PiPen = *(REAL(RpiPen)); //penalties on the pis, rather than the etas. Should represent a symetric dirichlet. 
 	GammaPen = *(REAL(RgammaPen));
 	DeltaPen = *(REAL(RdeltaPen));
 	ThetaLocatPen = *(REAL(RthetaLocatPen));
 	ThetaScalePen = *(REAL(RthetaScalePen));
+	PiPen = *(REAL(RpiPen));
 	nalpha = dat.nS;
 	nbeta = dat.nG*dat.nPX;
 	neta = (dat.nG-1);

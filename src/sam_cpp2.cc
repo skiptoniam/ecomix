@@ -6,8 +6,8 @@ extern "C" {
 	SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP RU, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rbinsize,
 					     SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll,
 						 SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rdelta, SEXP Rtheta, SEXP Rpowers,
-						 //penalities
-						 SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RgammaPen,
+						 //penalties
+						 SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RpiPen,  SEXP &RgammaPen,
 						 SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen,
 						 //derivatives
 						 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsGamma, SEXP RderivsDelta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
@@ -19,7 +19,7 @@ extern "C" {
 
 	//initialise the data structures -- they are mostly just pointers to REAL()s...
 	all.data.setVals(Ry, RX, RW, RU, Roffset, Rspp_wts, Rsite_spp_wts, Ry_not_na, Rbinsize, RnS, RnG, Rpx, Rpw, Rpu, RnObs, Rdisty, RoptiDisp, RoptiPart, RoptiAll);	//read in the data
-	all.params.setVals(all.data, Ralpha, Rbeta, Reta, Rgamma, Rdelta, Rtheta, Rpowers, RalphaPen, RbetaPen, RgammaPen, RdeltaPen, RthetaLocatPen, RthetaScalePen);	//read in the parameters
+	all.params.setVals(all.data, Ralpha, Rbeta, Reta, Rgamma, Rdelta, Rtheta, Rpowers, RalphaPen, RbetaPen, RpiPen, RgammaPen, RdeltaPen, RthetaLocatPen, RthetaScalePen);	//read in the parameters
 	all.derivs.setVals(all.data, RderivsAlpha, RderivsBeta, RderivsEta, RderivsGamma, RderivsDelta, RderivsTheta, RgetScores, Rscores);
 	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv, Rprintparams);
 	all.fits.initialise(all.data.nObs, all.data.nG, all.data.nS, all.data.nPX, all.data.nPW, all.data.nPU, all.data.NAnum);
@@ -583,12 +583,12 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	additive_logistic_sam(parpi,0,dat.nG);
 
 	//derivate w.r.t pi/eta
-	calc_dlog_dpi(fits.dlogdpi, fits.log_like_species_group_contrib, fits.log_like_species_contrib, dat);
+	calc_dlog_dpi(fits.dlogdpi, fits.log_like_species_group_contrib, fits.log_like_species_contrib, dat, params);
 	calc_eta_deriv(etaDerivs, fits.dlogdpi, parpi, dat);
 
-	// update derives before penalities	
+	// update derives before penalities
 	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
-	
+
 	// Add in the derivate penalites here.
     calc_alpha_pen_deriv(alphaDerivs, dat, params);
     calc_beta_pen_deriv(betaDerivs, dat, params);
@@ -801,7 +801,7 @@ void calc_dlog_dtheta(vector<double> &dldt, vector<double> const &mus, const sam
 	}
 }
 
-void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llSG, vector<double> const &llS, const sam_data &dat){
+void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llSG, vector<double> const &llS, const sam_data &dat, const sam_params &params){
 
 	for(int g=0; g<(dat.nG); g++){
 			//Rprintf( " %f\n", fits.dlogdpi.at(g));
@@ -812,6 +812,15 @@ void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llSG, vector<dou
 			}
 			//Rprintf( " %f\n", fits.dlogdpi.at(g));
 	}
+
+	// need to add in penalties here.
+	vector<double> pispen((dat.nG-1), 0.0);
+	for(int g=0; g<(dat.nG-1); g++) pispen.at(g) = params.Eta[g];
+	additive_logistic_sam(pispen,1,dat.nG);
+
+	for( int g=0; g<dat.nG; g++)
+      dldpi.at(g) += params.PiPen / pispen.at(g);
+
 }
 
 //// this should calculate the derivate w.r.t alpha.
@@ -838,7 +847,7 @@ double calc_alpha_pen( const sam_data &dat, const sam_params &params){
 }
 
 void calc_alpha_pen_deriv( vector<double> &alphaDerivs, const sam_data &dat, const sam_params &params){
-	
+
 	alphaDerivs.assign(alphaDerivs.size(), 0.0);
 
 	for( int s=0; s<dat.nS; s++)
@@ -872,9 +881,9 @@ double calc_beta_pen(  const sam_data &dat, const sam_params &params){
 }
 
 void calc_beta_pen_deriv( vector<double> &betaDerivs, const sam_data &dat, const sam_params &params){
-	
+
 	betaDerivs.assign(betaDerivs.size(), 0.0);
-	
+
 	for( int g=0; g<dat.nG; g++)
 		for( int p=0; p<dat.nPX; p++)
 			betaDerivs.at( MATREF2D(g,p,dat.nG)) += - params.Beta[MATREF2D(g,p,dat.nG)] / (params.BetaPen*params.BetaPen);
@@ -905,9 +914,9 @@ double calc_delta_pen(  const sam_data &dat, const sam_params &params){
 }
 
 void calc_delta_pen_deriv( vector<double> &deltaDerivs, const sam_data &dat, const sam_params &params){
-	
+
 	deltaDerivs.assign(deltaDerivs.size(), 0.0);
-	
+
 	if(dat.optiAll>0){
 		for( int u=0; u<dat.nPU; u++){
 			deltaDerivs.at(u) += - params.Delta[u] / (params.DeltaPen*params.DeltaPen);
@@ -945,7 +954,7 @@ double calc_gamma_pen(  const sam_data &dat, const sam_params &params){
 }
 
 void calc_gamma_pen_deriv( vector<double> &gammaDerivs, const sam_data &dat, const sam_params &params){
-	
+
 	gammaDerivs.assign(gammaDerivs.size(), 0.0);
     if(dat.optiPart>0){
 		for(int s=0; s<(dat.nS); s++){
@@ -981,7 +990,7 @@ double calc_theta_pen( const sam_data &dat, const sam_params &params){
 }
 
 void calc_theta_pen_deriv(vector<double> &thetaDerivs, const sam_data &dat, const sam_params &params){
-	
+
 	thetaDerivs.assign(thetaDerivs.size(), 0.0);
 	if( dat.isDispersion())
 		for( int s=0; s<dat.nS; s++)

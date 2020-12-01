@@ -16,7 +16,7 @@ species_mix(
   bb_weights = NULL,
   size = NULL,
   power = 1.6,
-  control = NULL,
+  control = list(),
   inits = NULL,
   standardise = FALSE,
   titbits = TRUE
@@ -26,7 +26,7 @@ species_mix(
 \item{archetype_formula}{an object of class "formula" (or an object that can
 be coerced to that class). The response variable (left hand side of the
 formula) needs to be either 'occurrence', 'abundance',
-'biomass' or 'quantity' data. The type of reponse data will help specify
+'biomass' or 'quantity' data. The type of response data will help specify
 the type of error distribution to be used. The dependent variables
 (the right hind side) of this formula specifies the dependence of the
 species archetype probabilities on covariates. For all model the basic
@@ -47,16 +47,16 @@ a constant single set of covariates across all species and groups, typically you
 use this an alternative to an offset, where there might be some bias in the
 data which is relatively constant and might arise as an atrifact of how the data was collected.}
 
-\item{data}{a matrix of dataframe which contains the 'species_data'
-matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
-const, temperature, rainfall. dims of matirx should be
+\item{data}{a matrix or data.frame which contains the 'species_data'
+matrix, a const and the covariates in the structure of spp1, spp2, spp3,
+const, temperature, rainfall. dims of matrix should be
 nsites*(nspecies+const+covariates).}
 
 \item{nArchetypes}{The number of archetypes (mixing components/groups) to estimate from the data.}
 
 \item{family}{The family of statistical family to use within
 the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
-"negative.binomial" and "gaussian" familys are possible and applicable
+"negative.binomial" and "gaussian" families are possible and applicable
 to specific types of data.}
 
 \item{offset}{a numeric vector of length nrow(data) (n sites) that is
@@ -110,7 +110,7 @@ models (SAMs).
 }
 \details{
 species_mix is used to fit mixtures of glms to multivariate
-species data. The function uses BFGS to optimise the mixture likelihood.
+species data. The function uses BFGS to optimize the mixture likelihood.
 There is the option to use ECM algorithm to get appropriate starting
 parameters. `species_mix` acts as a wrapper for species_mix.fit
 that allows for easier data input. The data frames are merged into

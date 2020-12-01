@@ -5,7 +5,7 @@
 #' @description Fits a mixture-of-regressions to identify species archetype
 #' models (SAMs).
 #' @details species_mix is used to fit mixtures of glms to multivariate
-#' species data. The function uses BFGS to optimise the mixture likelihood.
+#' species data. The function uses BFGS to optimize the mixture likelihood.
 #' There is the option to use ECM algorithm to get appropriate starting
 #' parameters. `species_mix` acts as a wrapper for species_mix.fit
 #' that allows for easier data input. The data frames are merged into
@@ -16,7 +16,7 @@
 #' @param archetype_formula an object of class "formula" (or an object that can
 #' be coerced to that class). The response variable (left hand side of the
 #' formula) needs to be either 'occurrence', 'abundance',
-#' 'biomass' or 'quantity' data. The type of reponse data will help specify
+#' 'biomass' or 'quantity' data. The type of response data will help specify
 #' the type of error distribution to be used. The dependent variables
 #' (the right hind side) of this formula specifies the dependence of the
 #' species archetype probabilities on covariates. For all model the basic
@@ -34,14 +34,14 @@
 #'  a constant single set of covariates across all species and groups, typically you might
 #'  use this an alternative to an offset, where there might be some bias in the
 #'  data which is relatively constant and might arise as an atrifact of how the data was collected.
-#' @param data a matrix of dataframe which contains the 'species_data'
-#' matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
-#' const, temperature, rainfall. dims of matirx should be
+#' @param data a matrix or data.frame which contains the 'species_data'
+#' matrix, a const and the covariates in the structure of spp1, spp2, spp3,
+#' const, temperature, rainfall. dims of matrix should be
 #' nsites*(nspecies+const+covariates).
 #' @param nArchetypes The number of archetypes (mixing components/groups) to estimate from the data.
 #' @param family The family of statistical family to use within
 #' the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
-#' "negative.binomial" and "gaussian" familys are possible and applicable
+#' "negative.binomial" and "gaussian" families are possible and applicable
 #' to specific types of data.
 #' @param offset a numeric vector of length nrow(data) (n sites) that is
 #' included into the model as an offset. It is included into the conditional
@@ -106,7 +106,7 @@
                           data, nArchetypes = 3,
                           family="bernoulli", offset=NULL,
                           weights=NULL, bb_weights=NULL, size = NULL, power=1.6,
-                          control=NULL, inits=NULL, standardise = FALSE, titbits = TRUE){
+                          control=list(), inits=NULL, standardise = FALSE, titbits = TRUE){
 
   data <- as.data.frame(data)
   control <- set_control_sam(control)
@@ -617,96 +617,92 @@
    return(many_starts)
 }
 
-#'@title species_mix.control
-#'@rdname species_mix.control
-#'@name species_mix.control
-#'@description This is the control function used to tweak the species_mix model.
-#'@param quiet Should any reporting be performed? Default is FALSE, for reporting.
-#'@param cores The number of cores to use in fitting of species_mix models. These will be largely used to model the species-specific parameteres.
-#'@param init_method The method to use for initialisation. The options are "random2", "kmeans", "kmed". The default uses random2, which is a kmeans with noise added to the cluster.
-#'@param init_sd The amount of noise to add to the initailisation the default is 1.
-#'@param minimum_sites_occurrence a integer which determins the number of minimum sites present for any species for it to be included in the initialisation step. This removes rare species from initial groupings. They are then included in the overall analysis.
-#'@param ecm_prefit Logical if TRUE the model will run a slower EM algorithm fit to find starting values.
-#'@param ecm_steps int Default is 3, the number of EM iterations to get to starting values.
-#'@param ecm_refit int Default is 1, number of times to refit using EM.
-#'@param ecm_reltol A function or value which gives the tolerance in the EM loglikeihood estimation.
-#'@param pen_param A penality for the em fitting.
-#'@param update_kappa Penalities for how fast parameters update during each EM step.
-#'@param print_cpp_start_vals A call to check what parameter estimates are being passed to C++ for optimisation.
-#'@param maxit_cpp The number of iterations to run in C++. Default is 1000.
-#'@param trace_cpp Non-negative integer. If positive, tracing information on the progress of the optimization is produced. Higher values may produce more tracing information.
-#'@param nreport_cpp The number of iterations to report the loglikelihood. Default is 10.
-#'@param abstol_cpp Absolute tolerance. Defaults to 0 so the absolute convergence test is not used. If the objective function is known to be non-negative, the previous default of 1e-20 would be more appropriate.
-#'@param reltol_cpp Relative convergence tolerance. The algorithm stops if it is unable to reduce the value by a factor of reltol * (abs(val) + reltol) at a step. Defaults to sqrt(.Machine$double.eps), typically about 1e-8.
-#'@param conv_cpp Has the model convered previously.
-#'@param printparams_cpp Print the parameter estimates within C++.
-#'@param optimise_cpp Should optimisation for estimation occur? If TRUE (default) optimisation will occur. If FALSE no optimisation is performed.
-#'@param loglOnly_cpp Should the log-likelihood be calculated? If TRUE (default) then log-likelihood is calculated and returned. If FALSE then the log-likelihood is not calculated for return.
-#'@param derivOnly_cpp Should the scores be evaluated at the (final) parameter values. If TRUE (default) then they are calculated. If FALSE then they are not calculated.
-#'@param getscores_cpp Return scores.
-#'@param \dots Other control calls.
+# #'@title species_mix.control
+# #'@rdname species_mix.control
+# #'@name species_mix.control
+# #'@description This is the control function used to tweak the species_mix model.
+# #'@param quiet Should any reporting be performed? Default is FALSE, for reporting.
+# #'@param cores The number of cores to use in fitting of species_mix models. These will be largely used to model the species-specific parameteres.
+# #'@param init_method The method to use for initialization. The options are "random2", "kmeans", "kmed". The default uses random2, which is a kmeans with noise added to the cluster.
+# #'@param init_sd The amount of noise to add to the initialization the default is 1.
+# #'@param minimum_sites_occurrence a integer which determines the number of minimum sites present for any species for it to be included in the initialisation step. This removes rare species from initial groupings. They are then included in the overall analysis.
+# #'@param ecm_prefit Logical if TRUE the model will run a slower EM algorithm fit to find starting values.
+# #'@param ecm_steps int Default is 3, the number of EM iterations to get to starting values.
+# #'@param ecm_refit int Default is 1, number of times to refit using EM.
+# #'@param ecm_reltol A function or value which gives the tolerance in the EM loglikeihood estimation.
+# #'@param print_cpp_start_vals A call to check what parameter estimates are being passed to C++ for optimisation.
+# #'@param maxit The number of iterations to run in C++. Default is 1000.
+# #'@param trace Non-negative integer. If positive, tracing information on the progress of the optimization is produced. Higher values may produce more tracing information.
+# #'@param nreport The number of iterations to report the loglikelihood. Default is 10.
+# #'@param abstol Absolute tolerance. Defaults to 0 so the absolute convergence test is not used. If the objective function is known to be non-negative, the previous default of 1e-20 would be more appropriate.
+# #'@param reltol Relative convergence tolerance. The algorithm stops if it is unable to reduce the value by a factor of reltol * (abs(val) + reltol) at a step. Defaults to sqrt(.Machine$double.eps), typically about 1e-8.
+# #'@param conv Has the model converged previously.
+# #'@param printparams_cpp Print the parameter estimates within C++.
+# #'@param optimise_cpp Should optimization for estimation occur? If TRUE (default) optimization will occur. If FALSE no optimisation is performed.
+# #'@param loglOnly_cpp Should the log-likelihood be calculated? If TRUE (default) then log-likelihood is calculated and returned. If FALSE then the log-likelihood is not calculated for return.
+# #'@param derivOnly_cpp Should the scores be evaluated at the (final) parameter values. If TRUE (default) then they are calculated. If FALSE then they are not calculated.
+# #'@param getscores_cpp Return scores.
+# #'@param \dots Other control calls.
+#
+# #'@export
+# "species_mix.control" <- function(quiet = FALSE,
+#                                   cores = 1,
+#                                   ## initialization controls
+#                                   init_method = 'random2',
+#                                   init_sd = NULL,
+#                                   minimum_sites_occurrence = 0,
+#                                   ## ECM algorithm controls
+#                                   ecm_prefit = TRUE,
+#                                   ecm_steps = 5,
+#                                   ecm_refit = 1,
+#                                   ecm_reltol = 1e-6,
+#                                   max.theta = NULL,
+#                                   ## partial mixture penalties
+#                                   # theta_range = c(0.001,10),
+#                                   pen_param = 1.25,
+#                                   update_kappa = c(1,0.5,1),
+#                                   ## c++ controls
+#                                   print_cpp_start_vals = FALSE,
+#                                   maxit = 1000,
+#                                   trace = 1,
+#                                   nreport = 10,
+#                                   abstol = sqrt(.Machine$double.eps),
+#                                   reltol = sqrt(.Machine$double.eps),
+#                                   conv = 1,
+#                                   printparams_cpp = 0,
+#                                   optimise_cpp = 1,
+#                                   loglOnly_cpp = 0,
+#                                   derivOnly_cpp = 0,
+#                                   getscores_cpp = 0,
+#                                   ...){
+#                #general controls
+#   rval <- list(quiet = quiet,
+#                cores = cores,
+#                init_method = init_method,
+#                init_sd = init_sd,
+#                minimum_sites_occurrence = minimum_sites_occurrence,
+#                #ecm controls
+#                ecm_prefit = ecm_prefit,
+#                ecm_refit = ecm_refit,
+#                ecm_steps = ecm_steps,
+#                ecm_reltol = ecm_reltol,
+#                #cpp controls
+#                print_cpp_start_vals = print_cpp_start_vals,
+#                maxit = maxit, trace = trace,
+#                nreport = nreport,
+#                abstol = abstol, reltol = reltol,
+#                conv = conv,
+#                printparams_cpp = printparams_cpp,
+#                optimise_cpp = optimise_cpp,
+#                loglOnly_cpp = loglOnly_cpp,
+#                derivOnly_cpp = derivOnly_cpp,
+#                getscores_cpp = getscores_cpp)
+#   rval <- c(rval, list(...))
+#   if (is.null(rval$ecm_reltol))
+#     rval$ecm_reltol <- sqrt(.Machine$double.eps)
+#   rval
+# }
 
-#'@export
-"species_mix.control" <- function(quiet = FALSE,
-                                  cores = 1,
-                                  ## intialisation controls
-                                  init_method = 'random2',
-                                  init_sd = NULL,
-                                  minimum_sites_occurrence = 0,
-                                  ## ECM algorithim controls
-                                  ecm_prefit = TRUE,
-                                  ecm_steps = 5,
-                                  ecm_refit = 1,
-                                  ecm_reltol = 1e-6,
-                                  max.theta = NULL,
-                                  ## partial mixture penalities
-                                  # theta_range = c(0.001,10),
-                                  pen_param = 1.25,
-                                  update_kappa = c(1,0.5,1),
-                                  ## c++ controls
-                                  print_cpp_start_vals = FALSE,
-                                  maxit_cpp = 1000,
-                                  trace_cpp = 1,
-                                  nreport_cpp = 10,
-                                  abstol_cpp = sqrt(.Machine$double.eps),
-                                  reltol_cpp = sqrt(.Machine$double.eps),
-                                  conv_cpp = 1,
-                                  printparams_cpp = 0,
-                                  optimise_cpp = 1,
-                                  loglOnly_cpp = 0,
-                                  derivOnly_cpp = 0,
-                                  getscores_cpp = 0,
-                                  ...){
-               #general controls
-  rval <- list(quiet = quiet, cores = cores,
-               #initialisation controls
-               init_method = init_method, init_sd = init_sd,
-               minimum_sites_occurrence = minimum_sites_occurrence,
-               # init_glmnet = init_glmnet,
-               #em controls
-               ecm_prefit = ecm_prefit,
-               ecm_refit = ecm_refit,
-               ecm_steps = ecm_steps,
-               ecm_reltol = ecm_reltol,
-               max.theta = max.theta,
-               # partial controls
-               # theta_range = theta_range,
-               pen_param = pen_param,
-               update_kappa = update_kappa,
-               #cpp controls
-               print_cpp_start_vals = print_cpp_start_vals,
-               maxit_cpp = maxit_cpp, trace_cpp = trace_cpp,
-               nreport_cpp = nreport_cpp,
-               abstol_cpp = abstol_cpp, reltol_cpp = reltol_cpp,
-               conv_cpp = conv_cpp,
-               printparams_cpp = printparams_cpp, optimise_cpp = optimise_cpp,
-               loglOnly_cpp = loglOnly_cpp, derivOnly_cpp = derivOnly_cpp,
-               getscores_cpp = getscores_cpp)
-  rval <- c(rval, list(...))
-  if (is.null(rval$ecm_reltol))
-    rval$ecm_reltol <- sqrt(.Machine$double.eps)
-  rval
-}
 
 #' @rdname species_mix.bootstrap
 #' @name species_mix.bootstrap
@@ -814,14 +810,14 @@
 #' responses, e.g: ~1
 #' @param dat a matrix of variables to simulate data from.
 #' @param nArchetypes number of groups to simulate.
-#' @param alpha coefficents for each species archetype. vector S long.
-#' @param beta coefficents for each species archetype. Matrix of G x number of
+#' @param alpha coefficients for each species archetype. vector S long.
+#' @param beta coefficients for each species archetype. Matrix of G x number of
 #'  parameters. Each row is a different species archetype.
-#' @param gamma coefficents for each species archetype. Matrix of S x number of
+#' @param gamma coefficients for each species archetype. Matrix of S x number of
 #'  parameters. Each row is a different species archetype.
-#' @param theta coefficents for the dispersion variables for negative.binomial
+#' @param theta coefficients for the dispersion variables for negative.binomial
 #' and gaussian distributions - should be number of species long
-#' @param size Is for the binomial model and this respresents the number of binomial trials per site, can be fixed or vary.
+#' @param size Is for the binomial model and this represents the number of binomial trials per site, can be fixed or vary.
 #' @param family Which statistical distribution to simulate data for.
 #'  'bernoulli','binomial', 'gaussian', 'ippm', 'negative.binomial' and 'poisson'.
 #' @param offset used to offset sampling effort for abundance data (log link function).
@@ -1670,8 +1666,8 @@
                      # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
                      pis_out, mus, loglikeS, loglikeSG,
                      # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
-                     as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
-                     as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp),  as.integer(conv), as.integer(control$printparams_cpp),
+                     as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport),
+                     as.numeric(control$abstol), as.numeric(control$reltol),  as.integer(conv), as.integer(control$printparams_cpp),
                      # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
                      as.integer(0), as.integer(0), as.integer(1),
                      # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
@@ -2317,7 +2313,7 @@ starting values;\n starting values are generated using ',control$init_method,
     grp_coefs <- matrix(grp_coefs,nrow=G) # not check this...
     colnames(grp_coefs) <- covarNames[betaIdx]
     rownames(grp_coefs) <-  paste("Archetype", 1:G, sep = "");
-    random_coefs <- ecomix:::sam_random_inits(alpha = starting.sam$alpha,beta = grp_coefs,
+    random_coefs <- sam_random_inits(alpha = starting.sam$alpha,beta = grp_coefs,
                                               gamma = starting.sam$gamma, delta = starting.sam$delta,
                                               theta = starting.sam$theta, S, G, X, W, U,
                                               disty, mult=0.3, control$init_sd)
@@ -2557,7 +2553,7 @@ if(!is.null(U)) {
   }
   scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,
                                        gamma.score,delta.score,theta.score))))
-  control$conv_cpp <- as.integer(0)
+  control$conv <- as.integer(0)
 
   #model quantities
   pis_out <- as.numeric(rep(NA, G))  #container for the fitted RCP model
@@ -2587,12 +2583,16 @@ if(!is.null(U)) {
                # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
                as.double(alpha), as.double(beta), as.double(eta), as.double(gamma), as.double(delta), as.double(theta), as.double(powers),
                # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
+               as.double(control$penalty.alpha),as.double(control$penalty.beta), as.double(control$penalty.pi),as.double(control$penalty.gamma),
+               as.double(control$penalty.delta),as.double(control$penalty.theta[1]), as.double(control$penalty.theta[2]),
+               # SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RpiPen,  SEXP &RgammaPen,
+               # SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen,
                alpha.score, beta.score, eta.score, gamma.score, delta.score, theta.score, as.integer(control$getscores_cpp), as.numeric(scores),
                # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
                pis_out, mus, loglikeS, loglikeSG,
                # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
-               as.integer(control$maxit_cpp), as.integer(control$trace_cpp), as.integer(control$nreport_cpp),
-               as.numeric(control$abstol_cpp), as.numeric(control$reltol_cpp), as.integer(control$conv_cpp), as.integer(control$printparams_cpp),
+               as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport),
+               as.numeric(control$abstol), as.numeric(control$reltol), as.integer(control$conv), as.integer(control$printparams_cpp),
                # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
                as.integer(control$optimise_cpp), as.integer(control$loglOnly_cpp), as.integer(control$derivOnly_cpp),
                # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
@@ -2957,7 +2957,7 @@ if(!is.null(U)) {
   logl_sp <- matrix(NA, nrow=S, ncol=G)
 
   if(!is.null(U))eta_all <- as.matrix(U) %*% fits$delta
-  else eta_all <- rep(nrow(X),0)
+  else eta_all <- rep(0,nrow(X))
 
   for(ss in 1:S){
     sp_idx<-!y_is_na[,ss]
@@ -2978,7 +2978,7 @@ if(!is.null(U)) {
     if(!disty%in%3)logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
   }
 
-  ak <- logl_sp + matrix(rep(log(pis), each=S), nrow=S, ncol=G)
+  ak <- logl_sp + matrix(rep(log(fits$pis), each=S), nrow=S, ncol=G)
   am <- apply( ak, 1, max)
   ak <- exp( ak-am)
   sppLogls <- am + log( rowSums( ak))
@@ -3170,20 +3170,20 @@ if(!is.null(U)) {
 
 
 "sam_random_inits" <- function(alpha, beta, gamma, delta, theta, S, G, X, W, U, disty, mult=0.3, control.sd = control$init_sd){
-  if(is.null(control.sd)){
+  if(is.na(control.sd)){
     my.sd <- mult*sd( alpha); if( is.na( my.sd)) my.sd <- 0.1
   } else {
     my.sd <- control.sd
   }
   alpha <- alpha + rnorm(S, sd = my.sd)
-  if(is.null(control.sd)){
+  if(is.na(control.sd)){
     my.sd <- mult*sd( beta); if( is.na( my.sd) | my.sd==0) my.sd <- control.sd
   } else {
     my.sd <- control.sd
   }
   beta <- beta + as.numeric(matrix(rnorm(G * ncol(X), mean = 0, sd = my.sd), ncol = ncol(X), nrow = G))
   if( ncol(W)>1){
-    if(is.null(control.sd)){
+    if(is.na(control.sd)){
       my.sd <- mult*sd(gamma); if(is.na(my.sd)|my.sd==0) my.sd <- control.sd
     } else {
       my.sd <- control.sd
@@ -3191,7 +3191,7 @@ if(!is.null(U)) {
     gamma <- gamma + as.numeric( matrix(rnorm(S*ncol(W[,-1,drop=FALSE]), mean=0, my.sd), ncol=ncol(W[,-1,drop=FALSE]), nrow=S))
   }
   if( !is.null(U)){
-    if(is.null(control.sd)){
+    if(is.na(control.sd)){
       my.sd <- mult*sd(delta); if(is.na(my.sd)|my.sd==0) my.sd <- 0.1
     } else {
       my.sd <- control.sd
@@ -3324,8 +3324,91 @@ if(!is.null(U)) {
 }
 
 "set_control_sam" <- function(control){
-  if(is.null(control))control <- species_mix.control()
-  control
+  if (!("maxit" %in% names(control)))
+    control$maxit <- 500
+  if( !("quiet" %in% names( control)))
+    control$quiet <- FALSE
+  if( !("cores" %in% names( control)))
+    control$cores <- 1
+  if (!("trace" %in% names(control)))
+    control$trace <- 1
+  if( control$quiet)
+    control$trace <- 0  #for no tracing
+  if (!("init_method" %in% names(control)))
+    control$init_method <- 'random2'
+  if (!("init_sd" %in% names(control)))
+    control$init_sd <- NA
+  if (!("minimum_sites_occurrence" %in% names(control)))
+    control$minimum_sites_occurrence <- 0
+  if (!("ecm_prefit" %in% names(control)))
+    control$ecm_prefit <- TRUE
+  if (!("ecm_steps" %in% names(control)))
+    control$ecm_steps <- 5
+  if (!("ecm_refit" %in% names(control)))
+    control$ecm_refit <- 1
+  if (!("ecm_reltol" %in% names(control)))
+    control$ecm_reltol <- 1e-6
+  if (!("print_cpp_start_vals" %in% names(control)))
+    control$print_cpp_start_vals <- FALSE
+  if (!("nreport" %in% names(control)))
+    control$nreport <- 10
+  if (!("abstol" %in% names(control)))
+    control$abstol <- 1e-05
+  if (!("reltol" %in% names(control)))
+    control$reltol <- sqrt(.Machine$double.eps)
+  if (!("optimise_cpp" %in% names( control)))
+    control$optimise_cpp <- TRUE
+  if (!("loglOnly_cpp" %in% names(control)))
+    control$loglOnly_cpp <- FALSE
+  if (!("derivOnly_cpp" %in% names( control)))
+    control$derivOnly_cpp <- FALSE
+  if (!("printparams_cpp" %in% names( control)))
+    control$printparams_cpp <- FALSE
+  if (!("penalty.pi" %in% names(control)))
+    control$penalty.pi <- 0.01
+  else
+    if (control$penalty.pi < 0) {
+      message("Supplied penalty for pis is negative, reverting to the default")
+      penalty.pi <- 0.01
+    }
+  if (!("penalty.alpha" %in% names( control)))
+    control$penalty.alpha <- 10
+  else
+    if (control$penalty.alpha <= 0) {
+      message("Supplied penalty for alpha is negative, reverting to the default")
+      control$penalty.alpha <- 10
+    }
+  if( !("penalty.beta" %in% names( control)))
+    control$penalty.beta <- 10
+  else
+    if( control$penalty.beta <=0){
+      message("Supplied penalty for betas is negative, reverting to the default")
+      control$penalty.beta <- 10
+    }
+  if( !("penalty.gamma" %in% names( control)))
+    control$penalty.gamma <- 10
+  else
+    if( control$penalty.gamma <=0){
+      message("Supplied penalty for gammas is negative, reverting to the default")
+      control$penalty.gamma <- 10
+    }
+  if( !("penalty.delta" %in% names( control)))
+    control$penalty.delta <- 10
+  else
+    if( control$penalty.delta <=0){
+      message("Supplied penalty for deltas is negative, reverting to the default")
+      control$penalty.delta <- 10
+    }
+  if( !("penalty.theta" %in% names( control)))
+    control$penalty.theta <- c( 10, sqrt( 10))  #the mu and sd of a log-normal
+  else
+    if( control$penalty.theta[2] <= 0 | length( control$penalty.theta) != 2) {
+      message("Supplied penalty parameters for the dispersions is illogical, reverting to the default")
+      control$penalty.delta <- c( 10, sqrt( 10))
+    }
+
+  return( control)
+
 }
 
 "simulate_ippm_grid" <- function(X,W,n=100,cell_area=1){

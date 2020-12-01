@@ -32,22 +32,22 @@ responses, e.g: ~1}
 
 \item{nArchetypes}{number of groups to simulate.}
 
-\item{alpha}{coefficents for each species archetype. vector S long.}
+\item{alpha}{coefficients for each species archetype. vector S long.}
 
-\item{beta}{coefficents for each species archetype. Matrix of G x number of
+\item{beta}{coefficients for each species archetype. Matrix of G x number of
 parameters. Each row is a different species archetype.}
 
-\item{gamma}{coefficents for each species archetype. Matrix of S x number of
+\item{gamma}{coefficients for each species archetype. Matrix of S x number of
 parameters. Each row is a different species archetype.}
 
-\item{size}{Is for the binomial model and this respresents the number of binomial trials per site, can be fixed or vary.}
+\item{size}{Is for the binomial model and this represents the number of binomial trials per site, can be fixed or vary.}
 
 \item{family}{Which statistical distribution to simulate data for.
 'bernoulli','binomial', 'gaussian', 'ippm', 'negative.binomial' and 'poisson'.}
 
 \item{dat}{a matrix of variables to simulate data from.}
 
-\item{theta}{coefficents for the dispersion variables for negative.binomial
+\item{theta}{coefficients for the dispersion variables for negative.binomial
 and gaussian distributions - should be number of species long}
 }
 \description{

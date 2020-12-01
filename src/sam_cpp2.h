@@ -65,7 +65,7 @@ class sam_params {
 		sam_params();
 		~sam_params();
 		void setVals( const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Reta, SEXP &Rgamma, SEXP &Rdelta, SEXP &Rtheta, SEXP &Rpowers,
-		SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RgammaPen, SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen);
+		SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RpiPen, SEXP &RgammaPen, SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen);
 		void getArray(double *parArr, const sam_data &dat);
 		void update(double *parArr, const sam_data &dat);
 		void printParms( const sam_data &dat);
@@ -80,6 +80,7 @@ class sam_params {
 				*Power, // powers for tweedie
 				AlphaPen, // penalites for alpha, beta, gamma, delta, dispersion.
 				BetaPen,
+				PiPen,
 				GammaPen,
 				DeltaPen,
 				ThetaLocatPen,
@@ -161,7 +162,7 @@ class sam_cpp_all_classes {
 extern "C" SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW,  SEXP RU, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rbinsize,
 								SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll,
 								SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rdelta, SEXP Rtheta, SEXP Rpowers,
-								SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RgammaPen, SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen,
+								SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RpiPen, SEXP &RgammaPen, SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen,
 								SEXP RderivsAlpha, SEXP RderivsBeta,  SEXP RderivsEta, SEXP RderivsGamma, SEXP RderivsDelta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
 								SEXP Rpis, SEXP Rmus, SEXP logliS, SEXP logliSG,
 								SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
@@ -191,7 +192,7 @@ void calc_dlog_dbeta(vector<double> &dldb, vector<double> const &mu_eta_derivs, 
 void calc_dlog_ddelta(vector<double> &dldd, vector<double> const &mu_eta_derivs, const sam_data &dat);
 void calc_dlog_dgamma(vector<double> &dldg, vector<double> const &mu_eta_derivs, const sam_data &dat);
 void calc_dlog_dtheta(vector<double> &dldt, vector<double> const &mus, const sam_data &dat, const sam_params &params);
-void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llS, vector<double> const &llSG, const sam_data &dat);
+void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llS, vector<double> const &llSG, const sam_data &dat, const sam_params &params);
 void calc_alpha_deriv( vector<double> &alphaDerivs, vector<double> const &dlogdalpha, vector<double> const &llSG, vector<double> const &llS, vector<double> const &pis, const sam_data &dat);
 double calc_alpha_pen( const sam_data &dat, const sam_params &params);
 void calc_alpha_pen_deriv( vector<double> &alphaDerivs, const sam_data &dat, const sam_params &params);

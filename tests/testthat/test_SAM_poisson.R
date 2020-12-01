@@ -29,7 +29,7 @@ testthat::test_that('species mix poisson', {
   y_is_na <- matrix(FALSE,nrow(y),ncol(y))
   G <- 3
   S <- ncol(y)
-  control <- species_mix.control()
+  control <- ecomix:::set_control_sam(list())
   disty <- 2
   size <- rep(1,nrow(y))
   powers <- rep(1.5,nrow(y))
