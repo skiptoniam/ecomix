@@ -2576,25 +2576,38 @@ if(!is.null(U)) {
 
   #c++ call to optimise the model (needs pretty good starting values)
   tmp <- .Call("species_mix_cpp",
-               as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(Wcpp)), as.numeric(as.matrix(Ucpp)),
-               as.numeric(offset), as.numeric(spp_weights), as.numeric(as.matrix(site_spp_weights)), as.integer(as.matrix(!y_is_na)),
-               as.numeric(size), as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(npu), as.integer(n),
-               as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),as.integer(control$optiAll),
+               as.numeric(as.matrix(y)), as.numeric(as.matrix(X)),
+               as.numeric(as.matrix(Wcpp)), as.numeric(as.matrix(Ucpp)),
+               as.numeric(offset), as.numeric(spp_weights),
+               as.numeric(as.matrix(site_spp_weights)),
+               as.integer(as.matrix(!y_is_na)),
+               as.numeric(size), as.integer(S), as.integer(G), as.integer(npx),
+               as.integer(npw), as.integer(npu), as.integer(n),
+               as.integer(disty),as.integer(control$optiDisp),
+               as.integer(control$optiPart),as.integer(control$optiAll),
                # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
-               as.double(alpha), as.double(beta), as.double(eta), as.double(gamma), as.double(delta), as.double(theta), as.double(powers),
+               as.double(alpha), as.double(beta), as.double(eta),
+               as.double(gamma), as.double(delta), as.double(theta),
+               as.double(powers),
                # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
-               as.double(control$penalty.alpha),as.double(control$penalty.beta), as.double(control$penalty.pi),as.double(control$penalty.gamma),
-               as.double(control$penalty.delta),as.double(control$penalty.theta[1]), as.double(control$penalty.theta[2]),
+               as.numeric(control$penalty.alpha),as.numeric(control$penalty.beta),
+               as.numeric(control$penalty.pi),as.numeric(control$penalty.gamma),
+               as.numeric(control$penalty.delta),
+               as.numeric(control$penalty.theta[1]),
+               as.numeric(control$penalty.theta[2]),
                # SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RpiPen,  SEXP &RgammaPen,
                # SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen,
-               alpha.score, beta.score, eta.score, gamma.score, delta.score, theta.score, as.integer(control$getscores_cpp), as.numeric(scores),
+               alpha.score, beta.score, eta.score, gamma.score, delta.score,
+               theta.score, as.integer(control$getscores_cpp), as.numeric(scores),
                # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
                pis_out, mus, loglikeS, loglikeSG,
                # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
                as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport),
-               as.numeric(control$abstol), as.numeric(control$reltol), as.integer(control$conv), as.integer(control$printparams_cpp),
+               as.numeric(control$abstol), as.numeric(control$reltol), as.integer(control$conv),
+               as.integer(control$printparams_cpp),
                # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
-               as.integer(control$optimise_cpp), as.integer(control$loglOnly_cpp), as.integer(control$derivOnly_cpp),
+               as.integer(control$optimise_cpp), as.integer(control$loglOnly_cpp),
+               as.integer(control$derivOnly_cpp),
                # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
                PACKAGE = "ecomix")
 
@@ -3358,6 +3371,8 @@ if(!is.null(U)) {
     control$reltol <- sqrt(.Machine$double.eps)
   if (!("optimise_cpp" %in% names( control)))
     control$optimise_cpp <- TRUE
+  if (!("getscores_cpp" %in% names( control)))
+  control$getscores_cpp <- FALSE
   if (!("loglOnly_cpp" %in% names(control)))
     control$loglOnly_cpp <- FALSE
   if (!("derivOnly_cpp" %in% names( control)))

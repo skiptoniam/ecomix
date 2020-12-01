@@ -7,8 +7,8 @@ extern "C" {
 					     SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll,
 						 SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rdelta, SEXP Rtheta, SEXP Rpowers,
 						 //penalties
-						 SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RpiPen,  SEXP &RgammaPen,
-						 SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen,
+						 SEXP RalphaPen, SEXP RbetaPen, SEXP RpiPen,  SEXP RgammaPen,
+						 SEXP RdeltaPen, SEXP RthetaLocatPen, SEXP RthetaScalePen,
 						 //derivatives
 						 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsGamma, SEXP RderivsDelta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
 						 SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
@@ -818,8 +818,10 @@ void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llSG, vector<dou
 	for(int g=0; g<(dat.nG-1); g++) pispen.at(g) = params.Eta[g];
 	additive_logistic_sam(pispen,1,dat.nG);
 
-	for( int g=0; g<dat.nG; g++)
+	for( int g=0; g<dat.nG; g++){	
       dldpi.at(g) += params.PiPen / pispen.at(g);
+      Rprintf( "pen %f\n", params.PiPen / pispen.at(g));
+	}
 
 }
 

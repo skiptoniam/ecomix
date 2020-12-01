@@ -162,7 +162,7 @@ class sam_cpp_all_classes {
 extern "C" SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW,  SEXP RU, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rbinsize,
 								SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll,
 								SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rdelta, SEXP Rtheta, SEXP Rpowers,
-								SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RpiPen, SEXP &RgammaPen, SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen,
+								SEXP RalphaPen, SEXP RbetaPen, SEXP RpiPen, SEXP RgammaPen, SEXP RdeltaPen, SEXP RthetaLocatPen, SEXP RthetaScalePen,
 								SEXP RderivsAlpha, SEXP RderivsBeta,  SEXP RderivsEta, SEXP RderivsGamma, SEXP RderivsDelta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
 								SEXP Rpis, SEXP Rmus, SEXP logliS, SEXP logliSG,
 								SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
