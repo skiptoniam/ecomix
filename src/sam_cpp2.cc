@@ -179,28 +179,28 @@ double sam_cpp_mix_loglike(const sam_data &dat, const sam_params &params, sam_fi
 	}
 
 	//penalities.
-	//penAlpha = calc_alpha_pen( dat, params);
-	//penBeta = calc_beta_pen( dat, params);
-	//penPi = calc_pi_pen(dat, params);
+	penAlpha = calc_alpha_pen( dat, params);
+	penBeta = calc_beta_pen( dat, params);
+	penPi = calc_pi_pen(dat, params);
 
-	//loglike += penAlpha;
-	//loglike += penBeta;
-	//loglike += penPi;
+	loglike += penAlpha;
+	loglike += penBeta;
+	loglike += penPi;
 
-	//if(dat.optiPart>0){
-	//penGamma = calc_gamma_pen( dat, params);
-	//loglike += penGamma;
-	//}
+	if(dat.optiPart>0){
+	penGamma = calc_gamma_pen( dat, params);
+	loglike += penGamma;
+	}
 
-	//if(dat.optiAll>0){
-	//penDelta = calc_delta_pen( dat, params);
-	//loglike += penDelta;
-	//}
+	if(dat.optiAll>0){
+	penDelta = calc_delta_pen( dat, params);
+	loglike += penDelta;
+	}
 
-	//if( dat.isDispersion()){
-	//penTheta = calc_theta_pen( dat, params);
-	//loglike += penTheta;
-	//}
+	if( dat.isDispersion()){
+	penTheta = calc_theta_pen( dat, params);
+	loglike += penTheta;
+	}
 
 	return(loglike);
 }
@@ -592,12 +592,12 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	//derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
 
 	// Add in the derivate penalites here.
-    //calc_alpha_pen_deriv(alphaDerivs, dat, params);
-    //calc_beta_pen_deriv(betaDerivs, dat, params);
-    //calc_gamma_pen_deriv(gammaDerivs, dat, params);
-    //calc_delta_pen_deriv(deltaDerivs, dat, params);
-    //calc_theta_pen_deriv(thetaDerivs, dat, params);
-    //etaDerivs.assign(etaDerivs.size(), 0.0);
+    calc_alpha_pen_deriv(alphaDerivs, dat, params);
+    calc_beta_pen_deriv(betaDerivs, dat, params);
+    calc_gamma_pen_deriv(gammaDerivs, dat, params);
+    calc_delta_pen_deriv(deltaDerivs, dat, params);
+    calc_theta_pen_deriv(thetaDerivs, dat, params);
+    etaDerivs.assign(etaDerivs.size(), 0.0);
 
 	//update the derivates after penalities
 	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
@@ -834,14 +834,14 @@ void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llSG, vector<dou
 	}
 
 	// need to add in penalties here.
-	//vector<double> pispen2((dat.nG-1), 0.0);
-	//for(int g=0; g<(dat.nG-1); g++) pispen2.at(g) = params.Eta[g];
-	//additive_logistic_sam(pispen2,1,dat.nG);
+	vector<double> pispen2((dat.nG-1), 0.0);
+	for(int g=0; g<(dat.nG-1); g++) pispen2.at(g) = params.Eta[g];
+	additive_logistic_sam(pispen2,1,dat.nG);
 
-	//for( int g=0; g<dat.nG; g++){	
-      //dldpi.at(g) += params.PiPen / pispen2.at(g);
+	for( int g=0; g<dat.nG; g++){	
+      dldpi.at(g) += params.PiPen / pispen2.at(g);
       //Rprintf( "pen %f\n", params.PiPen / pispen2.at(g));
-	//}
+	}
 
 }
 
@@ -1014,9 +1014,11 @@ double calc_theta_pen( const sam_data &dat, const sam_params &params){
 void calc_theta_pen_deriv(vector<double> &thetaDerivs, const sam_data &dat, const sam_params &params){
 
 	thetaDerivs.assign(thetaDerivs.size(), 0.0);
-	if( dat.isDispersion())
-		for( int s=0; s<dat.nS; s++)
+	if( dat.isDispersion()){
+		for( int s=0; s<dat.nS; s++){
 			thetaDerivs.at(s) = -(params.Theta[s]-params.ThetaLocatPen)/(params.ThetaScalePen*params.ThetaScalePen);
+		}
+	}
 }
 
 

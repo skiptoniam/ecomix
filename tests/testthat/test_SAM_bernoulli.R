@@ -33,13 +33,13 @@ testthat::test_that('species mix bernoulli', {
  library(ecomix)
   rm(list = ls())
   set.seed(42)
-  sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
+  sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:50),
                                                       collapse = ','),
                                        ")~1+x1+x2"))
   sp_form <- ~ 1
   beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,7.9),3,2,byrow=TRUE)
-  dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
-                    x2=stats::rnorm(100,0,2.5))
+  dat <- data.frame(y=rep(1,200),x1=stats::runif(200,0,2.5),
+                    x2=stats::rnorm(200,0,2.5))
   dat[,-1] <- scale(dat[,-1])
   simulated_data <- species_mix.simulate(archetype_formula=sam_form,
                                      species_formula=sp_form,data = dat,
@@ -56,7 +56,7 @@ testthat::test_that('species mix bernoulli', {
   y_is_na <- matrix(FALSE,nrow(y),ncol(y))
   G <- 3
   S <- ncol(y)
-  control <- species_mix.control()
+  control <- ecomix:::set_control_sam(list())#species_mix.control()
   disty <- 1
   size <- rep(1,nrow(y))
   powers <- rep(1.5,S)#attr(simulated_data,"powers") # yeah baby
@@ -94,7 +94,7 @@ testthat::test_that('species mix bernoulli', {
                          spp_weights=spp_weights,
                          site_spp_weights=site_spp_weights,
                          offset=offset, disty=disty, y_is_na=y_is_na, size=size, powers=powers,
-                         control=species_mix.control(print_cpp_start_vals = TRUE))
+                         control=ecomix:::set_control_sam(list(print_cpp_start_vals = TRUE)))
 
   sp_form <- ~1
   fm1 <- species_mix(archetype_formula = sam_form, species_formula = sp_form,
