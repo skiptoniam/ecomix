@@ -4,7 +4,7 @@
 \alias{residuals.species_mix}
 \title{Estimate residuals for a species_mix object}
 \usage{
-\method{residuals}{species_mix}(object, ..., type = "RQR", control = species_mix.control())
+\method{residuals}{species_mix}(object, ..., type = "RQR", quiet = FALSE)
 }
 \arguments{
 \item{object}{A returned species_mix model object.}
@@ -14,7 +14,7 @@
 \item{type}{The type of residuals to estimate. Default is "RQR" (Random Quantile Residuals).
 But you can also simulate many Random Quantile Residuals using "SimRQR".}
 
-\item{control}{Default uses species_mix.control()}
+\item{quiet}{Print out residual issues.}
 }
 \description{
 The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by

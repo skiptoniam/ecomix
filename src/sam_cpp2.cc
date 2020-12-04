@@ -738,10 +738,10 @@ void calc_dlog_ddelta(vector<double> &dldd, vector<double> const &mu_eta_derivs,
 							}
 				}
 			}
-		//for(int d=0; d<dat.nPU; j++){
-				//dldb.at(MATREF3D(g,j,s,dat.nG,dat.nPX)) = dldb.at(MATREF3D(g,j,s,dat.nG,dat.nPX))*dat.spp_wts[s];
-				////std::cout << dldb.at(MATREF3D(g,j,s,dat.nG,dat.nPX)) << '\n';
-			//}
+		for(int d=0; d<dat.nPU; d++){
+				dldd.at(MATREF3D(g,d,s,dat.nG,dat.nPU)) = dldd.at(MATREF3D(g,d,s,dat.nG,dat.nPU))*dat.spp_wts[s];
+				//std::cout << dldb.at(MATREF3D(g,j,s,dat.nG,dat.nPX)) << '\n';
+			}
 		}
 	}
 
@@ -798,7 +798,7 @@ void calc_dlog_dtheta(vector<double> &dldt, vector<double> const &mus, const sam
 					}
 				}
 			}
-		//dldd.at(MATREF2D(g,s,dat.nG)) = dldd.at(MATREF2D(g,s,dat.nG))*dat.spp_wts[s];
+		//dldt.at(MATREF2D(g,s,dat.nG)) = dldd.at(MATREF2D(g,s,dat.nG))*dat.spp_wts[s];
 		}
 	}
 }

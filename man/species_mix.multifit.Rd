@@ -8,19 +8,21 @@
 species_mix.multifit(
   archetype_formula = NULL,
   species_formula = stats::as.formula(~1),
+  all_formula = NULL,
   data,
   nArchetypes = 3,
-  nstart = 10,
-  mc.cores = 1,
   family = "bernoulli",
   offset = NULL,
   weights = NULL,
   bb_weights = NULL,
   size = NULL,
-  control = species_mix.control(),
+  power = 1.6,
+  control = list(),
   inits = NULL,
-  standardise = TRUE,
-  titbits = TRUE
+  standardise = FALSE,
+  titbits = TRUE,
+  nstart = 10,
+  mc.cores = 1
 )
 
 \method{print}{species_mix.multifit}(x, ...)
@@ -51,12 +53,6 @@ const, temperature, rainfall. dims of matirx should be
 nsites*(nspecies+const+covariates).}
 
 \item{nArchetypes}{The number of mixing components (groups) to fit.}
-
-\item{nstart}{for species_mix.multifit only. The number of random starts to
-perform for re-fitting. Default is 10, which will need increasing for serious use.}
-
-\item{mc.cores}{for species_mix.multifit only. The number of cores to spread
-the re-fitting over.}
 
 \item{family}{The family of statistical distribution to use within
 the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
@@ -100,11 +96,17 @@ objects are returned. Possible values are:"Y" for the outcome matrix, "X"
 for the model matrix for the SAM model, "offset" for the offset in the model,
 "site_spp_weights" for the model weights, "archetype_formula" for the formula
 for the SAMs, "species_formula" for the formula for the species-specific
-model, "control" for the control arguments used in model fitting, "dist" for
+model, "control" for the control arguments used in model fitting, "family" for
 the conditional distribution of the species data. Care needs to be taken when
 using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created
 for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then
 setting titbits=TRUE may give users problems with memory.}
+
+\item{nstart}{for species_mix.multifit only. The number of random starts to
+perform for re-fitting. Default is 10, which will need increasing for serious use.}
+
+\item{mc.cores}{for species_mix.multifit only. The number of cores to spread
+the re-fitting over.}
 
 \item{x}{A species mix multifit object}
 
@@ -128,7 +130,7 @@ dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
 x2=stats::rnorm(100,0,2.5))
 dat[,-1] <- scale(dat[,-1])
 simulated_data <- species_mix.simulate(archetype_formula=sam_form,
- species_formula=sp_form, dat,beta=beta,dist="bernoulli")
+ species_formula=sp_form, dat,beta=beta,family="bernoulli")
 fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
                               family = 'bernoulli', nstart = 10,
                               nArchetypes=3)

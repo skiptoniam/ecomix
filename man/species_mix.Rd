@@ -77,15 +77,15 @@ undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
 \item{power}{The power parameter for a Tweedie model. Default is 1.6, and this is assigned to all species}
 
 \item{control}{a list of control parameters for optimisation and calculation.
-See details. From \code{species_mix.control} for details on optimistaion
+See details. From \code{species_mix.control} for details on optimisation
 parameters.}
 
 \item{inits}{NULL a numeric vector that provides approximate starting values
-for species_mix coefficents. These are family specific, but at a
+for species_mix coefficients. These are family specific, but at a
 minimum you will need pis (additive_logitic transformed), alpha
 (intercepts) and beta (mixing coefs).}
 
-\item{standardise}{Booliean. If TRUE, standarise the covariate data.}
+\item{standardise}{Boolean. If TRUE, standardise the covariate data.}
 
 \item{titbits}{either a boolean or a vector of characters. If TRUE
 (default for species_mix(qv)), then some objects used in the estimation of
@@ -98,7 +98,7 @@ objects are returned. Possible values are:"Y" for the outcome matrix, "X"
 for the model matrix for the SAM model, "offset" for the offset in the model,
 "site_spp_weights" for the model weights, "archetype_formula" for the formula
 for the SAMs, "species_formula" for the formula for the species-specific
-model, "control" for the control arguments used in model fitting, "dist" for
+model, "control" for the control arguments used in model fitting, "family" for
 the conditional distribution of the species data. Care needs to be taken when
 using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created
 for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then
@@ -116,8 +116,9 @@ parameters. `species_mix` acts as a wrapper for species_mix.fit
 that allows for easier data input. The data frames are merged into
 the appropriate format for the use in species_mix.fit.
 Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
-'poisson', 'ippm' (inhomogenous Poisson point process), 'negative.binomial', 'tweedie'
- and 'gaussian' distributions can be fitted using the species_mix function.
+'poisson', 'ippm' (inhomogenous Poisson point process), 'negative.binomial',
+'tweedie' and 'gaussian' distributions can be fitted using the species_mix
+function.
 }
 \examples{
 \donttest{

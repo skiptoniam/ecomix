@@ -11,8 +11,9 @@
 #' that allows for easier data input. The data frames are merged into
 #' the appropriate format for the use in species_mix.fit.
 #' Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
-#' 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative.binomial', 'tweedie'
-#'  and 'gaussian' distributions can be fitted using the species_mix function.
+#' 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative.binomial',
+#' 'tweedie' and 'gaussian' distributions can be fitted using the species_mix
+#' function.
 #' @param archetype_formula an object of class "formula" (or an object that can
 #' be coerced to that class). The response variable (left hand side of the
 #' formula) needs to be either 'occurrence', 'abundance',
@@ -56,13 +57,13 @@
 #' @param size The size of the sample for a binomial model (defaults to 1).
 #' @param power The power parameter for a Tweedie model. Default is 1.6, and this is assigned to all species
 #' @param control a list of control parameters for optimisation and calculation.
-#' See details. From \code{species_mix.control} for details on optimistaion
+#' See details. From \code{species_mix.control} for details on optimisation
 #' parameters.
 #' @param inits NULL a numeric vector that provides approximate starting values
-#' for species_mix coefficents. These are family specific, but at a
+#' for species_mix coefficients. These are family specific, but at a
 #' minimum you will need pis (additive_logitic transformed), alpha
 #' (intercepts) and beta (mixing coefs).
-#' @param standardise Booliean. If TRUE, standarise the covariate data.
+#' @param standardise Boolean. If TRUE, standardise the covariate data.
 #' @param titbits either a boolean or a vector of characters. If TRUE
 #' (default for species_mix(qv)), then some objects used in the estimation of
 #' the model"'"s parameters are returned in a list entitled "titbits" in the
@@ -74,14 +75,14 @@
 #' for the model matrix for the SAM model, "offset" for the offset in the model,
 #' "site_spp_weights" for the model weights, "archetype_formula" for the formula
 #' for the SAMs, "species_formula" for the formula for the species-specific
-#' model, "control" for the control arguments used in model fitting, "dist" for
+#' model, "control" for the control arguments used in model fitting, "family" for
 #' the conditional distribution of the species data. Care needs to be taken when
 #' using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created
 #' for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then
 #' setting titbits=TRUE may give users problems with memory.
 #' @importFrom graphics abline hist legend lines matplot par plot points polygon
 #'  rect
-#' @importFrom stats as.formula binomial cooks.distance cov cutree dbinom dist dnbinom dnorm dpois make.link coef glm.fit fitted gaussian glm hclust lm logLik model.matrix model.frame model.offset model.response model.weights pbinom pnbinom pnorm poisson ppois predict qnorm qqnorm quantile rbinom residuals rgamma rnbinom rnorm rpois runif sd uniroot update update.formula nlminb optimise
+#' @importFrom stats as.formula binomial cooks.distance cov cutree dbinom family dnbinom dnorm dpois make.link coef glm.fit fitted gaussian glm hclust lm logLik model.matrix model.frame model.offset model.response model.weights pbinom pnbinom pnorm poisson ppois predict qnorm qqnorm quantile rbinom residuals rgamma rnbinom rnorm rpois runif sd uniroot update update.formula nlminb optimise
 #' @export
 #' @examples
 #' \donttest{
@@ -249,7 +250,7 @@
                          offset=offset, disty=disty, y_is_na=y_is_na,
                          size=size, powers=powers, control=control, inits=inits)
 
-  tmp$dist <- disty_cases[disty]
+  tmp$family <- disty_cases[disty]
 
   if(nArchetypes==1){
     tmp$pis <- tmp$pis
@@ -320,7 +321,7 @@
   if(G==1){
     tmp <- fit.ecm.sam(y, X, W, U, spp_weights, site_spp_weights,
                        offset, y_is_na, G, S, disty, size, powers,
-                       control=species_mix.control(ecm_refit = 1))
+                       control=ecomix:::set_control_sam(list(ecm_refit = 1)))
     return(tmp)
   }
 
@@ -414,7 +415,7 @@
 #' for the model matrix for the SAM model, "offset" for the offset in the model,
 #' "site_spp_weights" for the model weights, "archetype_formula" for the formula
 #' for the SAMs, "species_formula" for the formula for the species-specific
-#' model, "control" for the control arguments used in model fitting, "dist" for
+#' model, "control" for the control arguments used in model fitting, "family" for
 #' the conditional distribution of the species data. Care needs to be taken when
 #' using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created
 #' for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then
@@ -436,18 +437,22 @@
 #' x2=stats::rnorm(100,0,2.5))
 #' dat[,-1] <- scale(dat[,-1])
 #' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
-#'  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
+#'  species_formula=sp_form, dat,beta=beta,family="bernoulli")
 #' fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
 #'                               family = 'bernoulli', nstart = 10,
 #'                               nArchetypes=3)
 #' }
 "species_mix.multifit" <- function(archetype_formula = NULL,
                                    species_formula = stats::as.formula(~1),
-                                   data, nArchetypes = 3, nstart = 10,
-                                   mc.cores=1, family="bernoulli",
-                                   offset=NULL, weights=NULL, bb_weights=NULL,
-                                   size= NULL, control=species_mix.control(),
-                                   inits=NULL, standardise = TRUE, titbits = TRUE){
+                                   all_formula = NULL,
+                                   data, nArchetypes = 3,
+                                   family="bernoulli", offset=NULL,
+                                   weights=NULL, bb_weights=NULL, size = NULL,
+                                   power=1.6,
+                                   control=list(), inits=NULL,
+                                   standardise = FALSE, titbits = TRUE,
+                                   nstart = 10,
+                                   mc.cores = 1){
 
   data <- as.data.frame(data)
   control <- set_control_sam(control)
@@ -488,7 +493,7 @@
 
   # need this for the na.omit step
   rownames(mf)<-seq_len(nrow(mf))
-  dat <- clean_data_sam(mf, archetype_formula, species_formula, family)
+  dat <- clean_data_sam(mf, archetype_formula, species_formula, all_formula, family)
 
   # get responses
   y <- stats::model.response(dat$mf.X)
@@ -513,6 +518,9 @@
   # what is the W matrix (species covariates)
   W <- get_W_sam(species_formula = species_formula, mf.W = dat$mf.W)
 
+  # what is the U matrix (species covariates)
+  U <- get_U_sam(all_formula = all_formula, mf.U = dat$mf.U)
+
   # standarise data if requested.
   x.means <- NULL
   x.sds <- NULL
@@ -521,26 +529,31 @@
   if (standardise == TRUE) {
     stand.X <- standardise.X(X)
     X <- as.matrix(stand.X$X)
+    x.means <- stand.X$dat.means
+    x.sds <- stand.X$dat.sds
     if(ncol(W)>1){
       stand.W <- standardise.W(W[,-1,drop=FALSE])
       W <- as.matrix(cbind(1,stand.W$W))
       w.means <- stand.W$dat.means
       w.sds <- stand.W$dat.sds
     }
-    x.means <- stand.X$dat.means
-    x.sds <- stand.X$dat.sds
+    if(!is.null(U)){
+      stand.W <- standardise.U(U)
+      U <- as.matrix(stand.U$U)
+      u.means <- stand.U$dat.means
+      u.sds <- stand.U$dat.sds
+    }
   }
 
   #get family
-  disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
+  disty_cases <- c("bernoulli","poisson","ippm",
+                   "negative.binomial","tweedie",
+                   "gaussian","binomial")
 
   disty <- get_family_sam(disty_cases, family)
 
   # get offsets
   offset <- get_offset_sam(dat$mf.X)
-
-  # check size
-  size <- check_size_binomial(size,nrow(dat$mf.X))
 
   # get the weights
   species_names <- colnames(y)
@@ -548,13 +561,18 @@
                                                family)
   spp_weights <- check_spp_weights(bb_weights,S)
 
+  size <- check_size_binomial(size,nrow(dat$mf.X))
+
+  ## check powers
+  powers <- get_power_sam(disty,power,S)
+
   if(family=='ippm'){
     if(!all(colnames(y)==colnames(site_spp_weights))){
       stop(message('When modelling a inhomogeneous poisson point process model,
                \n species data colnames must match weights colnames.\n\n
                Species data colnames from "data" are:\n',colnames(y),'.\n\n
                While the colnames of the weights are:\n',
-               colnames(site_spp_weights),'\n'))
+                   colnames(site_spp_weights),'\n'))
     }
     if(any(dim(y)!=dim(site_spp_weights))){
       stop('When modelling a inhomogenous poisson point process model,
@@ -564,8 +582,9 @@
   }
 
   # summarising data to console
-  if(!control$quiet) print_input_sam(y, X, W, S, archetype_formula,
-                                     species_formula, family,
+  if(!control$quiet) print_input_sam(y, X, W, U, S, archetype_formula,
+                                     species_formula, all_formula,
+                                     family,
                                      quiet=control$quiet)
 
   tmp_fun <- function(x){
@@ -574,32 +593,51 @@
         tmpQuiet <- control$quiet
         control$quiet <- TRUE
       # fit species mix.
-        tmp <- species_mix.fit(y=y, X=X, W=W, G=nArchetypes, S=S,
+        G <- nArchetypes
+        tmp <- species_mix.fit(y=y, X=X, W=W, U=U, G=G, S=S,
                                spp_weights=spp_weights,
                                site_spp_weights=site_spp_weights,
                                offset=offset, disty=disty, y_is_na=y_is_na,
-                               size=size, control=control, inits=inits)
+                               size=size, powers=powers, control=control, inits=inits)
 
-        tmp$dist <- disty_cases[disty]
+        tmp$family <- disty_cases[disty]
 
-        if(nArchetypes==1) tmp$pis <- tmp$pis
-        else tmp$pis <- additive_logistic(tmp$eta)
+        if(nArchetypes==1){
+          tmp$pis <- tmp$pis
+        }else{
+          tmp$pis <- additive_logistic(tmp$eta)
+        }
+
+        # get logls from parameters
 
         #calc posterior porbs and pis.
-        if(nArchetypes>1)
-          tmp$taus <- calc_post_probs_sam(tmp$pis,tmp$loglikeSG)
-
-        tmp$pis <- colSums(tmp$taus)/S
+        if(nArchetypes>1){
+          fits <- tmp$coefs
+          logls_mus <- get_logls_sam(y = y, X = X, W = W, U = U, G = G,
+                                     S = S, spp_weights = spp_weights,
+                                     site_spp_weights = site_spp_weights,
+                                     offset = offset, y_is_na = y_is_na,
+                                     disty = disty, size = size,
+                                     powers = powers, control=control,
+                                     fits = fits, get_fitted = FALSE)
+          tmp$taus <- get_taus(tmp$pis,logls_mus$logl_sp,G,S)
+          tmp$pis <- colSums(tmp$taus)/S
+        }
 
         #Information criteria
         tmp <- calc_info_crit_sam(tmp)
 
         #titbits object, if wanted/needed.
-        tmp$titbits <- get_titbits_sam(titbits, y, X, W, spp_weights,
-                                       site_spp_weights, offset, y_is_na, size,
-                                       archetype_formula, species_formula, control,
-                                       disty_cases[disty], tmp$removed_species)
-      class(tmp) <- c("species_mix")
+        tmp$titbits <- get_titbits_sam(titbits, y, X, W, U, spp_weights,
+                                       site_spp_weights, offset, y_is_na, size, powers,
+                                       archetype_formula, species_formula, all_formula,
+                                       control, disty_cases[disty])
+
+        # remove large annoying object if titbits == FALSE
+        if(!titbits)
+          tmp <- titbit_cleanup(tmp)
+
+        class(tmp) <- c("species_mix")
       return( tmp)
    }
 
@@ -718,7 +756,7 @@
 "species_mix.bootstrap" <-function (object, nboot=1000, type="BayesBoot",
                                     mc.cores=1, quiet=FALSE){
 
-  if(object$dist=='ippm'){
+  if(object$titbits$family=='ippm'){
     message('Using parameteric bootstrap to family of parameters for IPPM model\n')
     if(is.null(object$vcov)){
       message('Variance-Covariance matrix is missing, will attempt to calculate now, this will be slow...')
@@ -754,7 +792,7 @@
   }
   if( type == "BayesBoot")
     all.wts <- object$S * gtools::rdirichlet( nboot, rep( 1, object$S))
-    my.inits <- object$coef
+  my.inits <- object$coef
 
   tmpOldQuiet <- object$titbits$control$quiet
   object$titbits$control$quiet <- TRUE
@@ -762,11 +800,12 @@
   my.fun <- function(dummy){
     if( !quiet) setTxtProgressBar(pb, dummy)
     disty_cases <- c("bernoulli","binomial","poisson", "ippm", "negative.binomial", "tweedie", "gaussian")
-    disty <- get_family_sam(disty_cases, object$dist)
+    disty <- ecomix:::get_family_sam(disty_cases, object$family)
     dumbOut <- capture.output(
-      samp.object <- species_mix.fit(y=object$titbits$Y,
+      samp.object <- ecomix:::species_mix.fit(y=object$titbits$Y,
                                      X=object$titbits$X,
                                      W=object$titbits$W,
+                                     U=object$titbits$U,
                                      offset = object$titbits$offset,
                                      spp_weights = all.wts[dummy,,drop=TRUE],
                                      site_spp_weights = object$titbits$site_spp_weights,
@@ -775,6 +814,7 @@
                                      y_is_na = object$titbits$y_is_na,
                                      disty = disty,
                                      size = object$titbits$size,
+                                     powers = object$titbits$powers,
                                      control = object$titbits$control,
                                      inits = my.inits))
     return( unlist( samp.object$coef))
@@ -1033,9 +1073,10 @@
 
 "AIC.species_mix" <- function (object, k=NULL, ...){
 
-  effect.param <- length(object$beta) + G + S + ifelse(disty %in%  "negative.binomial",S,0)
-
-  p <- length(unlist(object$coefs))
+  effect.param <- length(object$beta) + object$G + object$S + ifelse(ncol(object$titbits$W)>1,ncol(W)-1,0)*object$S +
+    ifelse(!is.null(object$titbits$U),ncol(object$titbits$U),0) +
+    ifelse(object$family %in% c("negative.binomial","tweedie","gaussian"),object$S,0)
+  p <- effect.param
   if (is.null(k))
     k <- 2
   star.ic <- -2 * object$logl + k * p
@@ -1052,7 +1093,10 @@
 
 ## This needs fixing because it includes the null coefs.
 "BIC.species_mix" <-  function (object, ...){
-  p <- length(unlist(object$coefs))
+  effect.param <- length(object$beta) + object$G + object$S + ifelse(ncol(object$titbits$W)>1,ncol(W)-1,0)*object$S +
+    ifelse(!is.null(object$titbits$U),ncol(object$titbits$U),0) +
+    ifelse(object$family %in% c("negative.binomial","tweedie","gaussian"),object$S,0)
+  p <- effect.param #length(unlist(object$coefs))
   k <- log(object$n)
   star.ic <- -2 * object$logl + k * p
   return(star.ic)
@@ -1079,7 +1123,12 @@
     rownames(res$gamma) <- object$names$spp
     colnames(res$gamma) <- object$names$Wvars
   }
-  if(object$dist%in%c('negative.binomial','gaussian')){
+  if((object$npu)>0){
+    res$delta <- object$coefs$delta
+    names(res$delta) <- object$names$Uvars
+    # colnames(res$gamma) <- object$names$Wvars
+  }
+  if(object$family%in%c('negative.binomial','gaussian')){
     res$theta <- object$coef$theta
     names(res$theta) <- object$names$spp
   }
@@ -1138,7 +1187,7 @@
     abline( 0,1,lwd=2)
     preds <- sam_internal_pred_species(x$coef$alpha, x$coef$beta, x$taus,
                               x$coef$gamma, x$G, x$S, x$titbits$X,
-                              x$titbits$W, x$titbits$offset, x$dist)
+                              x$titbits$W, x$titbits$offset, x$family)
 
     preds <- preds[,sppID]
 
@@ -1163,9 +1212,9 @@
 #'@param nboot Number of bootstraps (or simulations if using IPPM) to run if no object2 is provided.
 #'@param alpha confidence level. default is 0.95
 #'@param mc.cores number of cores to use in prediction. default is 1.
-#'@param prediction_type Do you want to produce 'archetype' or 'species' level predictions. default is 'archetype'.
+#'@param prediction.type Do you want to produce 'archetype' or 'species' level predictions. default is 'archetype'.
 #'@param \\dots Ignored
-#'@description Predict species archetypes from a species_mix model. You can also predict the conditional species predictions using "prediction_type='species'".
+#'@description Predict species archetypes from a species_mix model. You can also predict the conditional species predictions using "prediction.type='species'".
 #'@export
 #'@examples
 #'\donttest{
@@ -1179,7 +1228,7 @@
 #' x2=stats::rnorm(100,0,2.5))
 #' dat[,-1] <- scale(dat[,-1])
 #' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
-#'  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
+#'  species_formula=sp_form, dat,beta=beta,family="bernoulli")
 #' fm1 <- species_mix(sam_form, sp_form, simulated_data,
 #'  family = 'bernoulli',  nArchetypes=3)
 #'preds_fm1 <- predict(fm1)
@@ -1187,18 +1236,26 @@
 
 "predict.species_mix" <- function (object, object2 = NULL, newdata = NULL,
                                    offset = NULL, nboot = 0, alpha = 0.95,
-                                   mc.cores = 1, prediction_type='archetype', ...){
+                                   mc.cores = 1, prediction.type='archetype', ...){
   if (is.null(newdata)) {
     X <- object$titbits$X
     W <- object$titbits$W
+    U <- object$titbits$U
     offset <- object$titbits$offset
   } else {
     arch.fm <- as.formula(object$titbits$archetype_formula)
     spp.fm <- as.formula(object$titbits$species_formula)
+    all.fm <- as.formula(object$titbits$all_formula)
     if (length(arch.fm) == 3) arch.fm[[2]] <- NULL
     arch.fm <- update(arch.fm,~.-1)
     X <- model.matrix(arch.fm, as.data.frame(newdata))
     W <- model.matrix(spp.fm, as.data.frame(newdata))
+    # W <- model.matrix(spp.fm, as.data.frame(newdata))
+    if(!is.null(U)){
+      all.fm <- update(all.fm,~.-1)
+      U <- model.matrix(all.fm, as.data.frame(newdata))
+    }
+
     offset <- model.frame(arch.fm, data = newdata)
     offset <- model.offset(offset)
   }
@@ -1208,15 +1265,16 @@
 
   S <- object$S
   G <- object$G
-  n <- nrow(X)
+  n <- object$n
   npx <- object$npx
   npw <- object$npw
+  npu <- object$npu
 
   spp_wts <- object$titbits$spp_weights
   site_spp_wts <- object$titbits$site_spp_weights
 
   disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
-  disty <- get_family_sam(disty_cases, object$titbits$family)
+  disty <- ecomix:::get_family_sam(disty_cases, object$titbits$family)
   taus <- object$taus
   if (is.null(object2)) {
     if (nboot > 0) {
@@ -1226,7 +1284,7 @@
     }
     else
       my.nboot <- 0
-    allCoBoot <- species_mix_boot_parametric(object = object, nboot = my.nboot)
+    allCoBoot <- ecomix:::species_mix_boot_parametric(object = object, nboot = my.nboot)
   } else {
     if( !object$titbits$control$quiet)
       message("Using supplied species_mix.bootstrap object (non-parametric bootstrap)")
@@ -1271,47 +1329,47 @@
     if (any(segments <= 1)) {
       nboot <- 0
       bootSampsToUse <- 1
-      tmp <- switch (prediction_type,
+      tmp <- switch (prediction.type,
                      archetype = sam_internal_pred_groups(alpha = object$coefs$alpha,
                                beta = object$coefs$beta,
                                gamma = object$coefs$gamma,
                                taus = taus, G = G, S = S, X = X, W = W,
-                               offset = offset, family = object$dist),
+                               offset = offset, family = object$family),
                      species = sam_internal_pred_species(alpha = object$coefs$alpha,
                                                         beta = object$coefs$beta,
                                                         gamma = object$coefs$gamma,
                                                         taus = taus, G = G, S = S, X = X, W = W,
-                                                        offset = offset, family = object$dist))
+                                                        offset = offset, family = object$family))
     } else {
       nboot <- segments[seg]
       bootSampsToUse <- (sum( segments[1:seg])-segments[seg]+1):sum(segments[1:seg])
 
       # add in species level preds.
-      tmp <- lapply(bootSampsToUse,function(ii)switch (prediction_type,
+      tmp <- lapply(bootSampsToUse,function(ii)switch (prediction.type,
                                                        archetype = sam_internal_pred_groups(alpha = alphaBoot[ii,],
                                                                  beta = matrix(betaBoot[ii,],G,npx),
                                                                  gamma = matrix(gammaBoot[ii,],S,npw),
                                                                  taus = taus, G = G, S = S, X = X, W = W,
-                                                                 offset = offset, family = object$dist),
+                                                                 offset = offset, family = object$family),
                                                        species = sam_internal_pred_species(alpha = alphaBoot[ii,],
                                                                                            beta = matrix(betaBoot[ii,],G,npx),
                                                                                            gamma = matrix(gammaBoot[ii,],S,npw),
                                                                                            taus = taus, G = G, S = S, X = X, W = W,
-                                                                                           offset = offset, family = object$dist)))
+                                                                                           offset = offset, family = object$family)))
 
     }
 
     if (nboot == 0) {
       ret_grp <- tmp
-      if(prediction_type%in%"archetype")colnames(ret_grp) <- object$names$SAMs
-      if(prediction_type%in%"species")colnames(ret_grp) <- object$names$spp
+      if(prediction.type%in%"archetype")colnames(ret_grp) <- object$names$SAMs
+      if(prediction.type%in%"species")colnames(ret_grp) <- object$names$spp
       return(ret_grp)
     }
 
-    if(prediction_type%in%"archetype"){
+    if(prediction.type%in%"archetype"){
       bootPreds <- matrix(do.call("cbind",lapply(tmp,c)), nrow = nrow(X) * G,  ncol = nboot)
     }
-    if(prediction_type%in%"species"){
+    if(prediction.type%in%"species"){
       bootPreds <- matrix(do.call("cbind",lapply(tmp,c)), nrow = nrow(X) * S,  ncol = nboot)
     }
     return(bootPreds)
@@ -1334,30 +1392,30 @@
     bootPreds <- do.call("cbind", tmp)
     bPreds <- list()
     row.exp <- rowMeans(bootPreds)
-    if(prediction_type%in%"archetype") tmp <- matrix(row.exp, nrow = nrow(X), ncol = G)
-    if(prediction_type%in%"species") tmp <- matrix(row.exp, nrow = nrow(X), ncol = S)
+    if(prediction.type%in%"archetype") tmp <- matrix(row.exp, nrow = nrow(X), ncol = G)
+    if(prediction.type%in%"species") tmp <- matrix(row.exp, nrow = nrow(X), ncol = S)
     bPreds$fit <- tmp
     tmp.grp <- sweep(bootPreds, 1, row.exp, "-")
     tmp.grp <- tmp.grp^2
     tmp.grp <- sqrt(rowSums(tmp.grp)/(nboot - 1))
-    if(prediction_type%in%"archetype") tmp.grp <- matrix(tmp.grp, nrow = nrow(X), ncol = G)
-    if(prediction_type%in%"species") tmp.grp <- matrix(tmp.grp, nrow = nrow(X), ncol = S)
+    if(prediction.type%in%"archetype") tmp.grp <- matrix(tmp.grp, nrow = nrow(X), ncol = G)
+    if(prediction.type%in%"species") tmp.grp <- matrix(tmp.grp, nrow = nrow(X), ncol = S)
     bPreds$ses <- tmp.grp
-    if(prediction_type%in%"archetype") colnames(bPreds$fit) <- colnames(bPreds$ses) <- object$names$SAMs
-    if(prediction_type%in%"species") colnames(bPreds$fit) <- colnames(bPreds$ses) <- object$names$spp
+    if(prediction.type%in%"archetype") colnames(bPreds$fit) <- colnames(bPreds$ses) <- object$names$SAMs
+    if(prediction.type%in%"species") colnames(bPreds$fit) <- colnames(bPreds$ses) <- object$names$spp
     tmp.fun <- function(x) return(quantile(bootPreds[x, ],
                                            probs = c(0, alpha) + (1 - alpha)/2,
                                            na.rm = TRUE))
     tmp1 <- parallel::mclapply(seq_len(nrow(bootPreds)), tmp.fun,
                                mc.cores = mc.cores)
     tmp1 <- do.call("rbind", tmp1)
-    if(prediction_type%in%"archetype"){
+    if(prediction.type%in%"archetype"){
       tmp1 <- array(tmp1, c(nrow(X), G, 2), dimnames = list(NULL,
                                                           NULL, NULL))
       bPreds$cis <- tmp1[, 1:G, ]
       dimnames(bPreds$cis) <- list(NULL, object$names$SAMs, c("lower", "upper"))
     }
-    if(prediction_type%in%"species"){
+    if(prediction.type%in%"species"){
       tmp1 <- array(tmp1, c(nrow(X), S, 2), dimnames = list(NULL,
                                                             NULL, NULL))
       bPreds$cis <- tmp1[, 1:S, ]
@@ -1373,13 +1431,13 @@
     tmp1 <- parallel::mclapply(seq_len(nrow(bootPreds)), tmp.fun.grp,
                                mc.cores = mc.cores)
     tmp1 <- do.call("rbind", tmp1)
-    if(prediction_type%in%"archetype"){
+    if(prediction.type%in%"archetype"){
       tmp1 <- array(tmp1, c(nrow(X), G, 2), dimnames = list(NULL,
                                                           NULL, NULL))
     bPreds$fit_cis <- tmp1[, 1:G, ]
     dimnames(bPreds$fit_cis) <- list(NULL, object$names$SAMs, c("lower", "upper"))
     }
-    if(prediction_type%in%"species"){
+    if(prediction.type%in%"species"){
       tmp1 <- array(tmp1, c(nrow(X), S, 2), dimnames = list(NULL,
                                                             NULL, NULL))
       bPreds$fit_cis <- tmp1[, 1:S, ]
@@ -1413,7 +1471,7 @@
 #' x2=stats::rnorm(100,0,2.5))
 #' dat[,-1] <- scale(dat[,-1])
 #' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
-#'  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
+#'  species_formula=sp_form, dat,beta=beta,family="bernoulli")
 #' fm1 <- species_mix(sam_form, sp_form, simulated_data,
 #'  family = 'bernoulli',  nArchetypes=3)
 #'print(fm1)}
@@ -1455,13 +1513,13 @@
 #' @param \dots additional calls for residual function
 #' @param type The type of residuals to estimate. Default is "RQR" (Random Quantile Residuals).
 #' But you can also simulate many Random Quantile Residuals using "SimRQR".
-#' @param control Default uses species_mix.control()
+#' @param quiet Print out residual issues.
 #' @export
 #' @description  The randomised quantile residuals ("RQR", from Dunn and Smyth, 1996) are defined by
 #' their marginal distribution function (marginality is over other species observations within that site;
 #' see Woolley et al, in prep).
 
-"residuals.species_mix" <- function( object, ..., type="RQR", control=species_mix.control()) {
+"residuals.species_mix" <- function( object, ..., type="RQR", quiet=FALSE) {
     if( ! type %in% c("RQR","deviance","pearson"))
       stop( "Unknown type of residual requested.\n Only deviance and RQR (for randomised quantile residuals) are implemented\n")
     if(type=="pearson"){
@@ -1469,7 +1527,7 @@
     }
     if( type=="RQR"){
       resids <- matrix( NA, nrow=object$n, ncol=object$S)
-      switch( object$dist,
+      switch( object$family,
               bernoulli = { fn <- function(y,mu,logtheta) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
               poisson = { fn <- function(y,mu,logtheta) ppois( q=y, lambda=mu, lower.tail=TRUE)},
               ippm = { fn <- function(y,mu,logtheta) ppois( q=y, lambda=mu, lower.tail=TRUE)},
@@ -1478,7 +1536,7 @@
 
 
       for( ss in 1:object$S){
-        if( object$dist %in% c("bernoulli","poisson","ippm","negative.binomial")){
+        if( object$family %in% c("bernoulli","poisson","ippm","negative.binomial")){
           tmpLower <- fn( object$titbits$Y[,ss]-1, object$mus[,ss,], object$coef$theta[ss])
           tmpUpper <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$theta[ss])
           tmpLower <- rowSums( tmpLower * object$pis)
@@ -1490,13 +1548,13 @@
           resids[,ss] <- runif( object$n, min=tmpLower, max=tmpUpper)
           resids[,ss] <- qnorm( resids[,ss])
         }
-        if( object$dist == "gaussian"){
+        if( object$family == "gaussian"){
           tmp <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$theta[ss])
           tmp <- rowSums( tmp * object$pis)
           resids[,ss] <- qnorm( tmp)
         }
       }
-      if( !control$quiet & sum( resids==Inf | resids==-Inf | is.na(resids))>0)
+      if(!quiet & sum( resids==Inf | resids==-Inf | is.na(resids))>0)
         message( "Some residuals, well ",sum( resids==Inf | resids==-Inf| is.na(resids)), " of ",object$n*object$S," observations are very large (infinite actually).\nThese observations lie right on the edge of the realistic range of the model for the data (maybe even over the edge).")
 
     }
@@ -1557,7 +1615,7 @@
 #' x2=stats::rnorm(100,0,2.5))
 #' dat[,-1] <- scale(dat[,-1])
 #' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
-#'  species_formula=sp_form, dat,beta=beta,dist="bernoulli")
+#'  species_formula=sp_form, dat,beta=beta,family="bernoulli")
 #' fm1 <- species_mix(sam_form, sp_form, simulated_data,
 #'  family = 'bernoulli',  nArchetypes=3)
 #' vcov(fm1)}
@@ -1574,6 +1632,7 @@
     # if( Sys.info()['sysname'] == "Windows")
     X <- object$titbits$X
     W <- object$titbits$W
+    U <- object$titbits$U
     offset <- object$titbits$offset
     spp_wts <- object$titbits$spp_weights
     site_spp_wts <- object$titbits$site_spp_weights
@@ -1582,17 +1641,18 @@
     size <- object$titbits$size
     family <- object$titbits$family
     disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
-    disty <- get_family_sam(disty_cases, family)
+    disty <- ecomix:::get_family_sam(disty_cases, family)
     S <- object$S
     G <- object$G
     n <- object$n
     npx <- object$npx
     npw <- object$npw
+    npu <- object$npu
     control <- object$titbits$control
 
     # values for optimisation.
     inits <- object$coefs
-    start_vals <- setup_inits_sam(inits, S, G, X, W, disty, return_list = TRUE)
+    start_vals <- ecomix:::setup_inits_sam(inits, S, G, X, W, U, disty, return_list = TRUE)
 
     # parameters to optimise
     alpha <- as.numeric(start_vals$alpha)
@@ -1654,20 +1714,35 @@
         }
         #c++ call to optimise the model (needs pretty good starting values)
         tmp <- .Call("species_mix_cpp",
-                     as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(W[,-1,drop=FALSE])), as.numeric(offset), as.numeric(spp_wts),
-                     as.numeric(as.matrix(site_spp_wts)), as.integer(as.matrix(!y_is_na)), as.numeric(size),
-                     # SEXP Ry, SEXP RX, SEXP Roffset, SEXP Rspp_weights, SEXP Rsite_spp_weights, SEXP Ry_not_na, // data
-                     as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n),
-                     as.integer(disty),as.integer(control$optiDisp),as.integer(control$optiPart),
+                     as.numeric(as.matrix(y)), as.numeric(as.matrix(X)),
+                     as.numeric(as.matrix(Wcpp)), as.numeric(as.matrix(Ucpp)),
+                     as.numeric(offset), as.numeric(spp_weights),
+                     as.numeric(as.matrix(site_spp_weights)),
+                     as.integer(as.matrix(!y_is_na)),
+                     as.numeric(size), as.integer(S), as.integer(G), as.integer(npx),
+                     as.integer(npw), as.integer(npu), as.integer(n),
+                     as.integer(disty),as.integer(control$optiDisp),
+                     as.integer(control$optiPart),as.integer(control$optiAll),
                      # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
-                     as.double(alpha), as.double(beta), as.double(eta), as.double(gamma), as.double(theta),
+                     as.double(alpha), as.double(beta), as.double(eta),
+                     as.double(gamma), as.double(delta), as.double(theta),
+                     as.double(powers),
                      # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
-                     alpha.score, beta.score, eta.score, gamma.score, theta.score, as.integer(getscores), scores,
+                     as.numeric(control$penalty.alpha),as.numeric(control$penalty.beta),
+                     as.numeric(control$penalty.pi),as.numeric(control$penalty.gamma),
+                     as.numeric(control$penalty.delta),
+                     as.numeric(control$penalty.theta[1]),
+                     as.numeric(control$penalty.theta[2]),
+                     # SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RpiPen,  SEXP &RgammaPen,
+                     # SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen,
+                     alpha.score, beta.score, eta.score, gamma.score, delta.score,
+                     theta.score, as.integer(control$getscores_cpp), as.numeric(scores),
                      # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
                      pis_out, mus, loglikeS, loglikeSG,
                      # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
                      as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport),
-                     as.numeric(control$abstol), as.numeric(control$reltol),  as.integer(conv), as.integer(control$printparams_cpp),
+                     as.numeric(control$abstol), as.numeric(control$reltol), as.integer(control$conv),
+                     as.integer(control$printparams_cpp),
                      # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
                      as.integer(0), as.integer(0), as.integer(1),
                      # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
@@ -1709,7 +1784,7 @@
   bestOfAllMods <- list( logl=-Inf)
   for(t in seq_len(control$ecm_refit)) {
     message(paste0("ECM restart ",t," of ", control$ecm_refit,""))
-    starting.sam <- ecomix:::get_initial_values_sam(y = y, X = X, W = W, U = U,
+    starting.sam <- get_initial_values_sam(y = y, X = X, W = W, U = U,
                                            site_spp_weights = site_spp_weights,
                                            offset = offset, y_is_na = y_is_na,
                                            G = G, S = S,
@@ -1845,6 +1920,7 @@
       mod$effect.param <- length(mod$beta) + G + S + ifelse(ncol(W)>1,ncol(W)-1,0) + ifelse(!is.null(U),ncol(U),0) + ifelse(disty %in% c(4,5,6),S,0)
       mod$ics <- -2*mod$logl + c(2,log(S),log(S))*mod$effect.param + c(0,0,2*mod$entropy)
       names(mod$ics) <- c("AIC","BIC with log(# of species)", "ICL")
+      mod$n <- n
     }
     if( mod$logl > bestOfAllMods$logl)
       bestOfAllMods <- mod
@@ -2632,7 +2708,8 @@ if(!is.null(U)) {
                      delta.scores=delta.score,
                      theta.scores=theta.score)
 
-  ret$S <- S; ret$G <- G; ret$npx <- npx; ret$npw <- npw; ret$npu <- npu; ret$n <- n;
+  ret$S <- S; ret$G <- G; ret$npx <- npx; ret$npw <- ifelse(ncol(W)>1,ncol(W),0);
+  ret$npu <- ifelse(!is.null(U),ncol(U),0); ret$n <- n; ret$disty <- disty;
   ret$start.vals <- inits
   ret$loglikeSG <- matrix(loglikeSG,  nrow = S, ncol = G)  #for residuals
   ret$loglikeS <- loglikeS  #for residuals
@@ -2796,10 +2873,8 @@ if(!is.null(U)) {
 
 
 "calc_info_crit_sam" <-  function(tmp) {
-
-  # K <- length(tmp$beta) + tmp$G + tmp$S + ifelse(ncol(W)>1,ncol(W)-1,0) + ifelse(!is.null(U),ncol(U),0) + ifelse(disty %in% c(4,5,6),S,0)
-
-  k <- length(unlist(tmp$coefs))
+  k <- length(tmp$beta) + tmp$G + tmp$S + tmp$npw*tmp$S +
+    tmp$npu + tmp$disty
   tmp$BIC <- -2 * tmp$logl + log(tmp$n) * k
   tmp$AIC <- -2 * tmp$logl + 2 * k
   return( tmp)
@@ -3220,12 +3295,12 @@ if(!is.null(U)) {
 }
 
 
-"sam_internal_pred_groups" <- function(alpha, beta, taus, gamma, G, S, X, W,
-                                       offset = NULL, family){
+"sam_internal_pred_groups" <- function(alpha, beta, taus, gamma, delta,
+                                       G, S, X, W, U, offset = NULL, family){
 
   if (family %in% c("bernoulli","binomial"))
     link.fun <- make.link("logit")
-  if (family %in% c("negative.binomial","poisson","ippm"))
+  if (family %in% c("negative.binomial","poisson","tweedie","ippm"))
     link.fun <- make.link("log")
   if (family %in% "gaussian")
     link.fun <- make.link("identity")
@@ -3235,13 +3310,16 @@ if(!is.null(U)) {
   outpred_arch <- matrix(NA, dim(X)[1], G)
   colnames(outpred_arch) <- paste("G", 1:G, sep = ".")
 
+  if(!is.null(U)) etaAll <- U%*%delta
+  else etaAll <- rep(0,nrow(X))
+
   for (g in seq_len(G)) {
     s.outpred <- matrix(NA, dim(X)[1], length(alpha))
     for (s in seq_len(S)) {
       etaMix <- as.numeric(X%*%beta[g, ])
       if(ncol(W)>1) etaSpp <- as.numeric(W%*%c(alpha[s],gamma[s, ]))
       else etaSpp <- alpha[s]
-      eta <- etaMix + etaSpp + offset
+      eta <- etaMix + etaSpp + etaAll + offset
       s.outpred[, s] <- link.fun$linkinv(eta)
     }
 
@@ -3251,8 +3329,8 @@ if(!is.null(U)) {
   return(outpred_arch)
 }
 
-"sam_internal_pred_species" <- function(alpha, beta, taus, gamma, G, S, X, W,
-                                        offset = NULL, family){
+"sam_internal_pred_species" <- function(alpha, beta, taus, gamma, delta,
+                                        G, S, X, W, U, offset = NULL, family){
 
   if (family %in% c("bernoulli","binomial"))
     link.fun <- make.link("logit")
@@ -3265,11 +3343,14 @@ if(!is.null(U)) {
 
   outpred_spp <- matrix(0, dim(X)[1], S)
 
+  if(!is.null(U)) etaAll <- U%*%delta
+  else etaAll <- rep(0,nrow(X))
+
   for (g in seq_len(G)) {
     etaMix <- matrix(as.numeric(X%*%beta[g, ]), nrow(X), S, byrow=FALSE)
     if(ncol(W)>1) etaSpp <- W%*%t(cbind(alpha,gamma))
     else etaSpp <- matrix(alpha, nrow(X), S, byrow=TRUE)
-    eta <- etaMix + etaSpp + offset
+    eta <- etaMix + etaSpp + etaAll + offset
     mug <- link.fun$linkinv(eta)
     outpred_spp <- outpred_spp + mug*matrix(taus[,g], nrow(X), S, byrow=TRUE)
     }
@@ -3284,27 +3365,30 @@ if(!is.null(U)) {
   npx <- ncol(X)
   if(ncol(W)>1) npw <- ncol(W[,-1])
   else npw <- 0
+  if(!is.null(U)) npu <- ncol(U)
+  else npu <- 0
 
   if(is.list(inits)){
     alpha <- as.numeric(inits$alpha)
     beta <- as.numeric(inits$beta)
-    if(!is.null(npw))
-      gamma <- as.numeric(inits$gamma)
-    else
-      gamma <- -99999
     eta <- as.numeric(inits$eta)
     if(npw>0){
       gamma <- as.numeric(inits$gamma)
     } else {
-      gamma <- -999999
+      gamma <- rep(-999999,S)
     }
-    if(disty%in%c(4,6)){
+    if(!is.null(U)){
+      delta <- inits$delta
+    } else{
+      delta <- -999999
+    }
+    if(disty%in%c(4,5,6)){
       theta <- as.numeric(inits$theta)
     } else {
-      theta <- -999999
+      theta <- rep(-999999,S)
     }
-    if(return_list) res <- list(alpha=alpha,beta=beta,eta=eta,gamma=gamma,theta=theta)
-    else res <- c(alpha,beta,eta,gamma,theta)
+    if(return_list) res <- list(alpha=alpha,beta=beta,eta=eta,gamma=gamma,delta=delta,theta=theta)
+    else res <- c(alpha,beta,eta,gamma,delta,theta)
     }
 
   if(is.numeric(inits)){
@@ -3319,17 +3403,24 @@ if(!is.null(U)) {
       gamma <- inits[start + 1:((S*npw))]
       start <- start + (G*npw)
     } else {
-      gamma <- -999999
+      gamma <- rep(-999999,S)
       # start <- start + S
     }
-    if(disty%in%c(4,6)){
+    if(!is.null(U)){
+      delta <- inits[start + 1:npu]
+      start <- start + (npu)
+    } else{
+      delta <- -999999
+    }
+    if(disty%in%c(4,5,6)){
       theta <- inits[start + 1:S]
     } else {
       theta <- -999999
     }
 
-    if(return_list) res <- list(alpha=alpha,beta=beta,eta=eta,gamma=gamma,theta=theta)
-    else res <- c(alpha,beta,eta,gamma,theta)
+    if(return_list) res <- list(alpha=alpha,beta=beta,eta=eta,
+                                gamma=gamma,delta=delta,theta=theta)
+    else res <- c(alpha,beta,eta,gamma,delta,theta)
   }
 
   return(res)
