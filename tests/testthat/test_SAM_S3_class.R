@@ -14,16 +14,16 @@ testthat::test_that('testing species mix S3 class functions', {
   dat[,-1] <- scale(dat[,-1])
   model_data <- species_mix.simulate(archetype_formula=sam_form,
                                      species_formula=sp_form,
-                                     dat, beta= beta,
-                                     dist="bernoulli")
-  fm1 <- species_mix(sam_form, sp_form, model_data,
-                     distribution = 'bernoulli',
-                     n_mixtures=3)
+                                     data = dat, beta= beta,
+                                     family="bernoulli")
+  fm1 <- species_mix(archetype_formula = sam_form, species_formula = sp_form, data = model_data,
+                     family = 'bernoulli',
+                     nArchetypes=3)
 
-  fm1 <- species_mix(sam_form, sp_form, model_data,
-                     distribution = 'bernoulli',
-                     n_mixtures=3,
-                     control=species_mix.control(printparams_cpp = TRUE))
+  fm1 <- species_mix(archetype_formula = sam_form, species_formula = sp_form, data = model_data,
+                     family = 'bernoulli',
+                     nArchetypes=3,
+                     control=list(printparams_cpp = TRUE))
 
   coef(fm1)
   print(fm1)
@@ -50,14 +50,14 @@ testthat::test_that('species mix generic vcov functions', {
   beta <- matrix(c(1.6,0.5,-0.9,1,2.9,2.9,0.2,-0.4),4,2,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, n_mixtures = 4,
-                                         beta = beta, distribution = "bernoulli")
+  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, nArchetypes = 4,
+                                         beta = beta, family = "bernoulli")
   fm1 <- species_mix(sam_form, species_formula = ~1, simulated_data,
-                     distribution = 'bernoulli', n_mixtures=4)
+                     family = 'bernoulli', nArchetypes=4)
   fm <- species_mix(sam_form, species_formula = ~1, simulated_data,
-                     distribution = 'bernoulli', n_mixtures=4, titbits = FALSE)
+                     family = 'bernoulli', nArchetypes=4, titbits = FALSE)
   fm <- species_mix(sam_form, species_formula = ~1, simulated_data,
-                    distribution = 'bernoulli', n_mixtures=4,standardise = TRUE,
+                    family = 'bernoulli', nArchetypes=4,standardise = TRUE,
                     titbits = FALSE)
 
   vcv_mat_bb <- vcov(object = fm1,method = 'BayesBoot', nboot = 10)
@@ -76,10 +76,10 @@ testthat::test_that('species mix predict functions', {
   beta <- matrix(c(1.6,0.5,-0.9,1,2.9,-0.4),3,2,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, n_mixtures = 3,
-                                         beta = beta, distribution = "bernoulli")
+  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, nArchetypes = 3,
+                                         beta = beta, family = "bernoulli")
   fm1 <- species_mix(sam_form, species_formula = ~1, simulated_data,
-                     distribution = 'bernoulli', n_mixtures=3,
+                     family = 'bernoulli', nArchetypes=3,
                      control=species_mix.control(print_cpp_start_vals = TRUE))
 
 
@@ -92,9 +92,9 @@ testthat::test_that('species mix predict functions', {
   testthat::expect_is(preds2,'matrix')
 
   # poisson
-  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, n_mixtures = 3,
-                                         beta = beta, distribution = "poisson")
-  fm2 <- species_mix(sam_form, species_formula = ~1, simulated_data, distribution = 'poisson', n_mixtures=3)
+  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, nArchetypes = 3,
+                                         beta = beta, family = "poisson")
+  fm2 <- species_mix(sam_form, species_formula = ~1, simulated_data, family = 'poisson', nArchetypes=3)
 
   residuals(fm2)
   preds3 <- predict(fm2)
@@ -105,9 +105,9 @@ testthat::test_that('species mix predict functions', {
   testthat::expect_is(preds4,'matrix')
 
   # negative binomial
-  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, n_mixtures = 3,
-                                         beta = beta, distribution = "negative_binomial")
-  fm3 <- species_mix(sam_form, species_formula = ~1, simulated_data, distribution = "negative_binomial", n_mixtures=3)
+  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, nArchetypes = 3,
+                                         beta = beta, family = "negative_binomial")
+  fm3 <- species_mix(sam_form, species_formula = ~1, simulated_data, family = "negative_binomial", nArchetypes=3)
 
   residuals(fm3)
   preds5 <- predict(fm3)
@@ -118,10 +118,10 @@ testthat::test_that('species mix predict functions', {
   testthat::expect_is(preds6,'matrix')
 
   #gaussian
-  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, n_mixtures = 3,
-                                         beta = beta, distribution = "gaussian")
+  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, nArchetypes = 3,
+                                         beta = beta, family = "gaussian")
   fm4 <- species_mix(sam_form, species_formula = ~1, simulated_data,
-                     distribution = "gaussian", n_mixtures=3)
+                     family = "gaussian", nArchetypes=3)
 
   residuals(fm4)
   preds7 <- predict(fm4)
@@ -147,14 +147,14 @@ testthat::test_that("test bootstrap",{
   beta <- matrix(c(1.6,0.5,-0.9,1,2.9,2.9,0.2,-0.4),4,2,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, n_mixtures = 4,
-                                         beta = beta, distribution = "bernoulli")
-  fm1 <- species_mix(sam_form, species_formula = ~1, simulated_data, distribution = 'bernoulli', n_mixtures=4)
+  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, nArchetypes = 4,
+                                         beta = beta, family = "bernoulli")
+  fm1 <- species_mix(sam_form, species_formula = ~1, simulated_data, family = 'bernoulli', nArchetypes=4)
 
   testthat::expect_error(species_mix.bootstrap(fm1,nboot =0))
   testthat::expect_error(species_mix.bootstrap(fm1,type="blah"))
   fm2 <- fm1
-  fm2$titbits$distribution <- "ippm"
+  fm2$titbits$family <- "ippm"
   testthat::expect_error(species_mix.bootstrap(fm2))
   species_mix.bootstrap(fm1, type="SimpleBoot",nboot=10)
 
@@ -171,9 +171,9 @@ testthat::test_that("test plot",{
   beta <- matrix(c(1.6,0.5,-0.9,1,2.9,2.9,0.2,-0.4),4,2,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, n_mixtures = 4,
-                                         beta = beta, distribution = "bernoulli")
-  fm1 <- species_mix(sam_form, species_formula = ~1, simulated_data, distribution = 'bernoulli', n_mixtures=4)
+  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat, nArchetypes = 4,
+                                         beta = beta, family = "bernoulli")
+  fm1 <- species_mix(sam_form, species_formula = ~1, simulated_data, family = 'bernoulli', nArchetypes=4)
 
   plot(fm1)
   plot(fm1,species = fm1$names$spp[1])

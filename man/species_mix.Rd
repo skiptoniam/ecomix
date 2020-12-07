@@ -7,14 +7,16 @@
 species_mix(
   archetype_formula = NULL,
   species_formula = stats::as.formula(~1),
+  all_formula = NULL,
   data,
-  n_mixtures = 3,
-  distribution = "bernoulli",
+  nArchetypes = 3,
+  family = "bernoulli",
   offset = NULL,
   weights = NULL,
   bb_weights = NULL,
   size = NULL,
-  control = NULL,
+  power = 1.6,
+  control = list(),
   inits = NULL,
   standardise = FALSE,
   titbits = TRUE
@@ -24,7 +26,7 @@ species_mix(
 \item{archetype_formula}{an object of class "formula" (or an object that can
 be coerced to that class). The response variable (left hand side of the
 formula) needs to be either 'occurrence', 'abundance',
-'biomass' or 'quantity' data. The type of reponse data will help specify
+'biomass' or 'quantity' data. The type of response data will help specify
 the type of error distribution to be used. The dependent variables
 (the right hind side) of this formula specifies the dependence of the
 species archetype probabilities on covariates. For all model the basic
@@ -40,16 +42,21 @@ for the archetype models. If you include a species specific formula which has
 more than an intercept you will be fitting a partial species archetype model
 which has species specific covariates and archetype specific covariates.}
 
-\item{data}{a matrix of dataframe which contains the 'species_data'
-matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
-const, temperature, rainfall. dims of matirx should be
+\item{all_formula}{an object of class "formula", which is meant to represnet
+a constant single set of covariates across all species and groups, typically you might
+use this an alternative to an offset, where there might be some bias in the
+data which is relatively constant and might arise as an atrifact of how the data was collected.}
+
+\item{data}{a matrix or data.frame which contains the 'species_data'
+matrix, a const and the covariates in the structure of spp1, spp2, spp3,
+const, temperature, rainfall. dims of matrix should be
 nsites*(nspecies+const+covariates).}
 
-\item{n_mixtures}{The number of mixing components (groups) to fit.}
+\item{nArchetypes}{The number of archetypes (mixing components/groups) to estimate from the data.}
 
-\item{distribution}{The family of statistical distribution to use within
+\item{family}{The family of statistical family to use within
 the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
-"negative_binomial" and "gaussian" distributions are possible and applicable
+"negative.binomial" and "gaussian" families are possible and applicable
 to specific types of data.}
 
 \item{offset}{a numeric vector of length nrow(data) (n sites) that is
@@ -67,16 +74,18 @@ undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
 
 \item{size}{The size of the sample for a binomial model (defaults to 1).}
 
+\item{power}{The power parameter for a Tweedie model. Default is 1.6, and this is assigned to all species}
+
 \item{control}{a list of control parameters for optimisation and calculation.
-See details. From \code{species_mix.control} for details on optimistaion
+See details. From \code{species_mix.control} for details on optimisation
 parameters.}
 
 \item{inits}{NULL a numeric vector that provides approximate starting values
-for species_mix coefficents. These are distribution specific, but at a
+for species_mix coefficients. These are family specific, but at a
 minimum you will need pis (additive_logitic transformed), alpha
 (intercepts) and beta (mixing coefs).}
 
-\item{standardise}{Booliean. If TRUE, standarise the covariate data.}
+\item{standardise}{Boolean. If TRUE, standardise the covariate data.}
 
 \item{titbits}{either a boolean or a vector of characters. If TRUE
 (default for species_mix(qv)), then some objects used in the estimation of
@@ -89,26 +98,27 @@ objects are returned. Possible values are:"Y" for the outcome matrix, "X"
 for the model matrix for the SAM model, "offset" for the offset in the model,
 "site_spp_weights" for the model weights, "archetype_formula" for the formula
 for the SAMs, "species_formula" for the formula for the species-specific
-model, "control" for the control arguments used in model fitting, "dist" for
+model, "control" for the control arguments used in model fitting, "family" for
 the conditional distribution of the species data. Care needs to be taken when
 using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created
 for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then
 setting titbits=TRUE may give users problems with memory.}
 }
 \description{
-Fits a finite mixture model to identify species archetype
+Fits a mixture-of-regressions to identify species archetype
 models (SAMs).
 }
 \details{
 species_mix is used to fit mixtures of glms to multivariate
-species data. The function uses BFGS to optimise the mixture likelihood.
-There is the option to use EM algorithm to get appropriate starting
+species data. The function uses BFGS to optimize the mixture likelihood.
+There is the option to use ECM algorithm to get appropriate starting
 parameters. `species_mix` acts as a wrapper for species_mix.fit
 that allows for easier data input. The data frames are merged into
 the appropriate format for the use in species_mix.fit.
 Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
-'poisson', 'ippm' (inhomogenous Poisson point process), 'negative_binomial'
- and 'normal' distributions can be fitted using the species_mix function.
+'poisson', 'ippm' (inhomogenous Poisson point process), 'negative.binomial',
+'tweedie' and 'gaussian' distributions can be fitted using the species_mix
+function.
 }
 \examples{
 \donttest{
@@ -122,8 +132,8 @@ dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
 x2=stats::rnorm(100,0,2.5))
 dat[,-1] <- scale(dat[,-1])
 simulated_data <- species_mix.simulate(archetype_formula=sam_form,
- species_formula=sp_form, dat,beta=beta,dist="bernoulli")
+species_formula=sp_form, dat, beta=beta,family="bernoulli")
 fm1 <- species_mix(sam_form, sp_form, simulated_data,
- distribution = 'bernoulli',  n_mixtures=3)
+ family = 'bernoulli',  nArchetypes=3)
  }
 }

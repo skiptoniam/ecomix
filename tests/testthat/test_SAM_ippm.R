@@ -12,11 +12,15 @@ testthat::test_that('species mix ippm', {
   set.seed(42)
   n_g <- 4
   n_sp <- 25
-  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:n_sp),collapse = ','),")~1+x1+x2"))
+  archetype_formula <- sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:n_sp),collapse = ','),")~1+x1+x2"))
+  species_formula <- sp_form <- as.formula(~1)
   alphas <- runif(50,-6,-4)
   betas <- matrix(c(0.5,-1.3,
                      1.8,   1,
-                     -1.2, 0.1),3,2,byrow=TRUE)
+                     -1.2, 2.1),3,2,byrow=TRUE)
+  n_mixtures <- 3
+  distribution <- 'ippm'
+
 
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])

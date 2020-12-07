@@ -3,7 +3,7 @@
 sam_fits::sam_fits(){};
 sam_fits::~sam_fits(){};
 
-void sam_fits::initialise( const int &nObs, const int &nG, const int &nS, const int &nPX, const int &nPW, const int &NAnum){
+void sam_fits::initialise( const int &nObs, const int &nG, const int &nS, const int &nPX, const int &nPW, const int &nPU, const int &NAnum){
 	
 	// array for catching Mu	
 	allMus.resize(nObs*nS*nG, NAnum);
@@ -26,6 +26,9 @@ void sam_fits::initialise( const int &nObs, const int &nG, const int &nS, const 
 	// array for catching dlogdgamma
 	dlogdgamma.resize(nG*nPW*nS, NAnum); // This is actually nG*nP*nSP
 	
+	// array for catching dlogdgamma
+	dlogddelta.resize(nPU*nS*nG, NAnum); // This is actually nPU
+	
 	// array for catching for dlogdpi
 	dlogdpi.resize(nG, NAnum);
 	
@@ -43,6 +46,7 @@ void sam_fits::zero(const int &NAnum){
 	dlogdalpha.assign(dlogdalpha.size(), NAnum);
 	dlogdbeta.assign(dlogdbeta.size(), NAnum);
 	dlogdgamma.assign(dlogdgamma.size(), NAnum);
+	dlogddelta.assign(dlogddelta.size(), NAnum);
 	dlogdpi.assign(dlogdpi.size(), NAnum);
 	dlogdtheta.assign(dlogdtheta.size(), NAnum);
 			

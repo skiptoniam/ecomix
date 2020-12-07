@@ -1,76 +1,83 @@
 context('species_mix generic functions negative binomial functions')
-library(ecomix)
+
 
 
 testthat::test_that('species_mix negative binomial', {
 
-  rm(list = ls())
+  library(ecomix)
   set.seed(42)
-  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~1+x1+x2"))
-  beta <- matrix(c(1.6,0.5,-0.9,1,2.9,-2.9,0.2,-0.4),4,2,byrow=TRUE)
-  dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
-  dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form, ~1, dat, n_mixtures = 4, beta=beta, dist="negative_binomial")
+  nsp <- 100
+  sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:nsp),collapse = ','),")~x1+x2"))
+  alpha <- rnorm(nsp,-0.5, .5)
+  beta <- matrix(c(3.6,-3.6,
+                   -2.5,-2.5,
+                   1,-4.5),
+                 3,2,byrow=TRUE)
+  # delta <- -.4
+  x <- runif(200,-2.5,2.5)
+  # u <- rnorm(400)
+  xpred <- seq(-2.5,2.5,length.out = 100)
+  upred <- matrix(seq(-2.5,2.5,length.out = 100),ncol=1)
+  matplot(xpred,(exp((cbind(xpred,xpred^2)%*%t(beta)))))
+  matplot(xpred,(exp((cbind(xpred,xpred^2)%*%t(beta))-c(upred%*%delta))))
+  # matlines(xpred,)
 
+  dat <- data.frame(y=1, x1=x, x2=I(x)^2)#, u)
+  simulated_data <- species_mix.simulate(archetype_formula = sam_form,
+                                         species_formula = ~1,
+                                         all_formula = NULL,
+                                         dat = dat,
+                                         nArchetypes = 3,
+                                         alpha=alpha,
+                                         beta=beta,
+                                         # delta = delta,
+                                         family = "negative.binomial")
   y <- as.matrix(simulated_data[,grep("spp",colnames(simulated_data))])
+  colSums(y>0)
   X <- simulated_data[,-grep("spp",colnames(simulated_data))]
-  W <- as.matrix(X[,1,drop=FALSE])
-  X <- as.matrix(X[,-1])
+  U <- NULL
+  # U <- X[,4,drop=FALSE]
+  # X <- X[,-4, drop=FALSE]
+  W <- as.data.frame(X[,1,drop=FALSE])
+  X <- as.data.frame(X[,-1])
+
   offset <- rep(0,nrow(y))
   weights <- rep(1,nrow(y))
+
   spp_weights <- rep(1,ncol(y))
   site_spp_weights <- matrix(1,nrow(y),ncol(y))
   y_is_na <- matrix(FALSE,nrow(y),ncol(y))
-  G <- 4
+  G <- 3
   S <- ncol(y)
   control <- species_mix.control()
   disty <- 4
   size <- rep(1,nrow(y))
+  powers <- attr(simulated_data,"powers") # yeah baby
+  options(warn=1)
+  fm <- ecomix:::fit.ecm.sam(y, X, W, U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control = species_mix.control(em_refit = 3,em_steps = 100))
 
+  ## now let's try and fit the optimisation
+  start_vals <- ecomix:::starting_values_wrapper(y, as.data.frame(X), as.data.frame(W), U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control)
 
-  # test a single bernoulli model
-  i <- 1
-  # for(i in 1:S)
-  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W, site_spp_weights, offset, y_is_na, disty, size),4)
-  fm_negative_binomialint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam_inits,
-                                                   y, X, W, site_spp_weights, offset,
-                                                   y_is_na, disty, size, .parallel = control$cores, .verbose = !control$quiet)
-  testthat::expect_length(do.call(cbind,fm_negative_binomialint)[1,],S)
+  tmp <- ecomix:::sam_optimise(y, X, W, U, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, size, powers, start_vals = start_vals, control)
+  testthat::expect_length(tmp,20)
 
-  #get the taus
-  starting_values <- ecomix:::initiate_fit_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, control)
-  fits <- list(alpha=starting_values$alpha,beta=starting_values$beta,gamma=starting_values$gamma,theta=starting_values$theta)
-  first_fit <- list(y = y, x = X, W = W, weights=site_spp_weights, offset=offset, size=size)
-
-  # get the loglikelihood based on these values
-  logls <- ecomix:::get_logls_sam(first_fit, fits, spp_weights, G, S, disty)
-  pis <- rep(1/G, G)
-  taus <- ecomix:::get_taus(pis, logls$logl_sp, G, S)
-  taus <- ecomix:::shrink_taus(taus, max_tau=1/G + 0.1, G)
-
-  # ## now let's try and fit the optimisation
-  sv <- ecomix:::get_starting_values_sam(y, X, W, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty,size, control)
-  tmp <- ecomix:::sam_optimise(y, X, W, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty,size, start_vals = sv, control)
-  testthat::expect_length(tmp,18)
+  set.seed(123)
+  tmp <- ecomix:::species_mix.fit(y=y, X=as.data.frame(X), W=as.data.frame(W), U=U, G=G, S=S,
+                                  spp_weights=spp_weights,
+                                  site_spp_weights=site_spp_weights,
+                                  offset=offset, disty=disty, y_is_na=y_is_na, size=size, powers=powers,
+                                  control=species_mix.control(print_cpp_start_vals = TRUE))
 
   sp_form <- ~1
-  fm1 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'negative_binomial',
-                     n_mixtures=4)
+  fm1 <- species_mix(archetype_formula = sam_form, species_formula = sp_form,
+                     data = simulated_data, family = 'negative.binomial',
+                     nArchetypes = 3)
   testthat::expect_s3_class(fm1,'species_mix')
 
-  fm2 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'negative_binomial',
-                     n_mixtures=4,control=species_mix.control(em_prefit = FALSE),
+  fm2 <- species_mix(sam_form, sp_form, data = simulated_data, family = 'negative.binomial',
+                     nArchetypes = 3,control=species_mix.control(ecm_prefit = FALSE),
                      standardise = FALSE)
   testthat::expect_s3_class(fm2,'species_mix')
-
-  fm3 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'negative_binomial',
-                     n_mixtures=4,control=species_mix.control(em_prefit = FALSE,getscores_cpp = TRUE),
-                     standardise = FALSE)
-  testthat::expect_s3_class(fm3,'species_mix')
-
-  fm4 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'negative_binomial',
-                     n_mixtures=4,control=species_mix.control(em_prefit = FALSE),
-                     standardise = TRUE)
-  testthat::expect_s3_class(fm4,'species_mix')
 })
 

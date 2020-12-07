@@ -51,8 +51,8 @@ dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
 x2=stats::rnorm(100,0,2.5))
 dat[,-1] <- scale(dat[,-1])
 simulated_data <- species_mix.simulate(archetype_formula=sam_form,
- species_formula=sp_form, dat,beta=beta,dist="bernoulli")
+ species_formula=sp_form, dat,beta=beta,family="bernoulli")
 fm1 <- species_mix(sam_form, sp_form, simulated_data,
- distribution = 'bernoulli',  n_mixtures=3)
+ family = 'bernoulli',  nArchetypes=3)
 vcov(fm1)}
 }

@@ -8,6 +8,7 @@ species_mix.fit(
   y,
   X,
   W,
+  U,
   G,
   S,
   spp_weights,
@@ -16,6 +17,7 @@ species_mix.fit(
   y_is_na,
   disty,
   size,
+  powers,
   control,
   inits = NULL
 )
@@ -26,6 +28,8 @@ species_mix.fit(
 \item{X}{is a design matrix for the archetype_formula dimension n_sites * n_covariates.}
 
 \item{W}{is a design matrix for species_formula and will be implemented if species_formula has covariates.}
+
+\item{U}{is a design matrix fro all_formula and will be implemented if not NULL.}
 
 \item{G}{is the number of species archetypes that are being estimated.}
 
@@ -39,9 +43,11 @@ species_mix.fit(
 
 \item{y_is_na}{This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!}
 
-\item{disty}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative_binomial' and 'guassian' are available - internal conversion of distribution to a integer.}
+\item{disty}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.}
 
 \item{size}{The size of each of binomial sample at each site. Length should be the number of sites.}
+
+\item{powers}{The power parameters for the Tweedie distribution.}
 
 \item{control}{this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.}
 

@@ -149,6 +149,8 @@ double calcGammaPen( const myData &dat, const myParms &parms)
 double calcPiPen( const vector<double> &logPis, const myData &dat, const myParms &parms)
 {
 	double pen=0.0;
+	
+
 
 	for( int g=0; g<dat.nG; g++)
 		pen += logPis.at(g);
@@ -203,9 +205,9 @@ void calcLogCondDens( vector<double> &condDens, const vector<double> &fits, cons
 				case 3:
 					condDensSG.at(MATREF2D(g,s,dat.nG)) = logNegBin( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
 					break;
-// 				case 4:
-// 					condDensSG.at(MATREF2D(g,s,dat.nG)) = logTweedie( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s], parms.Power[s]);
-// //					Rprintf("%f\t",condDensSG.at(MATREF2D(g,s,dat.nG)));
+ 				case 4:
+ 					condDensSG.at(MATREF2D(g,s,dat.nG)) = logTweedie( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s], parms.Power[s]);
+ //					Rprintf("%f\t",condDensSG.at(MATREF2D(g,s,dat.nG)));
 					break;
 				case 5:
 					condDensSG.at(MATREF2D(g,s,dat.nG)) = logNormal( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
@@ -300,18 +302,18 @@ double logNegBin( const double &y, const double &mu, const double &od)
 	return( tmp);
 }
 
-// double logTweedie( const double &y, const double &mu, const double &phi, const double &p)
-// {
-// 	double lambda, alpha, tau, muZ, tmp, phi1;
-// 	phi1 = exp( phi);
-// 	lambda = R_pow( mu, (2-p)) / ( phi1*(2-p));
-// 	alpha = ( 2-p) / ( p-1);
-// 	tau = phi1*(p-1)*R_pow(mu,(p-1));
-// 	muZ = alpha * tau;
-//
-// 	tmp = dTweedie( y, lambda, muZ, alpha, 1);
-// 	return( tmp);
-// }
+ double logTweedie( const double &y, const double &mu, const double &phi, const double &p)
+ {
+ 	double lambda, alpha, tau, muZ, tmp, phi1;
+ 	phi1 = exp( phi);
+ 	lambda = R_pow( mu, (2-p)) / ( phi1*(2-p));
+ 	alpha = ( 2-p) / ( p-1);
+ 	tau = phi1*(p-1)*R_pow(mu,(p-1));
+ 	muZ = alpha * tau;
+
+ 	tmp = dTweedie( y, lambda, muZ, alpha, 1);
+ 	return( tmp);
+ }
 
 double logNormal( const double &y, const double &mu, const double &sig)
 {
@@ -431,9 +433,9 @@ void calcDispDeriv( vector<double> &dispDerivsI, const vector<double> &fits, con
 				case 3:
 					tmpDerivs.at(MATREF2D(g,s,dat.nG)) = logNegBinDispDer( dat.y[MATREF2D(i,s,dat.nObs)], fits.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), parms.Disp[s]);
 					break;
-				// case 4:
-				// 	tmpDerivs.at(MATREF2D(g,s,dat.nG)) = logTweedieDispDer( dat.y[MATREF2D(i,s,dat.nObs)], fits.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), parms.Disp[s], parms.Power[s]);
-				// 	break;
+				 case 4:
+				 	tmpDerivs.at(MATREF2D(g,s,dat.nG)) = logTweedieDispDer( dat.y[MATREF2D(i,s,dat.nObs)], fits.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), parms.Disp[s], parms.Power[s]);
+				 	break;
 				case 5:
 					tmpDerivs.at(MATREF2D(g,s,dat.nG)) = logNormalDispDer( dat.y[MATREF2D(i,s,dat.nObs)], fits.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), parms.Disp[s]);
 					break;
@@ -473,17 +475,17 @@ double logNegBinDispDer( double y, double fit, double dispParm)
 	return( res);
 }
 
-// double logTweedieDispDer( double y, double fit, double dispParm , double p)
-// {
-// 	double phi, tmp;
-//
-// 	phi = exp( dispParm);
-//
-// 	tmp = dTweediePhi( y, fit, phi, p);
-// 	tmp *= phi;
-//
-// 	return( tmp);
-// }
+ double logTweedieDispDer( double y, double fit, double dispParm , double p)
+ {
+ 	double phi, tmp;
+
+ 	phi = exp( dispParm);
+
+ 	tmp = dTweediePhi( y, fit, phi, p);
+ 	tmp *= phi;
+
+ 	return( tmp);
+ }
 
 double logNormalDispDer( double y, double fit, double dispParm)
 {
@@ -515,9 +517,9 @@ void calcDerivMu( vector<double> &muDerivs, const vector<double> &fits, const my
 				case 3:
 					tmpDerivs.at(MATREF2D(g,s,dat.nG)) = logNegBinLocatDer( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
 					break;
-				// case 4:
-				// 	tmpDerivs.at(MATREF2D(g,s,dat.nG)) = 	dTweedieMu( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp( parms.Disp[s]), parms.Power[s]);
-				// 	break;
+				 case 4:
+				 	tmpDerivs.at(MATREF2D(g,s,dat.nG)) = 	dTweedieMu( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp( parms.Disp[s]), parms.Power[s]);
+				 	break;
 				case 5:
 					tmpDerivs.at(MATREF2D(g,s,dat.nG)) = logNormalLocatDer( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), parms.Disp[s]);
 					break;

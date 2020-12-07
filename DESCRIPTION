@@ -21,10 +21,9 @@ Imports:
     raster,
     scales,
     numDeriv,
-    surveillance,
-    progress,
     kmed,
-    mvtnorm
+    mvtnorm,
+    mvabund
 Suggests:
     knitr,
     rmarkdown,
@@ -35,5 +34,4 @@ Depends:
 License: GPL (>= 2)
 SystemRequirements: C++11
 NeedsCompilation: yes
-RoxygenNote: 7.1.0
-
+RoxygenNote: 7.1.1

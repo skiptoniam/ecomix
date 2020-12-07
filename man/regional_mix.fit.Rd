@@ -32,7 +32,7 @@ regional_mix.fit(
 
 \item{wts}{is the site weights. These are weights used to alter the loglikelihood.}
 
-\item{disty}{the error distribution to used in regional_mix estimation. Currently, 'bernoulli', 'poisson', 'negative_binomial' and 'guassian' are available - internal conversion of distribution to a integer.}
+\item{disty}{the error distribution to used in regional_mix estimation. Currently, 'bernoulli', 'poisson', 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.}
 
 \item{nRCP}{is the number of species archetypes that are being estimated.}
 
