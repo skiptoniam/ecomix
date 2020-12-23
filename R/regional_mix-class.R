@@ -4,16 +4,16 @@
 #' @rdname regional_mix
 #' @name regional_mix
 #' @description This is how you fit \code{regional_mix} model in ecomix.
-#' @param rcp_formula an object of class "formula" (or an object that can be coerced to that class). The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model distribution an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the region of common profile (rcp) probabilities on covariates.
+#' @param rcp_formula an object of class "formula" (or an object that can be coerced to that class). The response variable (left hand side of the formula) needs to be either 'presence', 'occurrence', 'abundance', 'biomass' or 'quantity' this will help specify the type of data to be modelled, if the response variable is disperate to the model family an error will be thrown. The dependent variables (the right hind side) of this formula specifies the dependence of the region of common profile (rcp) probabilities on covariates.
 #' @param species_formula an object of class "formula" (or an object that can be coerced to that class). The left hand side of this formula should be left empty (it is removed if it is not empty). The right hand side of this formula specifies the dependence of the species"'" data on covariates (typically different covariates to \code{rcp_formula} to avoid confusing confounding). An example formula is observations ~ gear_type + time_of_day, where gear_type describes the different sampling gears and time_of_day describes the time of the sample. #maybe could call this detection/bias
 #' @param data a List which contains named objects 'species_data': a data frame containing the species information. The frame is arranged so that each row is a site and each column is a species. Species names should be included as column names otherwise numbers from 1:S are assigned. And 'covariate_data' a data frame containing the covariate data for each site. Names of columns must match that given in \code{rcp_formula} and \code{species_formula}.
 #' @param nRCP The number of mixing components (groups) to fit.
-#' @param distribution The family of statistical distribution to use within the ecomix models. a  choice between "bernoulli", "poisson", "negative.binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data.
+#' @param family The family of statistical family to use within the ecomix models. a  choice between "bernoulli", "poisson", "negative.binomial", "tweedie" and "gaussian" distributions are possible and applicable to specific types of data.
 #' @param offset a numeric vector of length nrow( data) that is included into the model as an offset. It is included into the conditional part of the model where conditioning is performed on the unobserved RCP type. Note that offsets cannot be included as part of the rcp_formula or species_formula arguments ??? only through this argument.
 #' @param weights a numeric vector of length nrow( data) that is used as weights in the log-likelihood calculations. If NULL (default) then all weights are assumed to be identically 1.
 #' @param control a list of control parameters for optimisation and calculation. See details. From \code{control} control.
 #' @param inits a character string which defines the method used to initialise finite mixture model clustering. #Will have to synergise this function call across RCP and SpeciesMix. Looks like SpeciesMix uses a em.prefit to setup initialisations. regional_mix has a number of methods. This seems like a good place to setup the bivariate clustering step - cobra function.
-#' @param titbits either a boolean or a vector of characters. If TRUE (default for regional_mix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regional_mix(qv) and predict.regional_mix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for regional_mix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "W" for the model matrix for the species-specific model, "offset" for the offset in the model, "wts" for the model weights, "form.RCP" for the formula for the RCPs, "form.spp" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "distribution" for the conditional distribution of the species data, and "power" for the power parameters used (only used in Tweedie models). Care needs to be taken when using titbits=TRUE in regional_mix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory. It is more efficient, from a memory perspective, to refit the "best" model using regional_mix(qv) after identifying it with regional_mix.multifit(qv). See examples for illustration about how to do this.
+#' @param titbits either a boolean or a vector of characters. If TRUE (default for regional_mix(qv)), then some objects used in the estimation of the model"'"s parameters are returned in a list entitled "titbits" in the model object. Some functions, for example plot.regional_mix(qv) and predict.regional_mix(qv), will require some or all of these pieces of information. If titbits=FALSE (default for regional_mix.multifit(qv)), then an empty list is returned. If a character vector, then just those objects are returned. Possible values are:"Y" for the outcome matrix, "X" for the model matrix for the RCP model, "W" for the model matrix for the species-specific model, "offset" for the offset in the model, "wts" for the model weights, "form.RCP" for the formula for the RCPs, "form.spp" for the formula for the species-specific model, "control" for the control arguments used in model fitting, "family" for the conditional family of the species data, and "power" for the power parameters used (only used in Tweedie models). Care needs to be taken when using titbits=TRUE in regional_mix.multifit(qv) calls as titbits is created for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then setting titbits=TRUE may give users problems with memory. It is more efficient, from a memory perspective, to refit the "best" model using regional_mix(qv) after identifying it with regional_mix.multifit(qv). See examples for illustration about how to do this.
 #' @param power a numeric vector (length either 1 or the number of species) defining the power parameter to use in the Tweedie models. If length(power)==1, then the same power parameter is used for all species. If length(power)==No_species, then each species gets its own power parameter. Power values must be between 1 and 2, for computational reasons they should be well away from the boundary. The default is 1.6 as this has proved to be a good ball-park value for the fisheries data that the developer has previously analysed.
 #' @importFrom graphics abline hist legend lines matplot par plot points polygon rect
 #' @importFrom stats as.formula binomial cooks.distance cov cutree dbinom dist dnbinom dnorm dpois
@@ -28,7 +28,7 @@
 #' @return call the call to the function.
 #' @return coefs a list of three elements, one each for the estimates for the species prevalence (alpha), the deviations from alpha for the first (nRCP-1) RCP (tau), and the (nRCP-1) sets of RCP regression coefficents (beta).
 #' @return conv the convergence code from the maximisation procedure. See ?optim for an explanation (basically 0 is good and anything else is bad).
-#' @return dist the character string identifying the distribution used for the model.
+#' @return dist the character string identifying the family used for the model.
 #' @return logCondDens an nObs by nRCP matrix specifying the probability of observing each sites"'" data, given each of the RCP types.
 #' @return logl the maximised log likelihood.
 #' @return mus an array of size nRCP x S x nRCP where each element of the first dimension is the fitted value for all the species in all the RCP types.
@@ -52,10 +52,10 @@
 #' spp_form <- observations ~ 1 + w1 + w2
 #' data <- make_mixture_data(species_data = simulated_data$species_data,
 #'                           covariate_data = simulated_data$covariate_data[,-1])
-#' fm_regional_mix <- regional_mix(rcp_form,spp_form,data=data,distribution='bernoulli',n_mixtures=5)
+#' fm_regional_mix <- regional_mix(rcp_form,spp_form,data=data,family='bernoulli',n_mixtures=5)
 #' }
 "regional_mix" <- function (rcp_formula = NULL, species_formula = NULL, data,
-                            nRCP = 3, distribution="bernoulli", offset=NULL,
+                            nRCP = 3, family="bernoulli", offset=NULL,
                             weights=NULL, control = list(), inits="random2",
                             titbits = TRUE, power=1.6){
   #the control parameters
@@ -108,10 +108,10 @@
   offy <- get_offset_rcp( mf, dat$mf.X, dat$mf.W)
   #get model wts (if not specified then it will be ones)
   wts <- get_wts_rcp( mf)
-  #get distribution
+  #get family
   disty.cases <- c("bernoulli","poisson","negative.binomial","tweedie",
                    "gaussian")
-  disty <- get_dist_rcp( disty.cases, distribution)
+  disty <- get_dist_rcp( disty.cases, family)
   #get power params for Tweedie
   power <- get_power_rcp( disty, power, S)
   #summarising data to console
@@ -121,7 +121,7 @@
   tmp <- regional_mix.fit( outcomes, W, X, offy, wts, disty, nRCP, power, inits,
                            control, nrow( X), S, p.x, p.w)
 
-  tmp$distribution <- disty.cases[disty]
+  tmp$family <- disty.cases[disty]
   #calculate the posterior probs
   if( nRCP>1)
     tmp$postProbs <- calcPostProbs( tmp$pis, tmp$logCondDens)
@@ -133,7 +133,7 @@
   #titbits object, if wanted/needed.
   tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts,
                                   rcp_formula, species_formula, control,
-                                  distribution, p.w=p.w, power)
+                                  family, p.w=p.w, power)
   tmp$titbits$disty <- disty
   #the last bit of the regional_mix object puzzle
   tmp$call <- call
@@ -159,7 +159,7 @@
 #'@param X is a design matrix for the archetype_formula dimension n_sites * n_covariates.
 #'@param offy this is a vector of site specific offsets, this might be something like the log(area sampled at sites).
 #'@param wts is the site weights. These are weights used to alter the loglikelihood.
-#'@param disty the error distribution to used in regional_mix estimation. Currently, 'bernoulli', 'poisson', 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.
+#'@param disty the error family to used in regional_mix estimation. Currently, 'bernoulli', 'poisson', 'negative.binomial' and 'guassian' are available - internal conversion of family to a integer.
 #'@param nRCP is the number of species archetypes that are being estimated.
 #'@param control this is a list of control parameters that alter the specifics of model fitting.
 #'@param power This is for the Tweedie distribution - currently not in use (until we fix the Tweedie computational stuff).
@@ -202,7 +202,7 @@
 #' @export
 
 "regional_mix.multifit" <-  function(rcp_formula = NULL, species_formula = NULL,
-                                     data, nRCP = 3, distribution="bernoulli",
+                                     data, nRCP = 3, family="bernoulli",
                                      offset=NULL, weights=NULL,
                                      control = list(), inits = "random2",
                                      titbits = FALSE, power=1.6, nstart=10,
@@ -256,10 +256,10 @@
     offy <- get_offset_rcp( mf, dat$mf.X, dat$mf.W)
     #get model wts (if not specified then it will be ones)
     wts <- get_wts_rcp( mf)
-    #get distribution
+    #get family
     disty.cases <- c("bernoulli","poisson",
                      "negative.binomial","tweedie","gaussian")
-    disty <- get_dist_rcp( disty.cases, distribution)
+    disty <- get_dist_rcp( disty.cases, family)
     # #get power params for Tweedie
     # power <- get_power_rcp( disty, power)
     #summarising data to console
@@ -276,7 +276,7 @@
                                                           power, inits, control,
                                                           nrow(X), S, p.x, p.w))
       control$quiet <- tmpQuiet
-      tmp$distribution <- disty.cases[disty]
+      tmp$family <- disty.cases[disty]
       #calculate the posterior probs
       if( nRCP>1)
         tmp$postProbs <- calcPostProbs( tmp$pis, tmp$logCondDens)
@@ -288,7 +288,7 @@
       #titbits object, if wanted/needed.
       tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts,
                                       rcp_formula, species_formula, control,
-                                      distribution, p.w=p.w, power)
+                                      family, p.w=p.w, power)
       tmp$titbits$disty <- disty
       #the last bit of the regional_mix object puzzle
       tmp$call <- call
@@ -508,6 +508,51 @@
   return(c(edf, aic))
 }
 
+#' Plot a spatial RCP prediction
+#'
+#' Plot a spatial RCP model prediction using ggplot
+#'
+#' @param data a zonation object.
+#' @param ... other arguments.
+#'
+#' @importFrom ggplot2 aes coord_equal element_blank facet_wrap geom_raster
+#' @importFrom ggplot2 ggplot theme theme_bw
+#' @importFrom raster getValues ncell xyFromCell
+#'
+#' @examples
+#' library(raster)
+#' r1 <- raster(matrix(runif(200^2, 0, 1), 200))
+#' r2 <- raster(matrix(runif(200^2, 0, 1), 200))
+#' plan <- zonation(stack(r1, r2))
+#' library(ggplot2)
+#' ggplot(plan)
+#'
+#' @export
+
+ggplot.zonation <- function(data, ...) {
+  r <- data[["rasters"]]
+  ncells <- raster::ncell(r)
+  xy <- raster::xyFromCell(r, seq_len(ncells))
+  r <- raster::getValues(r)
+  r <- as.data.frame(r)
+  r <- utils::stack(r)
+  names(r) <- c("value", "variable")
+  r <- cbind(r, xy)
+
+  ggplot2::ggplot(r) +
+    ggplot2::aes(x = r[["x"]], y = r[["y"]], fill = r[["value"]], ...) +
+    ggplot2::geom_raster() +
+    ggplot2::coord_equal() +
+    ggplot2::facet_wrap(~variable) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.text  = ggplot2::element_blank(),
+      axis.title = ggplot2::element_blank()
+    )
+}
+
+
+
 
 #' @rdname plot.regional_mix
 #' @name plot.regional_mix
@@ -521,7 +566,7 @@
 #' @param species Which species to plot as residuals.
 #' @param fitted.scale What scale to plot the residuals on?
 #' @details The two types of residuals are inherently different. The "RQR" residuals produce a residual for each species at each site and the "deviance" residuals produce a site residual (no species level residual). The plots also differ, the "RQR" type generates a single normal QQ-plot for all species and all sites, and a residual versus fitted plot for all species and sites (Described in Foster et al, 2013). The "deviance" type generates a pair of Tukey mean-difference plots, similar in spirit to a QQ-plot. The first is for point-wise confidence intervals and the second is for approximate global intervals. See Foster et al (2013) for details.
-#' The distribution for the "RQR" residuals should be standard normal. For "deviance" residuals, the distribution is unknown and simulation is used to graphically assess how odd the observed residuals look compared to ones generated assuming the model is correct.
+#' The family for the "RQR" residuals should be standard normal. For "deviance" residuals, the distribution is unknown and simulation is used to graphically assess how odd the observed residuals look compared to ones generated assuming the model is correct.
 #' @references Dunn, P.K. and Smyth G.K. (1996) Randomized Quantile Residuals. Journal of Computational and Graphical Statistics \emph{5}: 236--244.
 #' Foster, S.D., Givens, G.H., Dornan, G.J., Dunstan, P.K. and Darnell, R. (2013) Modelling Regions of Common Profiles Using Biological and Environmental Data. Environmetrics \emph{24}: 489--499. DOI: 10.1002/env.2245
 #' Foster, S.D., Hill, N.A. and Lyons, M., 2017. Ecological grouping of survey sites when sampling artefacts are present. Journal of the Royal Statistical Society: Series C (Applied Statistics), 66(5), pp.1031-1047.
@@ -596,7 +641,7 @@
     for (s in 1:nsim) {
       if( !quiet)
         setTxtProgressBar(pb, s)
-      newy <- as.matrix( regional_mix.simulate( nRCP=nRCP, S=S, n=n, p.x=p.x, p.w=p.w, alpha=alpha, tau=tau, beta=beta, gamma=gamma, logDisps=disp, powers=power, X=X, W=W, offset=offy, distribution=x$distribution))
+      newy <- as.matrix( regional_mix.simulate( nRCP=nRCP, S=S, n=n, p.x=p.x, p.w=p.w, alpha=alpha, tau=tau, beta=beta, gamma=gamma, logDisps=disp, powers=power, X=X, W=W, offset=offy, family=x$family))
       tmp <- .Call("RCP_C", as.numeric(newy[, 1:S]), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
                    as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
                    alpha, tau, beta, gamma, disp, power,
@@ -606,7 +651,7 @@
                    as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
                    as.integer( FALSE), as.integer( TRUE), as.integer( FALSE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "ecomix")
 
-      allResids[, s] <- get_residuals_rcp(logls, Y, x$distribution, x$coef, nRCP, type="deviance", powers=power, quiet=TRUE)
+      allResids[, s] <- get_residuals_rcp(logls, Y, x$family, x$coef, nRCP, type="deviance", powers=power, quiet=TRUE)
     }
     if( !quiet)
       message("")
@@ -691,6 +736,71 @@
 
   }
 }
+
+#' @rdname plot.regional_mix.sampling
+#' @name plot.regional_mix.sampling
+#' @title Plot residuals from a regional_mix model.
+#' @param object a fitted regional_mix model you wish to plot
+#' @param object2 a bootstrap object from regional_mix.bootstrap
+#' @param type What type of residuals to plot? 'RQR'; random quantile residuals or 'deviance' residuals.
+#' @param nsim Number of simulations to run
+#' @param alpha.conf The bounds of the confidence intervals.
+#' @param quiet Run in quiet mode.
+#' @param species Which species to plot as residuals.
+#' @param fitted.scale What scale to plot the residuals on?
+#' @details The two types of residuals are inherently different. The "RQR" residuals produce a residual for each species at each site and the "deviance" residuals produce a site residual (no species level residual). The plots also differ, the "RQR" type generates a single normal QQ-plot for all species and all sites, and a residual versus fitted plot for all species and sites (Described in Foster et al, 2013). The "deviance" type generates a pair of Tukey mean-difference plots, similar in spirit to a QQ-plot. The first is for point-wise confidence intervals and the second is for approximate global intervals. See Foster et al (2013) for details.
+#' The family for the "RQR" residuals should be standard normal. For "deviance" residuals, the distribution is unknown and simulation is used to graphically assess how odd the observed residuals look compared to ones generated assuming the model is correct.
+#' @references Dunn, P.K. and Smyth G.K. (1996) Randomized Quantile Residuals. Journal of Computational and Graphical Statistics \emph{5}: 236--244.
+#' Foster, S.D., Givens, G.H., Dornan, G.J., Dunstan, P.K. and Darnell, R. (2013) Modelling Regions of Common Profiles Using Biological and Environmental Data. Environmetrics \emph{24}: 489--499. DOI: 10.1002/env.2245
+#' Foster, S.D., Hill, N.A. and Lyons, M., 2017. Ecological grouping of survey sites when sampling artefacts are present. Journal of the Royal Statistical Society: Series C (Applied Statistics), 66(5), pp.1031-1047.
+#' @export
+
+"plot.regional_mix.sampling" <-function(object,
+                           object2,
+                           sampling_levels,
+                           CI=c(0.025, 0.975),
+                           col="black",
+                           lty=1){
+
+  require(lattice)
+  # gammas<- paste0("gamma", 1: (length(Species)*length(sampling_names)))
+  gammas<-grepl("gamma",dimnames(object2)[[2]])
+  temp_dat<-object2[,gammas]
+
+  temp<-data.frame(avs=as.numeric(unname(colMeans(temp_dat))),
+                   t(apply(temp_dat, 2, quantile, probs=CI)),
+                   #sampling_var=rep(sampling_names, each=length(length(best_mod$names$spp))),
+                   sampling_var=sapply(strsplit(dimnames(temp_dat)[[2]],"_"), "[", 3),
+                   #Species=factor(rep(best_mod$names$spp,length(sampling_names))))
+                   Species=factor(sapply(strsplit(dimnames(temp_dat)[[2]],"_"), "[", 1)))
+
+  names(temp)[2:3]<-c("lower", "upper")
+  temp$Species<-gsub("."," ", temp$Species, fixed=TRUE) #get rid of '.' in species names
+  temp$Species<-as.factor(temp$Species) #convert back to factor
+  temp$Species <- factor(temp$Species, levels=rev(levels(temp$Species)))
+
+  trellis.par.set(superpose.symbol=list(pch=16,col=col, cex=1.2),
+                  superpose.line=list(col="transparent"))
+  dotplot(Species ~ avs, groups=sampling_var, data=temp, cols=col, lty=lty, low=temp$lower, high=temp$upper, subscript=TRUE,
+          auto.key=list(space="top", columns=2, cex=1.4, text=legend_fact),
+          ylab=list(cex=1.4), xlab=list("Coefficient",cex=1.4),
+          scales = list(tck = c(1, 0), x=list(cex=1.2), y=list(cex=1.2)),
+          prepanel = function(x, y, ...) { list(xlim=range(temp$lower, temp$upper)) },
+          panel=panel.superpose,
+          panel.groups=function(x, y, subscripts, group.number, cols, low, high, ...)
+          {
+            if(group.number==1) jiggle <- 0.1 else jiggle <- -0.1
+            panel.abline(v=0, lty=2)
+            panel.abline(h=1:length(best_mod$names$spp), col.line="light grey", lty=1)
+            panel.dotplot(x, y+jiggle, group.number, ...)
+            panel.arrows(low[subscripts], y+jiggle, high[subscripts], y+jiggle, code=3, angle=90,
+                         length=0.05, col=cols[group.number], lty=lty[group.number])
+            #panel.segments(temp$lower, y+jiggle, + temp$upper, y+jiggle, lty = lty, col =col, lwd=2, cex=1.2)
+          })
+
+}
+
+
 
 #' @rdname plot.regional_mix_stab
 #' @name plot.regional_mix_stab
@@ -934,7 +1044,7 @@
 "print.regional_mix" <- function (x, ...){
   ret <- list()
   ret$Call <- x$call
-  ret$Distribution <- x$distribution
+  ret$Distribution <- x$family
   ret$coef <- stats::coef(x)
   print( ret)
   invisible(ret)
@@ -1071,16 +1181,16 @@
   }
   if( type=="RQR"){
     resids <- matrix( NA, nrow=object$n, ncol=object$S)
-    switch( object$distribution,
+    switch( object$family,
             bernoulli = { fn <- function(y,mu,logdisp,power) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
             poisson = { fn <- function(y,mu,logdisp,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
             negative.binomial = { fn <- function(y,mu,logdisp,power) pnbinom( q=y, mu=mu, size=1/exp( logdisp), lower.tail=TRUE)},
-            # tweedie = { fn <- function(y,mu,logdisp,power) fishMod::pTweedie( q=y, mu=mu, phi=exp( logdisp), p=power)},#CHECK!!!
+            tweedie = { fn <- function(y,mu,logdisp,power) fishMod::pTweedie( q=y, mu=mu, phi=exp( logdisp), p=power)},#CHECK!!!
             gaussian = { fn <- function(y,mu,logdisp,power) pnorm( q=y, mean=mu, sd=exp( logdisp), lower.tail=TRUE)})
 
     for( ss in 1:object$S){
       if( all( object$titbits$power==-999999))  tmpPow <- NULL else tmpPow <- object$titbits$power[ss]
-      if( object$distribution %in% c("bernoulli","poisson","negative.binomial")){
+      if( object$family %in% c("bernoulli","poisson","negative.binomial")){
         tmpLower <- fn( object$titbits$Y[,ss]-1, object$mus[,ss,], object$coef$disp[ss], tmpPow)
         tmpUpper <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$disp[ss], tmpPow)
         tmpLower <- rowSums( tmpLower * object$pis)
@@ -1092,17 +1202,17 @@
         resids[,ss] <- runif( object$n, min=tmpLower, max=tmpUpper)
         resids[,ss] <- qnorm( resids[,ss])
       }
-      # if( object$distribution == "tweedie"){
-      #   nonzero <- object$titbits$Y[,ss]>0
-      #   tmpObs <- matrix( rep( object$titbits$Y[,ss], object$nRCP), ncol=object$nRCP)
-      #   tmp <- matrix( fn( as.numeric( tmpObs[nonzero,]), as.numeric( object$mus[nonzero,ss,]), object$coefs$disp[ss], object$titbits$power[ss]), ncol=object$nRCP)
-      #   tmp <- rowSums( tmp * object$pis[nonzero,])
-      #   resids[nonzero,ss] <- qnorm( tmp)
-      #   tmp <- matrix( fn( as.numeric( tmpObs[!nonzero,]), as.numeric( object$mus[!nonzero,ss,]), object$coefs$disp[ss], object$titbits$power[ss]), ncol=object$nRCP)
-      #   tmp <- rowSums( tmp * object$pis[!nonzero,])
-      #   resids[!nonzero,ss] <- qnorm( runif( sum( !nonzero), min=0, max=tmp))
-      # }
-      if( object$distribution == "gaussian"){
+      if( object$family == "tweedie"){
+        nonzero <- object$titbits$Y[,ss]>0
+        tmpObs <- matrix( rep( object$titbits$Y[,ss], object$nRCP), ncol=object$nRCP)
+        tmp <- matrix( fn( as.numeric( tmpObs[nonzero,]), as.numeric( object$mus[nonzero,ss,]), object$coefs$disp[ss], object$titbits$power[ss]), ncol=object$nRCP)
+        tmp <- rowSums( tmp * object$pis[nonzero,])
+        resids[nonzero,ss] <- qnorm( tmp)
+        tmp <- matrix( fn( as.numeric( tmpObs[!nonzero,]), as.numeric( object$mus[!nonzero,ss,]), object$coefs$disp[ss], object$titbits$power[ss]), ncol=object$nRCP)
+        tmp <- rowSums( tmp * object$pis[!nonzero,])
+        resids[!nonzero,ss] <- qnorm( runif( sum( !nonzero), min=0, max=tmp))
+      }
+      if( object$family == "gaussian"){
         tmp <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$disp[ss], object$titbits$power[ss])
         tmp <- rowSums( tmp * object$pis)
         resids[,ss] <- qnorm( tmp)
@@ -1122,7 +1232,7 @@
   #       setTxtProgressBar(pb, ii)
   #     X1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$X[ii,,drop=FALSE])
   #     W1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$W[ii,,drop=FALSE])
-  #     sims <- regional_mix.simulate( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, logDisps=object$coef$disp, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,distribution=object$distribution)
+  #     sims <- regional_mix.simulate( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, logDisps=object$coef$disp, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,family=object$family)
   #     sims <- sims[,1:object$S]
   #     yi <- object$titbits$Y[ii,,drop=FALSE]
   #     many_yi <- matrix( rep( yi, each=nsim), ncol=object$S)
@@ -1166,7 +1276,7 @@
 #' @param X Numeric matrix of dimension c(n,p.x). Specifies the covariates for the RCP model. Must include the intercept, if one is wanted. Default is random numbers in a matrix of the right size.
 #' @param W Numeric matrix of dimension c(n,p.w). Specifies the covariates for the species model. Must not include the intercept. Unless you want it included twice. Default is to give random levels of a two-level factor.
 #' @param offset Numeric vector of size n. Specifies any offset to be included into the species level model.
-#' @param distribution Text string. Specifies the distribution of the species data. Current options are "bernoulli" (default), "poisson", "negative.binomial", "tweedie" and "gaussian.
+#' @param family Text string. Specifies the family of the species data. Current options are "bernoulli" (default), "poisson", "negative.binomial", "tweedie" and "gaussian.
 #' @export
 #' @examples
 #' \dontrun{
@@ -1203,13 +1313,13 @@
 #'set.seed(121)
 #'simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n,
 #' alpha=alpha, tau=tau, beta=beta, gamma=gamma, X=X[,-(2:3)], W=W,
-#' distribution=my.dist, logDisp=logDisp, offset=Offy)
+#' family=my.dist, logDisp=logDisp, offset=Offy)
 #'
 #' }
 "regional_mix.simulate" <- function(nRCP=3, S=20, n=200, p.x=3, p.w=0,
                                     alpha=NULL, tau=NULL, beta=NULL, gamma=NULL,
                                     logDisps=NULL, powers=NULL, X=NULL, W=NULL,
-                                    offset=NULL, distribution="bernoulli"){
+                                    offset=NULL, family="bernoulli"){
   if (is.null(alpha) | length(alpha) != S) {
     message("Random alpha from normal (-1,0.5) distribution")
     alpha <- rnorm(S,-1,0.5)
@@ -1235,11 +1345,11 @@
   }
   else
     gamma <- matrix( as.numeric( gamma), nrow=S)
-  if( distribution == "negative.binomial" & (is.null( logDisps) | length( logDisps) != S)){
+  if( family == "negative.binomial" & (is.null( logDisps) | length( logDisps) != S)){
     message( "Random values for overdispersions")
     logDisps <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
   }
-  if( distribution=="gaussian" & (is.null( logDisps) | length( logDisps) != S)){
+  if( family=="gaussian" & (is.null( logDisps) | length( logDisps) != S)){
     message( "Random values for species' variance parameters")
     logDisps <- log( 1 + rgamma( n+S, shape=1, scale=0.75))
   }
@@ -1260,8 +1370,8 @@
     }
   if( is.null( offset))
     offset <- rep( 0, n)
-  if( !distribution%in%c("bernoulli","poisson","negative.binomial","tweedie","gaussian")){
-    message( "Distribution not found, please choose from c('bernoulli','poisson','negative.binomial','tweedie','gaussian')")
+  if( !family%in%c("bernoulli","poisson","negative.binomial","tweedie","gaussian")){
+    message( "family not found, please choose from c('bernoulli','poisson','negative.binomial','tweedie','gaussian')")
     return( NA)
   }
 
@@ -1281,24 +1391,24 @@
     etaMu1[hh,,] <- etaMu1[hh,,] + rep( etaMu[hh,], times=n)
   etaMu <- etaMu1
 
-  if( distribution=="bernoulli")
+  if( family=="bernoulli")
     mu <- inv.logit(etaMu)
-  if( distribution %in% c("poisson","negative.binomial"))#,"tweedie"))
+  if( family %in% c("poisson","negative.binomial"))#,"tweedie"))
     mu <- exp( etaMu)
-  if( distribution == "gaussian")
+  if( family == "gaussian")
     mu <- etaMu
 
   fitted <- matrix( NA, nrow=n, ncol=S)
   for( ii in 1:n)
     fitted[ii,] <- mu[habis[ii], ,ii]
 
-  if( distribution=="bernoulli")
+  if( family=="bernoulli")
     outcomes <- matrix(rbinom(n * S, 1, as.numeric( fitted)), nrow = n, ncol = S)
-  if( distribution=="poisson")
+  if( family=="poisson")
     outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
-  if( distribution=="negative.binomial")
+  if( family=="negative.binomial")
     outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp( logDisps), each=n)), nrow = n, ncol = S)
-  if( distribution=="gaussian")
+  if( family=="gaussian")
     outcomes <- matrix( rnorm( n=n*S, mean=as.numeric( fitted), sd=rep( exp( logDisps), each=n)), nrow=n, ncol=S)
 
   colnames(outcomes) <- paste("spp", 1:S, sep = "")
@@ -1315,6 +1425,33 @@
   attr(res, "logDisps") <- logDisps
   attr(res, "mu") <- mu
   return(res)
+}
+
+#'@title What is the average species profile per RCP?
+#'@rdname regional_mix.species_profile
+#'@name regional_mix.species_profile
+#'@param object A RCP model
+#'@param object2 A RCP model bootstrap object
+#'@param CI The confidence intervals to report the range of values form bootstrap
+#'@param \\dots Ignored for now.
+#'@export
+#'@description Extracts the average species' profile for each RCP.
+
+"regional_mix.species_profile" <- function(object, object2=NULL, CI=c(0.025,0.975), type="response", ...){
+
+  if(!type%in%c("response","link"))stop("prediction type not avaliable")
+  if(is.null(object2)){
+    if(check_if_sampling(object)) method <- "single_no_sp_results"
+    else method <- "single_results"
+  } else {
+    method <- "bootstrap_results"
+  }
+  partial_mus <- switch(method,
+                        single_no_sp_results = partial_mus_no_species_form(object,type),
+                        single_results = partial_mus_with_species_form(object,type),
+                        bootstrap_results = partial_mus_from_boostrap(object, object2, CI = CI,type))
+  class(partial_mus) <- "regional_mix_membership"
+  return(partial_mus)
 }
 
 
@@ -1555,209 +1692,9 @@
   return(vcov.mat)
 }
 
-#'@title What is the average species membership per RCP?
-#'@rdname regional_mix.species_membership
-#'@name regional_mix.species_membership
-#'@param object A RCP model
-#'@param object2 A RCP model bootstrap object
-#'@param CI The confidence intervals to report the range of values form bootstrap
-#'@param \\dots Ignored for now.
-#'@export
-#'@description Extracts the average species' membership for each RCP.
-
-"regional_mix.species_membership" <- function(object, object2=NULL, CI=c(0.025,0.975), ...){
-
-  if(is.null(object2)){
-    if(check_if_sampling(object)) type <- "single_no_sp_results"
-    else type <- "single_results"
-  } else {
-    type <- "bootstrap_results"
-  }
-  partial_mus <- switch(type,
-                        single_no_sp_results = partial_mus_no_species_form(object),
-                        single_results = partial_mus_with_species_form(object),
-                        bootstrap_results = partial_mus_from_boostrap(object, object2, CI = CI))
-
-  return(partial_mus)
-}
 
 
 #### Non S3 Class objects ####
-check_if_sampling <-function(object){object$p.w<1}
-
-partial_mus_no_species_form <- function(object, ...){
-
-  ## what are the species taus?
-  tau <- coef(object)$tau
-  tau <- rbind(tau, -colSums( tau))
-
-  ## what was the the model offset?
-  offy <- object$titbits$offset
-
-  ## what is the linear predictor (eta)
-  eta <- sweep(tau, 2, object$coefs$alpha, "+") + mean(offy)
-
-  ## what is the link function of appropriate distribution?
-  if(object$distribution=="bernoulli")
-    link.fun <- stats::make.link('logit')
-  if(object$distribution%in%c("poisson","negative.binomial"))
-    link.fun <- stats::make.link('log')
-  if(object$distribution=='guassian')
-    link.fun <- stats::make.link('identity')
-
-  ## what are the partial mus: dim[nRCPs,nSpp]
-  partial_mus <- link.fun$linkinv(eta)
-  dimnames(partial_mus)[[2]] <- object$names$spp
-  dimnames(partial_mus)[[1]] <- object$names$RCPs
-
-  ## return the partial mus if their is no sampling artifacts (species formula).
-  return(partial_mus)
-}
-
-
-partial_mus_with_species_form <- function(object, ... ){
-
-  ## what are the taus?
-  tau <- coef(object)$tau
-  tau <- rbind(tau, -colSums( tau))
-
-  ## what was the the model offset?
-  offy <- object$titbits$offset
-
-  ## what is the linear predictor (eta)?
-  eta <- sweep(tau, 2, coef(object)$alpha, "+") + mean(offy)
-
-  ## what is the link function of appropriate distribution?
-  if(object$distribution=="bernoulli")
-    link.fun <- stats::make.link('logit')
-  if(object$distribution%in%c("poisson","negative.binomial"))
-    link.fun <- stats::make.link('log')
-  if(object$distribution=='guassian')
-    link.fun <- stats::make.link('identity')
-
-  ## probabilities for all other levels of same sampling var
-  res<- lapply(seq_along(object$names$Wvars),function(jj){
-    new_eta <- sweep(eta, 2, coef(object)$gamma[,object$names$Wvars[jj]], "+");
-    part_mu <- link.fun$linkinv(new_eta);
-    return(part_mu)})
-
-  names(res)<- object$names$Wvars
-  return(res)
-}
-
-partial_mus_from_boostrap  <- function(object, object2, CI=c(0.025,0.975)){
-
-  #set up coefficient extraction
-  taus<-grepl("tau",dimnames(object2)[[2]])
-  alphas<-grepl("alpha",dimnames(object2)[[2]])
-
-  ## what is the link function of appropriate distribution?
-  if(object$distribution=="bernoulli") link.fun <- stats::make.link('logit')
-  if(object$distribution%in%c("poisson","negative.binomial")) link.fun <- stats::make.link('log')
-  if(object$distribution=='negative.binomial') link.fun <- stats::make.link('log')
-  if(object$distribution=='guassian') link.fun <- stats::make.link('identity')
-
-  if(check_if_sampling(object)){
-
-    res_all <- list()
-    for(i in seq_len(dim(object2)[1])){
-
-      ## bootstrap alpha (intercept)
-      tmp_alphas<-object2[i,alphas]
-
-      # bootstrap tau
-      tmp_tau <- object2[i,taus]
-      tmp_tau <- matrix(tmp_tau, nrow=length(object$names$RCPs)-1)
-      tmp_tau_all <- rbind(tmp_tau,-colSums(tmp_tau))
-      colnames(tmp_tau_all) <- object$names$spp
-      rownames(tmp_tau_all) <- object$names$RCPs
-
-      ## offset from the model if used.
-      offy <- object$titbits$offset
-
-      ## what is the linear predictor (eta)
-      tmp_eta <- sweep(tmp_tau_all, 2, tmp_alphas, "+") + mean(offy)
-
-      #calculate values
-      part_mu <- link.fun$linkinv(tmp_eta);
-      res_all[[i]]<-as.matrix(part_mu)
-    }
-
-    overall_temp<-array(unlist(res_all), dim=c( length(object$names$RCPs),length(object$names$spp),nrow(object2)))
-    overall_res<-list( mean=round(apply(overall_temp, c(1,2), mean),3),
-                       sd= round(apply(overall_temp, c(1,2), sd),3),
-                       lower= round(apply(overall_temp, c(1,2), function(x) quantile(x, probs=CI[1])),3),
-                       upper= round(apply(overall_temp, c(1,2), function(x) quantile(x, probs=CI[2])),3))
-
-    dimnames(overall_res[[1]])<-dimnames(overall_res[[2]])<-dimnames(overall_res[[3]])<-dimnames(overall_res[[4]])<-list(object$names$RCPs, object$names$spp)
-    return (overall_res)
-  }
-
-  if (!check_if_sampling(object)){
-
-    gammas<-grepl("gamma",dimnames(object2)[[2]])
-    res_all <- list()
-    # res <- rep( list(list()), length(object$names$Wvars))
-
-
-    for(i in seq_len(dim(object2)[1])){
-      ## bootstrap alpha (intercept)
-      tmp_alphas<-object2[i,alphas]
-
-      # bootstrap tau
-      tmp_tau <- object2[i,taus]
-      tmp_tau <- matrix(tmp_tau, nrow=length(object$names$RCPs)-1)
-      tmp_tau_all <- rbind(tmp_tau,-colSums(tmp_tau))
-      colnames(tmp_tau_all) <- object$names$spp
-      rownames(tmp_tau_all) <- object$names$RCPs
-
-      ## offset from the model if used.
-      offy <- object$titbits$offset
-
-      #gamma
-      tmp_gamma<-object2[i, gammas]
-      tmp_gamma<-matrix(tmp_gamma, nrow=length(object$names$spp))
-      colnames(tmp_gamma)<-object$names$Wvars
-      rownames(tmp_gamma)<-object$names$spp
-
-      ## what is the linear predictor (eta)
-      tmp_eta <- sweep(tmp_tau_all, 2, tmp_alphas, "+") + mean(offy)
-
-      res<- lapply(seq_along(object$names$Wvars),function(jj){
-        new_eta <- sweep(tmp_eta, 2, tmp_gamma[,jj], "+");
-        part_mu <- link.fun$linkinv(new_eta);
-        return(part_mu)})
-
-      names(res)<-object$names$Wvars
-      res_all[[i]] <- res
-    }
-
-    #Compile list of summaries at the sampling factor level
-    samp_res <- rep(list(list()), length(object$names$Wvars))
-    names(samp_res) <- object$names$Wvars
-
-    for(k in seq_along(object$names$Wvars)){
-        samp_res[[k]]<-list(mean=round(apply(simplify2array(res_all[[k]]), c(1,2), mean),3),
-                            sd=round(apply(simplify2array(res_all[[k]]), c(1,2), sd),3),
-                            lower=round(apply(simplify2array(res_all[[k]]), c(1,2), function(x) quantile(x, probs=CI[1])),3),
-                            upper=round(apply(simplify2array(res_all[[k]]), c(1,2), function(x) quantile(x, probs=CI[2])),3))
-    }
-
-    overall_temp<-list()
-    for(i in seq_len(dim(object2)[1])){
-        get_vals <- res_all[[i]]
-        overall_temp[[i]]<-apply(simplify2array(get_vals), c(1,2), mean)
-    }
-
-    overall_samp <-list(mean=round(apply(simplify2array(overall_temp), c(1,2), mean),3),
-                   sd= round(apply(simplify2array(overall_temp), c(1,2), sd),3),
-                   lower= round(apply(simplify2array(overall_temp), c(1,2), function(x) quantile(x, probs=CI[1])),3),
-                   upper= round(apply(simplify2array(overall_temp), c(1,2), function(x) quantile(x, probs=CI[2])),3))
-    samp_res$overall<-overall_samp
-    return(samp_res)
-  }
-}
-
 "calcInfoCrit" <- function( ret){
   k <- length(unlist(ret$coefs))
   ret$BIC <- -2 * ret$logl + log(ret$n) * k
@@ -1781,6 +1718,7 @@ partial_mus_from_boostrap  <- function(object, object2, CI=c(0.025,0.975)){
 
 }
 
+"check_if_sampling" <-function(object){object$p.w<1}
 
 "check.outcomes1" <- function( outs){
   nam <- colnames( outs)
@@ -1790,6 +1728,7 @@ partial_mus_from_boostrap  <- function(object, object2, CI=c(0.025,0.975)){
     return( FALSE)
 
 }
+
 
 
 "clean_data_rcp" <- function( data, form1, form2){
@@ -1810,7 +1749,7 @@ partial_mus_from_boostrap  <- function(object, object2, CI=c(0.025,0.975)){
 }
 
 "get_dist_rcp" <- function( disty.cases, dist1){
-  error.msg <- paste( c( "Distribution not implemented. Options are: ", disty.cases, "-- Exitting Now"), collapse=" ")
+  error.msg <- paste( c( "family not implemented. Options are: ", disty.cases, "-- Exitting Now"), collapse=" ")
   disty <- switch( dist1, "bernoulli" = 1,"poisson" = 2,"negative.binomial" = 3,"tweedie" = 4,"gaussian" = 5,{stop( error.msg)} )
   return( disty)
 }
@@ -1863,7 +1802,7 @@ function( disty, power, S)
 
 
 "get_residuals_rcp" <-
-function( site.logls, outcomes, distribution, coef, nRCP, type="deviance", powers=NULL, quiet=FALSE, nsim=1000, X, W, offy)
+function( site.logls, outcomes, family, coef, nRCP, type="deviance", powers=NULL, quiet=FALSE, nsim=1000, X, W, offy)
 {
   if( ! type %in% c("deviance","RQR"))
     stop( "Unknown type of residual requested. Only deviance and RQR (for randomised quantile residuals) are implemented\n")
@@ -1880,7 +1819,7 @@ function( site.logls, outcomes, distribution, coef, nRCP, type="deviance", power
     ii <- 1
     X1 <- kronecker( rep( 1, nsim), X[ii,])
     W1 <- kronecker( rep( 1, nsim), W[ii,])
-    sims <- regional_mix.simulate( nRCP=nRCP, S=length( coef$alpha), n=n.sim, p.x=ncol( X), p.w=ncol( W), alpha=coef$alpha, tau=coef$tau, beta=coef$beta, gamma=coef$gamma, logDisps=coef$disp, powers=pwers, X=X1, W=W1, offset=offy,distribution=distribution)
+    sims <- regional_mix.simulate( nRCP=nRCP, S=length( coef$alpha), n=n.sim, p.x=ncol( X), p.w=ncol( W), alpha=coef$alpha, tau=coef$tau, beta=coef$beta, gamma=coef$gamma, logDisps=coef$disp, powers=pwers, X=X1, W=W1, offset=offy,family=family)
 
   }
 
@@ -2043,10 +1982,10 @@ function( site.logls, outcomes, distribution, coef, nRCP, type="deviance", power
 
 
 "get_titbits_rcp" <-
-function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, control, distribution, p.w, power)
+function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, control, family, p.w, power)
 {
   if( titbits==TRUE)
-    titbits <- list( Y = outcomes, X = X, W = W, offset = offset, wts=wts, rcp_formula = rcp_formula, species_formula = species_formula, control = control, distribution = distribution, power=power)
+    titbits <- list( Y = outcomes, X = X, W = W, offset = offset, wts=wts, rcp_formula = rcp_formula, species_formula = species_formula, control = control, family = family, power=power)
   else{
     titbits <- list()
     if( "Y" %in% titbits)
@@ -2065,8 +2004,8 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
       titbits$species_formula <- species_formula
     if( "control" %in% titbits)
       titbits$control <- control
-    if( "distribution" %in% titbits)
-      titbits$distribution <- distribution
+    if( "family" %in% titbits)
+      titbits$family <- family
     if( "power" %in% titbits)
       titbits$power <- power
   }
@@ -2480,6 +2419,184 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
 # 	return( new.fm)
 # }
 
+"partial_mus_no_species_form" <- function(object, type, ...){
+
+  ## what are the species taus?
+  tau <- coef(object)$tau
+  tau <- rbind(tau, -colSums( tau))
+
+  ## what was the the model offset?
+  offy <- object$titbits$offset
+
+  ## what is the linear predictor (eta)
+  eta <- sweep(tau, 2, object$coefs$alpha, "+") + mean(offy)
+
+  ## what is the link function of appropriate family?
+  if(object$family=="bernoulli")
+    link.fun <- stats::make.link('logit')
+  if(object$family%in%c("poisson","negative.binomial"))
+    link.fun <- stats::make.link('log')
+  if(object$family=='guassian')
+    link.fun <- stats::make.link('identity')
+
+  ## what are the partial mus: dim[nRCPs,nSpp]
+  if(type%in%"response")partial_mus <- link.fun$linkinv(eta)
+  else partial_mus <- eta
+  dimnames(partial_mus)[[2]] <- object$names$spp
+  dimnames(partial_mus)[[1]] <- object$names$RCPs
+
+  ## return the partial mus if their is no sampling artifacts (species formula).
+  return(partial_mus)
+}
+
+
+"partial_mus_with_species_form" <- function(object, type, ... ){
+
+  ## what are the taus?
+  tau <- coef(object)$tau
+  tau <- rbind(tau, -colSums( tau))
+
+  ## what was the the model offset?
+  offy <- object$titbits$offset
+
+  ## what is the linear predictor (eta)?
+  eta <- sweep(tau, 2, coef(object)$alpha, "+") + mean(offy)
+
+  ## what is the link function of appropriate family?
+  if(object$family=="bernoulli")
+    link.fun <- stats::make.link('logit')
+  if(object$family%in%c("poisson","negative.binomial"))
+    link.fun <- stats::make.link('log')
+  if(object$family=='guassian')
+    link.fun <- stats::make.link('identity')
+
+  ## probabilities for all other levels of same sampling var
+  res<- lapply(seq_along(object$names$Wvars),function(jj){
+    new_eta <- sweep(eta, 2, coef(object)$gamma[,object$names$Wvars[jj]], "+");
+    if(type%in%"response")part_mus <- link.fun$linkinv(eta)
+    else part_mus <- eta
+    return(part_mu)})
+
+  names(res)<- object$names$Wvars
+  return(res)
+}
+
+"partial_mus_from_boostrap"  <- function(object, object2, CI=c(0.025,0.975), type){
+
+  #set up coefficient extraction
+  taus<-grepl("tau",dimnames(object2)[[2]])
+  alphas<-grepl("alpha",dimnames(object2)[[2]])
+
+  ## what is the link function of appropriate family?
+  if(object$family=="bernoulli") link.fun <- stats::make.link('logit')
+  if(object$family%in%c("poisson","negative.binomial")) link.fun <- stats::make.link('log')
+  if(object$family=='negative.binomial') link.fun <- stats::make.link('log')
+  if(object$family=='guassian') link.fun <- stats::make.link('identity')
+
+  if(check_if_sampling(object)){
+
+    res_all <- list()
+    for(i in seq_len(dim(object2)[1])){
+
+      ## bootstrap alpha (intercept)
+      tmp_alphas<-object2[i,alphas]
+
+      # bootstrap tau
+      tmp_tau <- object2[i,taus]
+      tmp_tau <- matrix(tmp_tau, nrow=length(object$names$RCPs)-1)
+      tmp_tau_all <- rbind(tmp_tau,-colSums(tmp_tau))
+      colnames(tmp_tau_all) <- object$names$spp
+      rownames(tmp_tau_all) <- object$names$RCPs
+
+      ## offset from the model if used.
+      offy <- object$titbits$offset
+
+      ## what is the linear predictor (eta)
+      tmp_eta <- sweep(tmp_tau_all, 2, tmp_alphas, "+") + mean(offy)
+
+      #calculate values
+      # if(type=="response")part_mu <- link.fun$linkinv(tmp_eta);
+      if(type%in%"response")part_mus <- link.fun$linkinv(tmp_eta)
+      if(type%in%"link") part_mus <- tmp_eta
+      res_all[[i]]<-as.matrix(part_mu)
+    }
+
+    overall_temp<-array(unlist(res_all), dim=c( length(object$names$RCPs),length(object$names$spp),nrow(object2)))
+    overall_res<-list( mean=apply(overall_temp, c(1,2), mean),
+                       sd= apply(overall_temp, c(1,2), sd),
+                       lower= apply(overall_temp, c(1,2), function(x) quantile(x, probs=CI[1])),
+                       upper= apply(overall_temp, c(1,2), function(x) quantile(x, probs=CI[2])))
+
+    dimnames(overall_res[[1]])<-dimnames(overall_res[[2]])<-dimnames(overall_res[[3]])<-dimnames(overall_res[[4]])<-list(object$names$RCPs, object$names$spp)
+    return (overall_res)
+  }
+
+  if (!check_if_sampling(object)){
+
+    gammas<-grepl("gamma",dimnames(object2)[[2]])
+    res_all <- list()
+    # res <- rep( list(list()), length(object$names$Wvars))
+
+
+    for(i in seq_len(dim(object2)[1])){
+      ## bootstrap alpha (intercept)
+      tmp_alphas<-object2[i,alphas]
+
+      # bootstrap tau
+      tmp_tau <- object2[i,taus]
+      tmp_tau <- matrix(tmp_tau, nrow=length(object$names$RCPs)-1)
+      tmp_tau_all <- rbind(tmp_tau,-colSums(tmp_tau))
+      colnames(tmp_tau_all) <- object$names$spp
+      rownames(tmp_tau_all) <- object$names$RCPs
+
+      ## offset from the model if used.
+      offy <- object$titbits$offset
+
+      #gamma
+      tmp_gamma<-object2[i, gammas]
+      tmp_gamma<-matrix(tmp_gamma, nrow=length(object$names$spp))
+      colnames(tmp_gamma)<-object$names$Wvars
+      rownames(tmp_gamma)<-object$names$spp
+
+      ## what is the linear predictor (eta)
+      tmp_eta <- sweep(tmp_tau_all, 2, tmp_alphas, "+") + mean(offy)
+
+      res<- lapply(seq_along(object$names$Wvars),function(jj){
+        new_eta <- sweep(tmp_eta, 2, tmp_gamma[,jj], "+");
+        if(type%in%"response")part_mu <- link.fun$linkinv(tmp_eta)
+        if(type%in%"link") part_mu <- tmp_eta
+        return(part_mu)})
+
+      names(res)<-object$names$Wvars
+      res_all[[i]] <- res
+    }
+
+    #Compile list of summaries at the sampling factor level
+    samp_res <- rep(list(list()), length(object$names$Wvars))
+    names(samp_res) <- object$names$Wvars
+
+    for(k in seq_along(object$names$Wvars)){
+      samp_res[[k]]<-list(mean=apply(simplify2array(res_all[[k]]), c(1,2), mean),
+                          sd=apply(simplify2array(res_all[[k]]), c(1,2), sd),
+                          lower=apply(simplify2array(res_all[[k]]), c(1,2), function(x) quantile(x, probs=CI[1])),
+                          upper=apply(simplify2array(res_all[[k]]), c(1,2), function(x) quantile(x, probs=CI[2])))
+    }
+
+    overall_temp<-list()
+    for(i in seq_len(dim(object2)[1])){
+      get_vals <- res_all[[i]]
+      overall_temp[[i]]<-apply(simplify2array(get_vals), c(1,2), mean)
+    }
+
+    overall_samp <-list(mean=apply(simplify2array(overall_temp), c(1,2), mean),
+                        sd= apply(simplify2array(overall_temp), c(1,2), sd),
+                        lower= apply(simplify2array(overall_temp), c(1,2), function(x) quantile(x, probs=CI[1])),
+                        upper= apply(simplify2array(overall_temp), c(1,2), function(x) quantile(x, probs=CI[2])))
+    samp_res$overall<-overall_samp
+    return(samp_res)
+  }
+}
+
 "print.data.summ" <- function( data, dat, S, rcp_formula, species_formula, disty.cases, disty, quiet=FALSE){
   if( quiet)
     return( NULL)
@@ -2493,7 +2610,7 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
     message("The model for each species is: ", Reduce( "paste", deparse( species_formula)))
   else
     message("There is NO model for each species (apart from intercept(s))")
-  message("The error distribution is: ", disty.cases[disty])
+  message("The error family is: ", disty.cases[disty])
 }
 
 

@@ -252,6 +252,9 @@
 
   tmp$family <- disty_cases[disty]
 
+  tmp$S <- S; tmp$G <- G; tmp$npx <- ncol(X); tmp$npw <- ifelse(ncol(W)>1,ncol(W),0);
+  tmp$npu <- ifelse(!is.null(U),ncol(U),0);
+
   if(nArchetypes==1){
     tmp$pis <- tmp$pis
   }else{
@@ -321,7 +324,7 @@
   if(G==1){
     tmp <- fit.ecm.sam(y, X, W, U, spp_weights, site_spp_weights,
                        offset, y_is_na, G, S, disty, size, powers,
-                       control=ecomix:::set_control_sam(list(ecm_refit = 1)))
+                       control=control)
     return(tmp)
   }
 
@@ -1251,9 +1254,11 @@
     X <- model.matrix(arch.fm, as.data.frame(newdata))
     W <- model.matrix(spp.fm, as.data.frame(newdata))
     # W <- model.matrix(spp.fm, as.data.frame(newdata))
-    if(!is.null(U)){
+    if(!is.null(object$titbits$U)){
       all.fm <- update(all.fm,~.-1)
       U <- model.matrix(all.fm, as.data.frame(newdata))
+    } else {
+      U <- NULL
     }
 
     offset <- model.frame(arch.fm, data = newdata)
@@ -1307,10 +1312,18 @@
   if (npw>0) {
     gammaIn <- c(NA, as.numeric(object$coef$gamma))
     gammaIn <- gammaIn[-1]
-    usetheta <- 1
+    usegamma <- 1
   } else {
     gammaIn <- -999999
-    usetheta <- 0
+    usegamma <- 0
+  }
+  if (npw>0) {
+    deltaIn <- c(NA, as.numeric(object$coef$gamma))
+    deltaIn <- deltaIn[-1]
+    usedelta <- 1
+  } else {
+    deltaIn <- -999999
+    usedelta <- 0
   }
   if (disty%in%c(4,6)) {
     thetaIn <- c(NA, as.numeric(object$coef$theta))
@@ -1333,12 +1346,14 @@
                      archetype = sam_internal_pred_groups(alpha = object$coefs$alpha,
                                beta = object$coefs$beta,
                                gamma = object$coefs$gamma,
-                               taus = taus, G = G, S = S, X = X, W = W,
+                               delta = object$coefs$delta,
+                               taus = taus, G = G, S = S, X = X, W = W, U = U,
                                offset = offset, family = object$family),
                      species = sam_internal_pred_species(alpha = object$coefs$alpha,
                                                         beta = object$coefs$beta,
                                                         gamma = object$coefs$gamma,
-                                                        taus = taus, G = G, S = S, X = X, W = W,
+                                                        delta = object$coefs$delta,
+                                                        taus = taus, G = G, S = S, X = X, W = W,  U = U,
                                                         offset = offset, family = object$family))
     } else {
       nboot <- segments[seg]
@@ -1349,7 +1364,8 @@
                                                        archetype = sam_internal_pred_groups(alpha = alphaBoot[ii,],
                                                                  beta = matrix(betaBoot[ii,],G,npx),
                                                                  gamma = matrix(gammaBoot[ii,],S,npw),
-                                                                 taus = taus, G = G, S = S, X = X, W = W,
+                                                                 delta = deltaBoot[ii,],
+                                                                 taus = taus, G = G, S = S, X = X, W = W, U=U,
                                                                  offset = offset, family = object$family),
                                                        species = sam_internal_pred_species(alpha = alphaBoot[ii,],
                                                                                            beta = matrix(betaBoot[ii,],G,npx),
@@ -1783,7 +1799,7 @@
   starting.sam <-  NULL
   bestOfAllMods <- list( logl=-Inf)
   for(t in seq_len(control$ecm_refit)) {
-    message(paste0("ECM restart ",t," of ", control$ecm_refit,""))
+    if(!control$quiet) message(paste0("ECM restart ",t," of ", control$ecm_refit,""))
     starting.sam <- get_initial_values_sam(y = y, X = X, W = W, U = U,
                                            site_spp_weights = site_spp_weights,
                                            offset = offset, y_is_na = y_is_na,
@@ -1897,6 +1913,8 @@
     }
 
     if(new.logl > mod$logl) {
+      # mod$S <- S; mod$G <- G; mod$npx <- ncol(X); mod$npw <- ifelse(ncol(W)>1,ncol(W),0);
+      # mod$npu <- ifelse(!is.null(U),ncol(U),0); mod$n <- n; mod$disty <- disty;
       mod <- list(logl = new.logl, alpha = fits$alpha, beta = fits$beta,
                   eta = additive_logistic(fits$pis, inv = TRUE)[-G],
                   gamma = fits$gamma, delta = fits$delta,
@@ -2280,7 +2298,7 @@ starting values;\n starting values are generated using ',control$init_method,
   if(length(sel.omit.spp)==0) sel.omit.spp <- -1*(1:S)
 
   starting.sam <- list(alpha = rep(0,S), theta = rep(1,S));
-  message("Initialising starting values")
+  if(!control$quiet) message("Initialising starting values")
 
 
   if(is.null(U)){
@@ -3347,7 +3365,7 @@ if(!is.null(U)) {
   else etaAll <- rep(0,nrow(X))
 
   for (g in seq_len(G)) {
-    etaMix <- matrix(as.numeric(X%*%beta[g, ]), nrow(X), S, byrow=FALSE)
+    etaMix <- matrix(as.numeric(as.matrix(X)%*%beta[g, ]), nrow(X), S, byrow=FALSE)
     if(ncol(W)>1) etaSpp <- W%*%t(cbind(alpha,gamma))
     else etaSpp <- matrix(alpha, nrow(X), S, byrow=TRUE)
     eta <- etaMix + etaSpp + etaAll + offset

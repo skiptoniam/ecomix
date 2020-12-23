@@ -19,7 +19,7 @@ regional_mix.simulate(
   X = NULL,
   W = NULL,
   offset = NULL,
-  distribution = "bernoulli"
+  family = "bernoulli"
 )
 }
 \arguments{
@@ -51,7 +51,7 @@ regional_mix.simulate(
 
 \item{offset}{Numeric vector of size n. Specifies any offset to be included into the species level model.}
 
-\item{distribution}{Text string. Specifies the distribution of the species data. Current options are "bernoulli" (default), "poisson", "negative.binomial", "tweedie" and "gaussian.}
+\item{family}{Text string. Specifies the family of the species data. Current options are "bernoulli" (default), "poisson", "negative.binomial", "tweedie" and "gaussian.}
 }
 \description{
 Simulates a data set from a mixture-of-experts model for RCP (for region of common profile) types.
@@ -89,7 +89,7 @@ logDisp <- log( rexp( S, 1))
 set.seed(121)
 simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n,
 alpha=alpha, tau=tau, beta=beta, gamma=gamma, X=X[,-(2:3)], W=W,
-distribution=my.dist, logDisp=logDisp, offset=Offy)
+family=my.dist, logDisp=logDisp, offset=Offy)
 
 }
 }
