@@ -5,8 +5,6 @@
 #include<Rmath.h>
 #include<Rinternals.h>
 #include<R_ext/Applic.h>
-#include<gsl/gsl_rng.h>
-#include<gsl/gsl_randist.h>
 #include<vector>
 #include"Tweedie.h"
 

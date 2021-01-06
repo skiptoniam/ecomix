@@ -10,6 +10,7 @@ Description: Implements model-based species level (Species Archetype Models) or 
 Encoding: UTF-8
 LazyData: true
 Imports:
+    glm2,
     glmnet,
     fishMod,
     MASS,
@@ -30,7 +31,7 @@ Suggests:
     testthat,
     covr
 Depends:
-    R (>= 3.4.0)
+    R (>= 4.0)
 License: GPL (>= 2)
 SystemRequirements: C++11
 NeedsCompilation: yes

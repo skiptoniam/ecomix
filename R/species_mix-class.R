@@ -1884,7 +1884,7 @@
       }
 
       ## Update archetype-specific coefficients
-      fm_beta <- ecomix:::plapply(seq_len(G), ecomix:::apply_optimise_betas,
+      fm_beta <- ecomix:::plapply(seq_len(G), apply_optimise_betas,
                          y, X, W, U, site_spp_weights, offset,
                          y_is_na, disty, taus, fits, size, powers,
                          .parallel = control$cores,
@@ -1979,7 +1979,7 @@
         check.p <- link$linkinv(new.etas)
         check.p[check.p < 1e-4] <- 1e-4; check.p[check.p > (1-1e-4)] <- (1-1e-4);
         if(get.fitted) fitted.values[gg,,ss] <- check.p
-        out.taus[ss,gg] <- (sum(dbinom(y[,ss], 1, p = check.p, log = TRUE)))
+        out.taus[ss,gg] <- (sum(dbinom(y[,ss], 1, prob = check.p, log = TRUE)))
       }
       if(disty %in% 2) {
         if(get.fitted) fitted.values[gg,,ss] <- link$linkinv(new.etas)
@@ -2005,7 +2005,7 @@
         check.p <- link$linkinv(new.etas)
         check.p[check.p < 1e-4] <- 1e-4; check.p[check.p > (1-1e-4)] <- (1-1e-4);
         if(get.fitted) fitted.values[gg,,ss] <- check.p
-        out.taus[ss,gg] <- (sum(dbinom(y[,ss], size, p = check.p, log = TRUE)))
+        out.taus[ss,gg] <- (sum(dbinom(y[,ss], size, prob = check.p, log = TRUE)))
       }
 
     }
@@ -2104,7 +2104,7 @@
 
         # which family to use?
         if (disty==3){
-          Y_s <- as.vector(Y_s/site_weights)
+          Y_s <- as.vector(Y_s/site.weights)
         }
         if(disty%in%c(7)){
           Y_s <- as.matrix(cbind(Y_s,size_s-Y_s))
@@ -2113,15 +2113,13 @@
         if(ncol(X_s)==1) X_s <- cbind(1,X_s)
 
         if (disty==7){
-          # fit1 <- glm2::glm.fit2(x = as.matrix(X_s), y = Y_s, family = glmnet.family, weights = obs.weights+1e-6, offset = offy,intercept = FALSE)
           fit1 <- try(glm2::glm.fit2(y=Y_s, x=as.data.frame(cbind(1,X_s)),weights=c(obs.weights+1e-6),
                                family=glm.family, offset=offy), silent=FALSE)
           if (any(class(fit1)[1] %in% 'try-error')){
-            new.betas <- rep(NA, ncol(X[ids_i,]))
-            names(new.betas) <- colnames(cbind(X[ids_i,,drop=FALSE],W[ids_i,,drop=FALSE]))
+            new.betas <- rep(NA, ncol(X))
+            names(new.betas) <- colnames(cbind(X,W))
           } else {
-            # if(ncol(X)==1) my_coefs <- t(as.matrix(my.coefs[-1]))
-            new.betas <- coef(fit1)[-1]
+             new.betas <- coef(fit1)[-1]
           }
         } else {
           fit1 <- glmnet::glmnet(x = as.matrix(X_s), y = Y_s, family = glmnet.family, weights = obs.weights+1e-6, offset = offy, nlambda = 100, intercept = FALSE)
@@ -2152,7 +2150,7 @@
   for(gg in seq_len(G)) {
     cw.eta <- as.matrix(W)%*%x + mix.etas[,gg] + all.etas + offset
     if(disty %in%  1)
-      out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = 1, p =  link$linkinv(cw.eta), log = TRUE))
+      out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = 1, prob =  link$linkinv(cw.eta), log = TRUE))
     if(disty %in%  2)
       out <- out + sum(taus[ss,gg]*dpois(y[,ss], lambda =  link$linkinv(cw.eta), log = TRUE))
     if(disty %in%  3)
@@ -2162,9 +2160,9 @@
     if(disty %in%  5)
       out <- out + sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(cw.eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
     if(disty %in%  6)
-      out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean =  (cw.eta), sd = sqrt(fits$theta[ss]), log = TRUE))
+      out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean =  cw.eta, sd = sqrt(fits$theta[ss]), log = TRUE))
     if(disty %in%  7)
-      out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = size, p = link$linkinv(cw.eta), log = TRUE))
+      out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = size, prob = link$linkinv(cw.eta), log = TRUE))
   }
   return(out)
 }
@@ -2192,7 +2190,7 @@
    if(disty==4)
      out <- out + sum(taus[ss,gg]*dnbinom(y[,ss], mu = link$linkinv(eta), size = 1/x, log = TRUE));
    if(disty==5)
-     out <- out + sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu = link$linkinv(eta), phi = x, p = powers[ss], LOG = TRUE));
+     out <- out + sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu = link$linkinv(eta), phi = x, prob = powers[ss], LOG = TRUE));
    if(disty==6)
      out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean = eta, sd = sqrt(x), log = TRUE))
   }
@@ -2226,7 +2224,7 @@
     for(gg in seq_len(G)) {
       cw.eta <- spp.etas + mix.etas[,gg] + all.etas + offset
       if(disty %in%  1)
-        out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = 1, p =  link$linkinv(cw.eta), log = TRUE))
+        out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = 1, prob =  link$linkinv(cw.eta), log = TRUE))
       if(disty %in%  2)
         out <- out + sum(taus[ss,gg]*dpois(y[,ss], lambda =  link$linkinv(cw.eta), log = TRUE))
       if(disty %in%  3)
@@ -2234,11 +2232,11 @@
       if(disty %in%  4)
         out <- out + sum(taus[ss,gg]*dnbinom(y[,ss], mu =  link$linkinv(cw.eta), size = 1/fits$theta[ss], log = TRUE))
       if(disty %in%  5)
-        out <- out + sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(cw.eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
+        out <- out + sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(cw.eta), phi = fits$theta[ss], prob = powers[ss], LOG = TRUE))
       if(disty %in%  6)
         out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean =  (cw.eta), sd = sqrt(fits$theta[ss]), log = TRUE))
       if(disty %in%  7)
-        out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = size, p = link$linkinv(cw.eta), log = TRUE))
+        out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = size, prob = link$linkinv(cw.eta), log = TRUE))
     }
 
   }
