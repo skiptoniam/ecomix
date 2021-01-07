@@ -47,6 +47,11 @@ for the archetype models. If you include a species specific formula which has
 more than an intercept you will be fitting a partial species archetype model
 which has species specific covariates and archetype specific covariates.}
 
+\item{all_formula}{an object of class "formula", which is meant to represent
+a constant single set of covariates across all species and groups, typically you might
+use this an alternative to an offset, where there might be some bias in the
+data which is relatively constant and might arise as an artefact of how the data was collected.}
+
 \item{data}{a matrix of dataframe which contains the 'species_data'
 matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
 const, temperature, rainfall. dims of matirx should be
@@ -75,8 +80,7 @@ undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
 \item{size}{The size of the sample for a binomial model (defaults to 1).}
 
 \item{control}{a list of control parameters for optimisation and calculation.
-See details. From \code{species_mix.control} for details on optimistaion
-parameters.}
+See details.}
 
 \item{inits}{NULL a numeric vector that provides approximate starting values
 for species_mix coefficents. These are distribution specific, but at a

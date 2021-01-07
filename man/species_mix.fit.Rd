@@ -49,7 +49,7 @@ species_mix.fit(
 
 \item{powers}{The power parameters for the Tweedie distribution.}
 
-\item{control}{this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.}
+\item{control}{this is a list of control parameters that alter the specifics of model fitting.}
 
 \item{inits}{This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).}
 }

@@ -31,10 +31,10 @@
 #' for the archetype models. If you include a species specific formula which has
 #' more than an intercept you will be fitting a partial species archetype model
 #' which has species specific covariates and archetype specific covariates.
-#' @param all_formula an object of class "formula", which is meant to represnet
+#' @param all_formula an object of class "formula", which is meant to represent
 #'  a constant single set of covariates across all species and groups, typically you might
 #'  use this an alternative to an offset, where there might be some bias in the
-#'  data which is relatively constant and might arise as an atrifact of how the data was collected.
+#'  data which is relatively constant and might arise as an artefact of how the data was collected.
 #' @param data a matrix or data.frame which contains the 'species_data'
 #' matrix, a const and the covariates in the structure of spp1, spp2, spp3,
 #' const, temperature, rainfall. dims of matrix should be
@@ -57,8 +57,7 @@
 #' @param size The size of the sample for a binomial model (defaults to 1).
 #' @param power The power parameter for a Tweedie model. Default is 1.6, and this is assigned to all species
 #' @param control a list of control parameters for optimisation and calculation.
-#' See details. From \code{species_mix.control} for details on optimisation
-#' parameters.
+#' See details.
 #' @param inits NULL a numeric vector that provides approximate starting values
 #' for species_mix coefficients. These are family specific, but at a
 #' minimum you will need pis (additive_logitic transformed), alpha
@@ -193,7 +192,7 @@
       w.sds <- stand.W$dat.sds
     }
     if(!is.null(U)){
-      stand.W <- standardise.U(U)
+      stand.U <- standardise.U(U)
       U <- as.matrix(stand.U$U)
       u.means <- stand.U$dat.means
       u.sds <- stand.U$dat.sds
@@ -314,7 +313,7 @@
 #'@param disty the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.
 #'@param size The size of each of binomial sample at each site. Length should be the number of sites.
 #'@param powers The power parameters for the Tweedie distribution.
-#'@param control this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.
+#'@param control this is a list of control parameters that alter the specifics of model fitting.
 #'@param inits This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).
 #'@export
 
@@ -378,6 +377,10 @@
 #' for the archetype models. If you include a species specific formula which has
 #' more than an intercept you will be fitting a partial species archetype model
 #' which has species specific covariates and archetype specific covariates.
+#' @param all_formula an object of class "formula", which is meant to represent
+#'  a constant single set of covariates across all species and groups, typically you might
+#'  use this an alternative to an offset, where there might be some bias in the
+#'  data which is relatively constant and might arise as an artefact of how the data was collected.
 #' @param data a matrix of dataframe which contains the 'species_data'
 #' matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
 #' const, temperature, rainfall. dims of matirx should be
@@ -400,8 +403,7 @@
 #' @param size The size of the sample for a binomial model (defaults to 1).
 #' @param powers powers for tweedie distribution
 #' @param control a list of control parameters for optimisation and calculation.
-#' See details. From \code{species_mix.control} for details on optimistaion
-#' parameters.
+#' See details.
 #' @param inits NULL a numeric vector that provides approximate starting values
 #' for species_mix coefficents. These are distribution specific, but at a
 #' minimum you will need pis (additive_logitic transformed), alpha
@@ -1215,6 +1217,8 @@
   alphaBoot <- allCoBoot[, seq_len(S), drop=FALSE]
   betaBoot <- allCoBoot[, S + seq_len((G*npx)), drop=FALSE]
   gammaBoot <- allCoBoot[, S + (G-1) + (G*npx) + seq_len((S*npw)), drop=FALSE]
+  deltaBoot <- allCoBoot[, S + (G-1) + (G*npx) + (S*npw) + seq_len(npu), drop=FALSE]
+
 
   alphaIn <- c(NA, as.numeric(object$coefs$alpha))
   alphaIn <- alphaIn[-1]
@@ -1563,8 +1567,8 @@
     W <- object$titbits$W
     U <- object$titbits$U
     offset <- object$titbits$offset
-    spp_wts <- object$titbits$spp_weights
-    site_spp_wts <- object$titbits$site_spp_weights
+    spp_weights <- object$titbits$spp_weights
+    site_spp_weights <- object$titbits$site_spp_weights
     y <- object$titbits$Y
     y_is_na <- object$titbits$y_is_na
     size <- object$titbits$size
@@ -1588,6 +1592,7 @@
     beta <- as.numeric(start_vals$beta)
     eta <- as.numeric(start_vals$eta)
     gamma <- as.numeric(start_vals$gamma)
+    delta <- as.numeric(start_vals$delta)
     theta <- as.numeric(start_vals$theta)
 
     #scores
@@ -1636,6 +1641,13 @@
           gamma <- -999999
           # start <- start + 1
         }
+        if(npu>0) {
+          delta <- x[start + seq_len(npu)]
+          start <- start + npu
+        } else {
+          delta <- -999999
+          # start <- start + 1
+        }
         if(disty%in%c(4,6)){
           theta <- x[start + seq_len(S)]
         } else {
@@ -1644,7 +1656,7 @@
         #c++ call to optimise the model (needs pretty good starting values)
         tmp <- .Call("species_mix_cpp",
                      as.numeric(as.matrix(y)), as.numeric(as.matrix(X)),
-                     as.numeric(as.matrix(Wcpp)), as.numeric(as.matrix(Ucpp)),
+                     as.numeric(as.matrix(W)), as.numeric(as.matrix(U)),
                      as.numeric(offset), as.numeric(spp_weights),
                      as.numeric(as.matrix(site_spp_weights)),
                      as.integer(as.matrix(!y_is_na)),
@@ -1680,6 +1692,8 @@
         tmp1 <- c(alpha.score, beta.score, eta.score)
         if( npw > 0)#class( object$titbits$species_formula) == "formula")
           tmp1 <- c(tmp1, gamma.score)
+        if( npu > 0)#class( object$titbits$species_formula) == "formula")
+          tmp1 <- c(tmp1, delta.score)
         if(disty%in%c(4,6))
           tmp1 <- c( tmp1, theta.score)
         return(tmp1)
@@ -1744,7 +1758,7 @@
                                            offset = offset, y_is_na = y_is_na,
                                            G = G, S = S,
                                            disty = disty, size = size,
-                                           control = species_mix.control(init_method = "random2"))
+                                           control = set_control_sam(list(init_method = "random2")))
 
       fits <- list()
       taus <- starting.sam$taus
@@ -1788,7 +1802,7 @@
 
       ## Update the all parameter.
       if(!is.null(U)){
-        new.deltas <- optimize(f = llogl.allParams, interval = c(-30,30), maximum = TRUE,
+        new.deltas <- stats::optimize(f = llogl.allParams, interval = c(-30,30), maximum = TRUE,
                                y = y, X = X, W = W, U=U, taus = taus, fits = fits,
                                site_spp_weights = site_spp_weights,
                                offset = offset, y_is_na = y_is_na,
@@ -1808,7 +1822,7 @@
       ## E-step
       do.estep <- try(e.step(y, X, W, U, site_spp_weights,
                              offset, y_is_na, disty,
-                             fits, powers),
+                             fits, size, powers),
                       silent=TRUE)
       if(!is.finite(do.estep$logl)) {
         mod <- list(logl = -Inf); break;
@@ -1862,7 +1876,7 @@
 
 "e.step" <- function(y, X, W, U, site_spp_weights, offset,
                      y_is_na, disty,
-                     fits, sp.powers,
+                     fits, size, sp.powers,
                      get.fitted = FALSE) {
   S <- ncol(y); n <- nrow(y); G <- length(fits$pis)
   out.taus <- matrix(0,S,G)
@@ -1945,7 +1959,7 @@
                                       disty, size, powers){
   if(disty%in%6) intercept.range <- c(-200,200)
   else intercept.range <- c(-30,30)
-  update.sppParams <- optimize(f = llogl.sppParams, interval = intercept.range, maximum = TRUE, ss = ss,
+  update.sppParams <- stats::optimize(f = llogl.sppParams, interval = intercept.range, maximum = TRUE, ss = ss,
                                y = y, X = X, W = W, U=U, taus = taus, fits = fits,
                                site_spp_weights = site_spp_weights,
                                offset = offset, y_is_na = y_is_na,
@@ -1956,7 +1970,7 @@
 "apply_optimise_thetaParams" <- function(ss, y, X, W, U, taus, fits,
                                    site_spp_weights, offy, y_is_na,
                                    disty, size, powers){
-  update.theta <- suppressWarnings(optimize(f = llogl.thetaParams, interval = c(0.001,100), maximum = TRUE, ss = ss,
+  update.theta <- suppressWarnings(stats::optimize(f = llogl.thetaParams, interval = c(0.001,100), maximum = TRUE, ss = ss,
                            y = y, X = X, W = W, U=U, taus = taus, fits = fits,
                            site_spp_weights = site_spp_weights,
                            offset = offy, disty = disty, size = size, powers = powers)$maximum)
@@ -1978,7 +1992,7 @@
   }
         if(disty %in% 4) get.mus <- e.step(y, X, W, U, site_spp_weights,
                                            offset, y_is_na, disty,
-                                           fits, powers,  get.fitted = TRUE)$fitted
+                                           fits, size, powers,  get.fitted = TRUE)$fitted
 
         Y_s <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
         size_s <- matrix(rep(size,ncol(y)),nrow(y),ncol(y))[!y_is_na]
@@ -2061,21 +2075,21 @@
   mix.etas <- as.matrix(X)%*%t(fits$betas)
 
   for(gg in seq_len(G)) {
-    cw.eta <- as.matrix(W)%*%x + mix.etas[,gg] + all.etas + offset
+    eta <- as.matrix(W)%*%x + mix.etas[,gg] + all.etas + offset
     if(disty %in%  1)
-      out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = 1, prob =  link$linkinv(cw.eta), log = TRUE))
+      out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = 1, prob =  link$linkinv(eta), log = TRUE))
     if(disty %in%  2)
-      out <- out + sum(taus[ss,gg]*dpois(y[,ss], lambda =  link$linkinv(cw.eta), log = TRUE))
+      out <- out + sum(taus[ss,gg]*dpois(y[,ss], lambda =  link$linkinv(eta), log = TRUE))
     if(disty %in%  3)
-      out <- out + sum(taus[ss,gg]*(y[sp_idx,ss] %*% cw.eta - site_spp_weights[sp_idx,ss] %*%  link$linkinv(cw.eta)))
+      out <- out + sum(taus[ss,gg]*(y[sp_idx,ss] %*% eta - site_spp_weights[sp_idx,ss] %*%  link$linkinv(eta)))
     if(disty %in%  4)
-      out <- out + sum(taus[ss,gg]*dnbinom(y[,ss], mu =  link$linkinv(cw.eta), size = 1/fits$theta[ss], log = TRUE))
+      out <- out + sum(taus[ss,gg]*dnbinom(y[,ss], mu =  link$linkinv(eta), size = 1/fits$theta[ss], log = TRUE))
     if(disty %in%  5)
-      out <- out + sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(cw.eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
+      out <- out + sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
     if(disty %in%  6)
-      out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean =  cw.eta, sd = sqrt(fits$theta[ss]), log = TRUE))
+      out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean =  eta, sd = sqrt(fits$theta[ss]), log = TRUE))
     if(disty %in%  7)
-      out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = size, prob = link$linkinv(cw.eta), log = TRUE))
+      out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = size, prob = link$linkinv(eta), log = TRUE))
   }
   return(out)
 }
@@ -2135,21 +2149,21 @@
     }
 
     for(gg in seq_len(G)) {
-      cw.eta <- spp.etas + mix.etas[,gg] + all.etas + offset
+      eta <- spp.etas + mix.etas[,gg] + all.etas + offset
       if(disty %in%  1)
-        out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = 1, prob =  link$linkinv(cw.eta), log = TRUE))
+        out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = 1, prob =  link$linkinv(eta), log = TRUE))
       if(disty %in%  2)
-        out <- out + sum(taus[ss,gg]*dpois(y[,ss], lambda =  link$linkinv(cw.eta), log = TRUE))
+        out <- out + sum(taus[ss,gg]*dpois(y[,ss], lambda =  link$linkinv(eta), log = TRUE))
       if(disty %in%  3)
-        out <- out + sum(taus[ss,gg]*(y[sp_idx,ss] %*% cw.eta - site_spp_weights[sp_idx,ss] %*%  link$linkinv(cw.eta)))
+        out <- out + sum(taus[ss,gg]*(y[sp_idx,ss] %*% eta - site_spp_weights[sp_idx,ss] %*%  link$linkinv(eta)))
       if(disty %in%  4)
-        out <- out + sum(taus[ss,gg]*dnbinom(y[,ss], mu =  link$linkinv(cw.eta), size = 1/fits$theta[ss], log = TRUE))
+        out <- out + sum(taus[ss,gg]*dnbinom(y[,ss], mu =  link$linkinv(eta), size = 1/fits$theta[ss], log = TRUE))
       if(disty %in%  5)
-        out <- out + sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(cw.eta), phi = fits$theta[ss], prob = powers[ss], LOG = TRUE))
+        out <- out + sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(eta), phi = fits$theta[ss], prob = powers[ss], LOG = TRUE))
       if(disty %in%  6)
-        out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean =  (cw.eta), sd = sqrt(fits$theta[ss]), log = TRUE))
+        out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean =  (eta), sd = sqrt(fits$theta[ss]), log = TRUE))
       if(disty %in%  7)
-        out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = size, prob = link$linkinv(cw.eta), log = TRUE))
+        out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = size, prob = link$linkinv(eta), log = TRUE))
     }
 
   }
@@ -2230,7 +2244,7 @@ starting values;\n starting values are generated using ',control$init_method,
     starting.sam$theta <- rep(-99999,S)
   }
   if(disty%in%3){ # ippm
-    fit1 <- many.fitt(y, X, W, U, site_spp_weights,
+    fit1 <- many.fit(y, X, W, U, site_spp_weights,
                       offset, y_is_na, G, S, disty, size, powers, control)
     coefs <- fit1$coefficients
   }
@@ -2248,7 +2262,7 @@ starting values;\n starting values are generated using ',control$init_method,
   }
   if(disty%in%6){ # gaussian
     fit1 <- suppressWarnings(mvabund::manylm(tmpform,data = datX))
-    starting.sam$theta <- (deviance(fit1)/fit1$df.residual)
+    starting.sam$theta <- (stats::deviance(fit1)/fit1$df.residual)
     # log( sqrt( colSums((y - fit1$fitted.values)^2)/nrow(y)))
     coefs <- t(fit1$coefficients)
   }
@@ -2301,7 +2315,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
   if(control$init_method=='kmed'){
     if(!control$quiet) message("Initial groups parameter estimates by K-medoids")
-    mrwdist <- kmed::distNumeric(spp.beta, sp.beta, method = "mrw")
+    mrwdist <- kmed::distNumeric(spp.beta, spp.beta, method = "mrw")
     fmmvnorm <- kmed::fastkmed(mrwdist, ncluster = G, iterate = 100)
     tmp_grp <- fmmvnorm$cluster
     grp_coefs <- spp.beta[fmmvnorm$medoid,,drop=FALSE]
@@ -2948,7 +2962,7 @@ if(!is.null(U)) {
         if(disty==2) logl_sp[ss,gg] <- sum(dpois(y[,ss], lambda = link$linkinv(eta),log = TRUE))
         if(disty==3) logl_sp[ss,gg] <- y[sp_idx,ss] %*% eta - site_spp_weights[sp_idx,ss] %*% exp(eta)
         if(disty==4) logl_sp[ss,gg] <- sum(dnbinom(y[,ss], mu=link$linkinv(eta), size = exp(-fits$theta[ss]), log=TRUE))
-        if(disty==5) logl_sp[ss,gg] <- sum(fishMod::dTweedie(y[,ss], mu =  link$linkinv(cw.eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
+        if(disty==5) logl_sp[ss,gg] <- sum(fishMod::dTweedie(y[,ss], mu =  link$linkinv(eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
         if(disty==6) logl_sp[ss,gg] <- sum(dnorm(y[,ss],mean=eta,sd=exp(fits$theta[ss]),log=TRUE))
         if(disty==7) logl_sp[ss,gg] <- sum(dbinom(y[,ss],size =  size, prob = link$linkinv(eta),log = TRUE))
 
@@ -2988,7 +3002,7 @@ if(!is.null(U)) {
       if(disty==2) logl_sp[ss,gg] <- sum(dpois(y[,ss], lambda = link$linkinv(eta),log = TRUE))
       if(disty==3) logl_sp[ss,gg] <- y[sp_idx,ss] %*% eta - site_spp_weights[sp_idx,ss] %*% exp(eta)
       if(disty==4) logl_sp[ss,gg] <- sum(dnbinom(y[,ss], mu=link$linkinv(eta), size = exp(-fits$theta[ss]), log=TRUE))
-      if(disty==5) logl_sp[ss,gg] <- sum(fishMod::dTweedie(y[,ss], mu =  link$linkinv(cw.eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
+      if(disty==5) logl_sp[ss,gg] <- sum(fishMod::dTweedie(y[,ss], mu =  link$linkinv(eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
       if(disty==6) logl_sp[ss,gg] <- sum(dnorm(y[,ss],mean=eta,sd=exp(fits$theta[ss]),log=TRUE))
       if(disty==7) logl_sp[ss,gg] <- sum(dbinom(y[,ss], size, link$linkinv(eta),log = TRUE))
     }
@@ -3556,6 +3570,13 @@ if(!is.null(U)) {
   dat.means = apply(as.matrix(mat), 2, mean, na.rm = TRUE)
   dat.sds = apply(as.matrix(mat), 2, sd, na.rm = TRUE)
   return(list(W = W, dat.means = dat.means, dat.sds = dat.sds))
+}
+
+"standardise.U" <- function (mat){
+  U = scale(as.matrix(mat))
+  dat.means = apply(as.matrix(mat), 2, mean, na.rm = TRUE)
+  dat.sds = apply(as.matrix(mat), 2, sd, na.rm = TRUE)
+  return(list(U = U, dat.means = dat.means, dat.sds = dat.sds))
 }
 
 

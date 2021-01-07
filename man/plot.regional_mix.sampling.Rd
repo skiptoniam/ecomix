@@ -5,8 +5,9 @@
 \title{Plot residuals from a regional_mix model.}
 \usage{
 \method{plot}{regional_mix.sampling}(
-  object,
-  object2,
+  x,
+  ...,
+  object2 = NULL,
   sampling_levels,
   CI = c(0.025, 0.975),
   col = "black",
@@ -14,9 +15,9 @@
 )
 }
 \arguments{
-\item{object}{a fitted regional_mix model you wish to plot}
-
 \item{object2}{a bootstrap object from regional_mix.bootstrap}
+
+\item{object}{a fitted regional_mix model you wish to plot}
 
 \item{type}{What type of residuals to plot? 'RQR'; random quantile residuals or 'deviance' residuals.}
 
