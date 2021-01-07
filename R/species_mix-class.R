@@ -658,93 +658,6 @@
    return(many_starts)
 }
 
-# #'@title species_mix.control
-# #'@rdname species_mix.control
-# #'@name species_mix.control
-# #'@description This is the control function used to tweak the species_mix model.
-# #'@param quiet Should any reporting be performed? Default is FALSE, for reporting.
-# #'@param cores The number of cores to use in fitting of species_mix models. These will be largely used to model the species-specific parameteres.
-# #'@param init_method The method to use for initialization. The options are "random2", "kmeans", "kmed". The default uses random2, which is a kmeans with noise added to the cluster.
-# #'@param init_sd The amount of noise to add to the initialization the default is 1.
-# #'@param minimum_sites_occurrence a integer which determines the number of minimum sites present for any species for it to be included in the initialisation step. This removes rare species from initial groupings. They are then included in the overall analysis.
-# #'@param ecm_prefit Logical if TRUE the model will run a slower EM algorithm fit to find starting values.
-# #'@param ecm_steps int Default is 3, the number of EM iterations to get to starting values.
-# #'@param ecm_refit int Default is 1, number of times to refit using EM.
-# #'@param ecm_reltol A function or value which gives the tolerance in the EM loglikeihood estimation.
-# #'@param print_cpp_start_vals A call to check what parameter estimates are being passed to C++ for optimisation.
-# #'@param maxit The number of iterations to run in C++. Default is 1000.
-# #'@param trace Non-negative integer. If positive, tracing information on the progress of the optimization is produced. Higher values may produce more tracing information.
-# #'@param nreport The number of iterations to report the loglikelihood. Default is 10.
-# #'@param abstol Absolute tolerance. Defaults to 0 so the absolute convergence test is not used. If the objective function is known to be non-negative, the previous default of 1e-20 would be more appropriate.
-# #'@param reltol Relative convergence tolerance. The algorithm stops if it is unable to reduce the value by a factor of reltol * (abs(val) + reltol) at a step. Defaults to sqrt(.Machine$double.eps), typically about 1e-8.
-# #'@param conv Has the model converged previously.
-# #'@param printparams_cpp Print the parameter estimates within C++.
-# #'@param optimise_cpp Should optimization for estimation occur? If TRUE (default) optimization will occur. If FALSE no optimisation is performed.
-# #'@param loglOnly_cpp Should the log-likelihood be calculated? If TRUE (default) then log-likelihood is calculated and returned. If FALSE then the log-likelihood is not calculated for return.
-# #'@param derivOnly_cpp Should the scores be evaluated at the (final) parameter values. If TRUE (default) then they are calculated. If FALSE then they are not calculated.
-# #'@param getscores_cpp Return scores.
-# #'@param \dots Other control calls.
-#
-# #'@export
-# "species_mix.control" <- function(quiet = FALSE,
-#                                   cores = 1,
-#                                   ## initialization controls
-#                                   init_method = 'random2',
-#                                   init_sd = NULL,
-#                                   minimum_sites_occurrence = 0,
-#                                   ## ECM algorithm controls
-#                                   ecm_prefit = TRUE,
-#                                   ecm_steps = 5,
-#                                   ecm_refit = 1,
-#                                   ecm_reltol = 1e-6,
-#                                   max.theta = NULL,
-#                                   ## partial mixture penalties
-#                                   # theta_range = c(0.001,10),
-#                                   pen_param = 1.25,
-#                                   update_kappa = c(1,0.5,1),
-#                                   ## c++ controls
-#                                   print_cpp_start_vals = FALSE,
-#                                   maxit = 1000,
-#                                   trace = 1,
-#                                   nreport = 10,
-#                                   abstol = sqrt(.Machine$double.eps),
-#                                   reltol = sqrt(.Machine$double.eps),
-#                                   conv = 1,
-#                                   printparams_cpp = 0,
-#                                   optimise_cpp = 1,
-#                                   loglOnly_cpp = 0,
-#                                   derivOnly_cpp = 0,
-#                                   getscores_cpp = 0,
-#                                   ...){
-#                #general controls
-#   rval <- list(quiet = quiet,
-#                cores = cores,
-#                init_method = init_method,
-#                init_sd = init_sd,
-#                minimum_sites_occurrence = minimum_sites_occurrence,
-#                #ecm controls
-#                ecm_prefit = ecm_prefit,
-#                ecm_refit = ecm_refit,
-#                ecm_steps = ecm_steps,
-#                ecm_reltol = ecm_reltol,
-#                #cpp controls
-#                print_cpp_start_vals = print_cpp_start_vals,
-#                maxit = maxit, trace = trace,
-#                nreport = nreport,
-#                abstol = abstol, reltol = reltol,
-#                conv = conv,
-#                printparams_cpp = printparams_cpp,
-#                optimise_cpp = optimise_cpp,
-#                loglOnly_cpp = loglOnly_cpp,
-#                derivOnly_cpp = derivOnly_cpp,
-#                getscores_cpp = getscores_cpp)
-#   rval <- c(rval, list(...))
-#   if (is.null(rval$ecm_reltol))
-#     rval$ecm_reltol <- sqrt(.Machine$double.eps)
-#   rval
-# }
-
-
 #' @rdname species_mix.bootstrap
 #' @name species_mix.bootstrap
 #' @title species_mix.bootstrap
@@ -803,9 +716,9 @@
   my.fun <- function(dummy){
     if( !quiet) setTxtProgressBar(pb, dummy)
     disty_cases <- c("bernoulli","binomial","poisson", "ippm", "negative.binomial", "tweedie", "gaussian")
-    disty <- ecomix:::get_family_sam(disty_cases, object$family)
+    disty <- get_family_sam(disty_cases, object$family)
     dumbOut <- capture.output(
-      samp.object <- ecomix:::species_mix.fit(y=object$titbits$Y,
+      samp.object <- species_mix.fit(y=object$titbits$Y,
                                      X=object$titbits$X,
                                      W=object$titbits$W,
                                      U=object$titbits$U,
@@ -1279,7 +1192,7 @@
   site_spp_wts <- object$titbits$site_spp_weights
 
   disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
-  disty <- ecomix:::get_family_sam(disty_cases, object$titbits$family)
+  disty <- get_family_sam(disty_cases, object$titbits$family)
   taus <- object$taus
   if (is.null(object2)) {
     if (nboot > 0) {
@@ -1289,7 +1202,7 @@
     }
     else
       my.nboot <- 0
-    allCoBoot <- ecomix:::species_mix_boot_parametric(object = object, nboot = my.nboot)
+    allCoBoot <- species_mix_boot_parametric(object = object, nboot = my.nboot)
   } else {
     if( !object$titbits$control$quiet)
       message("Using supplied species_mix.bootstrap object (non-parametric bootstrap)")
@@ -1657,7 +1570,7 @@
     size <- object$titbits$size
     family <- object$titbits$family
     disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
-    disty <- ecomix:::get_family_sam(disty_cases, family)
+    disty <- get_family_sam(disty_cases, family)
     S <- object$S
     G <- object$G
     n <- object$n
@@ -1668,7 +1581,7 @@
 
     # values for optimisation.
     inits <- object$coefs
-    start_vals <- ecomix:::setup_inits_sam(inits, S, G, X, W, U, disty, return_list = TRUE)
+    start_vals <- setup_inits_sam(inits, S, G, X, W, U, disty, return_list = TRUE)
 
     # parameters to optimise
     alpha <- as.numeric(start_vals$alpha)
@@ -1845,16 +1758,16 @@
 
       ## CM-step
       ## optimise the spp coefs - alpha & gamma if present
-      fm_sppParam <- ecomix:::plapply(seq_len(S), ecomix:::apply_optimise_sppParam,
+      fm_sppParam <- plapply(seq_len(S), apply_optimise_sppParam,
                              y, X, W, U, taus, fits,
                              site_spp_weights, offset, y_is_na,
                              disty, size, powers,
                              .parallel = control$cores,
                              .verbose = FALSE)
       new.sp.params <- do.call(rbind,lapply(fm_sppParam, `[[`, 1))
-      fits$alpha <- ecomix:::update_coefs(fits$alpha,new.sp.params[,1])
+      fits$alpha <- update_coefs(fits$alpha,new.sp.params[,1])
       if(ncol(W)>1){
-        fits$gamma <- ecomix:::update_coefs(fits$gamma,new.sp.params[,-1])
+        fits$gamma <- update_coefs(fits$gamma,new.sp.params[,-1])
       } else {
         fits$gamma <- rep(-99999,S)
       }
@@ -1884,7 +1797,7 @@
       }
 
       ## Update archetype-specific coefficients
-      fm_beta <- ecomix:::plapply(seq_len(G), apply_optimise_betas,
+      fm_beta <- plapply(seq_len(G), apply_optimise_betas,
                          y, X, W, U, site_spp_weights, offset,
                          y_is_na, disty, taus, fits, size, powers,
                          .parallel = control$cores,
@@ -2340,7 +2253,7 @@ starting values;\n starting values are generated using ',control$init_method,
     coefs <- t(fit1$coefficients)
   }
   if(disty%in%7){  # binomial - with variable size
-    fit1 <- ecomix:::many.fit(y, X, W, U, site_spp_weights,
+    fit1 <- many.fit(y, X, W, U, site_spp_weights,
                      offset, y_is_na, G, S, disty, size, powers, control)
     coefs <- fit1$coefficients
     starting.sam$theta <- rep(-99999,S)
@@ -2433,7 +2346,7 @@ starting values;\n starting values are generated using ',control$init_method,
   taus <- taus/rowSums(taus)
   # starting.sam$alpha
   starting.sam$beta <- grp_coefs
-  starting.sam$taus <- ecomix:::shrink_taus(taus, G=G)
+  starting.sam$taus <- shrink_taus(taus, G=G)
   starting.sam$pis <- colMeans(taus)
 
   return(starting.sam)
@@ -2442,7 +2355,7 @@ starting values;\n starting values are generated using ',control$init_method,
 "many.fit" <- function(y, X, W, U, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control){
 
   options(warn = -1)
-  fm_sp_mods <-  ecomix:::plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W, U,
+  fm_sp_mods <-  plapply(seq_len(S), apply_glmnet_sam_inits, y, X, W, U,
                                   site_spp_weights, offset, y_is_na, disty, size, powers,
                                   .parallel = control$cores, .verbose = FALSE)
 
@@ -2653,7 +2566,7 @@ if(!is.null(U)) {
   loglikeS <- as.numeric(rep(NA, S))
   loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
 
-  if(control$print_cpp_start_vals)ecomix:::print_starting_values(as.integer(S),
+  if(control$print_cpp_start_vals)print_starting_values(as.integer(S),
                                                         as.integer(G),
                                                         as.integer(npx),
                                                         as.integer(npw),

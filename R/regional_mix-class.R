@@ -710,15 +710,10 @@
 #' Foster, S.D., Hill, N.A. and Lyons, M., 2017. Ecological grouping of survey sites when sampling artefacts are present. Journal of the Royal Statistical Society: Series C (Applied Statistics), 66(5), pp.1031-1047.
 #' @export
 
-"plot.regional_mix.sampling" <-function(object,
-                           object2,
-                           sampling_levels,
-                           CI=c(0.025, 0.975),
-                           col="black",
-                           lty=1){
+"plot.regional_mix.sampling" <-function(x, ... , object2=NULL, sampling_levels,
+                                        CI=c(0.025, 0.975), col="black", lty=1){
 
   require(lattice)
-  # gammas<- paste0("gamma", 1: (length(Species)*length(sampling_names)))
   gammas<-grepl("gamma",dimnames(object2)[[2]])
   temp_dat<-object2[,gammas]
 
