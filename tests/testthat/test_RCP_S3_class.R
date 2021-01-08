@@ -9,7 +9,7 @@ testthat::test_that('testing regional mix S3 functions', {
   n <- 100
   S <- 10
   nRCP <- 3
-  my.dist <- "negative_binomial"
+  my.dist <- "negative.binomial"
   X <- as.data.frame( cbind( x1=runif( n, min=-10, max=10), x2=runif( n, min=-10, max=10)))
   Offy <- log( runif( n, min=30, max=60))
   pols <- list()
@@ -34,7 +34,7 @@ testthat::test_that('testing regional mix S3 functions', {
   set.seed(121)
   simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n,
                                    alpha=alpha, tau=tau, beta=beta, gamma=gamma,
-                                   X=X[,-(2:3)], W=W, distribution=my.dist,
+                                   X=X[,-(2:3)], W=W, family=my.dist,
                                    logDisp=logDisp, offset=Offy)
 
   #fit the model
@@ -44,7 +44,7 @@ testthat::test_that('testing regional mix S3 functions', {
     '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
   my.form.spp <- ~w.1+w.2+w.3
   fm2 <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp,
-                     data = simDat, distribution =  "negative_binomial", nRCP = 3, inits = "random2")
+                     data = simDat, family =  "negative.binomial", nRCP = 3, inits = "random2")
 
   testthat::expect_is(AIC(fm2),'numeric')
 
@@ -75,7 +75,7 @@ testthat::test_that('Test the prediction functions in RCP',{
   n <- 100
   S <- 10
   nRCP <- 3
-  my.dist <- "negative_binomial"
+  my.dist <- "negative.binomial"
   X <- as.data.frame( cbind( x1=runif( n, min=-10, max=10), x2=runif( n, min=-10, max=10)))
   Offy <- log( runif( n, min=30, max=60))
   pols <- list()
@@ -100,7 +100,7 @@ testthat::test_that('Test the prediction functions in RCP',{
   set.seed(121)
   simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n,
                                    alpha=alpha, tau=tau, beta=beta, gamma=gamma,
-                                   X=X[,-(2:3)], W=W, distribution=my.dist,
+                                   X=X[,-(2:3)], W=W, family=my.dist,
                                    logDisp=logDisp, offset=Offy)
 
   #fit the model
@@ -110,7 +110,7 @@ testthat::test_that('Test the prediction functions in RCP',{
     '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
   my.form.spp <- ~w.1+w.2+w.3
   fm2 <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp,
-                     data = simDat, distribution =  "negative_binomial", nRCP = 3, inits = "random2")
+                     data = simDat, family =  "negative.binomial", nRCP = 3, inits = "random2")
   preds <- predict(fm2)
   testthat::expect_is(preds,'matrix')
   bootmod <- regional_mix_boot(fm2,nboot = 10)
@@ -126,7 +126,7 @@ testthat::test_that('Test the prediction functions in RCP',{
   extractAIC(fm2)
 
   fm2 <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp,
-                      data = simDat, distribution =  "negative_binomial",
+                      data = simDat, family =  "negative.binomial",
                       nRCP = 3, inits = "random2",
                       control = list(getScores=TRUE))
 })
@@ -140,7 +140,7 @@ testthat::test_that('stability',{
   n <- 100
   S <- 10
   nRCP <- 3
-  my.dist <- "negative_binomial"
+  my.dist <- "negative.binomial"
   X <- as.data.frame( cbind( x1=runif( n, min=-10, max=10), x2=runif( n, min=-10, max=10)))
   Offy <- log( runif( n, min=30, max=60))
   pols <- list()
@@ -165,7 +165,7 @@ testthat::test_that('stability',{
   set.seed(121)
   simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n,
                                    alpha=alpha, tau=tau, beta=beta, gamma=gamma,
-                                   X=X[,-(2:3)], W=W, distribution=my.dist,
+                                   X=X[,-(2:3)], W=W, family=my.dist,
                                    logDisp=logDisp, offset=Offy)
 
   #fit the model
@@ -175,7 +175,7 @@ testthat::test_that('stability',{
     '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
   my.form.spp <- ~w.1+w.2+w.3
   fm2 <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp,
-                     data = simDat, distribution =  "negative_binomial",
+                     data = simDat, family =  "negative.binomial",
                      nRCP = 3, inits = "random2")
   stab <- stability.regional_mix(fm2,oosSizeRange=c(1,5,10), mc.cores=1, times = 10, doPlot=FALSE)
   plot(stab)
@@ -231,12 +231,12 @@ testthat::test_that("RCP membership",{
   simDat1 <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, n=n, #p.w=p.w,
                                    alpha=alpha, tau=tau, beta=beta, #gamma=gamma,
                                    X=X[,-(2:3)], #W=W,
-                                   distribution=my.dist, offset=Offy)
+                                   family=my.dist, offset=Offy)
 
   simDat2 <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n,
                                     alpha=alpha, tau=tau, beta=beta, gamma=gamma,
                                     X=X[,-(2:3)], W=W,
-                                    distribution=my.dist, offset=Offy)
+                                    family=my.dist, offset=Offy)
 
   #fit the model
   my.form.RCP <- paste( paste( paste(
@@ -245,7 +245,7 @@ testthat::test_that("RCP membership",{
     '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
   my.form.spp <- ~1#w.1+w.2+w.3
   fm1 <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp,
-                      data = simDat1, distribution =  "poisson",
+                      data = simDat1, family =  "poisson",
                       nRCP = 3, inits = "random2")
   my.form.spp <- ~w.1+w.2+w.3
 
@@ -255,23 +255,19 @@ testthat::test_that("RCP membership",{
     ')',sep=''),
     '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
   testthat::expect_null(fm2 <- regional_mix.multifit(rcp_formula = my.form.RCP, species_formula = my.form.spp,
-                      data = simDat2, distribution =  "poisson",
+                      data = simDat2, family =  "poisson",
                       nRCP = 3, inits = "random"))
   testthat::expect_null(fm2 <- regional_mix.multifit(rcp_formula = NULL, species_formula = my.form.spp,
-                                                     data = simDat2, distribution =  "poisson",
+                                                     data = simDat2, family =  "poisson",
                                                      nRCP = 3, inits = "random"))
 
   fm2 <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp,
-                      data = simDat2, distribution =  "poisson",
+                      data = simDat2, family =  "poisson",
                       nRCP = 3, inits = "random2")
 
   tmpboot1 <- regional_mix_boot(fm1,nboot = 10)
-  regional_mix.species_membership(fm1)
-  regional_mix.species_membership(fm1,tmpboot1)
-
-  # tmpboot2 <- regional_mix_boot(fm2,nboot = 10)
-  # regional_mix.species_membership(fm2)
-  # regional_mix.species_membership(fm2,tmpboot2)
+  regional_mix.species_profile(fm1)
+  regional_mix.species_profile(fm1,tmpboot1)
 
   AIC(fm1,k=NULL)
   extractAIC(fm1,k=NULL)

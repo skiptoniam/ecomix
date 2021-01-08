@@ -19,7 +19,7 @@ testthat::test_that('species_mix negative binomial', {
   xpred <- seq(-2.5,2.5,length.out = 100)
   upred <- matrix(seq(-2.5,2.5,length.out = 100),ncol=1)
   matplot(xpred,(exp((cbind(xpred,xpred^2)%*%t(beta)))))
-  matplot(xpred,(exp((cbind(xpred,xpred^2)%*%t(beta))-c(upred%*%delta))))
+  # matplot(xpred,(exp((cbind(xpred,xpred^2)%*%t(beta))-c(upred%*%delta))))
   # matlines(xpred,)
 
   dat <- data.frame(y=1, x1=x, x2=I(x)^2)#, u)
@@ -49,25 +49,25 @@ testthat::test_that('species_mix negative binomial', {
   y_is_na <- matrix(FALSE,nrow(y),ncol(y))
   G <- 3
   S <- ncol(y)
-  control <- species_mix.control()
+  control <- ecomix:::set_control_sam(list())
   disty <- 4
   size <- rep(1,nrow(y))
   powers <- attr(simulated_data,"powers") # yeah baby
   options(warn=1)
-  fm <- ecomix:::fit.ecm.sam(y, X, W, U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control = species_mix.control(em_refit = 3,em_steps = 100))
+  fm <- ecomix:::fit.ecm.sam(y, X, W, U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control = ecomix:::set_control_sam(list(em_refit = 3,em_steps = 100)))
 
   ## now let's try and fit the optimisation
   start_vals <- ecomix:::starting_values_wrapper(y, as.data.frame(X), as.data.frame(W), U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control)
 
   tmp <- ecomix:::sam_optimise(y, X, W, U, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, size, powers, start_vals = start_vals, control)
-  testthat::expect_length(tmp,20)
+  testthat::expect_length(tmp,21)
 
   set.seed(123)
   tmp <- ecomix:::species_mix.fit(y=y, X=as.data.frame(X), W=as.data.frame(W), U=U, G=G, S=S,
                                   spp_weights=spp_weights,
                                   site_spp_weights=site_spp_weights,
                                   offset=offset, disty=disty, y_is_na=y_is_na, size=size, powers=powers,
-                                  control=species_mix.control(print_cpp_start_vals = TRUE))
+                                  control=ecomix:::set_control_sam(list(print_cpp_start_vals = TRUE)))
 
   sp_form <- ~1
   fm1 <- species_mix(archetype_formula = sam_form, species_formula = sp_form,
@@ -76,7 +76,7 @@ testthat::test_that('species_mix negative binomial', {
   testthat::expect_s3_class(fm1,'species_mix')
 
   fm2 <- species_mix(sam_form, sp_form, data = simulated_data, family = 'negative.binomial',
-                     nArchetypes = 3,control=species_mix.control(ecm_prefit = FALSE),
+                     nArchetypes = 3,control=list(ecm_prefit = FALSE),
                      standardise = FALSE)
   testthat::expect_s3_class(fm2,'species_mix')
 })

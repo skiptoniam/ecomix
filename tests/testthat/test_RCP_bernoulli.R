@@ -22,7 +22,7 @@ set.seed(121)
 alpha <- rnorm(S,-1,0.5)
 simDatBern <- regional_mix.simulate(nRCP=nRCP, S=S, p.x=p.x, n=n,
                                  alpha=alpha, #tau=tau, beta=beta,
-                                 X=X[,-(2:3)], distribution=my.dist,
+                                 X=X[,-(2:3)], family=my.dist,
                                  offset=Offy)
 
 #fit the model
@@ -33,7 +33,7 @@ my.form.RCP <- paste( paste( paste(
 my.form.spp <- ~1
 testthat::expect_warning(fm1 <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp,
                    data = simDatBern,
-                   distribution =  "bernoulli", nRCP = 3, inits = "random2"))
+                   family =  "bernoulli", nRCP = 3, inits = "random2"))
 
 testthat::expect_s3_class(fm1,'regional_mix')
 
@@ -67,7 +67,7 @@ gamma <- matrix( rnorm( S*p.w), ncol=p.w, nrow=S)
 
 simDatBern2 <- regional_mix.simulate(nRCP=nRCP, S=S, p.x=p.x,p.w = p.w, n=n,
                                     alpha=alpha, tau=tau, beta=beta, gamma=gamma,
-                                    X=X[,-(2:3)], W=W, distribution=my.dist,
+                                    X=X[,-(2:3)], W=W, family=my.dist,
                                     offset=Offy)
 
 my.form.RCP <- paste( paste( paste(
@@ -78,7 +78,7 @@ my.form.RCP <- paste( paste( paste(
 my.form.spp <- ~w.1+w.2+w.3
 testthat::expect_warning(fm2 <- regional_mix(rcp_formula = my.form.RCP,
                                              species_formula = my.form.spp,
-                   data = simDatBern2, distribution =  "bernoulli",
+                   data = simDatBern2, family =  "bernoulli",
                    nRCP = 3, inits = "random2"))
 testthat::expect_s3_class(fm2,'regional_mix')
 plot(fm2,fitted.scale = 'logit')
@@ -87,7 +87,7 @@ plot(fm2,fitted.scale = 'logit')
 
 fmm <- regional_mix.multifit(rcp_formula = my.form.RCP,
                             species_formula = my.form.spp,
-                            data = simDatBern2, distribution = "negative_binomial",
+                            data = simDatBern2, family = "bernoulli",
                             nRCP = 3, inits = "random2", offset=offset,
                             nstart=10, titbits=FALSE, mc.cores=1)
 testthat::expect_is(fmm,'list')
@@ -97,7 +97,7 @@ allGoodUns <- apply( postProbSums, 1, function(x) all(x!=0))
 fm.clean <- fmm[allGoodUns]
 goodUn <- which.min(sapply(fm.clean, ecomix:::BIC.regional_mix))
 fm.final <- regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp, data = simDatBern2,
-                     distribution = "bernoulli", nRCP = 3, inits = unlist( fm.clean[[goodUn]]$coef),
+                     family = "bernoulli", nRCP = 3, inits = unlist( fm.clean[[goodUn]]$coef),
                      control=list(optimise=FALSE), offset=offset)
 testthat::expect_s3_class(fm.final,'regional_mix')
 

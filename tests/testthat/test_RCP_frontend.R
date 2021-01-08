@@ -32,7 +32,7 @@ testthat::test_that('testing regional mix front end testing, what goes into RCP?
 
   simDat <- regional_mix.simulate(nRCP=nRCP, S=S, p.x=p.x,p.w = p.w, n=n,
                                        alpha=alpha, tau=tau, beta=beta, gamma=gamma,
-                                       X=X[,-(2:3)], W=W, distribution=my.dist,
+                                       X=X[,-(2:3)], W=W, family=my.dist,
                                        offset=Offy)
 
   my.form.RCP <- paste( paste( paste(
@@ -41,7 +41,7 @@ testthat::test_that('testing regional mix front end testing, what goes into RCP?
     '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
   my.form.spp <- ~w.1+w.2+w.3
   testthat::expect_null(regional_mix(rcp_formula = NULL, species_formula = my.form.spp, data = simDat,
-                                   distribution = "bernoulli", nRCP = 3, inits = unlist( fm.clean[[goodUn]]$coef),
+                                   family = "bernoulli", nRCP = 3, inits = unlist( fm.clean[[goodUn]]$coef),
                                    control=list(optimise=FALSE), offset=offset))
 
   #test two spp have the same name.
@@ -52,7 +52,7 @@ testthat::test_that('testing regional mix front end testing, what goes into RCP?
 
    testthat::expect_null(regional_mix(rcp_formula = my.form.RCP,
                                       species_formula = my.form.spp, data = simDat,
-                                   distribution = "bernoulli", nRCP = 3,
+                                   family = "bernoulli", nRCP = 3,
                                    offset=offset))
 
   # test one rcp
@@ -61,7 +61,7 @@ testthat::test_that('testing regional mix front end testing, what goes into RCP?
   ')',sep=''),
   '~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
   regional_mix(rcp_formula = my.form.RCP, species_formula = my.form.spp, data = simDat,
-             distribution = "bernoulli", nRCP = 1, offset=offset)
+             family = "bernoulli", nRCP = 1, offset=offset)
 
 
 })
