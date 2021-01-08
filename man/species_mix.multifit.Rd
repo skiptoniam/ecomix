@@ -79,15 +79,18 @@ undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
 
 \item{size}{The size of the sample for a binomial model (defaults to 1).}
 
+\item{power}{The power parameter for a Tweedie model. Default is 1.6, and
+this is assigned to all species}
+
 \item{control}{a list of control parameters for optimisation and calculation.
 See details.}
 
 \item{inits}{NULL a numeric vector that provides approximate starting values
-for species_mix coefficents. These are distribution specific, but at a
+for species_mix coefficients. These are distribution specific, but at a
 minimum you will need pis (additive_logitic transformed), alpha
 (intercepts) and beta (mixing coefs).}
 
-\item{standardise}{Booliean. If TRUE, standarise the covariate data.}
+\item{standardise}{Boolean. If TRUE, standardise the covariate data.}
 
 \item{titbits}{either a boolean or a vector of characters. If TRUE
 (default for species_mix(qv)), then some objects used in the estimation of
@@ -113,8 +116,6 @@ perform for re-fitting. Default is 10, which will need increasing for serious us
 the re-fitting over.}
 
 \item{x}{A species mix multifit object}
-
-\item{powers}{powers for tweedie distribution}
 
 \item{\\dots}{Ignored}
 }

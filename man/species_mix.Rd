@@ -43,9 +43,10 @@ more than an intercept you will be fitting a partial species archetype model
 which has species specific covariates and archetype specific covariates.}
 
 \item{all_formula}{an object of class "formula", which is meant to represent
-a constant single set of covariates across all species and groups, typically you might
-use this an alternative to an offset, where there might be some bias in the
-data which is relatively constant and might arise as an artefact of how the data was collected.}
+a constant single set of covariates across all species and groups, typically
+you might use this an alternative to an offset, where there might be some
+bias in the data which is relatively constant and might arise as an
+artefact of how the data was collected.}
 
 \item{data}{a matrix or data.frame which contains the 'species_data'
 matrix, a const and the covariates in the structure of spp1, spp2, spp3,
@@ -115,7 +116,7 @@ parameters. `species_mix` acts as a wrapper for species_mix.fit
 that allows for easier data input. The data frames are merged into
 the appropriate format for the use in species_mix.fit.
 Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
-'poisson', 'ippm' (inhomogenous Poisson point process), 'negative.binomial',
+'poisson', 'ippm' (inhomogeneous Poisson point process), 'negative.binomial',
 'tweedie' and 'gaussian' distributions can be fitted using the species_mix
 function.
 }

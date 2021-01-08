@@ -116,6 +116,7 @@ collapse = ','),")~1+x1+x2+x3"))
 spp_form <- observations ~ 1 + w1 + w2
 data <- make_mixture_data(species_data = simulated_data$species_data,
                           covariate_data = simulated_data$covariate_data[,-1])
-fm_regional_mix <- regional_mix(rcp_form,spp_form,data=data,family='bernoulli',n_mixtures=5)
+fm_regional_mix <- regional_mix(rcp_formula=rcp_form,species_formula=spp_form,
+                                data=data, family='bernoulli', nRCP=5)
 }
 }
