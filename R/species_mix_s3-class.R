@@ -625,6 +625,17 @@
     control$optiPart <- as.integer(0)
     gamma.score <- -999999
   }
+  if(!is.null(U)) {
+    Ucpp <- U
+    npu <- as.integer(ncol(U))
+    control$optiAll <- as.integer(1)
+    delta.score <- as.numeric(matrix(NA, ncol=ncol(U)))
+  } else {
+    delta.score <- -99999
+    control$optiAll <- as.integer(0)
+    Ucpp <- matrix(1,nrow = n,ncol=1)
+    npu <- as.integer(1) # a dummy variable to stop c++ issues.
+  }
   if(disty%in%c(4,6)){
     control$optiDisp <- as.integer(1)
     theta.score <- as.numeric(rep(NA, length(theta)))
