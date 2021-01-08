@@ -122,8 +122,8 @@
   qqnorm(obs.resid, col=spp.cols, pch=20, main=main, sub=sub)
   abline( 0,1,lwd=2)
   preds <- sam_internal_pred_species(x$coef$alpha, x$coef$beta, x$taus,
-                                     x$coef$gamma, x$G, x$S, x$titbits$X,
-                                     x$titbits$W, x$titbits$offset, x$family)
+                                     x$coef$gamma, x$coef$delta, x$G, x$S, x$titbits$X,
+                                     x$titbits$W,x$titbits$U, x$titbits$offset, x$family)
 
   preds <- preds[,sppID]
 
@@ -163,11 +163,11 @@
 #' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
 #' x2=stats::rnorm(100,0,2.5))
 #' dat[,-1] <- scale(dat[,-1])
-#' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
-#'  species_formula=sp_form, dat,beta=beta,family="bernoulli")
-#' fm1 <- species_mix(sam_form, sp_form, simulated_data,
-#'  family = 'bernoulli',  nArchetypes=3)
-#'preds_fm1 <- predict(fm1)
+#' simulated_data <- species_mix.simulate(archetype_formula = sam_form,species_formula = sp_form,
+#' data = dat,beta=beta,family="bernoulli")
+#' fm1 <- species_mix(archetype_formula = sam_form,species_formula = sp_form,
+#' data = simulated_data, family = 'bernoulli',  nArchetypes=3)
+#' preds_fm1 <- predict(fm1)
 #'}
 
 "predict.species_mix" <- function(object, object2 = NULL, newdata = NULL,
@@ -421,10 +421,10 @@
 #' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
 #' x2=stats::rnorm(100,0,2.5))
 #' dat[,-1] <- scale(dat[,-1])
-#' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
-#'  species_formula=sp_form, dat,beta=beta,family="bernoulli")
-#' fm1 <- species_mix(sam_form, sp_form, simulated_data,
-#'  family = 'bernoulli',  nArchetypes=3)
+#' simulated_data <- species_mix.simulate(archetype_formula = sam_form,species_formula = sp_form,
+#' data = dat,beta=beta,family="bernoulli")
+#' fm1 <- species_mix(archetype_formula = sam_form,species_formula = sp_form,
+#' data = simulated_data, family = 'bernoulli',  nArchetypes=3)
 #'print(fm1)}
 
 "print.species_mix" <-  function (x,...){
@@ -565,10 +565,10 @@
 #' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
 #' x2=stats::rnorm(100,0,2.5))
 #' dat[,-1] <- scale(dat[,-1])
-#' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
-#'  species_formula=sp_form, dat,beta=beta,family="bernoulli")
-#' fm1 <- species_mix(sam_form, sp_form, simulated_data,
-#'  family = 'bernoulli',  nArchetypes=3)
+#' simulated_data <- species_mix.simulate(archetype_formula = sam_form,species_formula = sp_form,
+#' data = dat,beta=beta,family="bernoulli")
+#' fm1 <- species_mix(archetype_formula = sam_form,species_formula = sp_form,
+#' data = simulated_data, family = 'bernoulli',  nArchetypes=3)
 #' vcov(fm1)}
 "vcov.species_mix" <- function (object, object2=NULL, method = "BayesBoot",
                                 nboot = 10, mc.cores = 1, ...){

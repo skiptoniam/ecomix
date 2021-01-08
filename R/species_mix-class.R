@@ -95,10 +95,10 @@
 #' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
 #' x2=stats::rnorm(100,0,2.5))
 #' dat[,-1] <- scale(dat[,-1])
-#' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
-#' species_formula=sp_form, dat, beta=beta,family="bernoulli")
-#' fm1 <- species_mix(sam_form, sp_form, simulated_data,
-#'  family = 'bernoulli',  nArchetypes=3)
+#' simulated_data <- species_mix.simulate(archetype_formula = sam_form,species_formula = sp_form,
+#' data = dat,beta=beta,family="bernoulli")
+#' fm1 <- species_mix(archetype_formula = sam_form,species_formula = sp_form,
+#' data = simulated_data, family = 'bernoulli',  nArchetypes=3)
 #'  }
 
 "species_mix" <- function(archetype_formula = NULL,
@@ -445,11 +445,13 @@
 #' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
 #' x2=stats::rnorm(100,0,2.5))
 #' dat[,-1] <- scale(dat[,-1])
-#' simulated_data <- species_mix.simulate(archetype_formula=sam_form,
-#'  species_formula=sp_form, dat,beta=beta,family="bernoulli")
-#' fmods <- species_mix.multifit(sam_form, sp_form, simulated_data,
-#'                               family = 'bernoulli', nstart = 10,
-#'                               nArchetypes=3)
+#' simulated_data <- species_mix.simulate(archetype_formula = sam_form,species_formula = sp_form,
+#' data = dat,beta=beta,family="bernoulli")
+#' fm1 <- species_mix(archetype_formula = sam_form,species_formula = sp_form,
+#' data = simulated_data, family = 'bernoulli',  nArchetypes=3)
+#' fmods <- species_mix.multifit(archetype_formula = sam_form,
+#' species_formula = sp_form, data=simulated_data, family = 'bernoulli',
+#'  nstart = 10, nArchetypes=3)
 #' }
 "species_mix.multifit" <- function(archetype_formula = NULL,
                                    species_formula = stats::as.formula(~1),
@@ -803,7 +805,7 @@
 #'                   x1=stats::runif(100,0,2.5),
 #'                   x2=stats::rnorm(100,0,2.5))
 #' simulated_data <- species_mix.simulate(archetype_formula,species_formula,
-#'                                        dat, nArchetypes = 4, beta=beta,
+#'                                        data=dat, nArchetypes = 4, beta=beta,
 #'                                        family="bernoulli")
 #' }
 
@@ -1242,7 +1244,8 @@
 "apply_optimise_thetaParams" <- function(ss, y, X, W, U, taus, fits,
                                    site_spp_weights, offy, y_is_na,
                                    disty, size, powers){
-  update.theta <- suppressWarnings(stats::optimize(f = llogl.thetaParams, interval = c(0.001,100), maximum = TRUE, ss = ss,
+  update.theta <- suppressWarnings(stats::optimize(f = llogl.thetaParams, interval = c(0.001,100),
+                                                   maximum = TRUE, ss = ss,
                            y = y, X = X, W = W, U=U, taus = taus, fits = fits,
                            site_spp_weights = site_spp_weights,
                            offset = offy, disty = disty, size = size, powers = powers)$maximum)
@@ -1369,7 +1372,7 @@
 
 "llogl.thetaParams" <- function(x, ss, y, X, W, U, taus, fits, site_spp_weights, offset, disty, size, powers) {
 
-  n <- nrow(y)
+  S <- ncol(y); n <- nrow(y); G <- ncol(taus)
   out <- 0
   if(disty%in%c(4,5)) link <- make.link('log')
   if(disty%in%6) link <- make.link('identity')
@@ -1939,78 +1942,207 @@ if(!is.null(U)) {
   return(ret)
 }
 
-"sam_optimise_tweedie" <- function( outcomes, X, W, offy, wts, S, nRCP, p.x, p.w, n, disty, start.vals, power, control){
+"sam_optimise_tweedie" <- function(y, X, W, U, offset, spp_weights, site_spp_weights, y_is_na,
+                                   S, G, disty, size, powers, start_vals, control){
+
     Tw.phi.func <- function( phi1, spp3){
-      disp3 <- disp
+      disp3 <- theta
       disp3[spp3] <- phi1
-      tmp1 <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
-                    as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
-                    alpha, tau, beta, gamma, disp3, power,
-                    as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
-                    alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
-                    pis, mus, logCondDens, logls,
-                    as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-                    as.integer(FALSE), as.integer(TRUE), as.integer( FALSE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "ecomix")
+      tmp1 <- .Call("species_mix_cpp",
+                   as.numeric(as.matrix(y)), as.numeric(as.matrix(X)),
+                   as.numeric(as.matrix(Wcpp)), as.numeric(as.matrix(Ucpp)),
+                   as.numeric(offset), as.numeric(spp_weights),
+                   as.numeric(as.matrix(site_spp_weights)),
+                   as.integer(as.matrix(!y_is_na)),
+                   as.numeric(size), as.integer(S), as.integer(G), as.integer(npx),
+                   as.integer(npw), as.integer(npu), as.integer(n),
+                   as.integer(disty),as.integer(TRUE),
+                   as.integer(control$optiPart),as.integer(control$optiAll),
+                   # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
+                   as.double(alpha), as.double(beta), as.double(eta),
+                   as.double(gamma), as.double(delta), as.double(disp3),
+                   as.double(powers),
+                   # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
+                   as.numeric(control$penalty.alpha),as.numeric(control$penalty.beta),
+                   as.numeric(control$penalty.pi),as.numeric(control$penalty.gamma),
+                   as.numeric(control$penalty.delta),
+                   as.numeric(control$penalty.theta[1]),
+                   as.numeric(control$penalty.theta[2]),
+                   # SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RpiPen,  SEXP &RgammaPen,
+                   # SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen,
+                   alpha.score, beta.score, eta.score, gamma.score, delta.score,
+                   theta.score, as.integer(control$getscores_cpp), as.numeric(scores),
+                   # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
+                   pis_out, mus, loglikeS, loglikeSG,
+                   # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
+                   as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport),
+                   as.numeric(control$abstol), as.numeric(control$reltol), as.integer(control$conv),
+                   as.integer(control$printparams_cpp),
+                   # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
+                   as.integer(FALSE), as.integer(TRUE), as.integer(FALSE),
+                   # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
+                   PACKAGE = "ecomix")
       return( -as.numeric( tmp1))
     }
 
     Tw.phi.func.grad <- function( phi1, spp3){
-      disp3 <- disp
+      disp3 <- theta
       disp3[spp3] <- phi1
       tmp.disp.score <- rep( -99999, S)
-      tmp1 <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
-                    as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
-                    alpha, tau, beta, gamma, disp3, power,
-                    as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
-                    alpha.score, tau.score, beta.score, gamma.score, tmp.disp.score, scoreContri,
-                    pis, mus, logCondDens, logls,
-                    as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-                    as.integer(FALSE), as.integer(FALSE), as.integer(TRUE), as.integer( TRUE), as.integer( FALSE), PACKAGE = "ecomix")
+
+      tmp1 <- .Call("species_mix_cpp",
+                    as.numeric(as.matrix(y)), as.numeric(as.matrix(X)),
+                    as.numeric(as.matrix(Wcpp)), as.numeric(as.matrix(Ucpp)),
+                    as.numeric(offset), as.numeric(spp_weights),
+                    as.numeric(as.matrix(site_spp_weights)),
+                    as.integer(as.matrix(!y_is_na)),
+                    as.numeric(size), as.integer(S), as.integer(G), as.integer(npx),
+                    as.integer(npw), as.integer(npu), as.integer(n),
+                    as.integer(disty),as.integer(TRUE),
+                    as.integer(control$optiPart),as.integer(control$optiAll),
+                    # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
+                    as.double(alpha), as.double(beta), as.double(eta),
+                    as.double(gamma), as.double(delta), as.double(disp3),
+                    as.double(powers),
+                    # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
+                    as.numeric(control$penalty.alpha),as.numeric(control$penalty.beta),
+                    as.numeric(control$penalty.pi),as.numeric(control$penalty.gamma),
+                    as.numeric(control$penalty.delta),
+                    as.numeric(control$penalty.theta[1]),
+                    as.numeric(control$penalty.theta[2]),
+                    # SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RpiPen,  SEXP &RgammaPen,
+                    # SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen,
+                    alpha.score, beta.score, eta.score, gamma.score, delta.score,
+                    theta.score, as.integer(control$getscores_cpp), as.numeric(scores),
+                    # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
+                    pis_out, mus, loglikeS, loglikeSG,
+                    # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
+                    as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport),
+                    as.numeric(control$abstol), as.numeric(control$reltol), as.integer(control$conv),
+                    as.integer(control$printparams_cpp),
+                    # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
+                    as.integer(FALSE), as.integer(FALSE), as.integer(TRUE),
+                    # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
+                    PACKAGE = "ecomix")
+
       return( -as.numeric( tmp.disp.score[spp3]))
     }
 
-    inits <- c(start.vals$alpha, start.vals$tau, start.vals$beta, start.vals$gamma, start.vals$disp)
-    alpha <- start.vals$alpha; tau <- as.numeric( start.vals$tau); beta <- as.numeric( start.vals$beta); gamma <- as.numeric( start.vals$gamma); disp <- start.vals$disp
+    inits <- unname(c(start_vals$alpha, start_vals$beta, start_vals$eta, start_vals$gamma,
+                      start_vals$delta, start_vals$theta))
+    npx <- as.integer(ncol(X))
+    n <- as.integer(nrow(X))
+
+    # parameters to optimise
+    alpha <- as.numeric(start_vals$alpha)
+    beta <- as.numeric(start_vals$beta)
+    eta <- as.numeric(start_vals$eta)
+    gamma <- as.numeric(start_vals$gamma)
+    delta <- as.numeric(start_vals$delta)
+    theta <- as.numeric(start_vals$theta)
+
     #scores
-    alpha.score <- as.numeric(rep(NA, S))
-    tau.score <- as.numeric(matrix(NA, ncol = S, nrow = nRCP - 1))
-    beta.score <- as.numeric(matrix(NA, ncol = ncol(X), nrow = nRCP - 1))
-    if( p.w > 0)
-      gamma.score <- as.numeric(matrix( NA, nrow=S, ncol=ncol(W)))
-    else
-      gamma.score <- -999999
-    if( disty %in% 3:5)
-      disp.score <- as.numeric( rep( NA, S))
-    else
-      disp.score <- -999999
-    scoreContri <- -999999  #as.numeric(matrix(NA, ncol = length(inits), nrow = n))
+    getscores <- 1
+    alpha.score <- as.numeric(rep(NA, length(alpha)))
+    beta.score <- as.numeric(rep(NA, length(beta)))
+    eta.score <- as.numeric(rep(NA, length(eta)))
+
+    # sort of the species formula structures for cpp
+    if(ncol(W)>1){
+      npw <- as.integer(ncol(W[,-1,drop=FALSE]))
+      control$optiPart <- as.integer(1)
+      gamma.score <- as.numeric(matrix(NA, nrow=S, ncol=ncol(W)))
+      Wcpp <- W[,-1,drop=FALSE]
+    } else {
+      npw <- as.integer(1)
+      control$optiPart <- as.integer(0)
+      gamma.score <- -99999
+      Wcpp <- matrix(1,nrow = n, ncol=1)
+    }
+
+    if(!is.null(U)) {
+      Ucpp <- U
+      npu <- as.integer(ncol(U))
+      control$optiAll <- as.integer(1)
+      delta.score <- as.numeric(matrix(NA, ncol=ncol(U)))
+    } else {
+      delta.score <- -99999
+      control$optiAll <- as.integer(0)
+      Ucpp <- matrix(1,nrow = n,ncol=1)
+      npu <- as.integer(1) # a dummy variable to stop c++ issues.
+    }
+
+    if(disty%in%c(4,5,6)){
+      control$optiDisp <- as.integer(1)
+      theta.score <- as.numeric(rep(NA, length(theta)))
+    }else{
+      control$optiDisp <- as.integer(0)
+      theta.score <- -99999
+    }
+    scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,
+                                         gamma.score,delta.score,theta.score))))
+    control$conv <- as.integer(0)
+
     #model quantities
-    pis <- as.numeric(matrix(NA, nrow = n, ncol = nRCP))  #container for the fitted RCP model
-    mus <- as.numeric(array( NA, dim=c( n, S, nRCP)))  #container for the fitted spp model
-    logCondDens <- as.numeric(matrix(NA, nrow = n, ncol = nRCP))
-    logls <- as.numeric(rep(NA, n))
-    conv <- as.integer(0)
+    pis_out <- as.numeric(rep(NA, G))  #container for the fitted RCP model
+    mus <- as.numeric(array( NA, dim=c(n, S, G)))  #container for the fitted spp model
+    loglikeS <- as.numeric(rep(NA, S))
+    loglikeSG  <- as.numeric(matrix(NA, nrow = S, ncol = G))
 
     optimiseDisp <- FALSE
     kount <- 1
     tmp.new <- tmp.old <- -999999
-    if( control$optimise){
+    if( control$optimise_cpp){
       while( (abs( abs( tmp.new - tmp.old) / ( abs( tmp.old) + control$reltol)) > control$reltol | kount==1) & (kount < 15)){
         kount <- kount + 1
         tmp.old <- tmp.new
         message( "Updating Location Parameters: ", appendLF=FALSE)
-        tmp <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
-                     as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
-                     alpha, tau, beta, gamma, disp, power,
-                     as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
-                     alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
-                     pis, mus, logCondDens, logls,
-                     as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
-                     as.integer(control$optimise), as.integer(TRUE), as.integer( FALSE), as.integer(optimiseDisp), as.integer( FALSE), PACKAGE = "ecomix")
+        tmp <- .Call("species_mix_cpp",
+                      as.numeric(as.matrix(y)), as.numeric(as.matrix(X)),
+                      as.numeric(as.matrix(Wcpp)), as.numeric(as.matrix(Ucpp)),
+                      as.numeric(offset), as.numeric(spp_weights),
+                      as.numeric(as.matrix(site_spp_weights)),
+                      as.integer(as.matrix(!y_is_na)),
+                      as.numeric(size), as.integer(S), as.integer(G), as.integer(npx),
+                      as.integer(npw), as.integer(npu), as.integer(n),
+                      as.integer(disty),as.integer(TRUE),
+                      as.integer(control$optiPart),as.integer(control$optiAll),
+                      # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
+                      as.double(alpha), as.double(beta), as.double(eta),
+                      as.double(gamma), as.double(delta), as.double(theta),
+                      as.double(powers),
+                      # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
+                      as.numeric(control$penalty.alpha),as.numeric(control$penalty.beta),
+                      as.numeric(control$penalty.pi),as.numeric(control$penalty.gamma),
+                      as.numeric(control$penalty.delta),
+                      as.numeric(control$penalty.theta[1]),
+                      as.numeric(control$penalty.theta[2]),
+                      # SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RpiPen,  SEXP &RgammaPen,
+                      # SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen,
+                      alpha.score, beta.score, eta.score, gamma.score, delta.score,
+                      theta.score, as.integer(control$getscores_cpp), as.numeric(scores),
+                      # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
+                      pis_out, mus, loglikeS, loglikeSG,
+                      # SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
+                      as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport),
+                      as.numeric(control$abstol), as.numeric(control$reltol), as.integer(control$conv),
+                      as.integer(control$printparams_cpp),
+                      # SEXP Rmaxit, SEXP Rtrace, SEXP RnReport, SEXP Rabstol, SEXP Rreltol, SEXP Rconv, SEXP Rprintparams,
+                      as.integer(control$optimise_cpp), as.integer(TRUE), as.integer(FALSE),
+                      # SEXP Roptimise, SEXP RloglOnly, SEXP RderivsOnly, SEXP RoptiDisp
+                      PACKAGE = "ecomix")
+        # tmp <- .Call("RCP_C", as.numeric(outcomes), as.numeric(X), as.numeric(W), as.numeric( offy), as.numeric( wts),
+                     # as.integer(S), as.integer(nRCP), as.integer(p.x), as.integer(p.w), as.integer(n), as.integer( disty),
+                     # alpha, tau, beta, gamma, disp, power,
+                     # as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
+                     # alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
+                     # pis, mus, logCondDens, logls,
+                     # as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
+                     # as.integer(control$optimise_cpp), as.integer(TRUE), as.integer( FALSE), as.integer(optimiseDisp), as.integer( FALSE), PACKAGE = "ecomix")
         message( "Updating Dispersion Parameters: ", appendLF=FALSE)
         for( ii in 1:S){
-          tmp1 <- nlminb( disp[ii], Tw.phi.func, Tw.phi.func.grad, spp3=ii, control=list( trace=0))
-          disp[ii] <- tmp1$par
+          tmp1 <- nlminb( theta[ii], Tw.phi.func, Tw.phi.func.grad, spp3=ii, control=list( trace=0))
+          theta[ii] <- tmp1$par
           message( tmp1$objective, " ")
         }
         message( "")
