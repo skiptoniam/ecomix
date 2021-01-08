@@ -51,7 +51,7 @@ testthat::test_that('species mix ippm', {
   testthat::expect_is(one_sp_ippm,'list')
 
   # check that many species ippms work - expect back a list.
-  all_sp_ippm <-surveillance::plapply(seq_len(S), ecomix:::apply_species_fits,
+  all_sp_ippm <-ecomix:::plapply(seq_len(S), ecomix:::apply_species_fits,
                                       y, X, W, site_spp_weights, offset, y_is_na, disty)
   testthat::expect_is(all_sp_ippm,'list')
 
@@ -63,7 +63,7 @@ testthat::test_that('species mix ippm', {
 
   i <- 1
   testthat::expect_length(ecomix:::apply_species_fits(i, y, X, W, site_spp_weights, offset, y_is_na, disty),4)
-  fm_ippmint <- surveillance::plapply(1:S, ecomix:::apply_species_fits,
+  fm_ippmint <- ecomix:::plapply(1:S, ecomix:::apply_species_fits,
                                                    y, X, W, site_spp_weights, offset,
                                                    y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
   testthat::expect_length(do.call(cbind,fm_ippmint)[1,],S)

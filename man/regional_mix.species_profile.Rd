@@ -19,6 +19,8 @@ regional_mix.species_profile(
 
 \item{CI}{The confidence intervals to report the range of values form bootstrap}
 
+\item{type}{What type of prediction to perform? Default is response, alternative is 'link'.}
+
 \item{\\dots}{Ignored for now.}
 }
 \description{

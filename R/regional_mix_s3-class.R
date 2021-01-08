@@ -382,63 +382,63 @@
   }
 }
 
-#' @rdname plot.regional_mix.sampling
-#' @name plot.regional_mix.sampling
-#' @title Plot residuals from a regional_mix model.
-#' @param object a fitted regional_mix model you wish to plot
-#' @param object2 a bootstrap object from regional_mix.bootstrap
-#' @param type What type of residuals to plot? 'RQR'; random quantile residuals or 'deviance' residuals.
-#' @param nsim Number of simulations to run
-#' @param alpha.conf The bounds of the confidence intervals.
-#' @param quiet Run in quiet mode.
-#' @param species Which species to plot as residuals.
-#' @param fitted.scale What scale to plot the residuals on?
-#' @details The two types of residuals are inherently different. The "RQR" residuals produce a residual for each species at each site and the "deviance" residuals produce a site residual (no species level residual). The plots also differ, the "RQR" type generates a single normal QQ-plot for all species and all sites, and a residual versus fitted plot for all species and sites (Described in Foster et al, 2013). The "deviance" type generates a pair of Tukey mean-difference plots, similar in spirit to a QQ-plot. The first is for point-wise confidence intervals and the second is for approximate global intervals. See Foster et al (2013) for details.
-#' The family for the "RQR" residuals should be standard normal. For "deviance" residuals, the distribution is unknown and simulation is used to graphically assess how odd the observed residuals look compared to ones generated assuming the model is correct.
-#' @references Dunn, P.K. and Smyth G.K. (1996) Randomized Quantile Residuals. Journal of Computational and Graphical Statistics \emph{5}: 236--244.
-#' Foster, S.D., Givens, G.H., Dornan, G.J., Dunstan, P.K. and Darnell, R. (2013) Modelling Regions of Common Profiles Using Biological and Environmental Data. Environmetrics \emph{24}: 489--499. DOI: 10.1002/env.2245
-#' Foster, S.D., Hill, N.A. and Lyons, M., 2017. Ecological grouping of survey sites when sampling artefacts are present. Journal of the Royal Statistical Society: Series C (Applied Statistics), 66(5), pp.1031-1047.
-#' @export
+# #' @rdname plot.regional_mix.sampling
+# #' @name plot.regional_mix.sampling
+# #' @title Plot residuals from a regional_mix model.
+# #' @param object a fitted regional_mix model you wish to plot
+# #' @param object2 a bootstrap object from regional_mix.bootstrap
+# #' @param type What type of residuals to plot? 'RQR'; random quantile residuals or 'deviance' residuals.
+# #' @param nsim Number of simulations to run
+# #' @param alpha.conf The bounds of the confidence intervals.
+# #' @param quiet Run in quiet mode.
+# #' @param species Which species to plot as residuals.
+# #' @param fitted.scale What scale to plot the residuals on?
+# #' @details The two types of residuals are inherently different. The "RQR" residuals produce a residual for each species at each site and the "deviance" residuals produce a site residual (no species level residual). The plots also differ, the "RQR" type generates a single normal QQ-plot for all species and all sites, and a residual versus fitted plot for all species and sites (Described in Foster et al, 2013). The "deviance" type generates a pair of Tukey mean-difference plots, similar in spirit to a QQ-plot. The first is for point-wise confidence intervals and the second is for approximate global intervals. See Foster et al (2013) for details.
+# #' The family for the "RQR" residuals should be standard normal. For "deviance" residuals, the distribution is unknown and simulation is used to graphically assess how odd the observed residuals look compared to ones generated assuming the model is correct.
+# #' @references Dunn, P.K. and Smyth G.K. (1996) Randomized Quantile Residuals. Journal of Computational and Graphical Statistics \emph{5}: 236--244.
+# #' Foster, S.D., Givens, G.H., Dornan, G.J., Dunstan, P.K. and Darnell, R. (2013) Modelling Regions of Common Profiles Using Biological and Environmental Data. Environmetrics \emph{24}: 489--499. DOI: 10.1002/env.2245
+# #' Foster, S.D., Hill, N.A. and Lyons, M., 2017. Ecological grouping of survey sites when sampling artefacts are present. Journal of the Royal Statistical Society: Series C (Applied Statistics), 66(5), pp.1031-1047.
+# #' @export
 
-"plot.regional_mix.sampling" <-function(x, ... , object2=NULL, sampling_levels,
-                                        CI=c(0.025, 0.975), col="black", lty=1){
-
-  require(lattice)
-  gammas<-grepl("gamma",dimnames(object2)[[2]])
-  temp_dat<-object2[,gammas]
-
-  temp<-data.frame(avs=as.numeric(unname(colMeans(temp_dat))),
-                   t(apply(temp_dat, 2, quantile, probs=CI)),
-                   #sampling_var=rep(sampling_names, each=length(length(best_mod$names$spp))),
-                   sampling_var=sapply(strsplit(dimnames(temp_dat)[[2]],"_"), "[", 3),
-                   #Species=factor(rep(best_mod$names$spp,length(sampling_names))))
-                   Species=factor(sapply(strsplit(dimnames(temp_dat)[[2]],"_"), "[", 1)))
-
-  names(temp)[2:3]<-c("lower", "upper")
-  temp$Species<-gsub("."," ", temp$Species, fixed=TRUE) #get rid of '.' in species names
-  temp$Species<-as.factor(temp$Species) #convert back to factor
-  temp$Species <- factor(temp$Species, levels=rev(levels(temp$Species)))
-
-  trellis.par.set(superpose.symbol=list(pch=16,col=col, cex=1.2),
-                  superpose.line=list(col="transparent"))
-  dotplot(Species ~ avs, groups=sampling_var, data=temp, cols=col, lty=lty, low=temp$lower, high=temp$upper, subscript=TRUE,
-          auto.key=list(space="top", columns=2, cex=1.4, text=legend_fact),
-          ylab=list(cex=1.4), xlab=list("Coefficient",cex=1.4),
-          scales = list(tck = c(1, 0), x=list(cex=1.2), y=list(cex=1.2)),
-          prepanel = function(x, y, ...) { list(xlim=range(temp$lower, temp$upper)) },
-          panel=panel.superpose,
-          panel.groups=function(x, y, subscripts, group.number, cols, low, high, ...)
-          {
-            if(group.number==1) jiggle <- 0.1 else jiggle <- -0.1
-            panel.abline(v=0, lty=2)
-            panel.abline(h=1:length(best_mod$names$spp), col.line="light grey", lty=1)
-            panel.dotplot(x, y+jiggle, group.number, ...)
-            panel.arrows(low[subscripts], y+jiggle, high[subscripts], y+jiggle, code=3, angle=90,
-                         length=0.05, col=cols[group.number], lty=lty[group.number])
-            #panel.segments(temp$lower, y+jiggle, + temp$upper, y+jiggle, lty = lty, col =col, lwd=2, cex=1.2)
-          })
-
-}
+# "plot.regional_mix.sampling" <-function(x, ... , object2=NULL, sampling_levels,
+#                                         CI=c(0.025, 0.975), col="black", lty=1){
+#
+#   require(lattice)
+#   gammas<-grepl("gamma",dimnames(object2)[[2]])
+#   temp_dat<-object2[,gammas]
+#
+#   temp<-data.frame(avs=as.numeric(unname(colMeans(temp_dat))),
+#                    t(apply(temp_dat, 2, quantile, probs=CI)),
+#                    #sampling_var=rep(sampling_names, each=length(length(best_mod$names$spp))),
+#                    sampling_var=sapply(strsplit(dimnames(temp_dat)[[2]],"_"), "[", 3),
+#                    #Species=factor(rep(best_mod$names$spp,length(sampling_names))))
+#                    Species=factor(sapply(strsplit(dimnames(temp_dat)[[2]],"_"), "[", 1)))
+#
+#   names(temp)[2:3]<-c("lower", "upper")
+#   temp$Species<-gsub("."," ", temp$Species, fixed=TRUE) #get rid of '.' in species names
+#   temp$Species<-as.factor(temp$Species) #convert back to factor
+#   temp$Species <- factor(temp$Species, levels=rev(levels(temp$Species)))
+#
+#   trellis.par.set(superpose.symbol=list(pch=16,col=col, cex=1.2),
+#                   superpose.line=list(col="transparent"))
+#   dotplot(Species ~ avs, groups=sampling_var, data=temp, cols=col, lty=lty, low=temp$lower, high=temp$upper, subscript=TRUE,
+#           auto.key=list(space="top", columns=2, cex=1.4, text=legend_fact),
+#           ylab=list(cex=1.4), xlab=list("Coefficient",cex=1.4),
+#           scales = list(tck = c(1, 0), x=list(cex=1.2), y=list(cex=1.2)),
+#           prepanel = function(x, y, ...) { list(xlim=range(temp$lower, temp$upper)) },
+#           panel=panel.superpose,
+#           panel.groups=function(x, y, subscripts, group.number, cols, low, high, ...)
+#           {
+#             if(group.number==1) jiggle <- 0.1 else jiggle <- -0.1
+#             panel.abline(v=0, lty=2)
+#             panel.abline(h=1:length(best_mod$names$spp), col.line="light grey", lty=1)
+#             panel.dotplot(x, y+jiggle, group.number, ...)
+#             panel.arrows(low[subscripts], y+jiggle, high[subscripts], y+jiggle, code=3, angle=90,
+#                          length=0.05, col=cols[group.number], lty=lty[group.number])
+#             #panel.segments(temp$lower, y+jiggle, + temp$upper, y+jiggle, lty = lty, col =col, lwd=2, cex=1.2)
+#           })
+#
+# }
 
 
 
@@ -1073,6 +1073,7 @@
 #'@param object A RCP model
 #'@param object2 A RCP model bootstrap object
 #'@param CI The confidence intervals to report the range of values form bootstrap
+#'@param type What type of prediction to perform? Default is response, alternative is 'link'.
 #'@param \\dots Ignored for now.
 #'@export
 #'@description Extracts the average species' profile for each RCP.
@@ -1090,7 +1091,7 @@
                         single_no_sp_results = partial_mus_no_species_form(object,type),
                         single_results = partial_mus_with_species_form(object,type),
                         bootstrap_results = partial_mus_from_boostrap(object, object2, CI = CI,type))
-  class(partial_mus) <- "regional_mix_membership"
+  class(partial_mus) <- "regional_mix_profile"
   return(partial_mus)
 }
 
