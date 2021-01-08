@@ -52,7 +52,8 @@
 #' spp_form <- observations ~ 1 + w1 + w2
 #' data <- make_mixture_data(species_data = simulated_data$species_data,
 #'                           covariate_data = simulated_data$covariate_data[,-1])
-#' fm_regional_mix <- regional_mix(rcp_form,spp_form,data=data,family='bernoulli',n_mixtures=5)
+#' fm_regional_mix <- regional_mix(rcp_formula=rcp_form,species_formula=spp_form,
+#'                                 data=data, family='bernoulli', nRCP=5)
 #' }
 "regional_mix" <- function (rcp_formula = NULL, species_formula = NULL, data,
                             nRCP = 3, family="bernoulli", offset=NULL,
@@ -2425,7 +2426,7 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
     new_eta <- sweep(eta, 2, coef(object)$gamma[,object$names$Wvars[jj]], "+");
     if(type%in%"response")part_mus <- link.fun$linkinv(eta)
     else part_mus <- eta
-    return(part_mu)})
+    return(part_mus)})
 
   names(res)<- object$names$Wvars
   return(res)
@@ -2465,10 +2466,9 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
       tmp_eta <- sweep(tmp_tau_all, 2, tmp_alphas, "+") + mean(offy)
 
       #calculate values
-      # if(type=="response")part_mu <- link.fun$linkinv(tmp_eta);
       if(type%in%"response")part_mus <- link.fun$linkinv(tmp_eta)
       if(type%in%"link") part_mus <- tmp_eta
-      res_all[[i]]<-as.matrix(part_mu)
+      res_all[[i]]<-as.matrix(part_mus)
     }
 
     overall_temp<-array(unlist(res_all), dim=c( length(object$names$RCPs),length(object$names$spp),nrow(object2)))
@@ -2513,9 +2513,9 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
 
       res<- lapply(seq_along(object$names$Wvars),function(jj){
         new_eta <- sweep(tmp_eta, 2, tmp_gamma[,jj], "+");
-        if(type%in%"response")part_mu <- link.fun$linkinv(tmp_eta)
-        if(type%in%"link") part_mu <- tmp_eta
-        return(part_mu)})
+        if(type%in%"response")part_mus <- link.fun$linkinv(tmp_eta)
+        if(type%in%"link") part_mus <- tmp_eta
+        return(part_mus)})
 
       names(res)<-object$names$Wvars
       res_all[[i]] <- res

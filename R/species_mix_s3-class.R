@@ -170,9 +170,9 @@
 #'preds_fm1 <- predict(fm1)
 #'}
 
-"predict.species_mix" <- function (object, object2 = NULL, newdata = NULL,
-                                   offset = NULL, nboot = 0, alpha = 0.95,
-                                   mc.cores = 1, prediction.type='archetype', ...){
+"predict.species_mix" <- function(object, object2 = NULL, newdata = NULL,
+                                  offset = NULL, nboot = 0, alpha = 0.95,
+                                  mc.cores = 1, prediction.type='archetype', ...){
   if (is.null(newdata)) {
     X <- object$titbits$X
     W <- object$titbits$W

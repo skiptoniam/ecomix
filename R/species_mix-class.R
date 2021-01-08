@@ -252,7 +252,10 @@
 
   tmp$family <- disty_cases[disty]
 
-  tmp$S <- S; tmp$G <- G; tmp$npx <- ncol(X); tmp$npw <- ifelse(ncol(W)>1,ncol(W),0);
+  tmp$S <- S;
+  tmp$G <- G;
+  tmp$npx <- ncol(X);
+  tmp$npw <- ifelse(ncol(W)>1,ncol(W),0);
   tmp$npu <- ifelse(!is.null(U),ncol(U),0);
 
   if(nArchetypes==1){
@@ -261,8 +264,7 @@
     tmp$pis <- additive_logistic(tmp$eta)
   }
 
-  # get logls from parameters
-
+  #get logls from parameters
   #calc posterior porbs and pis.
   if(nArchetypes>1){
     fits <- tmp$coefs
