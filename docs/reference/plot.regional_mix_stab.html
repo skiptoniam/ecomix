@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>data_preperation-class — table_to_species_data • ecomix</title>
+<title>Diagnostic plotting to see if RCP groups are stable — plot.regional_mix_stab • ecomix</title>
 
 
 <!-- jquery -->
@@ -39,9 +39,8 @@
 
 
 
-<meta property="og:title" content="data_preperation-class — table_to_species_data" />
-<meta property="og:description" content="prepares table of observational records into a sites x
-species matrix for use in ecomix." />
+<meta property="og:title" content="Diagnostic plotting to see if RCP groups are stable — plot.regional_mix_stab" />
+<meta property="og:description" content="For increasing size of hold-out samples, cooks distance and predictive log-likelihood are plotted." />
 
 
 
@@ -104,68 +103,50 @@ species matrix for use in ecomix." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>data_preperation-class</h1>
+    <h1>Diagnostic plotting to see if RCP groups are stable</h1>
     
-    <div class="hidden name"><code>data_prep.Rd</code></div>
+    <div class="hidden name"><code>plot.regional_mix_stab.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>prepares table of observational records into a sites x
-species matrix for use in <code>ecomix</code>.</p>
+    <p>For increasing size of hold-out samples, cooks distance and predictive log-likelihood are plotted.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>table_to_species_data</span><span class='op'>(</span>
-  <span class='va'>observation_data</span>,
-  site_id <span class='op'>=</span> <span class='st'>"site_id"</span>,
-  species_id <span class='op'>=</span> <span class='st'>"species_id"</span>,
-  measurement_id <span class='op'>=</span> <span class='cn'>NULL</span>
-<span class='op'>)</span>
-
-<span class='fu'>make_mixture_data</span><span class='op'>(</span><span class='va'>species_data</span>, <span class='va'>covariate_data</span><span class='op'>)</span></pre>
+    <pre class="usage"><span class='co'># S3 method for regional_mix_stab</span>
+<span class='fu'><a href='https://rdrr.io/r/graphics/plot.default.html'>plot</a></span><span class='op'>(</span><span class='va'>x</span>, <span class='va'>y</span>, minWidth <span class='op'>=</span> <span class='fl'>1</span>, ncuts <span class='op'>=</span> <span class='fl'>111</span>, ylimmo <span class='op'>=</span> <span class='cn'>NULL</span>, <span class='va'>...</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>observation_data</th>
-      <td><p>data to be imported into R. A table of species
-occurrences and site records.</p></td>
+      <th>x</th>
+      <td><p>x-axis</p></td>
     </tr>
     <tr>
-      <th>site_id</th>
-      <td><p>Name of column that contains site names /IDs.</p></td>
+      <th>y</th>
+      <td><p>y-axis</p></td>
     </tr>
     <tr>
-      <th>species_id</th>
-      <td><p>Name of column that contains species information/ID.</p></td>
+      <th>minWidth</th>
+      <td><p>min width of cuts/binning</p></td>
     </tr>
     <tr>
-      <th>measurement_id</th>
-      <td><p>Name of column that contains species observational
-data. eg, 'occurrence', 'abundance' or 'biomass'.</p></td>
+      <th>ncuts</th>
+      <td><p>number of cuts/bins to make</p></td>
     </tr>
     <tr>
-      <th>species_data</th>
-      <td><p>A character string providing the name of the column in <code>data</code> that contains the counts</p></td>
+      <th>ylimmo</th>
+      <td><p>limit of y-axis</p></td>
     </tr>
     <tr>
-      <th>covariate_data</th>
-      <td><p>A character string providing the name of the column in <code>data</code> that contains the binary occurence data</p></td>
+      <th>\dots</th>
+      <td><p>additional plotting calls</p></td>
     </tr>
     </table>
 
-    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>A sites x species matrix to used as species_data in <code>ecomix</code>
-models.</p>
-<p>A list containing the following elements:</p>
-<dt>species_data</dt><dd><p>A matrix of occurrence, counts, biomass, or...</p></dd>
-<dt>covariate_data</dt><dd><p>The design matrix for the global covariates</p></dd>
-
-    <h2 class="hasAnchor" id="author"><a class="anchor" href="#author"></a>Author</h2>
-
-    <p>Skipton Woolley</p>
-
+    <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
+    <pre class="examples"></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">

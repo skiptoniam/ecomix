@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>data_preperation-class — table_to_species_data • ecomix</title>
+<title>Plot residuals from a regional_mix model. — plot.regional_mix.sampling • ecomix</title>
 
 
 <!-- jquery -->
@@ -39,9 +39,8 @@
 
 
 
-<meta property="og:title" content="data_preperation-class — table_to_species_data" />
-<meta property="og:description" content="prepares table of observational records into a sites x
-species matrix for use in ecomix." />
+<meta property="og:title" content="Plot residuals from a regional_mix model. — plot.regional_mix.sampling" />
+<meta property="og:description" content="Plot residuals from a regional_mix model." />
 
 
 
@@ -104,67 +103,72 @@ species matrix for use in ecomix." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>data_preperation-class</h1>
+    <h1>Plot residuals from a regional_mix model.</h1>
     
-    <div class="hidden name"><code>data_prep.Rd</code></div>
+    <div class="hidden name"><code>plot.regional_mix.sampling.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>prepares table of observational records into a sites x
-species matrix for use in <code>ecomix</code>.</p>
+    <p>Plot residuals from a regional_mix model.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>table_to_species_data</span><span class='op'>(</span>
-  <span class='va'>observation_data</span>,
-  site_id <span class='op'>=</span> <span class='st'>"site_id"</span>,
-  species_id <span class='op'>=</span> <span class='st'>"species_id"</span>,
-  measurement_id <span class='op'>=</span> <span class='cn'>NULL</span>
-<span class='op'>)</span>
-
-<span class='fu'>make_mixture_data</span><span class='op'>(</span><span class='va'>species_data</span>, <span class='va'>covariate_data</span><span class='op'>)</span></pre>
+    <pre class="usage"><span class='co'># S3 method for regional_mix.sampling</span>
+<span class='fu'><a href='https://rdrr.io/r/graphics/plot.default.html'>plot</a></span><span class='op'>(</span>
+  <span class='va'>x</span>,
+  <span class='va'>...</span>,
+  object2 <span class='op'>=</span> <span class='cn'>NULL</span>,
+  <span class='va'>sampling_levels</span>,
+  CI <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fl'>0.025</span>, <span class='fl'>0.975</span><span class='op'>)</span>,
+  col <span class='op'>=</span> <span class='st'>"black"</span>,
+  lty <span class='op'>=</span> <span class='fl'>1</span>
+<span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>observation_data</th>
-      <td><p>data to be imported into R. A table of species
-occurrences and site records.</p></td>
+      <th>object2</th>
+      <td><p>a bootstrap object from regional_mix.bootstrap</p></td>
     </tr>
     <tr>
-      <th>site_id</th>
-      <td><p>Name of column that contains site names /IDs.</p></td>
+      <th>object</th>
+      <td><p>a fitted regional_mix model you wish to plot</p></td>
     </tr>
     <tr>
-      <th>species_id</th>
-      <td><p>Name of column that contains species information/ID.</p></td>
+      <th>type</th>
+      <td><p>What type of residuals to plot? 'RQR'; random quantile residuals or 'deviance' residuals.</p></td>
     </tr>
     <tr>
-      <th>measurement_id</th>
-      <td><p>Name of column that contains species observational
-data. eg, 'occurrence', 'abundance' or 'biomass'.</p></td>
+      <th>nsim</th>
+      <td><p>Number of simulations to run</p></td>
     </tr>
     <tr>
-      <th>species_data</th>
-      <td><p>A character string providing the name of the column in <code>data</code> that contains the counts</p></td>
+      <th>alpha.conf</th>
+      <td><p>The bounds of the confidence intervals.</p></td>
     </tr>
     <tr>
-      <th>covariate_data</th>
-      <td><p>A character string providing the name of the column in <code>data</code> that contains the binary occurence data</p></td>
+      <th>quiet</th>
+      <td><p>Run in quiet mode.</p></td>
+    </tr>
+    <tr>
+      <th>species</th>
+      <td><p>Which species to plot as residuals.</p></td>
+    </tr>
+    <tr>
+      <th>fitted.scale</th>
+      <td><p>What scale to plot the residuals on?</p></td>
     </tr>
     </table>
 
-    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
+    <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
-    <p>A sites x species matrix to used as species_data in <code>ecomix</code>
-models.</p>
-<p>A list containing the following elements:</p>
-<dt>species_data</dt><dd><p>A matrix of occurrence, counts, biomass, or...</p></dd>
-<dt>covariate_data</dt><dd><p>The design matrix for the global covariates</p></dd>
+    <p>The two types of residuals are inherently different. The "RQR" residuals produce a residual for each species at each site and the "deviance" residuals produce a site residual (no species level residual). The plots also differ, the "RQR" type generates a single normal QQ-plot for all species and all sites, and a residual versus fitted plot for all species and sites (Described in Foster et al, 2013). The "deviance" type generates a pair of Tukey mean-difference plots, similar in spirit to a QQ-plot. The first is for point-wise confidence intervals and the second is for approximate global intervals. See Foster et al (2013) for details.
+The family for the "RQR" residuals should be standard normal. For "deviance" residuals, the distribution is unknown and simulation is used to graphically assess how odd the observed residuals look compared to ones generated assuming the model is correct.</p>
+    <h2 class="hasAnchor" id="references"><a class="anchor" href="#references"></a>References</h2>
 
-    <h2 class="hasAnchor" id="author"><a class="anchor" href="#author"></a>Author</h2>
-
-    <p>Skipton Woolley</p>
+    <p>Dunn, P.K. and Smyth G.K. (1996) Randomized Quantile Residuals. Journal of Computational and Graphical Statistics <em>5</em>: 236--244.
+Foster, S.D., Givens, G.H., Dornan, G.J., Dunstan, P.K. and Darnell, R. (2013) Modelling Regions of Common Profiles Using Biological and Environmental Data. Environmetrics <em>24</em>: 489--499. DOI: 10.1002/env.2245
+Foster, S.D., Hill, N.A. and Lyons, M., 2017. Ecological grouping of survey sites when sampling artefacts are present. Journal of the Royal Statistical Society: Series C (Applied Statistics), 66(5), pp.1031-1047.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>data_preperation-class — table_to_species_data • ecomix</title>
+<title>cooks.distance — cooks.distance.regional_mix • ecomix</title>
 
 
 <!-- jquery -->
@@ -39,9 +39,8 @@
 
 
 
-<meta property="og:title" content="data_preperation-class — table_to_species_data" />
-<meta property="og:description" content="prepares table of observational records into a sites x
-species matrix for use in ecomix." />
+<meta property="og:title" content="cooks.distance — cooks.distance.regional_mix" />
+<meta property="og:description" content="Performs leave-some-out measures for a regional_mix model. This includes a measure of how much effect leaving out an observation has on the probability of each site's RCP label. Also, this function can be used as a cross-validation workhorse." />
 
 
 
@@ -104,68 +103,75 @@ species matrix for use in ecomix." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>data_preperation-class</h1>
+    <h1>cooks.distance</h1>
     
-    <div class="hidden name"><code>data_prep.Rd</code></div>
+    <div class="hidden name"><code>cooks.distance.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>prepares table of observational records into a sites x
-species matrix for use in <code>ecomix</code>.</p>
+    <p>Performs leave-some-out measures for a regional_mix model. This includes a measure of how much effect leaving out an observation has on the probability of each site's RCP label. Also, this function can be used as a cross-validation workhorse.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>table_to_species_data</span><span class='op'>(</span>
-  <span class='va'>observation_data</span>,
-  site_id <span class='op'>=</span> <span class='st'>"site_id"</span>,
-  species_id <span class='op'>=</span> <span class='st'>"species_id"</span>,
-  measurement_id <span class='op'>=</span> <span class='cn'>NULL</span>
-<span class='op'>)</span>
-
-<span class='fu'>make_mixture_data</span><span class='op'>(</span><span class='va'>species_data</span>, <span class='va'>covariate_data</span><span class='op'>)</span></pre>
+    <pre class="usage"><span class='co'># S3 method for regional_mix</span>
+<span class='fu'><a href='https://rdrr.io/r/stats/influence.measures.html'>cooks.distance</a></span><span class='op'>(</span>
+  <span class='va'>model</span>,
+  <span class='va'>...</span>,
+  oosSize <span class='op'>=</span> <span class='fl'>1</span>,
+  times <span class='op'>=</span> <span class='va'>model</span><span class='op'>$</span><span class='va'>n</span>,
+  mc.cores <span class='op'>=</span> <span class='fl'>1</span>,
+  quiet <span class='op'>=</span> <span class='cn'>FALSE</span>
+<span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>observation_data</th>
-      <td><p>data to be imported into R. A table of species
-occurrences and site records.</p></td>
+      <th>model</th>
+      <td><p>A regional_mix object whose fit you want to assess</p></td>
     </tr>
     <tr>
-      <th>site_id</th>
-      <td><p>Name of column that contains site names /IDs.</p></td>
+      <th>oosSize</th>
+      <td><p>The size of the with held partitions (out-of-sample size). Use 1 (default) for leave-one-out statistics, such as Cook's distance and leave-one-out validation.</p></td>
     </tr>
     <tr>
-      <th>species_id</th>
-      <td><p>Name of column that contains species information/ID.</p></td>
+      <th>times</th>
+      <td><p>The number of times to perform the re-estimation (the number of leave out groups). For each 1:times a random partition of the data, of size oosSize, is taken and the model is fitted to one of the partitions. It is predicted to the other partition. The exception is when oosSize=1 and times=model$n (leave-one-out). In such cases (the default too), the observations are left out one-by-one and not randomly.</p></td>
     </tr>
     <tr>
-      <th>measurement_id</th>
-      <td><p>Name of column that contains species observational
-data. eg, 'occurrence', 'abundance' or 'biomass'.</p></td>
+      <th>mc.cores</th>
+      <td><p>The number of cores to spread the workload over. Default is 1. Argument is useless on Windows machines ??? see ?parallel::mclapply</p></td>
     </tr>
     <tr>
-      <th>species_data</th>
-      <td><p>A character string providing the name of the column in <code>data</code> that contains the counts</p></td>
+      <th>quiet</th>
+      <td><p>Should printing be suppressed? Default is no, it should not. Note that in either case, printing of the iteration trace etc is suppressed for each regional_mix fit.</p></td>
     </tr>
     <tr>
-      <th>covariate_data</th>
-      <td><p>A character string providing the name of the column in <code>data</code> that contains the binary occurence data</p></td>
+      <th>\dots</th>
+      <td><p>ignored</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>A sites x species matrix to used as species_data in <code>ecomix</code>
-models.</p>
-<p>A list containing the following elements:</p>
-<dt>species_data</dt><dd><p>A matrix of occurrence, counts, biomass, or...</p></dd>
-<dt>covariate_data</dt><dd><p>The design matrix for the global covariates</p></dd>
+    <p>An object of class regiCooksD. It is a list of 4 elements:</p>
+<p>Y the species data,</p>
+<p>CV the model$n by model$S by times array of out-of-sample predictions (this array contains a lot of NAs for where predictions would in-sample),</p>
+<p>cooksD a model$n by model$nRCP matrix of statistics that resemble Cook's distance. The statistic is the change in the prediction of RCP probability from the model with all the data to the model with only the in-sample data, and predLogL the predictive log-likelihood of each point in each withheld sample (log-likelihood contributions of withheld observations, again there will be many NAs).</p>
 
-    <h2 class="hasAnchor" id="author"><a class="anchor" href="#author"></a>Author</h2>
-
-    <p>Skipton Woolley</p>
-
+    <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
+    <pre class="examples"><div class='input'><span class='kw'>if</span> <span class='op'>(</span><span class='cn'>FALSE</span><span class='op'>)</span> <span class='op'>{</span>
+<span class='co'>#not run as R CMD check complains about the time taken.</span>
+<span class='co'>#This code will take a little while to run (&lt;1 minute on my computer)</span>
+<span class='co'>#For leave-one-out cooks distance, use oosSize=1</span>
+<span class='co'>#for serious use times will need to be larger.</span>
+<span class='fu'><a href='https://rdrr.io/r/base/system.time.html'>system.time</a></span><span class='op'>(</span><span class='op'>{</span>
+  <span class='fu'><a href='https://rdrr.io/r/utils/example.html'>example</a></span><span class='op'>(</span> <span class='va'>regional_mix</span><span class='op'>)</span>;
+  <span class='va'>cooksD</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/influence.measures.html'>cooks.distance</a></span><span class='op'>(</span> <span class='va'>fm</span>, oosSize<span class='op'>=</span><span class='fl'>10</span>, times<span class='op'>=</span><span class='fl'>25</span><span class='op'>)</span>
+<span class='op'>}</span><span class='op'>)</span>
+<span class='co'>#For leave-one-out cooks distance, use oosSize=1</span>
+<span class='va'>cooksD</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/influence.measures.html'>cooks.distance</a></span><span class='op'>(</span> <span class='va'>fm</span>, oosSize<span class='op'>=</span><span class='fl'>10</span>, times<span class='op'>=</span><span class='fl'>5</span><span class='op'>)</span>
+<span class='op'>}</span>
+</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">

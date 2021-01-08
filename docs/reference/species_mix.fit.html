@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>data_preperation-class — table_to_species_data • ecomix</title>
+<title>species_mix.fit — species_mix.fit • ecomix</title>
 
 
 <!-- jquery -->
@@ -39,9 +39,11 @@
 
 
 
-<meta property="og:title" content="data_preperation-class — table_to_species_data" />
-<meta property="og:description" content="prepares table of observational records into a sites x
-species matrix for use in ecomix." />
+<meta property="og:title" content="species_mix.fit — species_mix.fit" />
+<meta property="og:description" content="species_mix.fit is similar to glm.fit and does all the heavy lifting when it
+comes to estimating species mix models. If you are unfamilar with how to use glm.fit it is
+recommended that you use species_mix which is the user friendly wrapper around this
+function." />
 
 
 
@@ -104,67 +106,101 @@ species matrix for use in ecomix." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>data_preperation-class</h1>
+    <h1>species_mix.fit</h1>
     
-    <div class="hidden name"><code>data_prep.Rd</code></div>
+    <div class="hidden name"><code>species_mix.fit.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>prepares table of observational records into a sites x
-species matrix for use in <code>ecomix</code>.</p>
+    <p>species_mix.fit is similar to glm.fit and does all the heavy lifting when it
+comes to estimating species mix models. If you are unfamilar with how to use glm.fit it is
+recommended that you use species_mix which is the user friendly wrapper around this
+function.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>table_to_species_data</span><span class='op'>(</span>
-  <span class='va'>observation_data</span>,
-  site_id <span class='op'>=</span> <span class='st'>"site_id"</span>,
-  species_id <span class='op'>=</span> <span class='st'>"species_id"</span>,
-  measurement_id <span class='op'>=</span> <span class='cn'>NULL</span>
-<span class='op'>)</span>
-
-<span class='fu'>make_mixture_data</span><span class='op'>(</span><span class='va'>species_data</span>, <span class='va'>covariate_data</span><span class='op'>)</span></pre>
+    <pre class="usage"><span class='fu'>species_mix.fit</span><span class='op'>(</span>
+  <span class='va'>y</span>,
+  <span class='va'>X</span>,
+  <span class='va'>W</span>,
+  <span class='va'>U</span>,
+  <span class='va'>G</span>,
+  <span class='va'>S</span>,
+  <span class='va'>spp_weights</span>,
+  <span class='va'>site_spp_weights</span>,
+  <span class='va'>offset</span>,
+  <span class='va'>y_is_na</span>,
+  <span class='va'>disty</span>,
+  <span class='va'>size</span>,
+  <span class='va'>powers</span>,
+  <span class='va'>control</span>,
+  inits <span class='op'>=</span> <span class='cn'>NULL</span>
+<span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>observation_data</th>
-      <td><p>data to be imported into R. A table of species
-occurrences and site records.</p></td>
+      <th>y</th>
+      <td><p>is a matrix genertated from model.response containing the species information. The matrix has the dimensions n_sites * n_species.</p></td>
     </tr>
     <tr>
-      <th>site_id</th>
-      <td><p>Name of column that contains site names /IDs.</p></td>
+      <th>X</th>
+      <td><p>is a design matrix for the archetype_formula dimension n_sites * n_covariates.</p></td>
     </tr>
     <tr>
-      <th>species_id</th>
-      <td><p>Name of column that contains species information/ID.</p></td>
+      <th>W</th>
+      <td><p>is a design matrix for species_formula and will be implemented if species_formula has covariates.</p></td>
     </tr>
     <tr>
-      <th>measurement_id</th>
-      <td><p>Name of column that contains species observational
-data. eg, 'occurrence', 'abundance' or 'biomass'.</p></td>
+      <th>U</th>
+      <td><p>is a design matrix fro all_formula and will be implemented if not NULL.</p></td>
     </tr>
     <tr>
-      <th>species_data</th>
-      <td><p>A character string providing the name of the column in <code>data</code> that contains the counts</p></td>
+      <th>G</th>
+      <td><p>is the number of species archetypes that are being estimated.</p></td>
     </tr>
     <tr>
-      <th>covariate_data</th>
-      <td><p>A character string providing the name of the column in <code>data</code> that contains the binary occurence data</p></td>
+      <th>S</th>
+      <td><p>is the number of species to be modelled (this will be calculated internally in species_mix())</p></td>
+    </tr>
+    <tr>
+      <th>spp_weights</th>
+      <td><p>These are weights on the species logls and are specifically used in the Bayesian Bootstrap.</p></td>
+    </tr>
+    <tr>
+      <th>site_spp_weights</th>
+      <td><p>These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See <a href='species_mix.html'>species_mix</a> for more details.</p></td>
+    </tr>
+    <tr>
+      <th>offset</th>
+      <td><p>this is a vector of site specific offsets, this might be something like area sampled at sites.</p></td>
+    </tr>
+    <tr>
+      <th>y_is_na</th>
+      <td><p>This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!</p></td>
+    </tr>
+    <tr>
+      <th>disty</th>
+      <td><p>the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.</p></td>
+    </tr>
+    <tr>
+      <th>size</th>
+      <td><p>The size of each of binomial sample at each site. Length should be the number of sites.</p></td>
+    </tr>
+    <tr>
+      <th>powers</th>
+      <td><p>The power parameters for the Tweedie distribution.</p></td>
+    </tr>
+    <tr>
+      <th>control</th>
+      <td><p>this is a list of control parameters that alter the specifics of model fitting.</p></td>
+    </tr>
+    <tr>
+      <th>inits</th>
+      <td><p>This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).</p></td>
     </tr>
     </table>
 
-    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
-
-    <p>A sites x species matrix to used as species_data in <code>ecomix</code>
-models.</p>
-<p>A list containing the following elements:</p>
-<dt>species_data</dt><dd><p>A matrix of occurrence, counts, biomass, or...</p></dd>
-<dt>covariate_data</dt><dd><p>The design matrix for the global covariates</p></dd>
-
-    <h2 class="hasAnchor" id="author"><a class="anchor" href="#author"></a>Author</h2>
-
-    <p>Skipton Woolley</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

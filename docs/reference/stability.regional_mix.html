@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>data_preperation-class — table_to_species_data • ecomix</title>
+<title>Diagnostic checks to see if RCP groups are stable — stability.regional_mix • ecomix</title>
 
 
 <!-- jquery -->
@@ -39,9 +39,8 @@
 
 
 
-<meta property="og:title" content="data_preperation-class — table_to_species_data" />
-<meta property="og:description" content="prepares table of observational records into a sites x
-species matrix for use in ecomix." />
+<meta property="og:title" content="Diagnostic checks to see if RCP groups are stable — stability.regional_mix" />
+<meta property="og:description" content="For increasing size of hold-out samples, cooks distance and predictive log-likelihood are calculated and optionally plotted." />
 
 
 
@@ -104,68 +103,70 @@ species matrix for use in ecomix." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>data_preperation-class</h1>
+    <h1>Diagnostic checks to see if RCP groups are stable</h1>
     
-    <div class="hidden name"><code>data_prep.Rd</code></div>
+    <div class="hidden name"><code>stability.regional_mix.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>prepares table of observational records into a sites x
-species matrix for use in <code>ecomix</code>.</p>
+    <p>For increasing size of hold-out samples, cooks distance and predictive log-likelihood are calculated and optionally plotted.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>table_to_species_data</span><span class='op'>(</span>
-  <span class='va'>observation_data</span>,
-  site_id <span class='op'>=</span> <span class='st'>"site_id"</span>,
-  species_id <span class='op'>=</span> <span class='st'>"species_id"</span>,
-  measurement_id <span class='op'>=</span> <span class='cn'>NULL</span>
-<span class='op'>)</span>
-
-<span class='fu'>make_mixture_data</span><span class='op'>(</span><span class='va'>species_data</span>, <span class='va'>covariate_data</span><span class='op'>)</span></pre>
+    <pre class="usage"><span class='fu'>stability.regional_mix</span><span class='op'>(</span>
+  <span class='va'>model</span>,
+  oosSizeRange <span class='op'>=</span> <span class='cn'>NULL</span>,
+  times <span class='op'>=</span> <span class='va'>model</span><span class='op'>$</span><span class='va'>n</span>,
+  mc.cores <span class='op'>=</span> <span class='fl'>1</span>,
+  quiet <span class='op'>=</span> <span class='cn'>FALSE</span>,
+  doPlot <span class='op'>=</span> <span class='cn'>TRUE</span>
+<span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>observation_data</th>
-      <td><p>data to be imported into R. A table of species
-occurrences and site records.</p></td>
+      <th>model</th>
+      <td><p>a regional_mix model, as obtained by the function <code>regional_mix</code>. This is the model whose stability is assessed. Model must contain titbits (see ?regional_mix and particular attention to the argument titbits=TRUE)</p></td>
     </tr>
     <tr>
-      <th>site_id</th>
-      <td><p>Name of column that contains site names /IDs.</p></td>
+      <th>oosSizeRange</th>
+      <td><p>the size of the (successive) hold-out samples. If NULL (default), then a sequence of 10 sizes, from 1 to 0.2*model$n is used. The more numbers in this range, the slower the function will run.</p></td>
     </tr>
     <tr>
-      <th>species_id</th>
-      <td><p>Name of column that contains species information/ID.</p></td>
+      <th>times</th>
+      <td><p>the number of hold-out samples to use. If times=model$n and oosSize is 1, then the sample contains each and every site. Otherwise, it is a sample of size times from the possible combinations of possible hold-out sets.</p></td>
     </tr>
     <tr>
-      <th>measurement_id</th>
-      <td><p>Name of column that contains species observational
-data. eg, 'occurrence', 'abundance' or 'biomass'.</p></td>
+      <th>mc.cores</th>
+      <td><p>the number of cores to farm the jobs out to.</p></td>
     </tr>
     <tr>
-      <th>species_data</th>
-      <td><p>A character string providing the name of the column in <code>data</code> that contains the counts</p></td>
+      <th>quiet</th>
+      <td><p>should the progress bar be displayed (bar for each oosSizeRange)</p></td>
     </tr>
     <tr>
-      <th>covariate_data</th>
-      <td><p>A character string providing the name of the column in <code>data</code> that contains the binary occurence data</p></td>
+      <th>doPlot</th>
+      <td><p>should the plots be produced? Default is that they should be.</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>A sites x species matrix to used as species_data in <code>ecomix</code>
-models.</p>
-<p>A list containing the following elements:</p>
-<dt>species_data</dt><dd><p>A matrix of occurrence, counts, biomass, or...</p></dd>
-<dt>covariate_data</dt><dd><p>The design matrix for the global covariates</p></dd>
+    <p>Produces a regional_mix_stab object. This is a list with the oosSizeRnage, disty (the mean Cook's Distance for each subset size), nRCP, n, predlogls (log-likelihood of out-of-sample sites), logl.sites (the in-sample log-likelihood for full data set).</p>
+    <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
-    <h2 class="hasAnchor" id="author"><a class="anchor" href="#author"></a>Author</h2>
+    <p>The plots produced are: 1) leave-some-out Cook's distance (see <code><a href='cooks.distance.regional_mix.html'>cooks.distance.regional_mix</a></code>) against holdout sample size; and 2) the predictive log-likelihood for times sites, against the holdout sample size.
+In both plots, the values from the original model have been added to the plot.</p>
 
-    <p>Skipton Woolley</p>
+    <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
+    <pre class="examples"><div class='input'><span class='kw'>if</span> <span class='op'>(</span><span class='cn'>FALSE</span><span class='op'>)</span> <span class='op'>{</span>
+<span class='co'>#not run as R CMD check complains about the time taken.</span>
+<span class='co'>#This code will take a little while to run (about 3.5minutes on my computer)</span>
+ <span class='fu'>stability.regional_mix</span><span class='op'>(</span> <span class='va'>fm</span>, oosSizeRange<span class='op'>=</span><span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq</a></span><span class='op'>(</span> from<span class='op'>=</span><span class='fl'>1</span>,to<span class='op'>=</span><span class='va'>fm</span><span class='op'>$</span><span class='va'>n</span>,length<span class='op'>=</span><span class='fl'>5</span><span class='op'>)</span>,
+                    times<span class='op'>=</span><span class='va'>fm</span><span class='op'>$</span><span class='va'>n</span>, mc.cores<span class='op'>=</span><span class='fl'>2</span>, doPlot<span class='op'>=</span><span class='cn'>FALSE</span><span class='op'>)</span>;
+<span class='op'>}</span>
 
+</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">

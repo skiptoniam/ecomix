@@ -11,7 +11,7 @@
 #' that allows for easier data input. The data frames are merged into
 #' the appropriate format for the use in species_mix.fit.
 #' Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
-#' 'poisson', 'ippm' (inhomogenous Poisson point process), 'negative.binomial',
+#' 'poisson', 'ippm' (inhomogeneous Poisson point process), 'negative.binomial',
 #' 'tweedie' and 'gaussian' distributions can be fitted using the species_mix
 #' function.
 #' @param archetype_formula an object of class "formula" (or an object that can
