@@ -12,7 +12,8 @@ testthat::test_that('species mix one covariate and one group', {
                    0.2,-0.4),4,2,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form, ~1,
+  simulated_data <- species_mix.simulate(archetype_formula = sam_form,
+                                         species_formula =  ~1,
                                          data =  dat,
                                          beta = beta,
                                          nArchetypes = 4,
@@ -29,9 +30,10 @@ testthat::test_that('species mix one covariate and one group', {
 
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:50),collapse = ','),")~x1"))
   sp_form <- ~ 1
-  expect_warning(fm1 <- species_mix(sam_form, sp_form, simulated_data,
-                                    family = 'bernoulli',
-                                    nArchetypes = 4))
+  fm1 <- species_mix(archetype_formula = sam_form, species_formula = sp_form,
+                     data = simulated_data,
+                     family = 'bernoulli',
+                     nArchetypes = 4)
 
   # test with one group
   set.seed(42)
@@ -42,10 +44,12 @@ testthat::test_that('species mix one covariate and one group', {
                    0.2,-0.4),4,2,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form,~1,dat = dat, nArchetypes = 4,
+  simulated_data <- species_mix.simulate(archetype_formula = sam_form,species_formula = ~1,data = dat, nArchetypes = 4,
                                          beta = beta,family = "bernoulli")
   sp_form <- ~ 1
-  fm1 <- species_mix(sam_form, sp_form, simulated_data,
+  fm1 <- species_mix(archetype_formula = sam_form,
+                     species_formula =  sp_form,
+                     data = simulated_data,
                      family = 'bernoulli',
                      nArchetypes = 1)
 
@@ -61,12 +65,16 @@ testthat::test_that('species mix test multifit', {
                    2.9,2.9),3,2,byrow=TRUE)
   dat <- data.frame(y=rep(1,100),x1=runif(100,0,2.5),x2=rnorm(100,0,2.5))
   dat[,-1] <- scale(dat[,-1])
-  simulated_data <- species_mix.simulate(sam_form, ~1, dat = dat,
+  simulated_data <- species_mix.simulate(archetype_formula = sam_form,
+                                         species_formula =  ~1,
+                                         data = dat,
                                          beta = beta,
                                          nArchetypes = 3,
                                          family="bernoulli")
   sp_form <- ~ 1
-  fm1 <- species_mix.multifit(sam_form, sp_form, simulated_data,
+  fm1 <- species_mix.multifit(archetype_formula = sam_form,
+                              species_formula =  sp_form,
+                              data =  simulated_data,
                               family = 'bernoulli',
                               nArchetypes = 3)
 

@@ -75,7 +75,7 @@ dat <- data.frame(y=rep(1,100),
                   x1=stats::runif(100,0,2.5),
                   x2=stats::rnorm(100,0,2.5))
 simulated_data <- species_mix.simulate(archetype_formula,species_formula,
-                                       dat, nArchetypes = 4, beta=beta,
+                                       data=dat, nArchetypes = 4, beta=beta,
                                        family="bernoulli")
 }
 }

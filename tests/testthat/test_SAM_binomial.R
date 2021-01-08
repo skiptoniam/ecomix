@@ -86,7 +86,7 @@ testthat::test_that('species mix binomial', {
   start_vals <- ecomix:::starting_values_wrapper(y, as.data.frame(X), as.data.frame(W), U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers,
                                                  control = control)
   tmp <- ecomix:::sam_optimise(y, X, W, U, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, size, powers, start_vals = start_vals, control)
-  testthat::expect_length(tmp,20)
+  testthat::expect_length(tmp,21)
 
   set.seed(123)
   tmp <- ecomix:::species_mix.fit(y=y, X=as.data.frame(X), W=as.data.frame(W), U=U, G=G, S=S,

@@ -95,7 +95,9 @@ testthat::test_that('species mix predict functions', {
   testthat::expect_is(preds2,'matrix')
 
   # poisson
-  simulated_data <- species_mix.simulate(archetype_formula = sam_form,species_formula =  ~1, data = dat, nArchetypes = 3,
+  simulated_data <- species_mix.simulate(archetype_formula = sam_form,
+                                         species_formula =  ~1, data = dat,
+                                         nArchetypes = 3,
                                          beta = beta, family = "poisson")
   fm2 <- species_mix(archetype_formula = sam_form, species_formula = ~1,
                      data = simulated_data, family = 'poisson', nArchetypes=3)
@@ -160,9 +162,8 @@ testthat::test_that("test bootstrap",{
   testthat::expect_error(species_mix.bootstrap(fm1,type="blah"))
   fm2 <- fm1
   fm2$titbits$family <- "ippm"
-  testthat::expect_error(species_mix.bootstrap(fm2))
+  # testthat::expect_error(species_mix.bootstrap(fm2))
   species_mix.bootstrap(fm1, type="SimpleBoot",nboot=10)
-
   samboot <- species_mix.bootstrap(fm1, nboot = 10)
   predict(fm1,samboot)
 

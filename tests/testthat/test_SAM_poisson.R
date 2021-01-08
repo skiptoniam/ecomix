@@ -35,8 +35,8 @@ testthat::test_that('species mix poisson', {
   powers <- rep(1.5,nrow(y))
 
   i <- 1
-  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W, U, site_spp_weights, offset, y_is_na, disty, size, powers),5)
-  fm_poissonint <- ecomix:::plapply(1:S, ecomix:::apply_glmnet_sam_inits,
+  testthat::expect_length(ecomix:::apply_species_fits(i, y, X, W, U, site_spp_weights, offset, y_is_na, disty, size, powers),5)
+  fm_poissonint <- ecomix:::plapply(1:S, ecomix:::apply_species_fits,
                                       y, X, W, U, site_spp_weights, offset, y_is_na, disty, size, powers, .parallel = control$cores, .verbose = !control$quiet)
   testthat::expect_length(do.call(cbind,fm_poissonint)[1,],S)
 
@@ -58,14 +58,14 @@ testthat::test_that('species mix poisson', {
   # ## now let's try and fit the optimisation
   start_vals <- ecomix:::starting_values_wrapper(y, as.data.frame(X), as.data.frame(W), U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control)
   tmp <- ecomix:::sam_optimise(y, X, W, U, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, size, powers, start_vals = start_vals, control)
-  testthat::expect_length(tmp,20)
+  testthat::expect_length(tmp,21)
 
   set.seed(123)
   tmp <- ecomix:::species_mix.fit(y=y, X=as.data.frame(X), W=as.data.frame(W), U=U, G=G, S=S,
                                   spp_weights=spp_weights,
                                   site_spp_weights=site_spp_weights,
                                   offset=offset, disty=disty, y_is_na=y_is_na, size=size, powers=powers,
-                                  control=species_mix.control(print_cpp_start_vals = TRUE))
+                                  control=ecomix:::set_control_sam(list(print_cpp_start_vals = TRUE)))
 
   sp_form <- ~1
   fm1 <- species_mix(archetype_formula = sam_form, species_formula = sp_form,
@@ -74,7 +74,7 @@ testthat::test_that('species mix poisson', {
   testthat::expect_s3_class(fm1,'species_mix')
 
   fm2 <- species_mix(sam_form, sp_form, data = simulated_data, family = 'poisson',
-                     nArchetypes = 3,control=species_mix.control(em_prefit = FALSE),
+                     nArchetypes = 3,control=list(em_prefit = FALSE),
                      standardise = FALSE)
   testthat::expect_s3_class(fm2,'species_mix')
 
