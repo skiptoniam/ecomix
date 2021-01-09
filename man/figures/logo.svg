@@ -52,7 +52,7 @@
    id="namedview1373"
    showgrid="false"
    inkscape:zoom="0.76408451"
-   inkscape:cx="63.6129"
+   inkscape:cx="32.85714"
    inkscape:cy="478.35023"
    inkscape:window-x="72"
    inkscape:window-y="27"
@@ -221,7 +221,9 @@
    class="st14"
    d="M736.4,638.4V214.1l-29.3-16.9L429.3,36.8L369,2l-60.3,34.8L30.9,197.2L1.6,214.1v424.3l29.3,16.9l281.3,162.4  l56.9,32.8l56.9-32.8l281.3-162.4L736.4,638.4z M30.9,622.5V232.1L369,36.8l0,0l338.1,195.2v390.4L369,817.7L30.9,622.5z"
    id="path1370"
-   style="fill:#0e3c19" />
+   style="fill:#0e3c19"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96" />
 <text
    xml:space="preserve"
    id="text3423"
