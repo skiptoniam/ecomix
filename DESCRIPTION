@@ -36,3 +36,4 @@ License: GPL (>= 2)
 SystemRequirements: C++11
 NeedsCompilation: yes
 RoxygenNote: 7.1.1
+VignetteBuilder: knitr
