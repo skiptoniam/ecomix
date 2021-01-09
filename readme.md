@@ -2,7 +2,7 @@ ecomix: Finite mixture models for multiple species grouping of ecological data <
 ==================================================================================================================================================
 
 [![Build
-Status](https://travis-ci.org/skiptoniam/ecomix.svg?branch=master)](https://travis-ci.org/skiptoniam/ecomix)
+Status](https://travis-ci.org/skiptoniam/ecomix.svg?branch=master)](https://travis-ci.org/skiptoniam/ecomix.svg?branch=master)
 [![Coverage
 Status](https://img.shields.io/codecov/c/github/skiptoniam/ecomix/master.svg)](https://codecov.io/github/skiptoniam/ecomix?branch=master)
 [![Project Status: Active ??? The project has reached a stable, usable
