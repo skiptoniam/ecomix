@@ -1,3 +1,6 @@
+ecomix: Finite mixture models for multiple species grouping of ecological data <img src="man/figures/logo.png" align="right" alt="" width="160" />
+==================================================================================================================================================
+
 [![Build
 Status](https://travis-ci.org/skiptoniam/ecomix.svg?branch=master)](https://travis-ci.org/skiptoniam/ecomix)
 [![Coverage
@@ -5,9 +8,6 @@ Status](https://img.shields.io/codecov/c/github/skiptoniam/ecomix/master.svg)](h
 [![Project Status: Active ??? The project has reached a stable, usable
 state and is being actively
 developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
-
-ecomix
-------
 
 ecomix is a package to implement statisitical models on multivariate
 species data. Two main type of finite mixture models are avaliable which

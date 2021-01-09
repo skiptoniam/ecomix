@@ -11,6 +11,13 @@ notifications:
   on_success: always
   on_failure: always
 
+addons:
+  apt:
+    packages:
+    - libcurl4-openssl-dev
+    - libxml2-dev
+    - libgsl0-dev
+
 env:
   global:
     - R_BUILD_ARGS="--no-build-vignettes"
@@ -18,3 +25,5 @@ env:
 
 after_success:
   - travis_wait 40 Rscript -e "covr::codecov()"
+
+

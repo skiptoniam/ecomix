@@ -23,13 +23,13 @@ species_mix.fit(
 )
 }
 \arguments{
-\item{y}{is a matrix genertated from model.response containing the species information. The matrix has the dimensions n_sites * n_species.}
+\item{y}{is a matrix generated from model.response containing the species information. The matrix has the dimensions n_sites * n_species.}
 
 \item{X}{is a design matrix for the archetype_formula dimension n_sites * n_covariates.}
 
 \item{W}{is a design matrix for species_formula and will be implemented if species_formula has covariates.}
 
-\item{U}{is a design matrix fro all_formula and will be implemented if not NULL.}
+\item{U}{is a design matrix for all_formula and will be implemented if not NULL.}
 
 \item{G}{is the number of species archetypes that are being estimated.}
 
@@ -49,7 +49,7 @@ species_mix.fit(
 
 \item{powers}{The power parameters for the Tweedie distribution.}
 
-\item{control}{this is a list of control parameters that alter the specifics of model fitting. See \link[ecomix]{species_mix.control} for details.}
+\item{control}{this is a list of control parameters that alter the specifics of model fitting.}
 
 \item{inits}{This will be a vector of starting values for species_mix (i.e you've fitted a model and want to refit it).}
 }

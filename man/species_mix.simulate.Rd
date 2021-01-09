@@ -28,6 +28,10 @@ the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
 \item{species_formula}{formula to simulate species_mix species-specific
 responses, e.g: ~1}
 
+\item{all_formula}{formula to simulate biases in the data}
+
+\item{data}{a matrix of variables to simulate data from.}
+
 \item{offset}{used to offset sampling effort for abundance data (log link function).}
 
 \item{nArchetypes}{number of groups to simulate.}
@@ -40,15 +44,19 @@ parameters. Each row is a different species archetype.}
 \item{gamma}{coefficients for each species archetype. Matrix of S x number of
 parameters. Each row is a different species archetype.}
 
+\item{delta}{coefficients for all_formula, these should describe overall
+biases in the dataset.}
+
+\item{logTheta}{coefficients for the dispersion variables for negative.binomial
+and gaussian distributions - should be number of species long and on the
+natural log scale.}
+
+\item{powers}{Is the power parameter for Tweedie distribution.}
+
 \item{size}{Is for the binomial model and this represents the number of binomial trials per site, can be fixed or vary.}
 
 \item{family}{Which statistical distribution to simulate data for.
 'bernoulli','binomial', 'gaussian', 'ippm', 'negative.binomial' and 'poisson'.}
-
-\item{dat}{a matrix of variables to simulate data from.}
-
-\item{theta}{coefficients for the dispersion variables for negative.binomial
-and gaussian distributions - should be number of species long}
 }
 \description{
 Simulate species mix data for model fitting.
@@ -67,7 +75,7 @@ dat <- data.frame(y=rep(1,100),
                   x1=stats::runif(100,0,2.5),
                   x2=stats::rnorm(100,0,2.5))
 simulated_data <- species_mix.simulate(archetype_formula,species_formula,
-                                       dat, nArchetypes = 4, beta=beta,
+                                       data=dat, nArchetypes = 4, beta=beta,
                                        family="bernoulli")
 }
 }

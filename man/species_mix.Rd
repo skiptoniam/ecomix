@@ -42,10 +42,11 @@ for the archetype models. If you include a species specific formula which has
 more than an intercept you will be fitting a partial species archetype model
 which has species specific covariates and archetype specific covariates.}
 
-\item{all_formula}{an object of class "formula", which is meant to represnet
-a constant single set of covariates across all species and groups, typically you might
-use this an alternative to an offset, where there might be some bias in the
-data which is relatively constant and might arise as an atrifact of how the data was collected.}
+\item{all_formula}{an object of class "formula", which is meant to represent
+a constant single set of covariates across all species and groups, typically
+you might use this an alternative to an offset, where there might be some
+bias in the data which is relatively constant and might arise as an
+artefact of how the data was collected.}
 
 \item{data}{a matrix or data.frame which contains the 'species_data'
 matrix, a const and the covariates in the structure of spp1, spp2, spp3,
@@ -77,8 +78,7 @@ undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
 \item{power}{The power parameter for a Tweedie model. Default is 1.6, and this is assigned to all species}
 
 \item{control}{a list of control parameters for optimisation and calculation.
-See details. From \code{species_mix.control} for details on optimisation
-parameters.}
+See details.}
 
 \item{inits}{NULL a numeric vector that provides approximate starting values
 for species_mix coefficients. These are family specific, but at a
@@ -116,7 +116,7 @@ parameters. `species_mix` acts as a wrapper for species_mix.fit
 that allows for easier data input. The data frames are merged into
 the appropriate format for the use in species_mix.fit.
 Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
-'poisson', 'ippm' (inhomogenous Poisson point process), 'negative.binomial',
+'poisson', 'ippm' (inhomogeneous Poisson point process), 'negative.binomial',
 'tweedie' and 'gaussian' distributions can be fitted using the species_mix
 function.
 }
@@ -131,9 +131,9 @@ beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,1.9),3,2,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
 x2=stats::rnorm(100,0,2.5))
 dat[,-1] <- scale(dat[,-1])
-simulated_data <- species_mix.simulate(archetype_formula=sam_form,
-species_formula=sp_form, dat, beta=beta,family="bernoulli")
-fm1 <- species_mix(sam_form, sp_form, simulated_data,
- family = 'bernoulli',  nArchetypes=3)
+simulated_data <- species_mix.simulate(archetype_formula = sam_form,species_formula = sp_form,
+data = dat,beta=beta,family="bernoulli")
+fm1 <- species_mix(archetype_formula = sam_form,species_formula = sp_form,
+data = simulated_data, family = 'bernoulli',  nArchetypes=3)
  }
 }

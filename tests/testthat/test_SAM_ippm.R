@@ -45,13 +45,13 @@ testthat::test_that('species mix ippm', {
   npx <- 2
 
   # test if one species ippm working - expect matrix of coefs back
-  one_sp_ippm <- ecomix:::apply_glmnet_sam_inits(ss = ss, y = y, X = X, W = W,
+  one_sp_ippm <- ecomix:::apply_species_fits(ss = ss, y = y, X = X, W = W,
                                         site_spp_weights = site_spp_weights,
                                         offset = offset, y_is_na = y_is_na,disty = disty)
   testthat::expect_is(one_sp_ippm,'list')
 
   # check that many species ippms work - expect back a list.
-  all_sp_ippm <-surveillance::plapply(seq_len(S), ecomix:::apply_glmnet_sam_inits,
+  all_sp_ippm <-ecomix:::plapply(seq_len(S), ecomix:::apply_species_fits,
                                       y, X, W, site_spp_weights, offset, y_is_na, disty)
   testthat::expect_is(all_sp_ippm,'list')
 
@@ -62,8 +62,8 @@ testthat::test_that('species mix ippm', {
   testthat::expect_length(do.call(rbind, beta),S*npx)
 
   i <- 1
-  testthat::expect_length(ecomix:::apply_glmnet_sam_inits(i, y, X, W, site_spp_weights, offset, y_is_na, disty),4)
-  fm_ippmint <- surveillance::plapply(1:S, ecomix:::apply_glmnet_sam_inits,
+  testthat::expect_length(ecomix:::apply_species_fits(i, y, X, W, site_spp_weights, offset, y_is_na, disty),4)
+  fm_ippmint <- ecomix:::plapply(1:S, ecomix:::apply_species_fits,
                                                    y, X, W, site_spp_weights, offset,
                                                    y_is_na, disty, .parallel = control$cores, .verbose = !control$quiet)
   testthat::expect_length(do.call(cbind,fm_ippmint)[1,],S)
