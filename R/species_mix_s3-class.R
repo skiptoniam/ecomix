@@ -731,6 +731,7 @@
         tmp1 <- c( tmp1, theta.score)
         names(tmp1) <- c(names(object$theta),names(tmp1))
       }
+      gc()
       return(tmp1)
     }
 
