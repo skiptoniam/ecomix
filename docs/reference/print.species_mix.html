@@ -8,6 +8,13 @@
 
 <title>Print a species_mix model object. — print.species_mix • ecomix</title>
 
+<!-- favicons -->
+<link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
+<link rel="apple-touch-icon" type="image/png" sizes="180x180" href="../apple-touch-icon.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="120x120" href="../apple-touch-icon-120x120.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="76x76" href="../apple-touch-icon-76x76.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="60x60" href="../apple-touch-icon-60x60.png" />
 
 <!-- jquery -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
@@ -41,6 +48,7 @@
 
 <meta property="og:title" content="Print a species_mix model object. — print.species_mix" />
 <meta property="og:description" content="Print a species_mix model object." />
+<meta property="og:image" content="/logo.svg" />
 
 
 
@@ -86,6 +94,21 @@
 </li>
 <li>
   <a href="../reference/index.html">Reference</a>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+    Articles
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="../articles/RCP-example.html">RCP-example</a>
+    </li>
+    <li>
+      <a href="../articles/SAM-example.html">Species Archetype Model Example</a>
+    </li>
+  </ul>
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
@@ -142,12 +165,42 @@ collapse <span class='op'>=</span> <span class='st'>','</span><span class='op'>)
 <span class='va'>dat</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></span><span class='op'>(</span>y<span class='op'>=</span><span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='fl'>1</span>,<span class='fl'>100</span><span class='op'>)</span>,x1<span class='op'>=</span><span class='fu'>stats</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/r/stats/Uniform.html'>runif</a></span><span class='op'>(</span><span class='fl'>100</span>,<span class='fl'>0</span>,<span class='fl'>2.5</span><span class='op'>)</span>,
 x2<span class='op'>=</span><span class='fu'>stats</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/r/stats/Normal.html'>rnorm</a></span><span class='op'>(</span><span class='fl'>100</span>,<span class='fl'>0</span>,<span class='fl'>2.5</span><span class='op'>)</span><span class='op'>)</span>
 <span class='va'>dat</span><span class='op'>[</span>,<span class='op'>-</span><span class='fl'>1</span><span class='op'>]</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/scale.html'>scale</a></span><span class='op'>(</span><span class='va'>dat</span><span class='op'>[</span>,<span class='op'>-</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>)</span>
-<span class='va'>simulated_data</span> <span class='op'>&lt;-</span> <span class='fu'><a href='species_mix.simulate.html'>species_mix.simulate</a></span><span class='op'>(</span>archetype_formula<span class='op'>=</span><span class='va'>sam_form</span>,
- species_formula<span class='op'>=</span><span class='va'>sp_form</span>, <span class='va'>dat</span>,beta<span class='op'>=</span><span class='va'>beta</span>,family<span class='op'>=</span><span class='st'>"bernoulli"</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; <span class='error'>Error in stats::model.matrix(all_formula, data): argument "data" is missing, with no default</span></div><div class='input'><span class='va'>fm1</span> <span class='op'>&lt;-</span> <span class='fu'><a href='species_mix.html'>species_mix</a></span><span class='op'>(</span><span class='va'>sam_form</span>, <span class='va'>sp_form</span>, <span class='va'>simulated_data</span>,
- family <span class='op'>=</span> <span class='st'>'bernoulli'</span>,  nArchetypes<span class='op'>=</span><span class='fl'>3</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; <span class='error'>Error in as.data.frame(data): argument "data" is missing, with no default</span></div><div class='input'><span class='fu'><a href='https://rdrr.io/r/base/print.html'>print</a></span><span class='op'>(</span><span class='va'>fm1</span><span class='op'>)</span><span class='co'># }</span>
-</div><div class='output co'>#&gt; <span class='error'>Error in print(fm1): object 'fm1' not found</span></div></pre>
+<span class='va'>simulated_data</span> <span class='op'>&lt;-</span> <span class='fu'><a href='species_mix.simulate.html'>species_mix.simulate</a></span><span class='op'>(</span>archetype_formula <span class='op'>=</span> <span class='va'>sam_form</span>,species_formula <span class='op'>=</span> <span class='va'>sp_form</span>,
+data <span class='op'>=</span> <span class='va'>dat</span>,beta<span class='op'>=</span><span class='va'>beta</span>,family<span class='op'>=</span><span class='st'>"bernoulli"</span><span class='op'>)</span>
+</div><div class='output co'>#&gt; <span class='message'>Random alpha from normal (-1,0.5) distribution</span></div><div class='input'><span class='va'>fm1</span> <span class='op'>&lt;-</span> <span class='fu'><a href='species_mix.html'>species_mix</a></span><span class='op'>(</span>archetype_formula <span class='op'>=</span> <span class='va'>sam_form</span>,species_formula <span class='op'>=</span> <span class='va'>sp_form</span>,
+data <span class='op'>=</span> <span class='va'>simulated_data</span>, family <span class='op'>=</span> <span class='st'>'bernoulli'</span>,  nArchetypes<span class='op'>=</span><span class='fl'>3</span><span class='op'>)</span>
+</div><div class='output co'>#&gt; <span class='message'>SAM modelling</span></div><div class='output co'>#&gt; <span class='message'>There are 3 archetypes to group the species into</span></div><div class='output co'>#&gt; <span class='message'>There are 100 site observations for 20 species</span></div><div class='output co'>#&gt; <span class='message'>The model for the archetype (grouping) is ~x1 + x2</span></div><div class='output co'>#&gt; <span class='message'>The model for the species is ~1</span></div><div class='output co'>#&gt; <span class='message'>You are implementing a bernoulli Species Archetype Model.</span></div><div class='output co'>#&gt; <span class='message'>Using ECM algorithm to find starting values; using 1refits</span></div><div class='output co'>#&gt; <span class='message'>ECM restart 1 of 1</span></div><div class='output co'>#&gt; <span class='message'>Initialising starting values</span></div><div class='output co'>#&gt; <span class='message'>Initial groups parameter estimates by K-means clustering with random noise</span></div><div class='output co'>#&gt; Iteration:  1 | New loglik -967.597 | Ratio loglik 0 
+#&gt; Iteration:  2 | New loglik -841.415 | Ratio loglik 0.8695924 
+#&gt; Iteration:  3 | New loglik -841.416 | Ratio loglik 1 
+#&gt; initial  value 841.774554 
+#&gt; iter  10 value 820.570456
+#&gt; iter  20 value 819.998649
+#&gt; iter  30 value 819.991394
+#&gt; final  value 819.991364 
+#&gt; converged</div><div class='input'><span class='fu'><a href='https://rdrr.io/r/base/print.html'>print</a></span><span class='op'>(</span><span class='va'>fm1</span><span class='op'>)</span><span class='co'># }</span>
+</div><div class='output co'>#&gt; bernoulli species_mix model
+#&gt; 
+#&gt; Mixing probabilities
+#&gt; [1] 0.25 0.40 0.35
+#&gt; 
+#&gt; Coefficents
+#&gt; $alpha
+#&gt;       spp1       spp2       spp3       spp4       spp5       spp6       spp7 
+#&gt; -0.8012925 -1.6333800 -0.5749529 -1.0836297 -1.0165787 -1.1730663 -0.7327971 
+#&gt;       spp8       spp9      spp10      spp11      spp12      spp13      spp14 
+#&gt; -1.2024911 -1.6399102 -0.1853789 -0.8563351 -1.3898862 -0.7006849 -0.7006849 
+#&gt;      spp15      spp16      spp17      spp18      spp19      spp20 
+#&gt; -0.8921955 -0.3777440 -1.3836716 -1.0535085 -1.2024911 -0.4294114 
+#&gt; 
+#&gt; $beta
+#&gt;                     x1        x2
+#&gt; Archetype.1 -2.9040987 -3.543217
+#&gt; Archetype.2 -0.8296335  0.954746
+#&gt; Archetype.3  0.9911326  1.986234
+#&gt; 
+#&gt; $eta
+#&gt; [1] -0.3629055  0.1847341
+#&gt; </div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">

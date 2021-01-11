@@ -8,6 +8,13 @@
 
 <title>Predicts RCP probabilities at a series of sites. Confidence intervals are available too. — predict.regional_mix • ecomix</title>
 
+<!-- favicons -->
+<link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
+<link rel="apple-touch-icon" type="image/png" sizes="180x180" href="../apple-touch-icon.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="120x120" href="../apple-touch-icon-120x120.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="76x76" href="../apple-touch-icon-76x76.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="60x60" href="../apple-touch-icon-60x60.png" />
 
 <!-- jquery -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
@@ -41,6 +48,7 @@
 
 <meta property="og:title" content="Predicts RCP probabilities at a series of sites. Confidence intervals are available too. — predict.regional_mix" />
 <meta property="og:description" content="Predicts RCP probabilities at a series of sites. Confidence intervals are available too." />
+<meta property="og:image" content="/logo.svg" />
 
 
 
@@ -87,6 +95,21 @@
 <li>
   <a href="../reference/index.html">Reference</a>
 </li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+    Articles
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="../articles/RCP-example.html">RCP-example</a>
+    </li>
+    <li>
+      <a href="../articles/SAM-example.html">Species Archetype Model Example</a>
+    </li>
+  </ul>
+</li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
         
@@ -132,7 +155,7 @@
     </tr>
     <tr>
       <th>object2</th>
-      <td><p>a regional_mix object obtained from bootstrapping the regional_mix object. Such as that generated from a call to regional_mix_boot(qv). If not supplied, then predict.regional_mix will do parametric bootstrapping (otherwise non-parametric bootstrap).</p></td>
+      <td><p>a regional_mix object obtained from bootstrapping the regional_mix object. Such as that generated from a call to regional_mix.bootstrap(qv). If not supplied, then predict.regional_mix will do parametric bootstrapping (otherwise non-parametric bootstrap).</p></td>
     </tr>
     <tr>
       <th>newdata</th>
@@ -168,7 +191,7 @@
     <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
     <p>This function implements two separate, and quite different, bootstrapping routines. The first, attributable to Foster et al (2013), which implements a parametric bootstrap, whereby parameters are drawn from their sampling distribution (defined by the ML estimates and their asymptotic vcov matrix). Yes, the vcov function needs to be run first and stored in the the regional_mix object as $vcov. Typically, the vcov matrix is obtained using numerical derivatives, which can be slow to calculate and somewhat unstable/erratic. This was the original suggestion and has been superceeded by the non-parametric bootstrap routine. This is described in Foster et al (in prep) and bootstraps the sampling site data repeatedly, and for each bootstrap sample the model is re-estimated. Variation in the bootstrap samples is carried forward to the prediction step to guage the uncertainty.
-The parametric bootsrap implementation of this function can take a while to run ??? it is a bootstrap function. nboot samples of the parameters are taken and then used to predict at each set of covariates defined in newdata. Quantiles of the resulting sets of bootstrap predictions are then taken. It is the last step that really takes a while. The non-parametric version of this function should not take as long as the grunt work of bootstrapping is carried out in the regional_mix_boot(qv) function.
+The parametric bootsrap implementation of this function can take a while to run ??? it is a bootstrap function. nboot samples of the parameters are taken and then used to predict at each set of covariates defined in newdata. Quantiles of the resulting sets of bootstrap predictions are then taken. It is the last step that really takes a while. The non-parametric version of this function should not take as long as the grunt work of bootstrapping is carried out in the regional_mix.bootstrap(qv) function.
 Note that this function is not implemented. It could be, using the parallel package, but it is currently not. The bulk of the bootstrap calculations are done in C++, which reduces the waiting time but parallelising it would be even better.</p>
 
   </div>

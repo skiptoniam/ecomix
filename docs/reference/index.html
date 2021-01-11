@@ -8,6 +8,13 @@
 
 <title>Function reference • ecomix</title>
 
+<!-- favicons -->
+<link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
+<link rel="apple-touch-icon" type="image/png" sizes="180x180" href="../apple-touch-icon.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="120x120" href="../apple-touch-icon-120x120.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="76x76" href="../apple-touch-icon-76x76.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="60x60" href="../apple-touch-icon-60x60.png" />
 
 <!-- jquery -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
@@ -40,6 +47,7 @@
 
 
 <meta property="og:title" content="Function reference" />
+<meta property="og:image" content="/logo.svg" />
 
 
 
@@ -85,6 +93,21 @@
 </li>
 <li>
   <a href="../reference/index.html">Reference</a>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+    Articles
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="../articles/RCP-example.html">RCP-example</a>
+    </li>
+    <li>
+      <a href="../articles/SAM-example.html">Species Archetype Model Example</a>
+    </li>
+  </ul>
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
@@ -194,12 +217,6 @@
       </tr><tr>
         
         <td>
-          <p><code><a href="plot.regional_mix.sampling.html">plot(<i>&lt;regional_mix.sampling&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>Plot residuals from a regional_mix model.</p></td>
-      </tr><tr>
-        
-        <td>
           <p><code><a href="plot.regional_mix_stab.html">plot(<i>&lt;regional_mix_stab&gt;</i>)</a></code> </p>
         </td>
         <td><p>Diagnostic plotting to see if RCP groups are stable</p></td>
@@ -242,6 +259,12 @@
       </tr><tr>
         
         <td>
+          <p><code><a href="regional_mix.bootstrap.html">regional_mix.bootstrap()</a></code> </p>
+        </td>
+        <td><p>Performs bootstrap sample and estimation for regimix objects. Useful for calculating measures of uncertainty in predictions from a regimix object, and also about the regimix parameter estimates. This function can be used in conjunction with vcov.regimix(qv) and predict.regimix(qv). In partciular, these bootstrap samples can be used to gauge variability in parameter estimates and hence the model itself.</p></td>
+      </tr><tr>
+        
+        <td>
           <p><code><a href="regional_mix.fit.html">regional_mix.fit()</a></code> </p>
         </td>
         <td><p>regional_mix.fit</p></td>
@@ -257,12 +280,6 @@
           <p><code><a href="regional_mix.species_profile.html">regional_mix.species_profile()</a></code> </p>
         </td>
         <td><p>What is the average species profile per RCP?</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="regional_mix_boot.html">regional_mix_boot()</a></code> </p>
-        </td>
-        <td><p>Performs bootstrap sample and estimation for regimix objects. Useful for calculating measures of uncertainty in predictions from a regimix object, and also about the regimix parameter estimates. This function can be used in conjunction with vcov.regimix(qv) and predict.regimix(qv). In partciular, these bootstrap samples can be used to gauge variability in parameter estimates and hence the model itself.</p></td>
       </tr><tr>
         
         <td>

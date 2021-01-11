@@ -8,6 +8,13 @@
 
 <title>Variance matrix for a regional_mix object. — vcov.regional_mix • ecomix</title>
 
+<!-- favicons -->
+<link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
+<link rel="apple-touch-icon" type="image/png" sizes="180x180" href="../apple-touch-icon.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="120x120" href="../apple-touch-icon-120x120.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="76x76" href="../apple-touch-icon-76x76.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="60x60" href="../apple-touch-icon-60x60.png" />
 
 <!-- jquery -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
@@ -41,6 +48,7 @@
 
 <meta property="og:title" content="Variance matrix for a regional_mix object. — vcov.regional_mix" />
 <meta property="og:description" content="Calculates variance-covariance matrix from a regional_mix object" />
+<meta property="og:image" content="/logo.svg" />
 
 
 
@@ -87,6 +95,21 @@
 <li>
   <a href="../reference/index.html">Reference</a>
 </li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+    Articles
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="../articles/RCP-example.html">RCP-example</a>
+    </li>
+    <li>
+      <a href="../articles/SAM-example.html">Species Archetype Model Example</a>
+    </li>
+  </ul>
+</li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
         
@@ -132,11 +155,11 @@
     </tr>
     <tr>
       <th>object2</th>
-      <td><p>an object of class <code>regional_mix</code> containing bootstrap samples of the parameter estimates (see regional_mix_boot(qv)). If NULL (default) the bootstrapping is performed from within the vcov function. If not null, then the vcov estimate is obtained from these bootstrap samples.</p></td>
+      <td><p>an object of class <code>regional_mix</code> containing bootstrap samples of the parameter estimates (see regional_mix.bootstrap(qv)). If NULL (default) the bootstrapping is performed from within the vcov function. If not null, then the vcov estimate is obtained from these bootstrap samples.</p></td>
     </tr>
     <tr>
       <th>method</th>
-      <td><p>the method to calculate the variance-covariance matrix. Options are:'FiniteDifference' (default), <code>BayesBoot</code>, <code>SimpleBoot</code>, and <code>EmpiricalInfo</code>. The two bootstrap methods (<code>BayesBoot</code> and <code>SimpleBoot</code>, see regional_mix_boot(qv)) should be more general and may possibly be more robust. The <code>EmpiricalInfo</code> method implements an empirical estimate of the Fisher information matrix, I can not recommend it however. It seems to behave poorly, even in well behaved simulations. It is computationally thrifty though.</p></td>
+      <td><p>the method to calculate the variance-covariance matrix. Options are:'FiniteDifference' (default), <code>BayesBoot</code>, <code>SimpleBoot</code>, and <code>EmpiricalInfo</code>. The two bootstrap methods (<code>BayesBoot</code> and <code>SimpleBoot</code>, see regional_mix.bootstrap(qv)) should be more general and may possibly be more robust. The <code>EmpiricalInfo</code> method implements an empirical estimate of the Fisher information matrix, I can not recommend it however. It seems to behave poorly, even in well behaved simulations. It is computationally thrifty though.</p></td>
     </tr>
     <tr>
       <th>nboot</th>
@@ -162,7 +185,7 @@
     <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
     <p>If method is <code>FiniteDifference</code>, then the estimates variance matrix is based on a finite difference approximation to the observed information matrix.
-If method is either "BayesBoot" or "SimpleBoot", then the estimated variance matrix is calculated from bootstrap samples of the parameter estimates. See Foster et al (in prep) for details of how the bootstrapping is actually done, and regional_mix_boot(qv) for its implementation.</p>
+If method is either "BayesBoot" or "SimpleBoot", then the estimated variance matrix is calculated from bootstrap samples of the parameter estimates. See Foster et al (in prep) for details of how the bootstrapping is actually done, and regional_mix.bootstrap(qv) for its implementation.</p>
     <h2 class="hasAnchor" id="references"><a class="anchor" href="#references"></a>References</h2>
 
     <p>Foster, S.D., Givens, G.H., Dornan, G.J., Dunstan, P.K. and Darnell, R. (2013) Modelling Regions of Common Profiles Using Biological and Environmental Data. Environmetrics <em>24</em>: 489--499. DOI: 10.1002/env.2245

@@ -1,6 +1,8 @@
 ---
 title: "RCP-example"
 output: rmarkdown::html_vignette
+csl: mee.csl
+bibliography: ecomix_app.bib
 vignette: >
   %\VignetteIndexEntry{RCP-example}
   %\VignetteEngine{knitr::rmarkdown}
@@ -13,6 +15,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 ```
+
 
 ```{r setup}
 library(ecomix)

@@ -8,6 +8,13 @@
 
 <title>Simulate species mix data for model fitting. — species_mix.simulate • ecomix</title>
 
+<!-- favicons -->
+<link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
+<link rel="apple-touch-icon" type="image/png" sizes="180x180" href="../apple-touch-icon.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="120x120" href="../apple-touch-icon-120x120.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="76x76" href="../apple-touch-icon-76x76.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="60x60" href="../apple-touch-icon-60x60.png" />
 
 <!-- jquery -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
@@ -41,6 +48,7 @@
 
 <meta property="og:title" content="Simulate species mix data for model fitting. — species_mix.simulate" />
 <meta property="og:description" content="Simulate species mix data for model fitting." />
+<meta property="og:image" content="/logo.svg" />
 
 
 
@@ -86,6 +94,21 @@
 </li>
 <li>
   <a href="../reference/index.html">Reference</a>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+    Articles
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="../articles/RCP-example.html">RCP-example</a>
+    </li>
+    <li>
+      <a href="../articles/SAM-example.html">Species Archetype Model Example</a>
+    </li>
+  </ul>
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
@@ -143,6 +166,14 @@ the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2</p></td>
 responses, e.g: ~1</p></td>
     </tr>
     <tr>
+      <th>all_formula</th>
+      <td><p>formula to simulate biases in the data</p></td>
+    </tr>
+    <tr>
+      <th>data</th>
+      <td><p>a matrix of variables to simulate data from.</p></td>
+    </tr>
+    <tr>
       <th>offset</th>
       <td><p>used to offset sampling effort for abundance data (log link function).</p></td>
     </tr>
@@ -165,6 +196,21 @@ parameters. Each row is a different species archetype.</p></td>
 parameters. Each row is a different species archetype.</p></td>
     </tr>
     <tr>
+      <th>delta</th>
+      <td><p>coefficients for all_formula, these should describe overall
+biases in the dataset.</p></td>
+    </tr>
+    <tr>
+      <th>logTheta</th>
+      <td><p>coefficients for the dispersion variables for negative.binomial
+and gaussian distributions - should be number of species long and on the
+natural log scale.</p></td>
+    </tr>
+    <tr>
+      <th>powers</th>
+      <td><p>Is the power parameter for Tweedie distribution.</p></td>
+    </tr>
+    <tr>
       <th>size</th>
       <td><p>Is for the binomial model and this represents the number of binomial trials per site, can be fixed or vary.</p></td>
     </tr>
@@ -172,15 +218,6 @@ parameters. Each row is a different species archetype.</p></td>
       <th>family</th>
       <td><p>Which statistical distribution to simulate data for.
 'bernoulli','binomial', 'gaussian', 'ippm', 'negative.binomial' and 'poisson'.</p></td>
-    </tr>
-    <tr>
-      <th>dat</th>
-      <td><p>a matrix of variables to simulate data from.</p></td>
-    </tr>
-    <tr>
-      <th>theta</th>
-      <td><p>coefficients for the dispersion variables for negative.binomial
-and gaussian distributions - should be number of species long</p></td>
     </tr>
     </table>
 
@@ -199,9 +236,9 @@ and gaussian distributions - should be number of species long</p></td>
                   x1<span class='op'>=</span><span class='fu'>stats</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/r/stats/Uniform.html'>runif</a></span><span class='op'>(</span><span class='fl'>100</span>,<span class='fl'>0</span>,<span class='fl'>2.5</span><span class='op'>)</span>,
                   x2<span class='op'>=</span><span class='fu'>stats</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/r/stats/Normal.html'>rnorm</a></span><span class='op'>(</span><span class='fl'>100</span>,<span class='fl'>0</span>,<span class='fl'>2.5</span><span class='op'>)</span><span class='op'>)</span>
 <span class='va'>simulated_data</span> <span class='op'>&lt;-</span> <span class='fu'>species_mix.simulate</span><span class='op'>(</span><span class='va'>archetype_formula</span>,<span class='va'>species_formula</span>,
-                                       <span class='va'>dat</span>, nArchetypes <span class='op'>=</span> <span class='fl'>4</span>, beta<span class='op'>=</span><span class='va'>beta</span>,
+                                       data<span class='op'>=</span><span class='va'>dat</span>, nArchetypes <span class='op'>=</span> <span class='fl'>4</span>, beta<span class='op'>=</span><span class='va'>beta</span>,
                                        family<span class='op'>=</span><span class='st'>"bernoulli"</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; <span class='error'>Error in stats::model.matrix(all_formula, data): argument "data" is missing, with no default</span></div><div class='input'><span class='co'># }</span>
+</div><div class='output co'>#&gt; <span class='message'>Random alpha from normal (-1,0.5) distribution</span></div><div class='input'><span class='co'># }</span>
 </div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
