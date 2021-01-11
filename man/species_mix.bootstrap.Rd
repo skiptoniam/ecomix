@@ -6,7 +6,7 @@
 \usage{
 species_mix.bootstrap(
   object,
-  nboot = 1000,
+  nboot = 100,
   type = "BayesBoot",
   mc.cores = 1,
   quiet = FALSE

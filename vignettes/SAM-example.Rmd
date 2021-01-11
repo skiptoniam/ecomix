@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-###Species Archetype Models
+### Species Archetype Models
 The Species Archetype Models (SAMs) are variant of 'Mixture-of-Regressions' and try to describe how homogeneous groups of **species** vary with the environment. These groups are referred to as Species Archetypes [@dunstan_model_2011]. Each Archetype represents a group of species which jointly response to environmental data in the model (covariates). For example, one group of species might like warm water, while another might like cold. Typically, we model observations of species at sites. The covariates are used to describe the variation (and response) of each Archetype to the physical and environmental gradients. We can describe the data as $i = 1...n$ sampling sites, $j = 1...S$ species (or desired taxonomic unit) and $k = 1...K$ Archetypes. The model conditional mean observations (occurrence/count/biomass) of species is, $\mathbb{E}(y_{ij}|\textrm{archetype group_k})$, on $g_k(X_i)$ Archetype covariates. In `ecomix`, the intercepts are species-specific, this is an update from the original 'SpeciesMix' R package [@dunstan_speciesmix_2013], where the intercepts were only species-specific for the Negative Binomial and Tweedie distributions, as described in @dunstan_finite_2013. For error distributions with dispersion or variance parameters (Negative Binomial, Tweedie and Gaussian) these parameters are also species-specific. The model can be described as follows:
 
 $$

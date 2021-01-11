@@ -113,8 +113,8 @@ testthat::test_that('Test the prediction functions in RCP',{
                      data = simDat, family =  "negative.binomial", nRCP = 3, inits = "random2")
   preds <- predict(fm2)
   testthat::expect_is(preds,'matrix')
-  bootmod <- regional_mix_boot(fm2,nboot = 10)
-  bootmod1 <- regional_mix_boot(fm2,nboot = 10,type = "SimpleBoot")
+  bootmod <- regional_mix.bootstrap(fm2,nboot = 10)
+  bootmod1 <- regional_mix.bootstrap(fm2,nboot = 10,type = "SimpleBoot")
   predsboot <- predict(fm2, bootmod)
   predsboot1 <- predict(fm2, bootmod1)
   testthat::expect_is(predsboot,'list')
@@ -265,7 +265,7 @@ testthat::test_that("RCP membership",{
                       data = simDat2, family =  "poisson",
                       nRCP = 3, inits = "random2")
 
-  tmpboot1 <- regional_mix_boot(fm1,nboot = 10)
+  tmpboot1 <- regional_mix.bootstrap(fm1,nboot = 10)
   regional_mix.species_profile(fm1)
   regional_mix.species_profile(fm1,tmpboot1)
 

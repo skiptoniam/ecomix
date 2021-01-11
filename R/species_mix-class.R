@@ -292,8 +292,10 @@
   if(!titbits)
     tmp <- titbit_cleanup(tmp)
 
-  class(tmp) <- c("species_mix")
-  return(tmp)
+  tmp2 <- sam_model_clean_up_names(tmp)
+
+  class(tmp2) <- c("species_mix")
+  return(tmp2)
 }
 
 #'@title species_mix.fit
@@ -344,14 +346,14 @@
   } else {
     if(!control$quiet)message('Be careful! You are using your own initial starting values to optimise the species_mix model.')
     inits <- setup_inits_sam(inits, S=S, G=G, X=X, W=W, U=U, disty, return_list = TRUE)
-    print(inits)
+    # print(inits)
     starting_values <- inits
   }
 
   tmp <- sam_optimise(y = y, X = X, W = W, U = U, offset = offset,
-                      spp_weights = spp_weights,
-                      site_spp_weights = site_spp_weights,
-                      y_is_na = y_is_na, S = S, G = G, disty = disty,
+                               spp_weights =  spp_weights,
+                               site_spp_weights = site_spp_weights,
+                               y_is_na = y_is_na, S = S, G = G, disty = disty,
                       size = size, powers = powers, start_vals = starting_values,
                       control = control)
 
@@ -677,7 +679,7 @@
 #' @importFrom stats vcov
 #' @export
 
-"species_mix.bootstrap" <-function (object, nboot=1000, type="BayesBoot",
+"species_mix.bootstrap" <-function (object, nboot=100, type="BayesBoot",
                                     mc.cores=1, quiet=FALSE){
 
   if(object$titbits$family=='ippm'){
@@ -716,17 +718,20 @@
   }
   if( type == "BayesBoot")
     all.wts <- object$S * gtools::rdirichlet( nboot, rep( 1, object$S))
-  my.inits <- object$coef
+    my.inits <- setup_inits_sam(object$coefs, object$S, object$G,
+                                         object$titbits$X, object$titbits$W,
+                                         object$titbits$U, object$disty,
+                                         return_list = TRUE)
 
-  tmpOldQuiet <- object$titbits$control$quiet
-  object$titbits$control$quiet <- TRUE
+    tmpOldQuiet <- object$titbits$control$quiet
+    object$titbits$control$quiet <- TRUE
 
   my.fun <- function(dummy){
     if( !quiet) setTxtProgressBar(pb, dummy)
     disty_cases <- c("bernoulli","binomial","poisson", "ippm", "negative.binomial", "tweedie", "gaussian")
     disty <- get_family_sam(disty_cases, object$family)
     dumbOut <- capture.output(
-      samp.object <- species_mix.fit(y=object$titbits$Y,
+      samp.object <- ecomix::species_mix.fit(y=object$titbits$Y,
                                      X=object$titbits$X,
                                      W=object$titbits$W,
                                      U=object$titbits$U,
@@ -741,25 +746,19 @@
                                      powers = object$titbits$powers,
                                      control = object$titbits$control,
                                      inits = my.inits))
-    return( unlist( samp.object$coef))
+    gc()
+    boot.res <- c(samp.object$alpha,samp.object$beta,samp.object$eta,
+                  samp.object$gamma,samp.object$delta,samp.object$theta)
+    return(boot.res)
   }
 
-  flag <- TRUE
-  if( Sys.info()['sysname'] == "Windows" | mc.cores==1){
-    boot.estis <- matrix(NA, nrow = nboot, ncol = length(unlist(object$coef)))
-    for (ii in 1:nboot) {
-      if( !quiet)
-        setTxtProgressBar(pb, ii)
-      boot.estis[ii, ] <- my.fun( ii)
-    }
-    flag <- FALSE
-  }
-
-  if( flag){
     tmp <- plapply(seq_len(nboot), my.fun, .parallel = mc.cores)
     boot.estis <- do.call( "rbind", tmp)
   }
-  }
+
+  ## remove na coefs from
+  boot.estis <- boot.estis[,!apply(boot.estis=='-999999', 2, any,na.rm=TRUE)]
+
   object$titbits$control$quiet <- tmpOldQuiet
   class( boot.estis) <- "species_mix.bootstrap"
   return( boot.estis)
@@ -983,7 +982,7 @@
   attr(res, "gamma") <- gamma
   attr(res, "delta") <- delta
   attr(res, "logTheta") <- logTheta
-  attr(res, "power") <- powers
+  attr(res, "powers") <- powers
   attr(res, "mu") <- fitted
   attr(res, "ippm_weights") <- wts
   attr(res, "size") <- size
@@ -1057,7 +1056,7 @@
       if(ncol(W)>1){
         fits$gamma <- update_coefs(fits$gamma,new.sp.params[,-1])
       } else {
-        fits$gamma <- rep(-99999,S)
+        fits$gamma <- rep(-999999,S)
       }
 
       ## update the dispersion parameters.
@@ -1071,7 +1070,7 @@
         new.sp.thetas <- unlist(lapply(fm_theta, `[[`, 1))
         fits$theta <- update_coefs(fits$theta,new.sp.thetas)
       } else {
-        fits$theta <- rep(-99999,S)
+        fits$theta <- rep(-999999,S)
       }
 
       ## Update the all parameter.
@@ -1511,12 +1510,12 @@ starting values;\n starting values are generated using ',control$init_method,
   if(disty%in%1){ # bernoulli
     fit1 <- mvabund::manyglm(tmpform, data = datX, offset = offset, family = "binomial")
     coefs <- t(fit1$coefficients)
-    starting.sam$theta <- rep(-99999,S)
+    starting.sam$theta <- rep(-999999,S)
   }
   if(disty%in%2){ # poisson
     fit1 <- mvabund::manyglm(tmpform, data = datX, offset = offset, family = "poisson")
     coefs <- t(fit1$coefficients)
-    starting.sam$theta <- rep(-99999,S)
+    starting.sam$theta <- rep(-999999,S)
   }
   if(disty%in%3){ # ippm
     fit1 <- many.fit(y, X, W, U, site_spp_weights,
@@ -1545,7 +1544,7 @@ starting values;\n starting values are generated using ',control$init_method,
     fit1 <- many.fit(y, X, W, U, site_spp_weights,
                      offset, y_is_na, G, S, disty, size, powers, control)
     coefs <- fit1$coefficients
-    starting.sam$theta <- rep(-99999,S)
+    starting.sam$theta <- rep(-999999,S)
   }
 
   # a bit of book keeping
@@ -1564,7 +1563,7 @@ starting values;\n starting values are generated using ',control$init_method,
     gammaIdx <- match(colnames(W[,-1,drop=FALSE]),covarNames)
     starting.sam$gamma <- coefs[,gammaIdx, drop=FALSE]
   } else {
-    starting.sam$gamma <- -99999
+    starting.sam$gamma <- -999999
   }
 
   # delta for entire dataset
@@ -1572,7 +1571,7 @@ starting values;\n starting values are generated using ',control$init_method,
     deltaIdx <- match(colnames(U),covarNames)
     starting.sam$delta <- colMeans(coefs[-sel.omit.spp,deltaIdx,drop=FALSE])
   } else {
-    starting.sam$delta <- -99999
+    starting.sam$delta <- -999999
   }
 
 
@@ -1916,15 +1915,22 @@ if(!is.null(U)) {
   ret$logl <- ret$logl * -1
   ret$mus <- array(mus, dim=c(n, S, G))
 
+  ret$names <- list(spp=colnames(y), SAMs=paste("Archetype", seq_len(G), sep=""),
+                    Xvars=colnames(X), Wvars=colnames(Wcpp), Uvars = colnames(Ucpp))
+
+  names(ret$alpha) <- ret$names$spp
+  names(ret$beta) <- paste(rep(ret$names$Xvars,each=G),ret$names$SAMs,sep='.')
+  names(ret$eta) <- paste0("eta",seq_len(G-1))
+  if(ncol(W)>1) names(ret$gamma) <- paste(rep(ret$names$Wvars,each=S),ret$names$spp,sep='.')
+  if(!is.null(U)) names(ret$delta) <- ret$names$Uvars
+  names(ret$theta) <- paste0("theta.",ret$names$spp)
+
   ret$coefs <- list(alpha = ret$alpha,
                     beta = matrix(ret$beta,G,npx),
                     eta = ret$eta,
                     gamma = matrix(ret$gamma,S,npw),
                     delta = ret$delta,
                     theta = ret$theta)
-
-  ret$names <- list(spp=colnames(y), SAMs=paste("Archetype.", seq_len(G), sep=""),
-                    Xvars=colnames(X), Wvars=colnames(Wcpp), Uvars = colnames(Ucpp))
 
   ret$scores <- list(alpha.scores = alpha.score,
                      beta.scores = beta.score,
@@ -2606,9 +2612,31 @@ if(!is.null(U)) {
   message("starting species specific dispersion parameters:\n",paste(round(theta,3)," "))
 }
 
-# "reltol_fun" <- function(logl_n1, logl_n){
-#   return(abs(logl_n1 - logl_n) > (abs(logl_n1 - logl_n) / abs(logl_n)))
-# }
+"sam_model_clean_up_names" <- function(mod){
+
+  names(mod$coefs$alpha) <- mod$names$spp
+  colnames(mod$coefs$beta) <- mod$names$Xvars
+  rownames(mod$coefs$beta) <- mod$names$SAMs
+  if( any(mod$coefs$gamma==-999999, na.rm=TRUE)){
+    mod$coefs$gamma <- NULL
+  } else {
+    colnames(mod$coefs$gamma) <- mod$names$Wvars
+    rownames(mod$coefs$gamma) <- mod$names$spp
+  }
+  if( any(mod$coefs$delta==-999999, na.rm=TRUE)){
+    mod$coefs$delta <- NULL
+  } else {
+    names(mod$coefs$delta) <- mod$names$Uvars
+  }
+  if( any( mod$coefs$theta==-999999, na.rm=TRUE)){
+    mod$coefs$theta <- NULL
+  } else {
+    names(mod$coefs$theta) <- mod$names$spp
+  }
+
+  return(mod)
+
+}
 
 
 "sam_random_inits" <- function(alpha, beta, gamma, delta, theta, S, G, X, W, U, disty, mult=0.3, control.sd = control$init_sd){
@@ -2769,7 +2797,7 @@ if(!is.null(U)) {
     if(disty%in%c(4,5,6)){
       theta <- inits[start + 1:S]
     } else {
-      theta <- -999999
+      theta <- rep(-999999,S)
     }
 
     if(return_list) res <- list(alpha=alpha,beta=beta,eta=eta,

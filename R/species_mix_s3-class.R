@@ -580,7 +580,6 @@
             and 'SimpleBoot' (case-resample bootstrap)'.")
     return(NULL)
   }
-  # if( Sys.info()['sysname'] == "Windows")
   X <- object$titbits$X
   W <- object$titbits$W
   U <- object$titbits$U
@@ -623,10 +622,9 @@
     gamma.score <- as.numeric(rep(NA, length(gamma)))
   } else {
     control$optiPart <- as.integer(0)
-    gamma.score <- -999999
+    gamma.score <- rep(-999999,S)
   }
   if(!is.null(U)) {
-    Ucpp <- U
     npu <- as.integer(ncol(U))
     control$optiAll <- as.integer(1)
     delta.score <- as.numeric(matrix(NA, ncol=ncol(U)))
@@ -641,9 +639,9 @@
     theta.score <- as.numeric(rep(NA, length(theta)))
   }else{
     control$optiDisp <- as.integer(0)
-    theta.score <- -999999
+    theta.score <- rep(-999999,S)
   }
-  scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,gamma.score,theta.score))))
+  scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,gamma.score,delta.score,theta.score))))
   conv <- FALSE
 
   #model quantities
@@ -655,6 +653,7 @@
   #remove finite for now, as we only need it for ippm
   if (method %in% c("FiniteDifference")) {
     grad_fun <- function(x) {
+      x <- setup_inits_sam(x, S, G, X, W, U, disty, return_list = FALSE)
       #x is a vector of first order derivates to optimise using numDeriv in order to find second order derivates.
       start <- 0
       alpha <- x[start + seq_len(S)]
@@ -667,7 +666,7 @@
         gamma <- x[start + seq_len((S*npw))]
         start <- start + (S*npw)
       } else {
-        gamma <- -999999
+        gamma <- rep(-999999,S)
         # start <- start + 1
       }
       if(npu>0) {
@@ -680,12 +679,12 @@
       if(disty%in%c(4,6)){
         theta <- x[start + seq_len(S)]
       } else {
-        theta <- -999999
+        theta <- rep(-999999,S)
       }
       #c++ call to optimise the model (needs pretty good starting values)
       tmp <- .Call("species_mix_cpp",
                    as.numeric(as.matrix(y)), as.numeric(as.matrix(X)),
-                   as.numeric(as.matrix(W)), as.numeric(as.matrix(U)),
+                   as.numeric(as.matrix(W)), as.numeric(as.matrix(Ucpp)),
                    as.numeric(offset), as.numeric(spp_weights),
                    as.numeric(as.matrix(site_spp_weights)),
                    as.integer(as.matrix(!y_is_na)),
@@ -719,15 +718,38 @@
                    PACKAGE = "ecomix")
 
       tmp1 <- c(alpha.score, beta.score, eta.score)
-      if( npw > 0)#class( object$titbits$species_formula) == "formula")
+      names(tmp1) <- c(names(object$alpha),names(object$beta),names(object$eta))
+      if( npw > 0){#class( object$titbits$species_formula) == "formula")
         tmp1 <- c(tmp1, gamma.score)
-      if( npu > 0)#class( object$titbits$species_formula) == "formula")
+        names(tmp1) <- c(names(object$gamma),names(tmp1))
+      }
+      if(!is.null( object$titbits$all_formula)){
         tmp1 <- c(tmp1, delta.score)
-      if(disty%in%c(4,6))
+        names(tmp1) <- c(names(object$delta),names(tmp1))
+      }
+      if(disty%in%c(4,6)){
         tmp1 <- c( tmp1, theta.score)
+        names(tmp1) <- c(names(object$theta),names(tmp1))
+      }
       return(tmp1)
     }
-    hess <- numDeriv::jacobian(grad_fun, x=unlist(object$coefs),method="simple")
+
+    x.in <- unlist(object$coefs)
+    hess <- numDeriv::jacobian(grad_fun, x = x.in, method="simple")
+
+    hess.names <- c(names(object$alpha),names(object$beta),names(object$eta))
+    if( npw > 0){#class( object$titbits$species_formula) == "formula")
+      hess.names <- c(names(object$gamma),hess.names)
+    }
+    if(!is.null( object$titbits$all_formula)){
+      hess.names <- c(names(object$delta),hess.names)
+    }
+    if(disty%in%c(4,6)){
+      hess.names <- c(names(object$theta),hess.names)
+    }
+
+    colnames(hess)<-rownames(hess)<-hess.names
+    # hess <- hess[,-which(x==-999999)]
     vcov.mat <- try(-solve(hess))
     if( inherits( vcov.mat, 'try-error')){
       attr(vcov.mat, "hess") <- hess

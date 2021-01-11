@@ -314,64 +314,60 @@ data <span class='op'>=</span> <span class='va'>simulated_data</span>, family <s
 #&gt; Iteration:  2 | New loglik -841.415 | Ratio loglik 0.8695924 
 #&gt; Iteration:  3 | New loglik -841.416 | Ratio loglik 1 
 #&gt; initial  value 841.774554 
-#&gt; iter  10 value 820.339676
-#&gt; iter  20 value 819.994890
-#&gt; iter  30 value 819.991381
-#&gt; iter  30 value 819.991381
-#&gt; iter  30 value 819.991381
-#&gt; final  value 819.991381 
+#&gt; iter  10 value 820.417577
+#&gt; iter  20 value 819.996523
+#&gt; final  value 819.991374 
 #&gt; converged</div><div class='input'><span class='va'>fmods</span> <span class='op'>&lt;-</span> <span class='fu'>species_mix.multifit</span><span class='op'>(</span>archetype_formula <span class='op'>=</span> <span class='va'>sam_form</span>,
 species_formula <span class='op'>=</span> <span class='va'>sp_form</span>, data<span class='op'>=</span><span class='va'>simulated_data</span>, family <span class='op'>=</span> <span class='st'>'bernoulli'</span>,
  nstart <span class='op'>=</span> <span class='fl'>10</span>, nArchetypes<span class='op'>=</span><span class='fl'>3</span><span class='op'>)</span>
 </div><div class='output co'>#&gt; <span class='message'>SAM modelling</span></div><div class='output co'>#&gt; <span class='message'>There are 3 archetypes to group the species into</span></div><div class='output co'>#&gt; <span class='message'>There are 100 site observations for 20 species</span></div><div class='output co'>#&gt; <span class='message'>The model for the archetype (grouping) is ~x1 + x2</span></div><div class='output co'>#&gt; <span class='message'>The model for the species is ~1</span></div><div class='output co'>#&gt; <span class='message'>You are implementing a bernoulli Species Archetype Model.</span></div><div class='output co'>#&gt;   |                                                                              |                                                                      |   0%initial  value 849.408885 
-#&gt; iter  10 value 820.874060
-#&gt; iter  20 value 819.994322
-#&gt; final  value 819.991374 
-#&gt; converged
-#&gt; .  |                                                                              |c[_] c[_]                                                             |  11%initial  value 831.984952 
-#&gt; iter  10 value 820.646641
-#&gt; iter  20 value 819.992682
-#&gt; final  value 819.991374 
-#&gt; converged
-#&gt; .  |                                                                              |c[_] c[_] c[_]                                                        |  22%initial  value 827.363760 
-#&gt; iter  10 value 820.166742
-#&gt; iter  20 value 819.991618
-#&gt; final  value 819.991369 
-#&gt; converged
-#&gt; .  |                                                                              |c[_] c[_] c[_] c[_] c[_]                                              |  33%initial  value 849.082973 
-#&gt; iter  10 value 820.990053
-#&gt; iter  20 value 819.992597
-#&gt; final  value 819.991467 
-#&gt; converged
-#&gt; .  |                                                                              |c[_] c[_] c[_] c[_] c[_] c[_]                                         |  44%initial  value 828.749232 
-#&gt; iter  10 value 820.074512
-#&gt; iter  20 value 819.992754
+#&gt; iter  10 value 821.207385
+#&gt; iter  20 value 820.036717
+#&gt; iter  30 value 819.993275
 #&gt; final  value 819.991368 
 #&gt; converged
+#&gt; .  |                                                                              |c[_] c[_]                                                             |  11%initial  value 831.984952 
+#&gt; iter  10 value 821.005820
+#&gt; iter  20 value 819.994026
+#&gt; final  value 819.991361 
+#&gt; converged
+#&gt; .  |                                                                              |c[_] c[_] c[_]                                                        |  22%initial  value 827.363760 
+#&gt; iter  10 value 820.116240
+#&gt; iter  20 value 819.991632
+#&gt; final  value 819.991359 
+#&gt; converged
+#&gt; .  |                                                                              |c[_] c[_] c[_] c[_] c[_]                                              |  33%initial  value 849.082973 
+#&gt; iter  10 value 820.162775
+#&gt; iter  20 value 819.993693
+#&gt; final  value 819.991362 
+#&gt; converged
+#&gt; .  |                                                                              |c[_] c[_] c[_] c[_] c[_] c[_]                                         |  44%initial  value 828.749232 
+#&gt; iter  10 value 820.150405
+#&gt; iter  20 value 819.991700
+#&gt; final  value 819.991392 
+#&gt; converged
 #&gt; .  |                                                                              |c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_]                               |  56%initial  value 828.800196 
-#&gt; iter  10 value 820.105490
-#&gt; iter  20 value 819.991385
-#&gt; final  value 819.991356 
+#&gt; iter  10 value 820.361489
+#&gt; iter  20 value 819.993382
+#&gt; final  value 819.991369 
 #&gt; converged
 #&gt; .  |                                                                              |c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_]                          |  67%initial  value 832.757500 
-#&gt; iter  10 value 821.656577
-#&gt; iter  20 value 819.996342
-#&gt; final  value 819.991641 
+#&gt; iter  10 value 820.759996
+#&gt; iter  20 value 819.994648
+#&gt; final  value 819.991359 
 #&gt; converged
 #&gt; .  |                                                                              |c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_]                |  78%initial  value 834.027287 
-#&gt; iter  10 value 820.168411
-#&gt; iter  20 value 819.993075
-#&gt; final  value 819.991393 
+#&gt; iter  10 value 820.188849
+#&gt; iter  20 value 819.992184
+#&gt; final  value 819.991362 
 #&gt; converged
 #&gt; .  |                                                                              |c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_]           |  89%initial  value 832.880564 
-#&gt; iter  10 value 821.098608
-#&gt; iter  20 value 819.994259
-#&gt; final  value 819.991375 
+#&gt; final  value 832.880564 
 #&gt; converged
 #&gt; .  |                                                                              |c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] | 100%initial  value 826.819944 
-#&gt; iter  10 value 820.178200
-#&gt; iter  20 value 819.991983
-#&gt; final  value 819.991381 
+#&gt; iter  10 value 820.318372
+#&gt; iter  20 value 819.991839
+#&gt; final  value 819.991392 
 #&gt; converged
 #&gt; .</div><div class='input'><span class='co'># }</span>
 

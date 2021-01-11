@@ -9,8 +9,8 @@ Status](https://img.shields.io/codecov/c/github/skiptoniam/ecomix/master.svg)](h
 state and is being actively
 developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
-ecomix is a package to implement statisitical models on multivariate
-species data. Two main type of finite mixture models are avaliable which
+ecomix is a package to implement statistical models on multivariate
+species data. Two main type of finite mixture models are available which
 either model at species level (Species Archetype Models) or site level
 (Region of Common Profile).
 
