@@ -5,6 +5,7 @@ context('species_mix generic functions negative binomial functions')
 testthat::test_that('species_mix negative binomial', {
 
   library(ecomix)
+
   set.seed(42)
   nsp <- 100
   sam_form <- as.formula(paste0('cbind(',paste(paste0('spp',1:nsp),collapse = ','),")~x1+x2"))
@@ -76,8 +77,7 @@ testthat::test_that('species_mix negative binomial', {
   testthat::expect_s3_class(fm1,'species_mix')
 
   fm2 <- species_mix(sam_form, sp_form, data = simulated_data, family = 'negative.binomial',
-                     nArchetypes = 3,control=list(ecm_prefit = FALSE),
-                     standardise = FALSE)
+                     nArchetypes = 3,control=list(ecm_prefit = FALSE))
   testthat::expect_s3_class(fm2,'species_mix')
 })
 

@@ -74,8 +74,7 @@ testthat::test_that('species mix poisson', {
   testthat::expect_s3_class(fm1,'species_mix')
 
   fm2 <- species_mix(sam_form, sp_form, data = simulated_data, family = 'poisson',
-                     nArchetypes = 3,control=list(em_prefit = FALSE),
-                     standardise = FALSE)
+                     nArchetypes = 3,control=list(em_prefit = FALSE))
   testthat::expect_s3_class(fm2,'species_mix')
 
 })

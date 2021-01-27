@@ -31,12 +31,12 @@ testthat::test_that('species mix gaussian', {
   y_is_na <- matrix(FALSE,nrow(y),ncol(y))
   G <- 4
   S <- ncol(y)
-  control <- species_mix.control()
+  control <- ecomix:::set_control_sam(list())
   disty <- 6
   size <- rep(1,nrow(y))
   powers <- attr(simulated_data,"powers") # yeah baby
   options(warn=1)
-  fm <- ecomix:::get_initial_values_sam(y, X, W, U, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control = species_mix.control())
+  fm <- ecomix:::get_initial_values_sam(y, X, W, U, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control = control)
 
   ## now let's try and fit the optimisation
   start_vals <- ecomix:::starting_values_wrapper(y, as.data.frame(X), as.data.frame(W), U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control)
@@ -58,7 +58,6 @@ testthat::test_that('species mix gaussian', {
   testthat::expect_s3_class(fm1,'species_mix')
 
   fm2 <- species_mix(sam_form, sp_form, data = simulated_data, family = 'gaussian',
-                     nArchetypes = 4,control=species_mix.control(ecm_prefit = FALSE),
-                     standardise = FALSE)
+                     nArchetypes = 4,control=species_mix.control(ecm_prefit = FALSE))
   testthat::expect_s3_class(fm2,'species_mix')
 })

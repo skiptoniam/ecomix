@@ -110,12 +110,9 @@ This is how you fit \code{regional_mix} model in ecomix.
 }
 \examples{
 \dontrun{
-simulated_data <- regional_mix.simulate()
 rcp_form <- as.formula(paste0("cbind(",paste(colnames(simulated_data[,1:20]),
 collapse = ','),")~1+x1+x2+x3"))
 spp_form <- observations ~ 1 + w1 + w2
-data <- make_mixture_data(species_data = simulated_data$species_data,
-                          covariate_data = simulated_data$covariate_data[,-1])
 fm_regional_mix <- regional_mix(rcp_formula=rcp_form,species_formula=spp_form,
                                 data=data, family='bernoulli', nRCP=5)
 }

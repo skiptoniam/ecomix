@@ -80,7 +80,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">ecomix</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.0.3</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0.0</span>
       </span>
     </div>
 
@@ -103,7 +103,7 @@
   </a>
   <ul class="dropdown-menu" role="menu">
     <li>
-      <a href="../articles/RCP-example.html">RCP-example</a>
+      <a href="../articles/RCP-example.html">Region of Common Profiles Example</a>
     </li>
     <li>
       <a href="../articles/SAM-example.html">Species Archetype Model Example</a>
@@ -112,7 +112,12 @@
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
-        
+        <li>
+  <a href="https://github.com/skiptoniam/ecomix/">
+    <span class="fab fa-github fa-lg"></span>
+     
+  </a>
+</li>
       </ul>
       
     </div><!--/.nav-collapse -->
@@ -127,7 +132,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Print a species_mix model object.</h1>
-    
+    <small class="dont-index">Source: <a href='https://github.com/skiptoniam/ecomix/blob/master/R/species_mix_s3-class.R'><code>R/species_mix_s3-class.R</code></a></small>
     <div class="hidden name"><code>print.species_mix.Rd</code></div>
     </div>
 
@@ -156,7 +161,7 @@
     <pre class="examples"><div class='input'>
 <span class='co'>#Print information about a species_mix model</span>
 <span class='co'># \donttest{</span>
-<span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'>ecomix</span><span class='op'>)</span>
+<span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://github.com/skiptoniam/ecomix'>ecomix</a></span><span class='op'>)</span>
 <span class='fu'><a href='https://rdrr.io/r/base/Random.html'>set.seed</a></span><span class='op'>(</span><span class='fl'>42</span><span class='op'>)</span>
 <span class='va'>sam_form</span> <span class='op'>&lt;-</span> <span class='fu'>stats</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/r/stats/formula.html'>as.formula</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/paste.html'>paste0</a></span><span class='op'>(</span><span class='st'>'cbind('</span>,<span class='fu'><a href='https://rdrr.io/r/base/paste.html'>paste</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/paste.html'>paste0</a></span><span class='op'>(</span><span class='st'>'spp'</span>,<span class='fl'>1</span><span class='op'>:</span><span class='fl'>20</span><span class='op'>)</span>,
 collapse <span class='op'>=</span> <span class='st'>','</span><span class='op'>)</span>,<span class='st'>")~x1+x2"</span><span class='op'>)</span><span class='op'>)</span>
@@ -173,9 +178,7 @@ data <span class='op'>=</span> <span class='va'>simulated_data</span>, family <s
 #&gt; Iteration:  2 | New loglik -841.415 | Ratio loglik 0.8695924 
 #&gt; Iteration:  3 | New loglik -841.416 | Ratio loglik 1 
 #&gt; initial  value 841.774554 
-#&gt; iter  10 value 820.166958
-#&gt; iter  20 value 819.991654
-#&gt; final  value 819.991358 
+#&gt; final  value 841.774554 
 #&gt; converged</div><div class='input'><span class='fu'><a href='https://rdrr.io/r/base/print.html'>print</a></span><span class='op'>(</span><span class='va'>fm1</span><span class='op'>)</span><span class='co'># }</span>
 </div><div class='output co'>#&gt; bernoulli species_mix model
 #&gt; 
@@ -185,17 +188,17 @@ data <span class='op'>=</span> <span class='va'>simulated_data</span>, family <s
 #&gt; Coefficents
 #&gt; $alpha
 #&gt;       spp1       spp2       spp3       spp4       spp5       spp6       spp7 
-#&gt; -0.8012006 -1.6332276 -0.5742766 -1.0837098 -1.0163191 -1.1726821 -0.7324572 
+#&gt; -1.2796030 -2.0419345 -0.4443948 -1.7598296 -1.3517353 -1.5274009 -0.5586093 
 #&gt;       spp8       spp9      spp10      spp11      spp12      spp13      spp14 
-#&gt; -1.2026761 -1.6395815 -0.1855601 -0.8561942 -1.3900698 -0.7008558 -0.7008558 
+#&gt; -1.9578130 -1.2284608 -0.1638988 -1.3741900 -2.2628492 -0.9929487 -0.9929487 
 #&gt;      spp15      spp16      spp17      spp18      spp19      spp20 
-#&gt; -0.8923384 -0.3776552 -1.3841784 -1.0540714 -1.2026761 -0.4294028 
+#&gt; -0.6745198 -0.5424460 -1.0364157 -0.7924916 -1.9578130 -0.6330127 
 #&gt; 
 #&gt; $beta
-#&gt;                    x1        x2
-#&gt; Archetype1 -2.9039207 -3.543070
-#&gt; Archetype2 -0.8297854  0.954712
-#&gt; Archetype3  0.9910608  1.986260
+#&gt;                   x1        x2
+#&gt; Archetype1 -3.093793 -3.837334
+#&gt; Archetype2 -1.034298  1.188753
+#&gt; Archetype3  0.911219  1.842439
 #&gt; 
 #&gt; $eta
 #&gt;       eta1       eta2 

@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>This is how you fit a species archetype model (SAM) in ecomix. — species_mix • ecomix</title>
+<title>Generate data for plotting or predicting partial effects of covariates — effectPlotData.regional_mix • ecomix</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,9 +46,9 @@
 
 
 
-<meta property="og:title" content="This is how you fit a species archetype model (SAM) in ecomix. — species_mix" />
-<meta property="og:description" content="Fits a mixture-of-regressions to identify species archetype
-models (SAMs)." />
+<meta property="og:title" content="Generate data for plotting or predicting partial effects of covariates — effectPlotData.regional_mix" />
+<meta property="og:description" content="This function produces a list of data.frames for predicting the partial
+effect of a focal.predictor current included in a species_mix model." />
 <meta property="og:image" content="/logo.svg" />
 
 
@@ -132,157 +132,54 @@ models (SAMs)." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>This is how you fit a species archetype model (SAM) in ecomix.</h1>
-    <small class="dont-index">Source: <a href='https://github.com/skiptoniam/ecomix/blob/master/R/species_mix-class.R'><code>R/species_mix-class.R</code></a></small>
-    <div class="hidden name"><code>species_mix.Rd</code></div>
+    <h1>Generate data for plotting or predicting partial effects of covariates</h1>
+    <small class="dont-index">Source: <a href='https://github.com/skiptoniam/ecomix/blob/master/R/regional_mix_s3-class.R'><code>R/regional_mix_s3-class.R</code></a>, <a href='https://github.com/skiptoniam/ecomix/blob/master/R/species_mix_s3-class.R'><code>R/species_mix_s3-class.R</code></a></small>
+    <div class="hidden name"><code>effectPlotData.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Fits a mixture-of-regressions to identify species archetype
-models (SAMs).</p>
+    <p>This function produces a list of data.frames for predicting the partial
+effect of a focal.predictor current included in a species_mix model.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>species_mix</span><span class='op'>(</span>
-  archetype_formula <span class='op'>=</span> <span class='cn'>NULL</span>,
-  species_formula <span class='op'>=</span> <span class='fu'>stats</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/r/stats/formula.html'>as.formula</a></span><span class='op'>(</span><span class='op'>~</span><span class='fl'>1</span><span class='op'>)</span>,
-  all_formula <span class='op'>=</span> <span class='cn'>NULL</span>,
-  <span class='va'>data</span>,
-  nArchetypes <span class='op'>=</span> <span class='fl'>3</span>,
-  family <span class='op'>=</span> <span class='st'>"bernoulli"</span>,
-  offset <span class='op'>=</span> <span class='cn'>NULL</span>,
-  weights <span class='op'>=</span> <span class='cn'>NULL</span>,
-  bb_weights <span class='op'>=</span> <span class='cn'>NULL</span>,
-  size <span class='op'>=</span> <span class='cn'>NULL</span>,
-  power <span class='op'>=</span> <span class='fl'>1.6</span>,
-  control <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='op'>)</span>,
-  inits <span class='op'>=</span> <span class='cn'>NULL</span>,
-  titbits <span class='op'>=</span> <span class='cn'>TRUE</span>
-<span class='op'>)</span></pre>
+    <pre class="usage"><span class='co'># S3 method for regional_mix</span>
+<span class='fu'>effectPlotData</span><span class='op'>(</span><span class='va'>focal.predictors</span>, <span class='va'>mod</span>, ngrid <span class='op'>=</span> <span class='fl'>50</span>, <span class='va'>...</span><span class='op'>)</span>
+
+<span class='fu'>effectPlotData</span><span class='op'>(</span><span class='va'>focal.predictors</span>, <span class='va'>mod</span>, <span class='va'>...</span><span class='op'>)</span>
+
+<span class='co'># S3 method for species_mix</span>
+<span class='fu'>effectPlotData</span><span class='op'>(</span><span class='va'>focal.predictors</span>, <span class='va'>mod</span>, ngrid <span class='op'>=</span> <span class='fl'>50</span>, <span class='va'>...</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>archetype_formula</th>
-      <td><p>an object of class "formula" (or an object that can
-be coerced to that class). The response variable (left hand side of the
-formula) needs to be either 'occurrence', 'abundance',
-'biomass' or 'quantity' data. The type of response data will help specify
-the type of error distribution to be used. The dependent variables
-(the right hind side) of this formula specifies the dependence of the
-species archetype probabilities on covariates. For all model the basic
-formula structure follows something like this:
-cbind(spp1,spp2,spp3)~1+temperature+rainfall</p></td>
+      <th>focal.predictors</th>
+      <td><p>A character or string of characters which represent covariates in the model.</p></td>
     </tr>
     <tr>
-      <th>species_formula</th>
-      <td><p>an object of class "formula" (or an object that can be
-coerced to that class). The right hand side of this formula specifies the
-dependence of the species"'" data on covariates (typically different
-covariates to <code>archetype_formula</code> to avoid confusing confounding).
-Current the formula is set at ~ 1 by default for species-specific intercepts
-for the archetype models. If you include a species specific formula which has
-more than an intercept you will be fitting a partial species archetype model
-which has species specific covariates and archetype specific covariates.</p></td>
+      <th>mod</th>
+      <td><p>The fitted species_mix model.</p></td>
     </tr>
     <tr>
-      <th>all_formula</th>
-      <td><p>an object of class "formula", which is meant to represent
-a constant single set of covariates across all species and groups, typically
-you might use this an alternative to an offset, where there might be some
-bias in the data which is relatively constant and might arise as an
-artefact of how the data was collected.</p></td>
+      <th>ngrid</th>
+      <td><p>The length of the prediction vector.</p></td>
     </tr>
     <tr>
-      <th>data</th>
-      <td><p>a matrix or data.frame which contains the 'species_data'
-matrix, a const and the covariates in the structure of spp1, spp2, spp3,
-const, temperature, rainfall. dims of matrix should be
-nsites*(nspecies+const+covariates).</p></td>
-    </tr>
-    <tr>
-      <th>nArchetypes</th>
-      <td><p>The number of archetypes (mixing components/groups) to estimate from the data.</p></td>
-    </tr>
-    <tr>
-      <th>family</th>
-      <td><p>The family of statistical family to use within
-the ecomix models. a  choice between "bernoulli", "binomial", "poisson", "ippm",
-"negative.binomial", "tweedie" and "gaussian" families are possible and applicable
-to specific types of data.</p></td>
-    </tr>
-    <tr>
-      <th>offset</th>
-      <td><p>a numeric vector of length nrow(data) (n sites) that is
-included into the model as an offset. It is included into the conditional
-part of the model where conditioning is performed on the SAM.</p></td>
-    </tr>
-    <tr>
-      <th>weights</th>
-      <td><p>a numeric vector of length ncol(Y) (n species) that is used
-as weights in the log-likelihood calculations. If NULL (default) then all
-weights are assumed to be identically 1. Because we are estimating the
-log-likelihood over species (rather than sites), the weights should be a
-vector n species long.</p></td>
-    </tr>
-    <tr>
-      <th>bb_weights</th>
-      <td><p>a numeric vector of n species long. This is used for
-undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.</p></td>
-    </tr>
-    <tr>
-      <th>size</th>
-      <td><p>The size of the sample for a binomial model (defaults to 1).</p></td>
-    </tr>
-    <tr>
-      <th>power</th>
-      <td><p>The power parameter for a Tweedie model. Default is 1.6, and this is assigned to all species</p></td>
-    </tr>
-    <tr>
-      <th>control</th>
-      <td><p>a list of control parameters for optimisation and calculation.
-See details.</p></td>
-    </tr>
-    <tr>
-      <th>inits</th>
-      <td><p>NULL a numeric vector that provides approximate starting values
-for species_mix coefficients. These are family specific, but at a
-minimum you will need pis (additive_logitic transformed), alpha
-(intercepts) and beta (mixing coefs).</p></td>
-    </tr>
-    <tr>
-      <th>titbits</th>
-      <td><p>either a boolean or a vector of characters. If TRUE
-(default for species_mix(qv)), then some objects used in the estimation of
-the model"'"s parameters are returned in a list entitled "titbits" in the
-model object. Some functions, for example plot.species_mix(qv) and
-predict.species_mix(qv), will require some or all of these pieces of
-information. If titbits=FALSE (default for species_mix.multifit(qv)),
-then an empty list is returned. If a character vector, then just those
-objects are returned. Possible values are:"Y" for the outcome matrix, "X"
-for the model matrix for the SAM model, "offset" for the offset in the model,
-"site_spp_weights" for the model weights, "archetype_formula" for the formula
-for the SAMs, "species_formula" for the formula for the species-specific
-model, "control" for the control arguments used in model fitting, "family" for
-the conditional distribution of the species data. Care needs to be taken when
-using titbits=TRUE in species_mix.multifit(qv) calls as titbits is created
-for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then
-setting titbits=TRUE may give users problems with memory.</p></td>
+      <th>...</th>
+      <td><p>other arguments</p></td>
     </tr>
     </table>
 
+    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
+
+    <p>This function should return a list of data.frames one for each focal.predictor.
+This will enable user to predict marginal effects or plot the partial response plots.</p>
     <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
-    <p>species_mix is used to fit mixtures of glms to multivariate
-species data. The function uses BFGS to optimize the mixture likelihood.
-There is the option to use ECM algorithm to get appropriate starting
-parameters. `species_mix` acts as a wrapper for species_mix.fit
-that allows for easier data input. The data frames are merged into
-the appropriate format for the use in species_mix.fit.
-Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
-'poisson', 'ippm' (inhomogeneous Poisson point process), 'negative.binomial',
-'tweedie' and 'gaussian' distributions can be fitted using the species_mix
-function.</p>
+    <p>Generate data for plotting or predicting partial effects of covariates</p>
+<p>This function produces a list of data.frames for predicting the partial
+effect of a focal.predictor current included in a species_mix model.</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
     <pre class="examples"><div class='input'><span class='co'># \donttest{</span>
@@ -297,19 +194,71 @@ x2<span class='op'>=</span><span class='fu'>stats</span><span class='fu'>::</spa
 <span class='va'>dat</span><span class='op'>[</span>,<span class='op'>-</span><span class='fl'>1</span><span class='op'>]</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/scale.html'>scale</a></span><span class='op'>(</span><span class='va'>dat</span><span class='op'>[</span>,<span class='op'>-</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>)</span>
 <span class='va'>simulated_data</span> <span class='op'>&lt;-</span> <span class='fu'><a href='species_mix.simulate.html'>species_mix.simulate</a></span><span class='op'>(</span>archetype_formula <span class='op'>=</span> <span class='va'>sam_form</span>,species_formula <span class='op'>=</span> <span class='va'>sp_form</span>,
 data <span class='op'>=</span> <span class='va'>dat</span>,beta<span class='op'>=</span><span class='va'>beta</span>,family<span class='op'>=</span><span class='st'>"bernoulli"</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; <span class='message'>Random alpha from normal (-1,0.5) distribution</span></div><div class='input'><span class='va'>fm1</span> <span class='op'>&lt;-</span> <span class='fu'>species_mix</span><span class='op'>(</span>archetype_formula <span class='op'>=</span> <span class='va'>sam_form</span>,species_formula <span class='op'>=</span> <span class='va'>sp_form</span>,
+</div><div class='output co'>#&gt; <span class='message'>Random alpha from normal (-1,0.5) distribution</span></div><div class='input'><span class='va'>fm1</span> <span class='op'>&lt;-</span> <span class='fu'><a href='species_mix.html'>species_mix</a></span><span class='op'>(</span>archetype_formula <span class='op'>=</span> <span class='va'>sam_form</span>,species_formula <span class='op'>=</span> <span class='va'>sp_form</span>,
 data <span class='op'>=</span> <span class='va'>simulated_data</span>, family <span class='op'>=</span> <span class='st'>'bernoulli'</span>,  nArchetypes<span class='op'>=</span><span class='fl'>3</span><span class='op'>)</span>
 </div><div class='output co'>#&gt; <span class='message'>SAM modelling</span></div><div class='output co'>#&gt; <span class='message'>There are 3 archetypes to group the species into</span></div><div class='output co'>#&gt; <span class='message'>There are 100 site observations for 20 species</span></div><div class='output co'>#&gt; <span class='message'>The model for the archetype (grouping) is ~x1 + x2</span></div><div class='output co'>#&gt; <span class='message'>The model for the species is ~1</span></div><div class='output co'>#&gt; <span class='message'>You are implementing a bernoulli Species Archetype Model.</span></div><div class='output co'>#&gt; <span class='message'>Using ECM algorithm to find starting values; using 1refits</span></div><div class='output co'>#&gt; <span class='message'>ECM restart 1 of 1</span></div><div class='output co'>#&gt; <span class='message'>Initialising starting values</span></div><div class='output co'>#&gt; <span class='message'>Initial groups parameter estimates by K-means clustering with random noise</span></div><div class='output co'>#&gt; Iteration:  1 | New loglik -967.597 | Ratio loglik 0 
 #&gt; Iteration:  2 | New loglik -841.415 | Ratio loglik 0.8695924 
 #&gt; Iteration:  3 | New loglik -841.416 | Ratio loglik 1 
 #&gt; initial  value 841.774554 
-#&gt; iter  10 value 820.622024
-#&gt; iter  20 value 819.994235
-#&gt; iter  30 value 819.991372
-#&gt; iter  30 value 819.991362
-#&gt; iter  30 value 819.991362
-#&gt; final  value 819.991362 
-#&gt; converged</div><div class='input'> <span class='co'># }</span>
+#&gt; iter  10 value 820.166960
+#&gt; iter  20 value 819.991704
+#&gt; final  value 819.991378 
+#&gt; converged</div><div class='input'><span class='fu'>effectPlotData</span><span class='op'>(</span><span class='st'>"x1"</span>,<span class='va'>fm1</span><span class='op'>)</span>
+</div><div class='output co'>#&gt; $x1
+#&gt;             x1           x2
+#&gt; 1  -1.73619885 3.295975e-17
+#&gt; 2  -1.66937720 3.295975e-17
+#&gt; 3  -1.60255555 3.295975e-17
+#&gt; 4  -1.53573391 3.295975e-17
+#&gt; 5  -1.46891226 3.295975e-17
+#&gt; 6  -1.40209062 3.295975e-17
+#&gt; 7  -1.33526897 3.295975e-17
+#&gt; 8  -1.26844733 3.295975e-17
+#&gt; 9  -1.20162568 3.295975e-17
+#&gt; 10 -1.13480403 3.295975e-17
+#&gt; 11 -1.06798239 3.295975e-17
+#&gt; 12 -1.00116074 3.295975e-17
+#&gt; 13 -0.93433910 3.295975e-17
+#&gt; 14 -0.86751745 3.295975e-17
+#&gt; 15 -0.80069581 3.295975e-17
+#&gt; 16 -0.73387416 3.295975e-17
+#&gt; 17 -0.66705252 3.295975e-17
+#&gt; 18 -0.60023087 3.295975e-17
+#&gt; 19 -0.53340922 3.295975e-17
+#&gt; 20 -0.46658758 3.295975e-17
+#&gt; 21 -0.39976593 3.295975e-17
+#&gt; 22 -0.33294429 3.295975e-17
+#&gt; 23 -0.26612264 3.295975e-17
+#&gt; 24 -0.19930100 3.295975e-17
+#&gt; 25 -0.13247935 3.295975e-17
+#&gt; 26 -0.06565771 3.295975e-17
+#&gt; 27  0.00116394 3.295975e-17
+#&gt; 28  0.06798559 3.295975e-17
+#&gt; 29  0.13480723 3.295975e-17
+#&gt; 30  0.20162888 3.295975e-17
+#&gt; 31  0.26845052 3.295975e-17
+#&gt; 32  0.33527217 3.295975e-17
+#&gt; 33  0.40209381 3.295975e-17
+#&gt; 34  0.46891546 3.295975e-17
+#&gt; 35  0.53573711 3.295975e-17
+#&gt; 36  0.60255875 3.295975e-17
+#&gt; 37  0.66938040 3.295975e-17
+#&gt; 38  0.73620204 3.295975e-17
+#&gt; 39  0.80302369 3.295975e-17
+#&gt; 40  0.86984533 3.295975e-17
+#&gt; 41  0.93666698 3.295975e-17
+#&gt; 42  1.00348862 3.295975e-17
+#&gt; 43  1.07031027 3.295975e-17
+#&gt; 44  1.13713192 3.295975e-17
+#&gt; 45  1.20395356 3.295975e-17
+#&gt; 46  1.27077521 3.295975e-17
+#&gt; 47  1.33759685 3.295975e-17
+#&gt; 48  1.40441850 3.295975e-17
+#&gt; 49  1.47124014 3.295975e-17
+#&gt; 50  1.53806179 3.295975e-17
+#&gt; 
+#&gt; attr(,"class")
+#&gt; [1] "species_mix_effectPlotData"</div><div class='input'><span class='co'># }</span>
 </div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

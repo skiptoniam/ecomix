@@ -18,7 +18,6 @@ species_mix(
   power = 1.6,
   control = list(),
   inits = NULL,
-  standardise = FALSE,
   titbits = TRUE
 )
 }
@@ -56,8 +55,8 @@ nsites*(nspecies+const+covariates).}
 \item{nArchetypes}{The number of archetypes (mixing components/groups) to estimate from the data.}
 
 \item{family}{The family of statistical family to use within
-the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
-"negative.binomial" and "gaussian" families are possible and applicable
+the ecomix models. a  choice between "bernoulli", "binomial", "poisson", "ippm",
+"negative.binomial", "tweedie" and "gaussian" families are possible and applicable
 to specific types of data.}
 
 \item{offset}{a numeric vector of length nrow(data) (n sites) that is
@@ -84,8 +83,6 @@ See details.}
 for species_mix coefficients. These are family specific, but at a
 minimum you will need pis (additive_logitic transformed), alpha
 (intercepts) and beta (mixing coefs).}
-
-\item{standardise}{Boolean. If TRUE, standardise the covariate data.}
 
 \item{titbits}{either a boolean or a vector of characters. If TRUE
 (default for species_mix(qv)), then some objects used in the estimation of

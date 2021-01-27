@@ -102,8 +102,7 @@ testthat::test_that('species mix binomial', {
   testthat::expect_s3_class(fm1,'species_mix')
 
   fm2 <- species_mix(sam_form, sp_form, data = simulated_data, family = 'binomial',
-                     nArchetypes = 3, control=list(em_prefit = FALSE), size = size,
-                     standardise = FALSE)
+                     nArchetypes = 3, control=list(em_prefit = FALSE), size = size)
   testthat::expect_s3_class(fm2,'species_mix')
 
 })

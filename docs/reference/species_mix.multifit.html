@@ -81,7 +81,7 @@ The multiple starts will enable optimisation of the loglikelihood using multiple
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">ecomix</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.0.3</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0.0</span>
       </span>
     </div>
 
@@ -104,7 +104,7 @@ The multiple starts will enable optimisation of the loglikelihood using multiple
   </a>
   <ul class="dropdown-menu" role="menu">
     <li>
-      <a href="../articles/RCP-example.html">RCP-example</a>
+      <a href="../articles/RCP-example.html">Region of Common Profiles Example</a>
     </li>
     <li>
       <a href="../articles/SAM-example.html">Species Archetype Model Example</a>
@@ -113,7 +113,12 @@ The multiple starts will enable optimisation of the loglikelihood using multiple
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
-        
+        <li>
+  <a href="https://github.com/skiptoniam/ecomix/">
+    <span class="fab fa-github fa-lg"></span>
+     
+  </a>
+</li>
       </ul>
       
     </div><!--/.nav-collapse -->
@@ -128,7 +133,7 @@ The multiple starts will enable optimisation of the loglikelihood using multiple
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>species_mix.multifit</h1>
-    
+    <small class="dont-index">Source: <a href='https://github.com/skiptoniam/ecomix/blob/master/R/species_mix-class.R'><code>R/species_mix-class.R</code></a>, <a href='https://github.com/skiptoniam/ecomix/blob/master/R/species_mix_s3-class.R'><code>R/species_mix_s3-class.R</code></a></small>
     <div class="hidden name"><code>species_mix.multifit.Rd</code></div>
     </div>
 
@@ -151,7 +156,6 @@ The multiple starts will enable optimisation of the loglikelihood using multiple
   power <span class='op'>=</span> <span class='fl'>1.6</span>,
   control <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='op'>)</span>,
   inits <span class='op'>=</span> <span class='cn'>NULL</span>,
-  standardise <span class='op'>=</span> <span class='cn'>FALSE</span>,
   titbits <span class='op'>=</span> <span class='cn'>TRUE</span>,
   nstart <span class='op'>=</span> <span class='fl'>10</span>,
   mc.cores <span class='op'>=</span> <span class='fl'>1</span>
@@ -252,10 +256,6 @@ minimum you will need pis (additive_logitic transformed), alpha
 (intercepts) and beta (mixing coefs).</p></td>
     </tr>
     <tr>
-      <th>standardise</th>
-      <td><p>Boolean. If TRUE, standardise the covariate data.</p></td>
-    </tr>
-    <tr>
       <th>titbits</th>
       <td><p>either a boolean or a vector of characters. If TRUE
 (default for species_mix(qv)), then some objects used in the estimation of
@@ -297,7 +297,7 @@ the re-fitting over.</p></td>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
     <pre class="examples"><div class='input'><span class='co'># \donttest{</span>
-<span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'>ecomix</span><span class='op'>)</span>
+<span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://github.com/skiptoniam/ecomix'>ecomix</a></span><span class='op'>)</span>
 <span class='fu'><a href='https://rdrr.io/r/base/Random.html'>set.seed</a></span><span class='op'>(</span><span class='fl'>42</span><span class='op'>)</span>
 <span class='va'>sam_form</span> <span class='op'>&lt;-</span> <span class='fu'>stats</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/r/stats/formula.html'>as.formula</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/paste.html'>paste0</a></span><span class='op'>(</span><span class='st'>'cbind('</span>,<span class='fu'><a href='https://rdrr.io/r/base/paste.html'>paste</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/paste.html'>paste0</a></span><span class='op'>(</span><span class='st'>'spp'</span>,<span class='fl'>1</span><span class='op'>:</span><span class='fl'>20</span><span class='op'>)</span>,
 collapse <span class='op'>=</span> <span class='st'>','</span><span class='op'>)</span>,<span class='st'>")~x1+x2"</span><span class='op'>)</span><span class='op'>)</span>
@@ -314,60 +314,61 @@ data <span class='op'>=</span> <span class='va'>simulated_data</span>, family <s
 #&gt; Iteration:  2 | New loglik -841.415 | Ratio loglik 0.8695924 
 #&gt; Iteration:  3 | New loglik -841.416 | Ratio loglik 1 
 #&gt; initial  value 841.774554 
-#&gt; iter  10 value 820.417577
-#&gt; iter  20 value 819.996523
-#&gt; final  value 819.991374 
+#&gt; iter  10 value 820.166960
+#&gt; iter  20 value 819.991704
+#&gt; final  value 819.991378 
 #&gt; converged</div><div class='input'><span class='va'>fmods</span> <span class='op'>&lt;-</span> <span class='fu'>species_mix.multifit</span><span class='op'>(</span>archetype_formula <span class='op'>=</span> <span class='va'>sam_form</span>,
 species_formula <span class='op'>=</span> <span class='va'>sp_form</span>, data<span class='op'>=</span><span class='va'>simulated_data</span>, family <span class='op'>=</span> <span class='st'>'bernoulli'</span>,
  nstart <span class='op'>=</span> <span class='fl'>10</span>, nArchetypes<span class='op'>=</span><span class='fl'>3</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; <span class='message'>SAM modelling</span></div><div class='output co'>#&gt; <span class='message'>There are 3 archetypes to group the species into</span></div><div class='output co'>#&gt; <span class='message'>There are 100 site observations for 20 species</span></div><div class='output co'>#&gt; <span class='message'>The model for the archetype (grouping) is ~x1 + x2</span></div><div class='output co'>#&gt; <span class='message'>The model for the species is ~1</span></div><div class='output co'>#&gt; <span class='message'>You are implementing a bernoulli Species Archetype Model.</span></div><div class='output co'>#&gt;   |                                                                              |                                                                      |   0%initial  value 849.408885 
-#&gt; iter  10 value 821.207385
-#&gt; iter  20 value 820.036717
-#&gt; iter  30 value 819.993275
-#&gt; final  value 819.991368 
+</div><div class='output co'>#&gt; <span class='message'>SAM modelling</span></div><div class='output co'>#&gt; <span class='message'>Running species_mix.multifit using 10 starts to fit 3 Archetypes to the data.</span></div><div class='output co'>#&gt; <span class='message'>There are 3 archetypes to group the species into</span></div><div class='output co'>#&gt; <span class='message'>There are 100 site observations for 20 species</span></div><div class='output co'>#&gt; <span class='message'>The model for the archetype (grouping) is ~x1 + x2</span></div><div class='output co'>#&gt; <span class='message'>The model for the species is ~1</span></div><div class='output co'>#&gt; <span class='message'>You are implementing a bernoulli Species Archetype Model.</span></div><div class='output co'>#&gt;   |                                                                              |                                                                      |   0%initial  value 849.408885 
+#&gt; iter  10 value 820.592662
+#&gt; iter  20 value 819.996956
+#&gt; final  value 819.991413 
 #&gt; converged
-#&gt; .  |                                                                              |c[_] c[_]                                                             |  11%initial  value 831.984952 
-#&gt; iter  10 value 821.005820
-#&gt; iter  20 value 819.994026
-#&gt; final  value 819.991361 
+#&gt; .  |                                                                              |========                                                              |  11%initial  value 831.984952 
+#&gt; iter  10 value 820.539922
+#&gt; iter  20 value 819.994429
+#&gt; final  value 819.991384 
 #&gt; converged
-#&gt; .  |                                                                              |c[_] c[_] c[_]                                                        |  22%initial  value 827.363760 
-#&gt; iter  10 value 820.116240
-#&gt; iter  20 value 819.991632
+#&gt; .  |                                                                              |================                                                      |  22%initial  value 827.363760 
+#&gt; iter  10 value 820.511317
+#&gt; iter  20 value 819.992079
 #&gt; final  value 819.991359 
 #&gt; converged
-#&gt; .  |                                                                              |c[_] c[_] c[_] c[_] c[_]                                              |  33%initial  value 849.082973 
-#&gt; iter  10 value 820.162775
-#&gt; iter  20 value 819.993693
-#&gt; final  value 819.991362 
+#&gt; .  |                                                                              |=======================                                               |  33%initial  value 849.082973 
+#&gt; iter  10 value 820.990053
+#&gt; iter  20 value 819.992597
+#&gt; final  value 819.991467 
 #&gt; converged
-#&gt; .  |                                                                              |c[_] c[_] c[_] c[_] c[_] c[_]                                         |  44%initial  value 828.749232 
+#&gt; .  |                                                                              |===============================                                       |  44%initial  value 828.749232 
 #&gt; iter  10 value 820.150405
 #&gt; iter  20 value 819.991700
 #&gt; final  value 819.991392 
 #&gt; converged
-#&gt; .  |                                                                              |c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_]                               |  56%initial  value 828.800196 
-#&gt; iter  10 value 820.361489
-#&gt; iter  20 value 819.993382
-#&gt; final  value 819.991369 
+#&gt; .  |                                                                              |=======================================                               |  56%initial  value 828.800196 
+#&gt; iter  10 value 820.105490
+#&gt; iter  20 value 819.991385
+#&gt; final  value 819.991356 
 #&gt; converged
-#&gt; .  |                                                                              |c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_]                          |  67%initial  value 832.757500 
-#&gt; iter  10 value 820.759996
-#&gt; iter  20 value 819.994648
-#&gt; final  value 819.991359 
+#&gt; .  |                                                                              |===============================================                       |  67%initial  value 832.757500 
+#&gt; iter  10 value 820.935637
+#&gt; iter  20 value 819.992060
+#&gt; final  value 819.991364 
 #&gt; converged
-#&gt; .  |                                                                              |c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_]                |  78%initial  value 834.027287 
-#&gt; iter  10 value 820.188849
-#&gt; iter  20 value 819.992184
+#&gt; .  |                                                                              |======================================================                |  78%initial  value 834.027287 
+#&gt; iter  10 value 820.252503
+#&gt; iter  20 value 819.991551
 #&gt; final  value 819.991362 
 #&gt; converged
-#&gt; .  |                                                                              |c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_]           |  89%initial  value 832.880564 
-#&gt; final  value 832.880564 
+#&gt; .  |                                                                              |==============================================================        |  89%initial  value 832.880564 
+#&gt; iter  10 value 820.391756
+#&gt; iter  20 value 819.993360
+#&gt; final  value 819.991375 
 #&gt; converged
-#&gt; .  |                                                                              |c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] c[_] | 100%initial  value 826.819944 
-#&gt; iter  10 value 820.318372
-#&gt; iter  20 value 819.991839
-#&gt; final  value 819.991392 
+#&gt; .  |                                                                              |======================================================================| 100%initial  value 826.819944 
+#&gt; iter  10 value 820.178200
+#&gt; iter  20 value 819.991983
+#&gt; final  value 819.991381 
 #&gt; converged
 #&gt; .</div><div class='input'><span class='co'># }</span>
 

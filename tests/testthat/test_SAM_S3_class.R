@@ -57,7 +57,7 @@ testthat::test_that('species mix generic vcov functions', {
   fm <- species_mix(sam_form, species_formula = ~1, data=simulated_data,
                      family = 'bernoulli', nArchetypes=4, titbits = FALSE)
   fm <- species_mix(sam_form, species_formula = ~1, data=simulated_data,
-                    family = 'bernoulli', nArchetypes=4,standardise = TRUE,
+                    family = 'bernoulli', nArchetypes=4,
                     titbits = FALSE)
 
   vcv_mat_bb <- vcov(object = fm1,method = 'BayesBoot', nboot = 10)

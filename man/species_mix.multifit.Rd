@@ -19,7 +19,6 @@ species_mix.multifit(
   power = 1.6,
   control = list(),
   inits = NULL,
-  standardise = FALSE,
   titbits = TRUE,
   nstart = 10,
   mc.cores = 1
@@ -89,8 +88,6 @@ See details.}
 for species_mix coefficients. These are distribution specific, but at a
 minimum you will need pis (additive_logitic transformed), alpha
 (intercepts) and beta (mixing coefs).}
-
-\item{standardise}{Boolean. If TRUE, standardise the covariate data.}
 
 \item{titbits}{either a boolean or a vector of characters. If TRUE
 (default for species_mix(qv)), then some objects used in the estimation of

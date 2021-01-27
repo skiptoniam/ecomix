@@ -98,8 +98,7 @@ testthat::test_that('species mix ippm', {
   testthat::expect_s3_class(fm1,'species_mix')
 
   fm2 <- species_mix(sam_form, sp_form, simulated_data, distribution = 'ippm',
-                     n_mixtures=3,control=species_mix.control(em_prefit = FALSE),
-                     standardise = FALSE)
+                     n_mixtures=3,control=species_mix.control(em_prefit = FALSE))
   testthat::expect_s3_class(fm2,'species_mix')
 
 
