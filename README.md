@@ -16,8 +16,7 @@ either model at species level (Species Archetype Models) or site level
 
 #### Installation
 
-`ecomix` version 1.0.0 can be install from cran using
-`install.package("ecomix")`.
+<!-- `ecomix` version 1.0.0 can be install from cran using `install.package("ecomix")`. -->
 
 The `ecomix` development can be installed from GitHub using the
 `devtools` package:

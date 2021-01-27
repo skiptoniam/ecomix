@@ -178,7 +178,10 @@ data <span class='op'>=</span> <span class='va'>simulated_data</span>, family <s
 #&gt; Iteration:  2 | New loglik -841.415 | Ratio loglik 0.8695924 
 #&gt; Iteration:  3 | New loglik -841.416 | Ratio loglik 1 
 #&gt; initial  value 841.774554 
-#&gt; final  value 841.774554 
+#&gt; iter  10 value 820.623255
+#&gt; iter  20 value 819.994897
+#&gt; iter  30 value 819.991585
+#&gt; final  value 819.991362 
 #&gt; converged</div><div class='input'><span class='fu'><a href='https://rdrr.io/r/base/print.html'>print</a></span><span class='op'>(</span><span class='va'>fm1</span><span class='op'>)</span><span class='co'># }</span>
 </div><div class='output co'>#&gt; bernoulli species_mix model
 #&gt; 
@@ -188,17 +191,17 @@ data <span class='op'>=</span> <span class='va'>simulated_data</span>, family <s
 #&gt; Coefficents
 #&gt; $alpha
 #&gt;       spp1       spp2       spp3       spp4       spp5       spp6       spp7 
-#&gt; -1.2796030 -2.0419345 -0.4443948 -1.7598296 -1.3517353 -1.5274009 -0.5586093 
+#&gt; -0.8009903 -1.6330986 -0.5742508 -1.0835389 -1.0160933 -1.1722411 -0.7322626 
 #&gt;       spp8       spp9      spp10      spp11      spp12      spp13      spp14 
-#&gt; -1.9578130 -1.2284608 -0.1638988 -1.3741900 -2.2628492 -0.9929487 -0.9929487 
+#&gt; -1.2026781 -1.6398300 -0.1854899 -0.8560118 -1.3896643 -0.7007187 -0.7007187 
 #&gt;      spp15      spp16      spp17      spp18      spp19      spp20 
-#&gt; -0.6745198 -0.5424460 -1.0364157 -0.7924916 -1.9578130 -0.6330127 
+#&gt; -0.8924124 -0.3778050 -1.3837580 -1.0542329 -1.2026781 -0.4294244 
 #&gt; 
 #&gt; $beta
-#&gt;                   x1        x2
-#&gt; Archetype1 -3.093793 -3.837334
-#&gt; Archetype2 -1.034298  1.188753
-#&gt; Archetype3  0.911219  1.842439
+#&gt;                    x1         x2
+#&gt; Archetype1 -2.9040615 -3.5431035
+#&gt; Archetype2 -0.8298450  0.9546709
+#&gt; Archetype3  0.9910874  1.9862775
 #&gt; 
 #&gt; $eta
 #&gt;       eta1       eta2 
