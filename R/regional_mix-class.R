@@ -46,12 +46,9 @@
 #' @export
 #' @examples
 #' \dontrun{
-#' simulated_data <- regional_mix.simulate()
 #' rcp_form <- as.formula(paste0("cbind(",paste(colnames(simulated_data[,1:20]),
 #' collapse = ','),")~1+x1+x2+x3"))
 #' spp_form <- observations ~ 1 + w1 + w2
-#' data <- make_mixture_data(species_data = simulated_data$species_data,
-#'                           covariate_data = simulated_data$covariate_data[,-1])
 #' fm_regional_mix <- regional_mix(rcp_formula=rcp_form,species_formula=spp_form,
 #'                                 data=data, family='bernoulli', nRCP=5)
 #' }
@@ -132,7 +129,7 @@
   #Information criteria
   tmp <- calcInfoCrit( tmp)
   #titbits object, if wanted/needed.
-  tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts,
+  tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts, data,
                                   rcp_formula, species_formula, control,
                                   family, p.w=p.w, power)
   tmp$titbits$disty <- disty
@@ -287,7 +284,7 @@
       #Information criteria
       tmp <- calcInfoCrit( tmp)
       #titbits object, if wanted/needed.
-      tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts,
+      tmp$titbits <- get_titbits_rcp( titbits, outcomes, X, W, offy, wts, data,
                                       rcp_formula, species_formula, control,
                                       family, p.w=p.w, power)
       tmp$titbits$disty <- disty
@@ -597,10 +594,10 @@ function( site.logls, outcomes, family, coef, nRCP, type="deviance", powers=NULL
 
 
 "get_titbits_rcp" <-
-function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, control, family, p.w, power)
+function( titbits, outcomes, X, W, offset, wts, data, rcp_formula, species_formula, control, family, p.w, power)
 {
   if( titbits==TRUE)
-    titbits <- list( Y = outcomes, X = X, W = W, offset = offset, wts=wts, rcp_formula = rcp_formula, species_formula = species_formula, control = control, family = family, power=power)
+    titbits <- list( Y = outcomes, X = X, W = W, offset = offset, wts=wts, data =data, rcp_formula = rcp_formula, species_formula = species_formula, control = control, family = family, power=power)
   else{
     titbits <- list()
     if( "Y" %in% titbits)
@@ -613,6 +610,8 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
       titbits$offset <- offset
     if( "wts" %in% titbits)
       titbits$wts <- wts
+    if( "data" %in% titbits)
+      titbits$data <- data
     if( "rcp_formula" %in% titbits)
       titbits$rcp_formula <- rcp_formula
     if( "species_formula" %in% titbits)
@@ -688,11 +687,6 @@ function( titbits, outcomes, X, W, offset, wts, rcp_formula, species_formula, co
 	mu <- eta / (1+eta)
 	return(mu)
 }
-
-"logLik.regional_mix" <-function (object, ...){
-    return(object$logl)
-}
-
 
 "my.rmvnorm" <-function (n, mean = rep(0, nrow(sigma)), sigma = diag(length(mean)), method = c("eigen", "svd", "chol")){
     if (!isSymmetric(sigma, tol = sqrt(.Machine$double.eps),

@@ -42,8 +42,8 @@
 #' nsites*(nspecies+const+covariates).
 #' @param nArchetypes The number of archetypes (mixing components/groups) to estimate from the data.
 #' @param family The family of statistical family to use within
-#' the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
-#' "negative.binomial" and "gaussian" families are possible and applicable
+#' the ecomix models. a  choice between "bernoulli", "binomial", "poisson", "ippm",
+#' "negative.binomial", "tweedie" and "gaussian" families are possible and applicable
 #' to specific types of data.
 #' @param offset a numeric vector of length nrow(data) (n sites) that is
 #' included into the model as an offset. It is included into the conditional
@@ -63,7 +63,6 @@
 #' for species_mix coefficients. These are family specific, but at a
 #' minimum you will need pis (additive_logitic transformed), alpha
 #' (intercepts) and beta (mixing coefs).
-#' @param standardise Boolean. If TRUE, standardise the covariate data.
 #' @param titbits either a boolean or a vector of characters. If TRUE
 #' (default for species_mix(qv)), then some objects used in the estimation of
 #' the model"'"s parameters are returned in a list entitled "titbits" in the
@@ -107,9 +106,10 @@
                           data, nArchetypes = 3,
                           family="bernoulli", offset=NULL,
                           weights=NULL, bb_weights=NULL, size = NULL, power=1.6,
-                          control=list(), inits=NULL, standardise = FALSE, titbits = TRUE){
+                          control=list(), inits=NULL, titbits = TRUE){
 
-  data <- as.data.frame(data)
+
+  # data <- as.data.frame(data)
   control <- set_control_sam(control)
   if(!control$quiet)
     message( "SAM modelling")
@@ -168,37 +168,15 @@
     message( "There are ", nArchetypes, " archetypes to group the species into")
 
   # get archetype model matrix
-  X <- get_X_sam(archetype_formula = archetype_formula, mf.X = dat$mf.X)
+  Xdat <- get_X_sam(mf.X = dat$mf.X)
+  X <- Xdat$X
+  xterms <- Xdat$mt.x
 
   # what is the W matrix (species covariates)
   W <- get_W_sam(species_formula = species_formula, mf.W = dat$mf.W)
 
-  # what is the U matrix (species covariates)
+  # what is the U matrix (all covariates)
   U <- get_U_sam(all_formula = all_formula, mf.U = dat$mf.U)
-
-  # standarise data if requested.
-  x.means <- NULL
-  x.sds <- NULL
-  w.means <- NULL
-  w.sds <- NULL
-  if (standardise == TRUE) {
-    stand.X <- standardise.X(X)
-    X <- as.matrix(stand.X$X)
-    x.means <- stand.X$dat.means
-    x.sds <- stand.X$dat.sds
-    if(ncol(W)>1){
-      stand.W <- standardise.W(W[,-1,drop=FALSE])
-      W <- as.matrix(cbind(1,stand.W$W))
-      w.means <- stand.W$dat.means
-      w.sds <- stand.W$dat.sds
-    }
-    if(!is.null(U)){
-      stand.U <- standardise.U(U)
-      U <- as.matrix(stand.U$U)
-      u.means <- stand.U$dat.means
-      u.sds <- stand.U$dat.sds
-    }
-  }
 
   #get family
   disty_cases <- c("bernoulli","poisson","ippm",
@@ -265,7 +243,7 @@
   }
 
   #get logls from parameters
-  #calc posterior porbs and pis.
+  #calc posterior probs and pis.
   if(nArchetypes>1){
     fits <- tmp$coefs
     logls_mus <- get_logls_sam(y = y, X = X, W = W, U = U, G = G,
@@ -286,13 +264,14 @@
   tmp$titbits <- get_titbits_sam(titbits, y, X, W, U, spp_weights,
                                  site_spp_weights, offset, y_is_na, size, powers,
                                  archetype_formula, species_formula, all_formula,
-                                 control, disty_cases[disty])
+                                 data, control, disty_cases[disty])
 
   # remove large annoying object if titbits == FALSE
   if(!titbits)
     tmp <- titbit_cleanup(tmp)
 
   tmp2 <- sam_model_clean_up_names(tmp)
+  tmp2$call <- call
 
   class(tmp2) <- c("species_mix")
   return(tmp2)
@@ -414,7 +393,6 @@
 #' for species_mix coefficients. These are distribution specific, but at a
 #' minimum you will need pis (additive_logitic transformed), alpha
 #' (intercepts) and beta (mixing coefs).
-#' @param standardise Boolean. If TRUE, standardise the covariate data.
 #' @param titbits either a boolean or a vector of characters. If TRUE
 #' (default for species_mix(qv)), then some objects used in the estimation of
 #' the model"'"s parameters are returned in a list entitled "titbits" in the
@@ -455,6 +433,7 @@
 #' species_formula = sp_form, data=simulated_data, family = 'bernoulli',
 #'  nstart = 10, nArchetypes=3)
 #' }
+
 "species_mix.multifit" <- function(archetype_formula = NULL,
                                    species_formula = stats::as.formula(~1),
                                    all_formula = NULL,
@@ -463,7 +442,7 @@
                                    weights=NULL, bb_weights=NULL, size = NULL,
                                    power=1.6,
                                    control=list(), inits=NULL,
-                                   standardise = FALSE, titbits = TRUE,
+                                   titbits = TRUE,
                                    nstart = 10,
                                    mc.cores = 1){
 
@@ -480,6 +459,18 @@
               Please provide an archetype_formula -- exitting now")
     return(NULL)
   }
+
+  groupselection <- FALSE
+  if(length(nArchetypes)>1){
+    if(!control$quiet)
+      message(paste0("Running species_mix.multifit to do groups selection from ",nArchetypes[1]," to ",nArchetypes[length(nArchetypes)], " archetypes\nUsing ",nstart," starts per archetype."))
+      groupselection <- TRUE
+   } else if (length(nArchetypes)==1){
+     if(!control$quiet)
+      message(paste0("Running species_mix.multifit using ",nstart," starts to fit ",nArchetypes," Archetypes to the data."))
+   } else {
+     stop("Please provide a single 'nArchetypes' value of a vector of integers to ranging from smallest to largest number of groups")
+   }
 
   which_mix <- check_species_formula(species_formula)
   if(!is.null(species_formula))
@@ -526,37 +517,15 @@
     message( "There are ", nArchetypes, " archetypes to group the species into")
 
   # get archetype model matrix
-  X <- get_X_sam(archetype_formula = archetype_formula, mf.X = dat$mf.X)
+  Xdat <- get_X_sam(mf.X = dat$mf.X)
+  X <- Xdat$X
+  xterms <- Xdat$mt.x
 
   # what is the W matrix (species covariates)
   W <- get_W_sam(species_formula = species_formula, mf.W = dat$mf.W)
 
   # what is the U matrix (species covariates)
   U <- get_U_sam(all_formula = all_formula, mf.U = dat$mf.U)
-
-  # standarise data if requested.
-  x.means <- NULL
-  x.sds <- NULL
-  w.means <- NULL
-  w.sds <- NULL
-  if (standardise == TRUE) {
-    stand.X <- standardise.X(X)
-    X <- as.matrix(stand.X$X)
-    x.means <- stand.X$dat.means
-    x.sds <- stand.X$dat.sds
-    if(ncol(W)>1){
-      stand.W <- standardise.W(W[,-1,drop=FALSE])
-      W <- as.matrix(cbind(1,stand.W$W))
-      w.means <- stand.W$dat.means
-      w.sds <- stand.W$dat.sds
-    }
-    if(!is.null(U)){
-      stand.U <- standardise.U(U)
-      U <- as.matrix(stand.U$U)
-      u.means <- stand.U$dat.means
-      u.sds <- stand.U$dat.sds
-    }
-  }
 
   #get family
   disty_cases <- c("bernoulli","poisson","ippm",
@@ -600,68 +569,140 @@
                                      family,
                                      quiet=control$quiet)
 
-  tmp_fun <- function(x){
-    if( !control$quiet & nstart>1)
-      setTxtProgressBar(pb, x)
-        tmpQuiet <- control$quiet
-        control$quiet <- TRUE
+  if(groupselection){
+
+    tmp_fun1 <- function(x,gg){
+      if( !control$quiet & nstart>1)
+        setTxtProgressBar(pb, x)
+      tmpQuiet <- control$quiet
+      control$quiet <- TRUE
       # fit species mix.
-        G <- nArchetypes
-        tmp <- species_mix.fit(y=y, X=X, W=W, U=U, G=G, S=S,
-                               spp_weights=spp_weights,
-                               site_spp_weights=site_spp_weights,
-                               offset=offset, disty=disty, y_is_na=y_is_na,
-                               size=size, powers=powers, control=control, inits=inits)
+      G <- gg
+      tmp <- species_mix.fit(y=y, X=X, W=W, U=U, G=G, S=S,
+                             spp_weights=spp_weights,
+                             site_spp_weights=site_spp_weights,
+                             offset=offset, disty=disty, y_is_na=y_is_na,
+                             size=size, powers=powers, control=control, inits=inits)
 
-        tmp$family <- disty_cases[disty]
+      tmp$family <- disty_cases[disty]
 
-        if(nArchetypes==1){
-          tmp$pis <- tmp$pis
-        }else{
-          tmp$pis <- additive_logistic(tmp$eta)
-        }
+      if(nArchetypes==1){
+        tmp$pis <- tmp$pis
+      }else{
+        tmp$pis <- additive_logistic(tmp$eta)
+      }
 
-        # get logls from parameters
+      #calc posterior porbs and pis.
+      if(nArchetypes>1){
+        fits <- tmp$coefs
+        logls_mus <- get_logls_sam(y = y, X = X, W = W, U = U, G = G,
+                                   S = S, spp_weights = spp_weights,
+                                   site_spp_weights = site_spp_weights,
+                                   offset = offset, y_is_na = y_is_na,
+                                   disty = disty, size = size,
+                                   powers = powers, control=control,
+                                   fits = fits, get_fitted = FALSE)
+        tmp$taus <- get_taus(tmp$pis,logls_mus$logl_sp,G,S)
+        tmp$pis <- colSums(tmp$taus)/S
+      }
 
-        #calc posterior porbs and pis.
-        if(nArchetypes>1){
-          fits <- tmp$coefs
-          logls_mus <- get_logls_sam(y = y, X = X, W = W, U = U, G = G,
-                                     S = S, spp_weights = spp_weights,
-                                     site_spp_weights = site_spp_weights,
-                                     offset = offset, y_is_na = y_is_na,
-                                     disty = disty, size = size,
-                                     powers = powers, control=control,
-                                     fits = fits, get_fitted = FALSE)
-          tmp$taus <- get_taus(tmp$pis,logls_mus$logl_sp,G,S)
-          tmp$pis <- colSums(tmp$taus)/S
-        }
+      #Information criteria
+      tmp <- calc_info_crit_sam(tmp)
 
-        #Information criteria
-        tmp <- calc_info_crit_sam(tmp)
+      #titbits object, if wanted/needed.
+      tmp$titbits <- get_titbits_sam(titbits, y, X, W, U, spp_weights,
+                                     site_spp_weights, offset, y_is_na, size, powers,
+                                     archetype_formula, species_formula, all_formula,
+                                     data, control, disty_cases[disty])
 
-        #titbits object, if wanted/needed.
-        tmp$titbits <- get_titbits_sam(titbits, y, X, W, U, spp_weights,
-                                       site_spp_weights, offset, y_is_na, size, powers,
-                                       archetype_formula, species_formula, all_formula,
-                                       control, disty_cases[disty])
+      # remove large annoying object if titbits == FALSE
+      if(!titbits)
+        tmp <- titbit_cleanup(tmp)
 
-        # remove large annoying object if titbits == FALSE
-        if(!titbits)
-          tmp <- titbit_cleanup(tmp)
-
-        class(tmp) <- c("species_mix")
+      class(tmp) <- c("species_mix")
       return( tmp)
-   }
+    }
 
-  #    require( parallel)
+    grps_res <- list()
+    for(ii in nArchetypes){
+
+      if( !control$quiet & nstart>1)
+        pb <- txtProgressBar(min = 1, max = nstart, style = 3)
+
+      grps_res[[ii]] <- plapply(seq_len(nstart), tmp_fun1, gg=nArchetypes[ii],
+                                .parallel = mc.cores,
+                                .verbose = !control$quiet)
+
+
+
+    }
+
+
+
+  } else {
+    tmp_fun <- function(x){
+      if( !control$quiet & nstart>1)
+        setTxtProgressBar(pb, x)
+      tmpQuiet <- control$quiet
+      control$quiet <- TRUE
+      # fit species mix.
+      G <- nArchetypes
+      tmp <- species_mix.fit(y=y, X=X, W=W, U=U, G=G, S=S,
+                             spp_weights=spp_weights,
+                             site_spp_weights=site_spp_weights,
+                             offset=offset, disty=disty, y_is_na=y_is_na,
+                             size=size, powers=powers, control=control, inits=inits)
+
+      tmp$family <- disty_cases[disty]
+
+      if(nArchetypes==1){
+        tmp$pis <- tmp$pis
+      }else{
+        tmp$pis <- additive_logistic(tmp$eta)
+      }
+
+      # get logls from parameters
+
+      #calc posterior porbs and pis.
+      if(nArchetypes>1){
+        fits <- tmp$coefs
+        logls_mus <- get_logls_sam(y = y, X = X, W = W, U = U, G = G,
+                                   S = S, spp_weights = spp_weights,
+                                   site_spp_weights = site_spp_weights,
+                                   offset = offset, y_is_na = y_is_na,
+                                   disty = disty, size = size,
+                                   powers = powers, control=control,
+                                   fits = fits, get_fitted = FALSE)
+        tmp$taus <- get_taus(tmp$pis,logls_mus$logl_sp,G,S)
+        tmp$pis <- colSums(tmp$taus)/S
+      }
+
+      #Information criteria
+      tmp <- calc_info_crit_sam(tmp)
+
+      #titbits object, if wanted/needed.
+      tmp$titbits <- get_titbits_sam(titbits, y, X, W, U, spp_weights,
+                                     site_spp_weights, offset, y_is_na, size, powers,
+                                     archetype_formula, species_formula, all_formula,
+                                     data, control, disty_cases[disty])
+
+      # remove large annoying object if titbits == FALSE
+      if(!titbits)
+        tmp <- titbit_cleanup(tmp)
+
+      class(tmp) <- c("species_mix")
+      return( tmp)
+    }
+
   if( !control$quiet & nstart>1)
-    pb <- txtProgressBar(min = 1, max = nstart, style = 3, char = "c[_] ")
+    pb <- txtProgressBar(min = 1, max = nstart, style = 3)
 
    #Fit the model many times
    many_starts <- plapply(seq_len(nstart), tmp_fun,
                          .parallel = mc.cores,
                           .verbose = !control$quiet)
+
+   }
 
    class(many_starts) <- c("species_mix.multifit")
 
@@ -1505,7 +1546,8 @@ starting values;\n starting values are generated using ',control$init_method,
   } else {
     datX <- cbind(W,X,U)
   }
-  tmpform <- as.formula(paste0("mvabund::mvabund(y) ~ - 1 + ",paste0(colnames(datX),collapse = "+")))
+
+  tmpform <- as.formula(paste0("mvabund::mvabund(y) ~ - 1 + ."))
 
   if(disty%in%1){ # bernoulli
     fit1 <- mvabund::manyglm(tmpform, data = datX, offset = offset, family = "binomial")
@@ -2249,6 +2291,18 @@ if(!is.null(U)) {
   return( postProbs)
 }
 
+# check_formula_X_mvabund <- function(formula_X, data) {
+#   ## Remove any response if put into formula. Using this bare bones approach as it works if you have dots in the formula
+#   if(length(as.character(formula_X)) == 3)
+#     stop("formula_X should not have anything on the left hand side of the tilde sign `~'.")
+#
+#   oldform <- stats::as.formula(stats::terms(formula_X, data = data))
+#   newform <- stats::update.formula(oldform, resp ~ .)
+#
+#   return(newform)
+# }
+
+
 "check_species_formula" <- function(f){
 
   if(is.null(f))
@@ -2295,7 +2349,8 @@ if(!is.null(U)) {
 "clean_data_sam" <- function(data, form1, form2, form3=NULL, family){
   if(family=='ippm') na_rule <- "na.pass"
   else  na_rule <- "na.exclude"
-  mf.X <- stats::model.frame(form1, data = data, na.action = na_rule)
+  # form1 <- update.formula(form1, ~ . -1)
+  mf.X <- stats::model.frame(form1, data = data)
   if(is.null(form3)){
     mf.U <- NULL
     if(!is.null( form2)){
@@ -2323,11 +2378,8 @@ if(!is.null(U)) {
       mf.X <- mf.X[rownames( mf.X) %in% ids,, drop=FALSE]
       mf.U <- mf.U[rownames( mf.U) %in% ids,, drop=FALSE]
     }
-
-
   }
   res <- list(ids=ids, mf.X=mf.X, mf.W=mf.W, mf.U=mf.U)
-
   return( res)
 }
 
@@ -2479,16 +2531,15 @@ if(!is.null(U)) {
 }
 
 "get_titbits_sam" <- function(titbits, y, X, W, U, spp_weights, site_spp_weights, offset,
-                              y_is_na, size, powers, archetype_formula, species_formula, all_formula,
-                              control, family)  {
+                              y_is_na, size, powers, archetype_formula, species_formula,
+                              all_formula, data, control, family)  {
   if( titbits==TRUE)
     titbits <- list(Y = y, X = X, W = W, U = U, spp_weights = spp_weights,
                     site_spp_weights = site_spp_weights, offset = offset,
                     y_is_na = y_is_na, size = size, powers=powers,
                     archetype_formula =  archetype_formula,
                     species_formula = species_formula,
-                    all_formula = all_formula,
-                    control = control,
+                    all_formula = all_formula, data = data, control = control,
                     family = family)
   else{
     titbits <- list()
@@ -2518,6 +2569,8 @@ if(!is.null(U)) {
       titbits$species_formula <- species_formula
     if( "all_formula" %in% titbits)
       titbits$all_formula <- all_formula
+    if( "data" %in% titbits)
+      titbits$data <- data
     if( "control" %in% titbits)
       titbits$control <- control
     if( "family" %in% titbits)
@@ -2536,16 +2589,35 @@ if(!is.null(U)) {
   return( exp( a_k - log_denom))
 }
 
-"get_X_sam" <- function(archetype_formula, mf.X){
-  form.X <- archetype_formula
-  form.X[[2]] <- NULL
-  form.X <- stats::as.formula(form.X)
-  X <- stats::model.matrix(form.X, mf.X)
-  tmp.fun <- function(x){ all( x==1)}
-  intercepts <- apply( X, 2, tmp.fun)
-  X <- X[,!intercepts,drop=FALSE]
+"get_X_sam" <- function(mf.X){
 
-  return(as.data.frame(X))
+  mt.x <- terms(mf.X)
+  mt.x <- stats::delete.response(mt.x)
+  X <- stats::model.matrix(mt.x, mf.X)
+
+  delete.intercept <- function(mm) {
+    ## Save the attributes prior to removing the intercept coloumn:
+    saveattr <- attributes(mm)
+    ## Find the intercept coloumn:
+    intercept <- which(saveattr$assign == 0)
+    ## Return if there was no intercept coloumn:
+    if (!length(intercept)) return(mm)
+    ## Remove the intercept coloumn:
+    mm <- mm[,-intercept, drop=FALSE]
+    ## Update the attributes with the new dimensions:
+    saveattr$dim <- dim(mm)
+    saveattr$dimnames <- dimnames(mm)
+    ## Remove the assignment of the intercept from the attributes:
+    saveattr$assign <- saveattr$assign[-intercept]
+    ## Restore the (modified) attributes:
+    attributes(mm) <- saveattr
+    ## Return the model matrix:
+    mm
+  }
+
+  X <- delete.intercept(X)
+
+  return(list(X=X,mt.x=mt.x))
 }
 
 "get_W_sam" <- function(species_formula, mf.W){
@@ -2634,6 +2706,8 @@ if(!is.null(U)) {
     names(mod$coefs$theta) <- mod$names$spp
   }
 
+  colnames(mod$taus) <- mod$names$SAMs
+  rownames(mod$taus) <-mod$names$spp
   return(mod)
 
 }
@@ -2997,26 +3071,26 @@ if(!is.null(U)) {
 
 
 
-"standardise.X" <- function (mat){
-  X = scale(as.matrix(mat))
-  dat.means = apply(as.matrix(mat), 2, mean, na.rm = TRUE)
-  dat.sds = apply(as.matrix(mat), 2, sd, na.rm = TRUE)
-  return(list(X = X, dat.means = dat.means, dat.sds = dat.sds))
-}
-
-"standardise.W" <- function (mat){
-  W = scale(as.matrix(mat))
-  dat.means = apply(as.matrix(mat), 2, mean, na.rm = TRUE)
-  dat.sds = apply(as.matrix(mat), 2, sd, na.rm = TRUE)
-  return(list(W = W, dat.means = dat.means, dat.sds = dat.sds))
-}
-
-"standardise.U" <- function (mat){
-  U = scale(as.matrix(mat))
-  dat.means = apply(as.matrix(mat), 2, mean, na.rm = TRUE)
-  dat.sds = apply(as.matrix(mat), 2, sd, na.rm = TRUE)
-  return(list(U = U, dat.means = dat.means, dat.sds = dat.sds))
-}
+# "standardise.X" <- function (mat){
+#   X = scale(as.matrix(mat))
+#   dat.means = apply(as.matrix(mat), 2, mean, na.rm = TRUE)
+#   dat.sds = apply(as.matrix(mat), 2, sd, na.rm = TRUE)
+#   return(list(X = X, dat.means = dat.means, dat.sds = dat.sds))
+# }
+#
+# "standardise.W" <- function (mat){
+#   W = scale(as.matrix(mat))
+#   dat.means = apply(as.matrix(mat), 2, mean, na.rm = TRUE)
+#   dat.sds = apply(as.matrix(mat), 2, sd, na.rm = TRUE)
+#   return(list(W = W, dat.means = dat.means, dat.sds = dat.sds))
+# }
+#
+# "standardise.U" <- function (mat){
+#   U = scale(as.matrix(mat))
+#   dat.means = apply(as.matrix(mat), 2, mean, na.rm = TRUE)
+#   dat.sds = apply(as.matrix(mat), 2, sd, na.rm = TRUE)
+#   return(list(U = U, dat.means = dat.means, dat.sds = dat.sds))
+# }
 
 
 "titbit_cleanup" <- function(samfit){
