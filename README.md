@@ -11,15 +11,16 @@ developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.re
 
 ecomix is a package to implement statistical models on multivariate
 species data. Two main type of finite mixture models are available which
-either model at species level (Species Archetype Models) or site level
-(Region of Common Profile).
+group multivariate data at the species level (Species Archetype Models;
+using the `species_mix` functions) or site level (Region of Common
+Profiles; using the `regional_mix` functions).
 
 #### Installation
 
 <!-- `ecomix` version 1.0.0 can be install from cran using `install.package("ecomix")`. -->
 
-The `ecomix` development can be installed from GitHub using the
-`devtools` package:
+The development version of `ecomix` can be installed from GitHub using
+the `devtools` package:
 
 ``` r
 devtools::install_github('skiptoniam/ecomix')
