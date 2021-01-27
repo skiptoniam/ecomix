@@ -16,11 +16,22 @@ either model at species level (Species Archetype Models) or site level
 
 #### Installation
 
-`ecomix` is currently under development.
+`ecomix` version 1.0.0 can be install from cran using
+`install.package("ecomix")`.
 
-A version can be installed from GitHub using the `devtools` package:
+The `ecomix` development can be installed from GitHub using the
+`devtools` package:
 
 ``` r
 devtools::install_github('skiptoniam/ecomix')
 library(ecomix)
 ```
+
+An example vignette on how to run and interpret a Species Archetype
+Models (species\_mix) is provided within the package or can be viewed at
+<a href="https://skiptoniam.github.io/ecomix/articles/SAM-example.html" class="uri">https://skiptoniam.github.io/ecomix/articles/SAM-example.html</a>
+
+An example vignette on how to run and interpret a Region of Common
+Profiles model (regional\_mix) is provided with the package or can be
+viewed at
+<a href="https://skiptoniam.github.io/ecomix/articles/RCP-example.html" class="uri">https://skiptoniam.github.io/ecomix/articles/RCP-example.html</a>
