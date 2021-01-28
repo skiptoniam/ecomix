@@ -173,10 +173,16 @@
   xterms <- Xdat$mt.x
 
   # what is the W matrix (species covariates)
-  W <- get_W_sam(species_formula = species_formula, mf.W = dat$mf.W)
+  Wdat <- get_W_sam(mf.W = dat$mf.W)
+  W <- Wdat$W
+  wterms <- Wdat$mt.w
 
   # what is the U matrix (all covariates)
-  U <- get_U_sam(all_formula = all_formula, mf.U = dat$mf.U)
+  Udat <- get_U_sam(mf.U = dat$mf.U)
+  U <- Xdat$U
+  uterms <- Xdat$mt.u
+
+  tt <- list(xterms=xterms,wterms=wterms,uterms=uterms)
 
   #get family
   disty_cases <- c("bernoulli","poisson","ippm",
@@ -272,6 +278,7 @@
 
   tmp2 <- sam_model_clean_up_names(tmp)
   tmp2$call <- call
+  tmp2$terms <- tt
 
   class(tmp2) <- c("species_mix")
   return(tmp2)
@@ -522,10 +529,14 @@
   xterms <- Xdat$mt.x
 
   # what is the W matrix (species covariates)
-  W <- get_W_sam(species_formula = species_formula, mf.W = dat$mf.W)
+  Wdat <- get_W_sam(mf.W = dat$mf.W)
+  W <- Wdat$W
+  wterms <- Wdat$mt.w
 
-  # what is the U matrix (species covariates)
-  U <- get_U_sam(all_formula = all_formula, mf.U = dat$mf.U)
+  # what is the U matrix (all covariates)
+  Udat <- get_U_sam(mf.U = dat$mf.U)
+  U <- Xdat$U
+  uterms <- Xdat$mt.u
 
   #get family
   disty_cases <- c("bernoulli","poisson","ippm",
@@ -1546,6 +1557,8 @@ starting values;\n starting values are generated using ',control$init_method,
   } else {
     datX <- cbind(W,X,U)
   }
+
+  datX <- as.data.frame(datX)
 
   tmpform <- as.formula(paste0("mvabund::mvabund(y) ~ - 1 + ."))
 
@@ -2589,56 +2602,57 @@ if(!is.null(U)) {
   return( exp( a_k - log_denom))
 }
 
+"delete.intercept" <- function(mm) {
+  ## Save the attributes prior to removing the intercept coloumn:
+  saveattr <- attributes(mm)
+  ## Find the intercept coloumn:
+  intercept <- which(saveattr$assign == 0)
+  ## Return if there was no intercept coloumn:
+  if (!length(intercept)) return(mm)
+  ## Remove the intercept coloumn:
+  mm <- mm[,-intercept, drop=FALSE]
+  ## Update the attributes with the new dimensions:
+  saveattr$dim <- dim(mm)
+  saveattr$dimnames <- dimnames(mm)
+  ## Remove the assignment of the intercept from the attributes:
+  saveattr$assign <- saveattr$assign[-intercept]
+  ## Restore the (modified) attributes:
+  attributes(mm) <- saveattr
+  ## Return the model matrix:
+  mm
+}
+
+
 "get_X_sam" <- function(mf.X){
 
   mt.x <- terms(mf.X)
   mt.x <- stats::delete.response(mt.x)
   X <- stats::model.matrix(mt.x, mf.X)
-
-  delete.intercept <- function(mm) {
-    ## Save the attributes prior to removing the intercept coloumn:
-    saveattr <- attributes(mm)
-    ## Find the intercept coloumn:
-    intercept <- which(saveattr$assign == 0)
-    ## Return if there was no intercept coloumn:
-    if (!length(intercept)) return(mm)
-    ## Remove the intercept coloumn:
-    mm <- mm[,-intercept, drop=FALSE]
-    ## Update the attributes with the new dimensions:
-    saveattr$dim <- dim(mm)
-    saveattr$dimnames <- dimnames(mm)
-    ## Remove the assignment of the intercept from the attributes:
-    saveattr$assign <- saveattr$assign[-intercept]
-    ## Restore the (modified) attributes:
-    attributes(mm) <- saveattr
-    ## Return the model matrix:
-    mm
-  }
-
   X <- delete.intercept(X)
 
   return(list(X=X,mt.x=mt.x))
 }
 
-"get_W_sam" <- function(species_formula, mf.W){
-  form.W <- species_formula
-  if(length( form.W)>2)
-      form.W[[2]] <- NULL #get rid of outcomes
-  W <- as.data.frame(model.matrix( form.W, mf.W))
-  colnames(W)[1] <- "const"
-  return(W)
+"get_W_sam" <- function(mf.W){
+
+  mt.w <- terms(mf.W)
+  mt.w <- stats::delete.response(mt.w)
+  W <- stats::model.matrix(mt.w, mf.W)
+
+  return(list(W=W, mt.w=mt.w))
 }
 
-"get_U_sam" <- function(all_formula, mf.U){
-  form.U <- all_formula
+"get_U_sam" <- function(mf.U){
+
   if(!is.null(mf.U)){
-    form.W[[2]] <- NULL #get rid of outcomes
-  form.U <- update(form.U,~.-1)
-  U <- as.data.frame(model.matrix( form.U, mf.U))
+    mt.u <- terms(mf.U)
+    mt.u <- stats::delete.response(mt.u)
+    U <- stats::model.matrix(mt.u, mf.U)
   } else {
     U <- NULL
+    mt.u <- NULL
   }
-  return(U)
+  return(list(U=U,mt.u=mt.u))
 }
 
 

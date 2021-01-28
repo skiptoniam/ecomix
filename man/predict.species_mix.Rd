@@ -13,6 +13,7 @@
   alpha = 0.95,
   mc.cores = 1,
   prediction.type = "archetype",
+  na.action = "na.pass",
   ...
 )
 }
@@ -32,6 +33,8 @@
 \item{mc.cores}{number of cores to use in prediction. default is 1.}
 
 \item{prediction.type}{Do you want to produce 'archetype' or 'species' level predictions. default is 'archetype'.}
+
+\item{na.action}{The type of action to apply to NA data. Default is "na.pass" see predict.lm for more details.}
 
 \item{\\dots}{Ignored}
 }

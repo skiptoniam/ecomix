@@ -200,7 +200,7 @@ samdat_10p <- cbind(spdata,env_200)
 samdat_10p$Time <- as.factor(ifelse(samdat_10p$Time>0,"Night","Day"))
 
 ## Archetype formula
-archetype_formula <- as.formula(paste0(paste0('cbind(',paste(colnames(samdat_10p)[grep("spp",colnames(samdat_10p))],collapse = ", "),") ~poly(Temperature,degree=2,raw=TRUE)+poly(Oxygen,degree=2,raw=TRUE)+poly(Depth,degree=2,raw=TRUE)+poly(Productivity,degree=2,raw=TRUE)+Time")))
+archetype_formula <- as.formula(paste0(paste0('cbind(',paste(colnames(samdat_10p)[grep("spp",colnames(samdat_10p))],collapse = ", "),") ~ poly(Temperature,degree=2,raw=TRUE)+poly(Oxygen,degree=2,raw=TRUE)+poly(Depth,degree=2,raw=TRUE)+poly(Productivity,degree=2,raw=TRUE)+Time")))
 
 ## Species formula
 species_formula <- ~ 1
@@ -211,7 +211,7 @@ sam_fit <- species_mix(archetype_formula = archetype_formula, # Archetype formul
                        data = samdat_10p,            # Data
                        nArchetypes = 3,              # Number of groups (mixtures) to fit
                        family = 'bernoulli',         # Which probability distribution to use
-                       control = list(quiet = TRUE))
+                       control = list(quiet = FALSE))
 ```
 
 #### Model diagnostics and checking
@@ -226,10 +226,6 @@ par(mfrow=c(2,3))
 eff.df <- effectPlotData(focal.predictors = c("Temperature","Oxygen","Productivity","Depth","Time"), sam_fit)
 sam_boot <- species_mix.bootstrap(sam_fit,nboot = 10, quiet = TRUE)
 plot(x = eff.df, object = sam_fit, object2=sam_boot,ylim=c(0,1))
-
-# par(mfrow=c(1,1))
-# eff.df <- effectPlotData(focal.predictors = c("Time"), sam_fit)
-# plot(x = eff.df, object = sam_fit, object2=sam_boot)
 ```
 
 

@@ -636,6 +636,7 @@
 #'@param alpha confidence level. default is 0.95
 #'@param mc.cores number of cores to use in prediction. default is 1.
 #'@param prediction.type Do you want to produce 'archetype' or 'species' level predictions. default is 'archetype'.
+#'@param na.action The type of action to apply to NA data. Default is "na.pass" see predict.lm for more details.
 #'@param \\dots Ignored
 #'@description Predict species archetypes from a species_mix model. You can also predict the conditional species predictions using "prediction.type='species'".
 #'@export
@@ -659,7 +660,8 @@
 
 "predict.species_mix" <- function(object, object2 = NULL, newdata = NULL,
                                   offset = NULL, nboot = 0, alpha = 0.95,
-                                  mc.cores = 1, prediction.type='archetype', ...){
+                                  mc.cores = 1, prediction.type='archetype',
+                                  na.action = "na.pass", ...){
   if (is.null(newdata)) {
     X <- object$titbits$X
     W <- object$titbits$W
@@ -667,37 +669,55 @@
     offset <- object$titbits$offset
   } else {
 
-    arch.fm <- formula(object$titbits$archetype_formula)
-    if (length(arch.fm) == 3) arch.fm[[2]] <- NULL
-    arch.fm <- update(arch.fm,~.-1)
+    ## terms
+    tt <- terms(object)
 
-    test <- model.frame(formula = arch.fm,data = object$titbits$data)
-    attr(test,'predvars')
-
-    # arch.fm <- delete.response(arch.fm)
-    arch.tm <- stats::terms(object$titbits$archetype_formula)
-    arch.tm <- stats::delete.response(arch.tm)
+    ## Set up X based on arch.terms
+    arch.tm <- tt[[1]]
     dat.levels <- lapply(newdata,levels)
-    m <- model.frame(arch.tm, newdata, xlev = dat.levels)
+    mfx <- model.frame(arch.tm, newdata, xlev = dat.levels)
     if (!is.null(cl <- attr(arch.tm, "dataClasses")))
-      .checkMFClasses(cl, m)
+      .checkMFClasses(cl, mfx)
     dat.fac <- vapply(newdata, is.factor, logical(1L))
     contrasts.list <- lapply(dat.fac,function(x)ifelse(x==TRUE,"contr.treatment",NA))
     contrasts.list <- Filter(Negate(anyNA),contrasts.list)
-    X <- model.matrix(arch.tm, m, contrasts.arg = contrasts.list)
-    X <- X[,-1,drop=FALSE]
-    spp.fm <- as.formula(object$titbits$species_formula)
-    all.fm <- as.formula(object$titbits$all_formula)
-    W <- model.matrix(spp.fm, as.data.frame(newdata))
-    # W <- model.matrix(spp.fm, as.data.frame(newdata))
-    if(!is.null(object$titbits$U)){
-      all.fm <- update(all.fm,~.-1)
-      U <- model.matrix(all.fm, as.data.frame(newdata))
+    X <- model.matrix(arch.tm, mfx, contrasts.arg = contrasts.list)
+    X <- delete.intercept(X)
+
+    ## Setup species matrix based on spp.terms
+    spp.tm <- tt[[2]]
+    if(length(attr(spp.tm,"factors"))>0){
+      dat.levels <- lapply(newdata,levels)
     } else {
+      dat.levels <- NULL
+    }
+    mfw <- model.frame(spp.tm, newdata, xlev = dat.levels)
+    if (!is.null(cl <- attr(spp.tm, "dataClasses")))
+      .checkMFClasses(cl, mfw)
+    dat.fac <- vapply(newdata, is.factor, logical(1L))
+    contrasts.list <- lapply(dat.fac,function(x)ifelse(x==TRUE,"contr.treatment",NA))
+    contrasts.list <- Filter(Negate(anyNA),contrasts.list)
+    W <- model.matrix(spp.tm, mfw, contrasts.arg = contrasts.list)
+
+    if(!is.null(object$titbits$U)){
+      all.tm <- tt[[3]]
+      if(length(attr(all.tm,"factors"))>0){
+        dat.levels <- lapply(newdata,levels)
+      } else {
+        dat.levels <- NULL
+      }
+      mfu <- model.frame(all.tm, newdata, xlev = dat.levels)
+      if (!is.null(cl <- attr(all.tm, "dataClasses")))
+        .checkMFClasses(cl, mfu)
+      dat.fac <- vapply(newdata, is.factor, logical(1L))
+      contrasts.list <- lapply(dat.fac,function(x)ifelse(x==TRUE,"contr.treatment",NA))
+      contrasts.list <- Filter(Negate(anyNA),contrasts.list)
+      U <- model.matrix(all.tm, mfu, contrasts.arg = contrasts.list)
+     } else {
       U <- NULL
     }
 
-    offset <- model.frame(arch.fm, data = newdata)
+    offset <- model.frame(arch.tm, data = newdata)
     offset <- model.offset(offset)
   }
 
@@ -1036,6 +1056,25 @@
   colnames(res) <- c("Estimate", "SE", "z-score", "p")
   return(res)
 }
+
+#' @rdname terms.species_mix
+#' @name terms.species_mix
+#' @title Return terms from a fitted species_mix model
+#' @description This function returns a list of terms objects, one for each formula in the species mix model.
+#' \describe{
+#'  \item{xterms}{Are the terms for the archetypes formula.}
+#'  \item{wterms}{Are the terms for the species formula.}
+#'  \item{uterms}{Are the terms for the all/bias formula.}
+#' }
+#' @param x A species_mix model object
+#' @param \\dots Ignored
+#' @export
+"terms.species_mix" <-function (x, ...){
+  tt <- x$terms
+  return(tt)
+}
+
+
 
 #'@rdname vcov.species_mix
 #'@name vcov.species_mix
