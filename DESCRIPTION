@@ -32,9 +32,7 @@ Suggests:
     testthat,
     covr,
     RandomFields, 
-    ggplot2,
-    gridExtra,
-    reshape2
+    RColorBrewer
 Depends:
     R (>= 4.0)
 License: GPL (>= 2)

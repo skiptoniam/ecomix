@@ -53,10 +53,6 @@ We generate a set of simulated environment predictors using Gaussian random fiel
 
 ```{r,echo=TRUE,eval=TRUE,warning=FALSE,message=FALSE}
 library(raster)
-library(reshape2)
-library(ggplot2)
-library(grid)
-library(gridExtra)
 library(RandomFields)
 set.seed(007)
 lenny <- 100
@@ -83,63 +79,71 @@ env_dat<-rasterToPoints(env)
 
 ```{r env plots, fig.width= 4, fig.height= 4, fig.cap="Figure 1. Simulated environmental variables used in Species Archetype Modelling", echo=FALSE}
 # matrix form
-p2a <- ggplot() +
-  geom_raster(data =  env.df, 
-              aes(x = x, y = y, 
-                  fill = Temperature)) + 
-  scale_fill_viridis_c(option = "B")+
-  theme(axis.title.x = element_blank(), 
-        axis.title.y = element_blank(),
-        # axis.text.x = element_text(angle = 30),
-        panel.grid = element_blank(),
-        legend.position = "none") +
-    scale_x_continuous(expand=c(0, 0)) + 
-  scale_y_continuous(expand=c(0, 0))+
-  ggtitle('Temperature')+coord_fixed()
+pal <- function (name, flip = FALSE) {
+  cols <- RColorBrewer::brewer.pal(9, name)
+  if (flip) cols <- rev(cols)
+  colorRampPalette(cols)
+}
 
-p2b <- ggplot() +
-  geom_raster(data =  env.df, 
-              aes(x = x, y = y, 
-                  fill = Oxygen)) + 
-  scale_fill_viridis_c(option = "C")+
-  theme(axis.title.x = element_blank(), 
-        axis.title.y = element_blank(),
-        # axis.text.x = element_text(angle = 30),
-        panel.grid = element_blank(),
-        legend.position = "none") +
-    scale_x_continuous(expand=c(0, 0)) + 
-  scale_y_continuous(expand=c(0, 0))+
-  ggtitle('Oxygen')+coord_fixed()
+# plot a map for a single covariate
+plot_cov <- function (coords, values, pal, title) {
 
-p2c <- ggplot() +
-  geom_raster(data =  env.df, 
-              aes(x = x, y = y, 
-                  fill = Depth)) + 
-  scale_fill_viridis_c(option = "E")+
-  theme(axis.title.x = element_blank(), 
-        axis.title.y = element_blank(),
-        # axis.text.x = element_text(angle = 30),
-        panel.grid = element_blank(),
-        legend.position = "none") +
-    scale_x_continuous(expand=c(0, 0)) + 
-  scale_y_continuous(expand=c(0, 0))+
-  ggtitle('Depth')+coord_fixed()
+  # build a raster
+  data <- data.frame(values)
+  coordinates(data) <- coords
+  spdf <- SpatialPixelsDataFrame(data, tol = 0.0001, data = data.frame(data))
+  ras <- raster(spdf, values = TRUE)
 
-p2d <- ggplot() +
-  geom_raster(data =  env.df, 
-              aes(x = x, y = y, 
-                  fill = Productivity)) + 
-  scale_fill_viridis_c()+
-  theme(axis.title.x = element_blank(), 
-        axis.title.y = element_blank(),
-        # axis.text.x = element_text(angle = 30),
-        panel.grid = element_blank(),
-        legend.position = "none") +
-    scale_x_continuous(expand=c(0, 0)) + 
-  scale_y_continuous(expand=c(0, 0))+
-  ggtitle('Productivity')+coord_fixed()
-  
-grid.arrange(p2a, p2b, p2c, p2d, nrow = 2)
+  # plot
+  plot(ras, col = pal(100),
+       legend = FALSE,
+       axes = FALSE,
+       box = FALSE)
+
+  # add title
+  mtext(
+    title,
+    side = 3,
+    cex = 1.2 )
+
+}
+
+# plot all the covariates
+plot_covariates <- function (covariates) {
+
+  covs <- colnames(covariates)[-(1:2)]
+  coords <- covariates[, c("x", "y")]
+
+  palettes <- list(
+    Temperature = pal("YlOrRd"),
+    Oxygen = pal("BuPu"),
+    Depth = pal("YlGnBu"),
+    Productivity = pal("YlGn")
+  )
+
+  titles <- list(
+   Temperature = "Temperature",
+   Oxygen = "Oxygen",
+   Depth = "Depth",
+   Productivity = "Productivity"
+  )
+
+  # temporarily set the plot panel configuration
+  mfrow <- par()$mfrow
+  on.exit(par(mfrow = mfrow), add = TRUE)
+  par(mfrow = c(2, 2), mar=c(2,0,2,0))
+  for (cov in covs) {
+    plot_cov(
+      coords = coords,
+      values = covariates[, cov],
+      pal = palettes[[cov]],
+      title = titles[[cov]]
+    )
+  }
+
+}
+
+plot_covariates(env.df)
 ```
 
 #### Model fitting

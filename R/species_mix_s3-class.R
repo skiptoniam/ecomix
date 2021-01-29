@@ -9,9 +9,8 @@
 
 "AIC.species_mix" <- function (object, k=NULL, ...){
 
-  effect.param <- length(object$beta) + object$G + object$S + ifelse(ncol(object$titbits$W)>1,ncol(W)-1,0)*object$S +
-    ifelse(!is.null(object$titbits$U),ncol(object$titbits$U),0) +
-    ifelse(object$family %in% c("negative.binomial","tweedie","gaussian"),object$S,0)
+  effect.param <- length(object$beta) + object$G + object$S + object$npw*object$S +
+    object$npu + ifelse(object$family %in% c("negative.binomial","tweedie","gaussian"),object$S,0)
   p <- effect.param
   if (is.null(k))
     k <- 2
@@ -29,10 +28,9 @@
 
 ## This needs fixing because it includes the null coefs.
 "BIC.species_mix" <-  function (object, ...){
-  effect.param <- length(object$beta) + object$G + object$S + ifelse(ncol(object$titbits$W)>1,ncol(W)-1,0)*object$S +
-    ifelse(!is.null(object$titbits$U),ncol(object$titbits$U),0) +
-    ifelse(object$family %in% c("negative.binomial","tweedie","gaussian"),object$S,0)
-  p <- effect.param #length(unlist(object$coefs))
+  effect.param <- length(object$beta) + object$G + object$S + object$npw*object$S +
+    object$npu + ifelse(object$family %in% c("negative.binomial","tweedie","gaussian"),object$S,0)
+  p <- effect.param
   k <- log(object$n)
   star.ic <- -2 * object$logl + k * p
   return(star.ic)
@@ -622,6 +620,73 @@
   abline( h=0)
 
   # }
+}
+
+#' @rdname plot.species_mix.multifit
+#' @name plot.species_mix.multifit
+#' @title plot.species_mix.multifit
+#' @param x a fitted species_mix.multifit object.
+#' @param type What type of response to plot options are "BIC", "AIC" or "logLik".
+#' @param \\dots Extra plotting arguments.
+#' @details Plot BIC or other likelihood based indices from multiple fit object.
+#' @export
+#' @importFrom stats BIC AIC
+
+"plot.species_mix.multifit" <- function(x, type=c("BIC","AIC","logLik"), ...){
+
+  if(x$groupselection){
+  grps <- x$nArchetypes
+  nSAMs_fm <- x$multiple_fits
+  SAMsamp_ll <- sapply( nSAMs_fm, function(x) sapply( x, function(y) y$logl))
+  SAMsamp_AICs <- sapply( nSAMs_fm, function(x) sapply( x, function(y) AIC(y)))
+  SAMsamp_BICs <- sapply( nSAMs_fm, function(x) sapply( x, function(y) BIC(y)))
+  SAMsamp_Gs <- sapply( nSAMs_fm, function(x) sapply( x, function(y) y$G))
+  SAMsamp_minPosteriorSites <- sapply( nSAMs_fm, function(y) sapply( y, function(x) min( colSums( x$taus))))
+  SAMsamp_ObviouslyBad <- which(SAMsamp_minPosteriorSites < 0.5)
+
+  #ll
+  SAMsamp_ll[SAMsamp_ObviouslyBad] <- NA
+  SAMsamp_ll <- matrix(SAMsamp_ll, nrow = length(nSAMs_fm[[1]]))
+  SAMsamp_minll <- apply( SAMsamp_ll, 2, min, na.rm=TRUE)
+
+  # AIC
+  SAMsamp_AICs[SAMsamp_ObviouslyBad] <- NA
+  SAMsamp_AICs <- matrix(SAMsamp_AICs, nrow = length(nSAMs_fm[[1]]))
+  SAMsamp_minAICs <- apply( SAMsamp_AICs, 2, min, na.rm=TRUE)
+
+  #BIC
+  SAMsamp_BICs[SAMsamp_ObviouslyBad] <- NA
+  SAMsamp_BICs <- matrix(SAMsamp_BICs, nrow = length(nSAMs_fm[[1]]))
+  SAMsamp_minBICs <- apply( SAMsamp_BICs, 2, min, na.rm=TRUE)
+
+  type <- match.arg(type)
+
+  if(type=="AIC"){
+    df2a <- data.frame(grps=grps,indice=SAMsamp_minAICs)
+    df2b <- data.frame(grps=rep( grps, each=nrow( SAMsamp_AICs)),indice=as.numeric(SAMsamp_AICs))
+  }
+  if(type=="BIC"){
+  df2a <- data.frame(grps=grps,indice=SAMsamp_minBICs)
+  df2b <- data.frame(grps=rep( grps, each=nrow( SAMsamp_BICs)),indice=as.numeric(SAMsamp_BICs))
+  }
+  if(type=="logLik"){
+    df2a <- data.frame(grps=grps,indice=SAMsamp_minll)
+    df2b <- data.frame(grps=rep( grps, each=nrow( SAMsamp_ll)),indice=as.numeric(SAMsamp_ll))
+  }
+
+  plot(indice~grps,
+       data = df2a,
+       pch=16,
+       ylab=type,
+       xlab="nArchetypes")
+  lines(indice~grps,
+        data = df2a)
+  points(indice~grps,data=df2b,pch=16)
+
+  } else {
+    message('Cannot plot because you have not done group selection.')
+  }
+
 }
 
 

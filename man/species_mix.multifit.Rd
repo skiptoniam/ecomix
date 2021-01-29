@@ -19,7 +19,7 @@ species_mix.multifit(
   power = 1.6,
   control = list(),
   inits = NULL,
-  titbits = TRUE,
+  titbits = FALSE,
   nstart = 10,
   mc.cores = 1
 )

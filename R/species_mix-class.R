@@ -449,7 +449,7 @@
                                    weights=NULL, bb_weights=NULL, size = NULL,
                                    power=1.6,
                                    control=list(), inits=NULL,
-                                   titbits = TRUE,
+                                   titbits = FALSE,
                                    nstart = 10,
                                    mc.cores = 1){
 
@@ -538,6 +538,8 @@
   U <- Xdat$U
   uterms <- Xdat$mt.u
 
+  tt <- list(xterms=xterms,wterms=wterms,uterms=uterms)
+
   #get family
   disty_cases <- c("bernoulli","poisson","ippm",
                    "negative.binomial","tweedie",
@@ -580,144 +582,105 @@
                                      family,
                                      quiet=control$quiet)
 
-  if(groupselection){
 
-    tmp_fun1 <- function(x,gg){
-      if( !control$quiet & nstart>1)
-        setTxtProgressBar(pb, x)
-      tmpQuiet <- control$quiet
-      control$quiet <- TRUE
-      # fit species mix.
-      G <- gg
-      tmp <- species_mix.fit(y=y, X=X, W=W, U=U, G=G, S=S,
-                             spp_weights=spp_weights,
-                             site_spp_weights=site_spp_weights,
-                             offset=offset, disty=disty, y_is_na=y_is_na,
-                             size=size, powers=powers, control=control, inits=inits)
+  tmp_fun <- function(x,gg){
+    if( !control$quiet & nstart>1)
+      setTxtProgressBar(pb, x)
+    tmpQuiet <- control$quiet
+    control$quiet <- TRUE
+    # fit species mix.
+    G <- gg
+    tmp <- species_mix.fit(y=y, X=X, W=W, U=U, G=G, S=S,
+                           spp_weights=spp_weights,
+                           site_spp_weights=site_spp_weights,
+                           offset=offset, disty=disty, y_is_na=y_is_na,
+                           size=size, powers=powers, control=control, inits=inits)
 
-      tmp$family <- disty_cases[disty]
+    tmp$family <- disty_cases[disty]
 
-      if(nArchetypes==1){
-        tmp$pis <- tmp$pis
-      }else{
-        tmp$pis <- additive_logistic(tmp$eta)
-      }
+    tmp$S <- S;
+    tmp$G <- G;
+    tmp$npx <- ncol(X);
+    tmp$npw <- ifelse(ncol(W)>1,ncol(W),0);
+    tmp$npu <- ifelse(!is.null(U),ncol(U),0);
 
-      #calc posterior porbs and pis.
-      if(nArchetypes>1){
-        fits <- tmp$coefs
-        logls_mus <- get_logls_sam(y = y, X = X, W = W, U = U, G = G,
-                                   S = S, spp_weights = spp_weights,
-                                   site_spp_weights = site_spp_weights,
-                                   offset = offset, y_is_na = y_is_na,
-                                   disty = disty, size = size,
-                                   powers = powers, control=control,
-                                   fits = fits, get_fitted = FALSE)
-        tmp$taus <- get_taus(tmp$pis,logls_mus$logl_sp,G,S)
-        tmp$pis <- colSums(tmp$taus)/S
-      }
-
-      #Information criteria
-      tmp <- calc_info_crit_sam(tmp)
-
-      #titbits object, if wanted/needed.
-      tmp$titbits <- get_titbits_sam(titbits, y, X, W, U, spp_weights,
-                                     site_spp_weights, offset, y_is_na, size, powers,
-                                     archetype_formula, species_formula, all_formula,
-                                     data, control, disty_cases[disty])
-
-      # remove large annoying object if titbits == FALSE
-      if(!titbits)
-        tmp <- titbit_cleanup(tmp)
-
-      class(tmp) <- c("species_mix")
-      return( tmp)
+    if(G==1){
+      tmp$pis <- tmp$pis
+    }else{
+      tmp$pis <- additive_logistic(tmp$eta)
     }
 
-    grps_res <- list()
+    #get logls from parameters
+    #calc posterior probs and pis.
+    if(G>1){
+      fits <- tmp$coefs
+      logls_mus <- get_logls_sam(y = y, X = X, W = W, U = U, G = G,
+                                 S = S, spp_weights = spp_weights,
+                                 site_spp_weights = site_spp_weights,
+                                 offset = offset, y_is_na = y_is_na,
+                                 disty = disty, size = size,
+                                 powers = powers, control=control,
+                                 fits = fits, get_fitted = FALSE)
+      tmp$taus <- get_taus(tmp$pis,logls_mus$logl_sp,G,S)
+      tmp$pis <- colSums(tmp$taus)/S
+    }
+
+    #Information criteria
+    tmp <- calc_info_crit_sam(tmp)
+
+    #titbits object, if wanted/needed.
+    tmp$titbits <- get_titbits_sam(titbits, y, X, W, U, spp_weights,
+                                   site_spp_weights, offset, y_is_na, size, powers,
+                                   archetype_formula, species_formula, all_formula,
+                                   data, control, disty_cases[disty])
+
+    # remove large annoying object if titbits == FALSE
+    if(!titbits)
+      tmp <- titbit_cleanup(tmp)
+
+    tmp2 <- sam_model_clean_up_names(tmp)
+    tmp2$call <- call
+    tmp2$terms <- tt
+
+    class(tmp2) <- c("species_mix")
+    return(tmp2)
+  }
+
+
+  if(groupselection){
+
+    many_starts <- list()
     for(ii in nArchetypes){
 
       if( !control$quiet & nstart>1)
         pb <- txtProgressBar(min = 1, max = nstart, style = 3)
 
-      grps_res[[ii]] <- plapply(seq_len(nstart), tmp_fun1, gg=nArchetypes[ii],
+      # G <- nArchetypes[ii]
+      many_starts[[ii]] <- plapply(seq_len(nstart), tmp_fun, gg = nArchetypes[ii],
                                 .parallel = mc.cores,
                                 .verbose = !control$quiet)
 
-
-
     }
-
-
 
   } else {
-    tmp_fun <- function(x){
-      if( !control$quiet & nstart>1)
-        setTxtProgressBar(pb, x)
-      tmpQuiet <- control$quiet
-      control$quiet <- TRUE
-      # fit species mix.
-      G <- nArchetypes
-      tmp <- species_mix.fit(y=y, X=X, W=W, U=U, G=G, S=S,
-                             spp_weights=spp_weights,
-                             site_spp_weights=site_spp_weights,
-                             offset=offset, disty=disty, y_is_na=y_is_na,
-                             size=size, powers=powers, control=control, inits=inits)
-
-      tmp$family <- disty_cases[disty]
-
-      if(nArchetypes==1){
-        tmp$pis <- tmp$pis
-      }else{
-        tmp$pis <- additive_logistic(tmp$eta)
-      }
-
-      # get logls from parameters
-
-      #calc posterior porbs and pis.
-      if(nArchetypes>1){
-        fits <- tmp$coefs
-        logls_mus <- get_logls_sam(y = y, X = X, W = W, U = U, G = G,
-                                   S = S, spp_weights = spp_weights,
-                                   site_spp_weights = site_spp_weights,
-                                   offset = offset, y_is_na = y_is_na,
-                                   disty = disty, size = size,
-                                   powers = powers, control=control,
-                                   fits = fits, get_fitted = FALSE)
-        tmp$taus <- get_taus(tmp$pis,logls_mus$logl_sp,G,S)
-        tmp$pis <- colSums(tmp$taus)/S
-      }
-
-      #Information criteria
-      tmp <- calc_info_crit_sam(tmp)
-
-      #titbits object, if wanted/needed.
-      tmp$titbits <- get_titbits_sam(titbits, y, X, W, U, spp_weights,
-                                     site_spp_weights, offset, y_is_na, size, powers,
-                                     archetype_formula, species_formula, all_formula,
-                                     data, control, disty_cases[disty])
-
-      # remove large annoying object if titbits == FALSE
-      if(!titbits)
-        tmp <- titbit_cleanup(tmp)
-
-      class(tmp) <- c("species_mix")
-      return( tmp)
-    }
-
-  if( !control$quiet & nstart>1)
-    pb <- txtProgressBar(min = 1, max = nstart, style = 3)
+    if( !control$quiet & nstart>1)
+        pb <- txtProgressBar(min = 1, max = nstart, style = 3)
 
    #Fit the model many times
-   many_starts <- plapply(seq_len(nstart), tmp_fun,
+   many_starts <- plapply(seq_len(nstart), tmp_fun, gg = nArchetypes,
                          .parallel = mc.cores,
                           .verbose = !control$quiet)
 
    }
 
-   class(many_starts) <- c("species_mix.multifit")
+   res <- list(multiple_fits = many_starts,
+              nArchetypes=nArchetypes,
+              groupselection=groupselection)
 
-   return(many_starts)
+
+   class(res) <- c("species_mix.multifit")
+
+   return(res)
 }
 
 #' @rdname species_mix.bootstrap
@@ -1157,7 +1120,7 @@
         new.logl <- do.estep$logl
         diff.logl <- abs(new.logl/cw.logl)
 
-        if(!control$quiet) cat("Iteration: ", counter, "| New loglik", round(new.logl,3),  "| Ratio loglik", diff.logl, "\n");
+        if(!control$quiet) message(paste0("Iteration: ", counter, "| New loglik ", round(new.logl,3),  " | Ratio loglik ", round(diff.logl,6)));
 
         cw.logl <- new.logl
         counter <- counter + 1
@@ -1165,8 +1128,6 @@
     }
 
     if(new.logl > mod$logl) {
-      # mod$S <- S; mod$G <- G; mod$npx <- ncol(X); mod$npw <- ifelse(ncol(W)>1,ncol(W),0);
-      # mod$npu <- ifelse(!is.null(U),ncol(U),0); mod$n <- n; mod$disty <- disty;
       mod <- list(logl = new.logl, alpha = fits$alpha, beta = fits$beta,
                   eta = additive_logistic(fits$pis, inv = TRUE)[-G],
                   gamma = fits$gamma, delta = fits$delta,

@@ -118,10 +118,6 @@ h[\mathbb{E}(y_{ij}|\phi_{k})] = \alpha_j + g_k(X_{i}^\top\beta_{k}) + \nu_i \ta
 <p>We generate a set of simulated environment predictors using Gaussian random fields with nugget effects on some of the variables.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/raster">raster</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/hadley/reshape">reshape2</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://ggplot2.tidyverse.org">ggplot2</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">grid</span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">gridExtra</span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://ms.math.uni-mannheim.de/de/publications/software/randomfields">RandomFields</a></span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">007</span><span class="op">)</span>
 <span class="va">lenny</span> <span class="op">&lt;-</span> <span class="fl">100</span>
@@ -190,28 +186,27 @@ collapse <span class="op">=</span> <span class="st">','</span><span class="op">)
                                        data <span class="op">=</span> <span class="va">env_200</span>,
                                        nArchetypes <span class="op">=</span> <span class="fl">3</span>,
                                        family <span class="op">=</span> <span class="st">"bernoulli"</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://ggplot2.tidyverse.org">ggplot2</a></span><span class="op">)</span>
-<span class="va">df1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>occ<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/raster/man/rowSums.html">colSums</a></span><span class="op">(</span><span class="va">simulated_data200</span><span class="op">[</span>,<span class="fl">1</span><span class="op">:</span><span class="fl">100</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>
-<span class="va">p2a</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span><span class="va">df1</span><span class="op">)</span><span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_histogram.html">geom_histogram</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x<span class="op">=</span><span class="va">occ</span><span class="op">)</span>,bins <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/raster/man/unique.html">unique</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/raster/man/rowSums.html">colSums</a></span><span class="op">(</span><span class="va">simulated_data200</span><span class="op">[</span>,<span class="fl">1</span><span class="op">:</span><span class="fl">100</span><span class="op">]</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">+</span>
-          <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html">geom_vline</a></span><span class="op">(</span>xintercept <span class="op">=</span> <span class="fl">10</span>,colour<span class="op">=</span><span class="st">'red'</span><span class="op">)</span><span class="op">+</span>
-        <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html">ylab</a></span><span class="op">(</span><span class="st">"Count of Species"</span><span class="op">)</span><span class="op">+</span>
-        <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html">xlab</a></span><span class="op">(</span><span class="st">"Number of Species's Occurrences"</span><span class="op">)</span><span class="op">+</span>
-        <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html">ggtitle</a></span><span class="op">(</span><span class="st">"a)"</span><span class="op">)</span>
-<span class="va">p2a</span>  </code></pre></div>
-<div class="figure">
-<img src="SAM-example_files/figure-html/unnamed-chunk-4-1.png" alt="Figure 2. The simulated occurrences for the 100 species. We will remove all species with less than 10 presences across all 200 sites. " width="700"><p class="caption">
-Figure 2. The simulated occurrences for the 100 species. We will remove all species with less than 10 presences across all 200 sites.
-</p>
-</div>
 </div>
 <div id="model-fitting-and-evaluation" class="section level4">
 <h4 class="hasAnchor">
 <a href="#model-fitting-and-evaluation" class="anchor"></a>Model fitting and evaluation</h4>
 <p>We have generated occurrence records for 100 synthetic species across the 200 randomly surveyed sites. Because we have presence and absence data we can fit a SAM with a Bernoulli family. In this example, we may chose to remove the rare species (&lt; 10 occurrences across all sites). These species could be potentially included in the model, but would likely create noise and unexplained variance, making the model harder to fit and estimate <span class="citation">(Hui <em>et al.</em> 2013)</span>.</p>
-<p>In this, example we fit linear parameters for the five simulated covariates Temperature, Oxygen, Depth, Productivity &amp; Time. We do this to demonstrate a simple simulated example where can show the known response of covariates to simulated data. We include time as a factor, which represents the time in which the simulated sample was recorded, for these data the two factors are ‘Day’ or ‘Night’.</p>
-<p>Below is a small code block with a basic example on how to fit a single species_mix model.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">count</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/raster/man/rowSums.html">colSums</a></span><span class="op">(</span><span class="va">simulated_data200</span><span class="op">[</span>,<span class="fl">1</span><span class="op">:</span><span class="fl">100</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>
+<span class="va">occur</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/raster/man/names.html">names</a></span><span class="op">(</span><span class="va">count</span><span class="op">)</span><span class="op">)</span>
+<span class="va">mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/raster/man/as.data.frame.html">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html">cbind</a></span><span class="op">(</span><span class="va">occur</span>,<span class="va">count</span><span class="op">)</span><span class="op">)</span>
+<span class="va">df1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/raster/man/merge.html">merge</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>occur <span class="op">=</span> <span class="fl">0</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">max</a></span><span class="op">(</span><span class="va">mat</span><span class="op">[</span>,<span class="fl">1</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>, <span class="va">mat</span>, all.x<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span>
+<span class="va">df1</span><span class="op">$</span><span class="va">count</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">df1</span><span class="op">$</span><span class="va">count</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0</span> 
+<span class="va">bp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/raster/man/barplot.html">barplot</a></span><span class="op">(</span><span class="va">count</span><span class="op">~</span><span class="va">occur</span>, data<span class="op">=</span> <span class="va">df1</span>, xaxt<span class="op">=</span><span class="st">'n'</span>, ylab<span class="op">=</span><span class="st">"Count of Species"</span>,xlab<span class="op">=</span><span class="st">"Number of Species's Occurrences"</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/r/graphics/abline.html">abline</a></span><span class="op">(</span>v<span class="op">=</span><span class="fl">10</span>,col<span class="op">=</span><span class="st">'red'</span>,lwd<span class="op">=</span><span class="fl">2</span><span class="op">)</span>
+<span class="va">bpdf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">cbind</a></span><span class="op">(</span><span class="va">bp</span>,<span class="va">df1</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/r/graphics/axis.html">axis</a></span><span class="op">(</span><span class="fl">1</span>, at<span class="op">=</span><span class="va">bp</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">25</span>,<span class="fl">50</span>,<span class="fl">75</span>,<span class="fl">100</span>,<span class="fu"><a href="https://rdrr.io/pkg/raster/man/ncell.html">nrow</a></span><span class="op">(</span><span class="va">bpdf</span><span class="op">)</span><span class="op">-</span><span class="fl">1</span><span class="op">)</span><span class="op">+</span><span class="fl">1</span>,<span class="fl">1</span><span class="op">]</span>, labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">25</span>,<span class="fl">50</span>,<span class="fl">75</span>,<span class="fl">100</span>,<span class="st">""</span><span class="op">)</span>,las<span class="op">=</span><span class="fl">1</span><span class="op">)</span></code></pre></div>
+<div class="figure">
+<img src="SAM-example_files/figure-html/unnamed-chunk-4-1.png" alt="Figure 2. The simulated occurrences for the 100 species. We will remove all species with less than 10 presences across all 200 sites. " width="700"><p class="caption">
+Figure 2. The simulated occurrences for the 100 species. We will remove all species with less than 10 presences across all 200 sites.
+</p>
+</div>
+<p>In this, example we fit independent polynomials with two degrees of freedom for the four simulated covariates Temperature, Oxygen, Depth &amp; Productivity. We do this to demonstrate a simple simulated example where can show the known response of covariates to simulated data. We include time as a factor, which represents the time in which the simulated samples were recorded, for these data the two factors are ‘Day’ or ‘Night’. But additional discrete times could be included such as years. Below is a small code block with a basic example on how to fit a single species_mix model.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">## load the ecomix package</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/skiptoniam/ecomix">ecomix</a></span><span class="op">)</span>
@@ -223,7 +218,7 @@ Figure 2. The simulated occurrences for the 100 species. We will remove all spec
 <span class="va">samdat_10p</span><span class="op">$</span><span class="va">Time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/raster/man/factor.html">as.factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ifelse.html">ifelse</a></span><span class="op">(</span><span class="va">samdat_10p</span><span class="op">$</span><span class="va">Time</span><span class="op">&gt;</span><span class="fl">0</span>,<span class="st">"Night"</span>,<span class="st">"Day"</span><span class="op">)</span><span class="op">)</span>
 
 <span class="co">## Archetype formula</span>
-<span class="va">archetype_formula</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/formula.html">as.formula</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">'cbind('</span>,<span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html">colnames</a></span><span class="op">(</span><span class="va">samdat_10p</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html">grep</a></span><span class="op">(</span><span class="st">"spp"</span>,<span class="fu"><a href="https://rdrr.io/r/base/colnames.html">colnames</a></span><span class="op">(</span><span class="va">samdat_10p</span><span class="op">)</span><span class="op">)</span><span class="op">]</span>,collapse <span class="op">=</span> <span class="st">", "</span><span class="op">)</span>,<span class="st">") ~poly(Temperature,degree=2,raw=TRUE)+poly(Oxygen,degree=2,raw=TRUE)+poly(Depth,degree=2,raw=TRUE)+poly(Productivity,degree=2,raw=TRUE)+Time"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
+<span class="va">archetype_formula</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/formula.html">as.formula</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">'cbind('</span>,<span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html">colnames</a></span><span class="op">(</span><span class="va">samdat_10p</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html">grep</a></span><span class="op">(</span><span class="st">"spp"</span>,<span class="fu"><a href="https://rdrr.io/r/base/colnames.html">colnames</a></span><span class="op">(</span><span class="va">samdat_10p</span><span class="op">)</span><span class="op">)</span><span class="op">]</span>,collapse <span class="op">=</span> <span class="st">", "</span><span class="op">)</span>,<span class="st">") ~ poly(Temperature,degree=2,raw=TRUE)+poly(Oxygen,degree=2,raw=TRUE)+poly(Depth,degree=2,raw=TRUE)+poly(Productivity,degree=2,raw=TRUE)+Time"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
 
 <span class="co">## Species formula</span>
 <span class="va">species_formula</span> <span class="op">&lt;-</span> <span class="op">~</span> <span class="fl">1</span>
@@ -233,155 +228,70 @@ Figure 2. The simulated occurrences for the 100 species. We will remove all spec
                        species_formula <span class="op">=</span> <span class="va">species_formula</span>,    <span class="co"># Species formula</span>
                        data <span class="op">=</span> <span class="va">samdat_10p</span>,            <span class="co"># Data</span>
                        nArchetypes <span class="op">=</span> <span class="fl">3</span>,              <span class="co"># Number of groups (mixtures) to fit</span>
-                       family <span class="op">=</span> <span class="st">'bernoulli'</span>,         <span class="co"># Which probability distribution to use</span>
+                       family <span class="op">=</span> <span class="st">'bernoulli'</span>,         <span class="co"># Which family to use</span>
                        control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>quiet <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+</div>
+<div id="group-selection" class="section level4">
+<h4 class="hasAnchor">
+<a href="#group-selection" class="anchor"></a>Group selection</h4>
+<p>One challenge when developing SAMs (or any finite mixture model) is selecting <span class="math inline">\(k\)</span>; the number of groups (archetypes) in the model. The number of archetypes is latent, so must be estimated from the data and the functional form of the covariates. In this example, we know that the optimal number of groups for these data is three, because we simulated the data with these characteristics. However, <span class="math inline">\(k\)</span> is generally not known in real world applications. So one import part of the fitting process is finding <span class="math inline">\(k\)</span>, having said that it is also totally fine to define <span class="math inline">\(k\)</span> for say a management objective. We can estimate the “best” number of groups based on the most parsimonious fit to the data. We can do this based on the model log-likelihood, and information criterion such as BIC. We provide a function <code>species_mix.multifit</code> which can assist in group selection if a vector of archetypes is provided. Below is an example of how one might do this. For simplicity we have left the <code>nstart=1</code>, but for more complex models this could be increased to use multiple starts to help search to loglikelihood.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">nArchetypes</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="fl">6</span>
+<span class="va">sam_multifit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/species_mix.multifit.html">species_mix.multifit</a></span><span class="op">(</span>archetype_formula <span class="op">=</span> <span class="va">archetype_formula</span>, <span class="co"># Archetype formula</span>
+                                     species_formula <span class="op">=</span> <span class="va">species_formula</span>,     <span class="co"># Species formula</span>
+                                     data <span class="op">=</span> <span class="va">samdat_10p</span>,                     <span class="co"># Data</span>
+                                     nArchetypes <span class="op">=</span> <span class="va">nArchetypes</span>,             <span class="co"># Number of groups (mixtures) to fit</span>
+                                     nstart <span class="op">=</span> <span class="fl">1</span>,                            <span class="co"># The number of fits per archetype.</span>
+                                     family <span class="op">=</span> <span class="st">'bernoulli'</span>,                  <span class="co"># Which family to use</span>
+                                     control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>quiet <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/pkg/raster/man/plot.html">plot</a></span><span class="op">(</span><span class="va">sam_multifit</span>,type<span class="op">=</span><span class="st">"BIC"</span><span class="op">)</span></code></pre></div>
+<div class="figure">
+<img src="SAM-example_files/figure-html/unnamed-chunk-6-1.png" alt="Figure 3. Group selection from multiple fit function, we can see that three archetypes is the best fit to these data based on Bayesian Information Criterion (BIC)." width="480"><p class="caption">
+Figure 3. Group selection from multiple fit function, we can see that three archetypes is the best fit to these data based on Bayesian Information Criterion (BIC).
+</p>
+</div>
 </div>
 <div id="model-diagnostics-and-checking" class="section level4">
 <h4 class="hasAnchor">
 <a href="#model-diagnostics-and-checking" class="anchor"></a>Model diagnostics and checking</h4>
-<p>Once we selected the ‘best’ model we can start to explore the model fit via diagnostics and checks. Typically, we would look at the model residuals to understand the model diagnostics <span class="citation">(Warton <em>et al.</em> 2015)</span>. Here we present the random quantile residuals <span class="citation">(Dunn &amp; Smyth 1996)</span> versus the fitted values from the model (fig. 2b). We can see the residuals, presented on a species by species level, are approximately randomly distributed along the fitted line, which suggests nothing is untoward with the model fit.</p>
-<p>We can also look at the parameter estimates from the model, because we simulated the data from known parameters it is easy to show that we can recapture these parameters (fig. 2c &amp; 2d). To get credible intervals on the SAM parameters we can use a simulation approach via a Bayesian bootstrap to present variances in the parameter estimates. In Fig. 2c, we show the species intercepts (<span class="math inline">\(\alpha_j\)</span>), these are the underling occurrence of each species, we can see the estimated values of <span class="math inline">\(alpha_j\)</span> are closely correlated with the true values. In Fig. 2b, we show the archetype specific covariates for each environmental covariate.</p>
-<p>We can also plot the partial responses of covariates as shown in <span class="citation">Dunstan <em>et al.</em> (2011)</span> &amp; <span class="citation">Hui <em>et al.</em> (2013)</span>. The idea behind this approach is to understand the response of archetype or species to a focal predictor. First we need to set up a data.frame which allows the focal.predictor to vary and averages over the other effects in the model. We show how to do this in the next code chunk. We can include estimates of uncertainty in the partial response plots by including a bootstrap object into the plot function.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<p>Once we selected the ‘best’ model we can start to explore the model fit via diagnostics and checks. Typically, we would look at the model residuals to understand the model diagnostics <span class="citation">(Warton <em>et al.</em> 2015)</span>. Here we present the random quantile residuals <span class="citation">(Dunn &amp; Smyth 1996)</span> versus the fitted values from the model. We can see the residuals, presented on a species by species level, are approximately randomly distributed along the fitted line, which suggests nothing is untoward with the model fit.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/raster/man/plot.html">plot</a></span><span class="op">(</span><span class="va">sam_fit</span>,fitted.scale <span class="op">=</span> <span class="st">'logit'</span><span class="op">)</span></code></pre></div>
+<div class="figure">
+<img src="SAM-example_files/figure-html/unnamed-chunk-7-1.png" alt="Figure 4. Random quantile residuals for all species in the fitted model." width="768"><p class="caption">
+Figure 4. Random quantile residuals for all species in the fitted model.
+</p>
+</div>
+<p>We can also look at the random quantile residuals for a single species</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/raster/man/plot.html">plot</a></span><span class="op">(</span><span class="va">sam_fit</span>,fitted.scale <span class="op">=</span> <span class="st">'logit'</span>, species<span class="op">=</span><span class="st">"spp3"</span><span class="op">)</span></code></pre></div>
+<div class="figure">
+<img src="SAM-example_files/figure-html/unnamed-chunk-8-1.png" alt="Figure 5. Random quantile residuals for spp3 from the fitted model." width="768"><p class="caption">
+Figure 5. Random quantile residuals for spp3 from the fitted model.
+</p>
+</div>
+<p>We can also plot the partial responses of covariates as shown in <span class="citation">Dunstan <em>et al.</em> (2011)</span> &amp; <span class="citation">Hui <em>et al.</em> (2013)</span>. The idea behind this approach is to understand the response of archetypes to a focal predictor. Firstly, we need to set up a data.frame which allows the focal.predictor to vary and averages over the other effects in the model. We demonstrate how to this in the next code chunk. We can include estimates of uncertainty in the partial response plots by including a bootstrap object into the plot function, otherwise the mean response is plotted without uncertainty in the partial response.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span>mfrow<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">c</a></span><span class="op">(</span><span class="fl">2</span>,<span class="fl">3</span><span class="op">)</span><span class="op">)</span>
 <span class="va">eff.df</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/effectPlotData.regional_mix.html">effectPlotData</a></span><span class="op">(</span>focal.predictors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">c</a></span><span class="op">(</span><span class="st">"Temperature"</span>,<span class="st">"Oxygen"</span>,<span class="st">"Productivity"</span>,<span class="st">"Depth"</span>,<span class="st">"Time"</span><span class="op">)</span>, <span class="va">sam_fit</span><span class="op">)</span>
 <span class="va">sam_boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/species_mix.bootstrap.html">species_mix.bootstrap</a></span><span class="op">(</span><span class="va">sam_fit</span>,nboot <span class="op">=</span> <span class="fl">10</span>, quiet <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
 <span class="co">#&gt; ..........</span>
-<span class="fu"><a href="https://rdrr.io/pkg/raster/man/plot.html">plot</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">eff.df</span>, object <span class="op">=</span> <span class="va">sam_fit</span>, object2<span class="op">=</span><span class="va">sam_boot</span>,ylim<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1</span><span class="op">)</span><span class="op">)</span>
-
-<span class="co"># par(mfrow=c(1,1))</span>
-<span class="co"># eff.df &lt;- effectPlotData(focal.predictors = c("Time"), sam_fit)</span>
-<span class="co"># plot(x = eff.df, object = sam_fit, object2=sam_boot)</span></code></pre></div>
-<p><img src="SAM-example_files/figure-html/partial%20plots-1.png" width="576"></p>
+<span class="fu"><a href="https://rdrr.io/pkg/raster/man/plot.html">plot</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">eff.df</span>, object <span class="op">=</span> <span class="va">sam_fit</span>, object2<span class="op">=</span><span class="va">sam_boot</span>,ylim<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<div class="figure">
+<img src="SAM-example_files/figure-html/partial%20plots-1.png" alt="Figure 6. Partial response plots for each covariate in the model." width="576"><p class="caption">
+Figure 6. Partial response plots for each covariate in the model.
+</p>
+</div>
 </div>
 <div id="model-prediction" class="section level4">
 <h4 class="hasAnchor">
 <a href="#model-prediction" class="anchor"></a>Model prediction</h4>
-<p>We can generate model prediction for the each archetype in ecomix using <code><a href="https://rdrr.io/pkg/raster/man/predict.html">predict()</a></code> function. The default is used to generate a point mean estimate for each archetype. With the inclusion of a species mix bootstrap object generated from <code>species_mix.bootstrap</code> we can also provide estimates of uncertainty or standard error for each prediction. We can see spatial predict the point mean and standard error in the predicted distributions of each archetype (Fig. 3e &amp; 3f). We can also see the spatial response of each archetype is strongly correlated to it’s environmental response to each covariate (Fig. 2). For example, archetype two has a strong response to depth (Fig. 3e), which is evident in the archetype responses (Fig. 3d).</p>
-<!-- ```{r, echo = FALSE, eval=TRUE, message=FALSE, warning= FALSE} -->
-<!-- resids.sam <- residuals(fms[[3]][[1]]) -->
-<!-- colnames(resids.sam) <- paste0("spp",1:fms[[3]][[1]]$S) -->
-<!-- sppID <- rep( TRUE, fms[[3]][[1]]$S) -->
-<!-- preds <- predict(fms[[3]][[1]],prediction.type = "species") -->
-<!-- link <- make.link("logit") -->
-<!-- df <- data.frame(idx = 1:nrow(resids.sam),resids.sam) -->
-<!-- dfm <- reshape2::melt(df,id.var='idx') -->
-<!-- dfm$preds <- c(link$linkfun(preds)) -->
-<!-- colnames(dfm) <- c("idx","Species","SAM","preds") -->
-<!-- getPalette = colorRampPalette(RColorBrewer::brewer.pal(9, "Set1")) -->
-<!-- colourCount = length(unique(dfm$Species)) -->
-<!-- library(ggplot2) -->
-<!-- p2b <- ggplot(dfm,aes(x=preds,y=SAM,colour=Species))+ -->
-<!--       geom_point()+ -->
-<!--       scale_color_manual(values = getPalette(colourCount))+ -->
-<!--       xlab("Fitted values (logit scale)")+ -->
-<!--       ylab("RQR")+ -->
-<!--       ggtitle("b)")+ -->
-<!--       theme(legend.position = "none") -->
-<!-- ``` -->
-<!-- ```{r,echo=FALSE,message=FALSE, warning= FALSE} -->
-<!-- mod_spp <- length(fms[[3]][[1]]$alpha) -->
-<!-- alphaBoot <- sam3_boot[,1:mod_spp] -->
-<!-- set.seed(42) -->
-<!-- df <- data.frame(x = rep(1:10,each=5), y = rnorm(50)) -->
-<!-- library(ggplot2) -->
-<!-- library(dplyr) -->
-<!-- library(reshape2) -->
-<!-- colnames(alphaBoot) <- fms[[3]][[1]]$names$spp -->
-<!-- dfm <- melt(alphaBoot) -->
-<!-- df.summary <- dfm %>% group_by(Var2) %>% -->
-<!--     summarize(ylq = quantile(value,0.025), -->
-<!--               yuq = quantile(value,0.975), -->
-<!--               ymean = mean(value)) -->
-<!-- df.summary$alpha_true <- alphas[-which(colSums(simulated_data200[,1:100])<10)] -->
-<!-- p2c <- ggplot(df.summary, aes(x = alpha_true, y = ymean)) + -->
-<!--         geom_point(size = 2,col='dodgerblue') + -->
-<!--         geom_errorbar(aes(ymin = ylq, ymax = yuq),col='dodgerblue')+ -->
-<!--         geom_abline(intercept=0,slope=1)+ -->
-<!--         ylab("Estimated Alphas")+ -->
-<!--         xlab("Known Alphas")+ -->
-<!--         ggtitle("c)") -->
-<!-- betaBoot <- sam3_boot[,-1:-mod_spp] -->
-<!-- betaBoot <- betaBoot[,-13:-ncol(sam3_boot)] -->
-<!-- colnames(betaBoot) <- paste0(substr(rep(fms[[3]][[1]]$names$Xvars,each=3), start = 1, stop = 2),".",c("A1","A2","A3")) -->
-<!-- dfm <- melt(betaBoot) -->
-<!-- df.summary2 <- dfm %>% group_by(Var2) %>% -->
-<!--     summarize(ylq = quantile(value,0.025), -->
-<!--               yuq = quantile(value,0.975), -->
-<!--               ymean = mean(value)) -->
-<!-- df.summary2$beta_true <- as.numeric(betas[c(2,3,1),]) -->
-<!-- p2d <- ggplot(df.summary2, aes(x = forcats::fct_rev(Var2), y = ymean)) + -->
-<!--         geom_point(size = 2,col='dodgerblue') + -->
-<!--         geom_linerange(aes(ymin = ylq, ymax = yuq),col='dodgerblue')+ -->
-<!--         geom_point(aes(x = Var2, y = beta_true),size = 2,col='tomato') + -->
-<!--         coord_flip()+ -->
-<!--         ylab("Beta value")+ -->
-<!--         xlab("Name of Beta")+ -->
-<!--         ggtitle("d)") -->
-<!-- ``` -->
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://ggplot2.tidyverse.org">ggplot2</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/hadley/reshape">reshape2</a></span><span class="op">)</span>
-<span class="va">env.df</span><span class="op">$</span><span class="va">Time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html">factor</a></span><span class="op">(</span><span class="st">"Day"</span>,levels<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">c</a></span><span class="op">(</span><span class="st">"Day"</span>,<span class="st">"Night"</span><span class="op">)</span><span class="op">)</span>
-<span class="va">sam3_pred</span> <span class="op">&lt;-</span> <span class="fu">ecomix</span><span class="fu">:::</span><span class="fu"><a href="../reference/predict.species_mix.html">predict.species_mix</a></span><span class="op">(</span><span class="va">sam_fit</span>, <span class="va">sam_boot</span>, newdata<span class="op">=</span><span class="va">env.df</span><span class="op">)</span>
-
-<span class="va">pred.df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>x<span class="op">=</span><span class="va">env.df</span><span class="op">$</span><span class="va">x</span>,y<span class="op">=</span><span class="va">env.df</span><span class="op">$</span><span class="va">y</span>,<span class="va">sam3_pred</span><span class="op">$</span><span class="va">ptPreds</span><span class="op">)</span>
-<span class="va">pred.dfm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/reshape2/man/melt.html">melt</a></span><span class="op">(</span><span class="va">pred.df</span>,id.vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">c</a></span><span class="op">(</span><span class="st">"x"</span>,<span class="st">"y"</span><span class="op">)</span><span class="op">)</span>
-
-<span class="va">pred.dfse</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>x<span class="op">=</span><span class="va">env.df</span><span class="op">$</span><span class="va">x</span>,y<span class="op">=</span><span class="va">env.df</span><span class="op">$</span><span class="va">y</span>,<span class="va">sam3_pred</span><span class="op">$</span><span class="va">bootSEs</span><span class="op">)</span>
-<span class="va">pred.dfmse</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/reshape2/man/melt.html">melt</a></span><span class="op">(</span><span class="va">pred.dfse</span>,id.vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">c</a></span><span class="op">(</span><span class="st">"x"</span>,<span class="st">"y"</span><span class="op">)</span><span class="op">)</span>
-
-<span class="va">p3a</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_tile.html">geom_raster</a></span><span class="op">(</span>data <span class="op">=</span>  <span class="va">pred.dfm</span>,<span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">y</span>,fill<span class="op">=</span><span class="va">value</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_brewer.html">scale_fill_distiller</a></span><span class="op">(</span>palette <span class="op">=</span> <span class="st">"PuOr"</span>,direction <span class="op">=</span> <span class="op">-</span><span class="fl">1</span><span class="op">)</span><span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html">labs</a></span><span class="op">(</span>fill<span class="op">=</span><span class="st">"Pr"</span><span class="op">)</span><span class="op">+</span>
-  <span class="co"># guide_legend(size = guide_legend(title.position="top", title.hjust = 0.5))+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html">theme</a></span><span class="op">(</span>axis.title.x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html">element_blank</a></span><span class="op">(</span><span class="op">)</span>,
-        axis.title.y <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html">element_blank</a></span><span class="op">(</span><span class="op">)</span>,
-        <span class="co"># axis.text.x = element_text(angle = 30),</span>
-        panel.grid <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html">element_blank</a></span><span class="op">(</span><span class="op">)</span>,
-        legend.position<span class="op">=</span><span class="st">"bottom"</span>,
-        legend.box<span class="op">=</span><span class="st">"horizontal"</span>,
-        legend.key.size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/grid/unit.html">unit</a></span><span class="op">(</span><span class="fl">0.3</span>, <span class="st">"cm"</span><span class="op">)</span>,
-        legend.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html">element_text</a></span><span class="op">(</span>size<span class="op">=</span><span class="fl">6</span><span class="op">)</span>,
-       legend.title <span class="op">=</span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html">element_text</a></span><span class="op">(</span>size<span class="op">=</span><span class="fl">8</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_grid.html">facet_grid</a></span><span class="op">(</span><span class="va">variable</span><span class="op">~</span><span class="va">.</span>,switch <span class="op">=</span> <span class="st">"y"</span><span class="op">)</span><span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html">scale_x_continuous</a></span><span class="op">(</span>expand<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html">scale_y_continuous</a></span><span class="op">(</span>expand<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html">ggtitle</a></span><span class="op">(</span><span class="st">'a)'</span><span class="op">)</span><span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/coord_fixed.html">coord_fixed</a></span><span class="op">(</span><span class="op">)</span>
-
-<span class="va">pinks</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/grDevices/colorRamp.html">colorRampPalette</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">c</a></span><span class="op">(</span><span class="st">"white"</span>,<span class="st">"lightpink"</span>,<span class="st">"pink"</span><span class="op">)</span><span class="op">)</span>
-
-<span class="va">p3b</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_tile.html">geom_raster</a></span><span class="op">(</span>data <span class="op">=</span>  <span class="va">pred.dfmse</span>,<span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">y</span>,fill<span class="op">=</span><span class="va">value</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
- <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_gradient.html">scale_fill_gradientn</a></span><span class="op">(</span>colours<span class="op">=</span><span class="fu">pinks</span><span class="op">(</span><span class="fl">4</span><span class="op">)</span><span class="op">)</span><span class="op">+</span>
- <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html">labs</a></span><span class="op">(</span>fill<span class="op">=</span><span class="st">"S.E"</span><span class="op">)</span><span class="op">+</span>
- <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html">theme</a></span><span class="op">(</span>axis.title.x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html">element_blank</a></span><span class="op">(</span><span class="op">)</span>,
-        axis.title.y <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html">element_blank</a></span><span class="op">(</span><span class="op">)</span>,
-        <span class="co"># axis.text.x = element_text(angle = 30),</span>
-        panel.grid <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html">element_blank</a></span><span class="op">(</span><span class="op">)</span>,
-        legend.position <span class="op">=</span> <span class="st">"bottom"</span>,
-        legend.key.size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/grid/unit.html">unit</a></span><span class="op">(</span><span class="fl">0.3</span>, <span class="st">"cm"</span><span class="op">)</span>,
-        legend.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html">element_text</a></span><span class="op">(</span>size<span class="op">=</span><span class="fl">6</span><span class="op">)</span>,
-       legend.title <span class="op">=</span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html">element_text</a></span><span class="op">(</span>size<span class="op">=</span><span class="fl">8</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_grid.html">facet_grid</a></span><span class="op">(</span><span class="va">variable</span><span class="op">~</span><span class="va">.</span> ,switch <span class="op">=</span> <span class="st">"y"</span><span class="op">)</span><span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html">scale_x_continuous</a></span><span class="op">(</span>expand<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html">scale_y_continuous</a></span><span class="op">(</span>expand<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html">ggtitle</a></span><span class="op">(</span><span class="st">'b)'</span><span class="op">)</span><span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/coord_fixed.html">coord_fixed</a></span><span class="op">(</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/pkg/gridExtra/man/arrangeGrob.html">grid.arrange</a></span><span class="op">(</span><span class="va">p3a</span>, <span class="va">p3b</span>, ncol<span class="op">=</span><span class="fl">2</span><span class="op">)</span></code></pre></div>
+<p>We can generate predictions for the each archetype in ecomix using <code><a href="https://rdrr.io/pkg/raster/man/predict.html">predict()</a></code> function. The default is used to generate a point mean estimate for each archetype. With the inclusion of a <code>species_mix.bootstrap</code> object we can also provide estimates of uncertainty or standard error for each prediction. We can see spatial predict the point mean and standard error in the predicted distributions of each archetype (Fig. 3e &amp; 3f). We can also see the spatial response of each archetype is strongly correlated to it’s environmental response to each covariate (Fig. 2). For example, archetype two has a strong response to depth (Fig. 3e), which is evident in the archetype responses (Fig. 3d).</p>
 <div class="figure">
-<img src="SAM-example_files/figure-html/archetype%20predictions-1.png" alt="Figure 3. a) The predicted probability of each species archetype across the simulated environment; b) The standard error of the predictions generated using a Bayesian bootstrap from the model fit." width="384"><p class="caption">
-Figure 3. a) The predicted probability of each species archetype across the simulated environment; b) The standard error of the predictions generated using a Bayesian bootstrap from the model fit.
+<img src="SAM-example_files/figure-html/archetype%20predictions-1.png" alt="Figure 7. The predicted probability of each species archetype across the simulated environment and the standard error of the predictions generated based on the Bayesian bootstrap." width="384"><p class="caption">
+Figure 7. The predicted probability of each species archetype across the simulated environment and the standard error of the predictions generated based on the Bayesian bootstrap.
 </p>
 </div>
-<!-- ```{r archetype plots1, fig.width= 4, fig.height= 6, fig.cap="Figure 3. a) The count of species' occurrences within the simulated dataset, species with less that 10 occurrences across 200 sites are removed from the analysis; b) The estimated BIC values returned from the model fits, we can see three groups is the most parsomonious result; c)  The fitted versus known alphas (species intercepts); d) The fitted versus known species archetype specific parameters (betas); e) The predicted probability of each species archetype across the simulated environment; f) The standard error of the predictions generated using a Bayesian bootstrap from the model fit.", echo=FALSE} -->
-<!-- library(gridExtra) -->
-<!-- lay <- rbind(c(1,2,5,6), -->
-<!--              c(3,4,5,6)) -->
-<!-- grid.arrange(p2a,p2b, p2c, p2d,p2e, p2f,layout_matrix= lay) -->
-<!-- ``` -->
 <div id="refs" class="references">
 <div id="ref-dunn_randomized_1996">
 <p>Dunn, P.K. &amp; Smyth, G.K. (1996). Randomized Quantile Residuals. <em>Journal of Computational and Graphical Statistics</em>, <strong>5</strong>, 236.</p>

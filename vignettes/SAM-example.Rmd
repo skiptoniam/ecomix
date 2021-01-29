@@ -41,10 +41,6 @@ We generate a set of simulated environment predictors using Gaussian random fiel
 
 ```{r,echo=TRUE,eval=TRUE,warning=FALSE,message=FALSE}
 library(raster)
-library(reshape2)
-library(ggplot2)
-library(grid)
-library(gridExtra)
 library(RandomFields)
 set.seed(007)
 lenny <- 100
@@ -70,64 +66,72 @@ env_dat<-rasterToPoints(env)
 ```
 
 ```{r env plots, fig.width= 4, fig.height= 4, fig.cap="Figure 1. Simulated environmental variables used in Species Archetype Modelling", echo=FALSE}
-# matrix form
-p2a <- ggplot() +
-  geom_raster(data =  env.df, 
-              aes(x = x, y = y, 
-                  fill = Temperature)) + 
-  scale_fill_viridis_c(option = "B")+
-  theme(axis.title.x = element_blank(), 
-        axis.title.y = element_blank(),
-        # axis.text.x = element_text(angle = 30),
-        panel.grid = element_blank(),
-        legend.position = "none") +
-    scale_x_continuous(expand=c(0, 0)) + 
-  scale_y_continuous(expand=c(0, 0))+
-  ggtitle('Temperature')+coord_fixed()
+pal <- function (name, flip = FALSE) {
+  cols <- RColorBrewer::brewer.pal(9, name)
+  if (flip) cols <- rev(cols)
+  colorRampPalette(cols)
+}
 
-p2b <- ggplot() +
-  geom_raster(data =  env.df, 
-              aes(x = x, y = y, 
-                  fill = Oxygen)) + 
-  scale_fill_viridis_c(option = "C")+
-  theme(axis.title.x = element_blank(), 
-        axis.title.y = element_blank(),
-        # axis.text.x = element_text(angle = 30),
-        panel.grid = element_blank(),
-        legend.position = "none") +
-    scale_x_continuous(expand=c(0, 0)) + 
-  scale_y_continuous(expand=c(0, 0))+
-  ggtitle('Oxygen')+coord_fixed()
+# plot a map for a single covariate
+plot_cov <- function (coords, values, pal, title) {
 
-p2c <- ggplot() +
-  geom_raster(data =  env.df, 
-              aes(x = x, y = y, 
-                  fill = Depth)) + 
-  scale_fill_viridis_c(option = "E")+
-  theme(axis.title.x = element_blank(), 
-        axis.title.y = element_blank(),
-        # axis.text.x = element_text(angle = 30),
-        panel.grid = element_blank(),
-        legend.position = "none") +
-    scale_x_continuous(expand=c(0, 0)) + 
-  scale_y_continuous(expand=c(0, 0))+
-  ggtitle('Depth')+coord_fixed()
+  # build a raster
+  data <- data.frame(values)
+  coordinates(data) <- coords
+  spdf <- SpatialPixelsDataFrame(data, tol = 0.0001, data = data.frame(data))
+  ras <- raster(spdf, values = TRUE)
 
-p2d <- ggplot() +
-  geom_raster(data =  env.df, 
-              aes(x = x, y = y, 
-                  fill = Productivity)) + 
-  scale_fill_viridis_c()+
-  theme(axis.title.x = element_blank(), 
-        axis.title.y = element_blank(),
-        # axis.text.x = element_text(angle = 30),
-        panel.grid = element_blank(),
-        legend.position = "none") +
-    scale_x_continuous(expand=c(0, 0)) + 
-  scale_y_continuous(expand=c(0, 0))+
-  ggtitle('Productivity')+coord_fixed()
-  
-grid.arrange(p2a, p2b, p2c, p2d, nrow = 2)
+  # plot
+  plot(ras, col = pal(100),
+       legend = FALSE,
+       axes = FALSE,
+       box = FALSE)
+
+  # add title
+  mtext(
+    title,
+    side = 3,
+    cex = 1.2 )
+
+}
+
+# plot all the covariates
+plot_covariates <- function (covariates) {
+
+  covs <- colnames(covariates)[-(1:2)]
+  coords <- covariates[, c("x", "y")]
+
+  palettes <- list(
+    Temperature = pal("YlOrRd"),
+    Oxygen = pal("BuPu"),
+    Depth = pal("YlGnBu"),
+    Productivity = pal("YlGn")
+  )
+
+  titles <- list(
+   Temperature = "Temperature",
+   Oxygen = "Oxygen",
+   Depth = "Depth",
+   Productivity = "Productivity"
+  )
+
+  # temporarily set the plot panel configuration
+  mfrow <- par()$mfrow
+  on.exit(par(mfrow = mfrow), add = TRUE)
+  par(mfrow = c(2, 2), mar=c(2,0,2,0))
+  for (cov in covs) {
+    plot_cov(
+      coords = coords,
+      values = covariates[, cov],
+      pal = palettes[[cov]],
+      title = titles[[cov]]
+    )
+  }
+
+}
+
+plot_covariates(env.df)
+
 ```
 
 #### Simulate Biological Data
@@ -171,24 +175,24 @@ simulated_data200 <- species_mix.simulate(archetype_formula=sam_form,
                                        family = "bernoulli")
 ```
 
-```{r, echo=TRUE, fig.cap='Figure 2. The simulated occurrences for the 100 species. We will remove all species with less than 10 presences across all 200 sites. '}
-library(ggplot2)
-df1 <- data.frame(occ=colSums(simulated_data200[,1:100]))
-p2a <- ggplot(df1)+
-  geom_histogram(aes(x=occ),bins = length(unique(colSums(simulated_data200[,1:100]))))+
-          geom_vline(xintercept = 10,colour='red')+
-        ylab("Count of Species")+
-        xlab("Number of Species's Occurrences")+
-        ggtitle("a)")
-p2a  
-```
 
 #### Model fitting and evaluation
 We have generated occurrence records for 100 synthetic species across the 200 randomly surveyed sites. Because we have presence and absence data we can fit a SAM with a Bernoulli family. In this example, we may chose to remove the rare species (< 10 occurrences across all sites). These species could be potentially included in the model, but would likely create noise and unexplained variance, making the model harder to fit and estimate [@hui_mix_2013].    
 
-In this, example we fit linear parameters for the five simulated covariates Temperature, Oxygen, Depth, Productivity & Time. We do this to demonstrate a simple simulated example where can show the known response of covariates to simulated data. We include time as a factor, which represents the time in which the simulated sample was recorded, for these data the two factors are 'Day' or 'Night'. 
+```{r, echo=TRUE, fig.cap='Figure 2. The simulated occurrences for the 100 species. We will remove all species with less than 10 presences across all 200 sites. '}
+count <- table(colSums(simulated_data200[,1:100]))
+occur <- as.numeric(names(count))
+mat <- as.data.frame(cbind(occur,count))
+df1 <- merge(data.frame(occur = 0:max(mat[,1])), mat, all.x=TRUE)
+df1$count[is.na(df1$count)] <- 0 
+bp <- barplot(count~occur, data= df1, xaxt='n', ylab="Count of Species",xlab="Number of Species's Occurrences")
+abline(v=10,col='red',lwd=2)
+bpdf <- cbind(bp,df1)
+axis(1, at=bp[c(0,25,50,75,100,nrow(bpdf)-1)+1,1], labels = c(0,25,50,75,100,""),las=1)
+```
 
-Below is a small code block with a basic example on how to fit a single species_mix model. 
+In this, example we fit independent polynomials with two degrees of freedom for the four simulated covariates Temperature, Oxygen, Depth & Productivity. We do this to demonstrate a simple simulated example where can show the known response of covariates to simulated data. We include time as a factor, which represents the time in which the simulated samples were recorded, for these data the two factors are 'Day' or 'Night'. But additional discrete times could be included such as years. Below is a small code block with a basic example on how to fit a single species_mix model.
+
 ```{r, echo=TRUE, eval=TRUE,message=FALSE,warning=FALSE}
 ## load the ecomix package
 library(ecomix)
@@ -210,155 +214,127 @@ sam_fit <- species_mix(archetype_formula = archetype_formula, # Archetype formul
                        species_formula = species_formula,    # Species formula
                        data = samdat_10p,            # Data
                        nArchetypes = 3,              # Number of groups (mixtures) to fit
-                       family = 'bernoulli',         # Which probability distribution to use
-                       control = list(quiet = FALSE))
+                       family = 'bernoulli',         # Which family to use
+                       control = list(quiet = TRUE))
+```
+
+#### Group selection
+One challenge when developing SAMs (or any finite mixture model) is selecting $k$; the number of groups (archetypes) in the model. The number of archetypes is latent, so must be estimated from the data and the functional form of the covariates. In this example, we know that the optimal number of groups for these data is three, because we simulated the data with these characteristics. However, $k$ is generally not known in real world applications. So one import part of the fitting process is finding $k$, having said that it is also totally fine to define $k$ for say a management objective. We can estimate the "best" number of groups based on the most parsimonious fit to the data. We can do this based on the model log-likelihood, and information criterion such as BIC. We provide a function `species_mix.multifit` which can assist in group selection if a vector of archetypes is provided. Below is an example of how one might do this. For simplicity we have left the `nstart=1`, but for more complex models this could be increased to use multiple starts to help search to loglikelihood.
+
+```{r, fig.width=5,fig.height=4,fig.cap="Figure 3. Group selection from multiple fit function, we can see that three archetypes is the best fit to these data based on Bayesian Information Criterion (BIC)."}
+nArchetypes <- 1:6
+sam_multifit <- species_mix.multifit(archetype_formula = archetype_formula, # Archetype formula
+                                     species_formula = species_formula,     # Species formula
+                                     data = samdat_10p,                     # Data
+                                     nArchetypes = nArchetypes,             # Number of groups (mixtures) to fit
+                                     nstart = 1,                            # The number of fits per archetype.
+                                     family = 'bernoulli',                  # Which family to use
+                                     control = list(quiet = TRUE))
+plot(sam_multifit,type="BIC")
 ```
 
 #### Model diagnostics and checking
-Once we selected the 'best' model we can start to explore the model fit via diagnostics and checks. Typically, we would look at the model residuals to understand the model diagnostics [@warton_model-based_2015]. Here we present the random quantile residuals [@dunn_randomized_1996] versus the fitted values from the model (fig. 2b). We can see the residuals, presented on a species by species level, are approximately randomly distributed along the fitted line, which suggests nothing is untoward with the model fit.
+Once we selected the 'best' model we can start to explore the model fit via diagnostics and checks. Typically, we would look at the model residuals to understand the model diagnostics [@warton_model-based_2015]. Here we present the random quantile residuals [@dunn_randomized_1996] versus the fitted values from the model. We can see the residuals, presented on a species by species level, are approximately randomly distributed along the fitted line, which suggests nothing is untoward with the model fit.
 
-We can also look at the parameter estimates from the model, because we simulated the data from known parameters it is easy to show that we can recapture these parameters (fig. 2c & 2d). To get credible intervals on the SAM parameters we can use a simulation approach via a Bayesian bootstrap to present variances in the parameter estimates. In Fig. 2c, we show the species intercepts ($\alpha_j$), these are the underling occurrence of each species, we can see the estimated values of $alpha_j$ are closely correlated with the true values. In Fig. 2b, we show the archetype specific covariates for each environmental covariate. 
+```{r, fig.width=8, fig.height=6, fig.cap="Figure 4. Random quantile residuals for all species in the fitted model."}
+plot(sam_fit,fitted.scale = 'logit')
+```
 
-We can also plot the partial responses of covariates as shown in @dunstan_model_2011 & @hui_mix_2013. The idea behind this approach is to understand the response of archetype or species to a focal predictor. First we need to set up a data.frame which allows the focal.predictor to vary and averages over the other effects in the model. We show how to do this in the next code chunk. We can include estimates of uncertainty in the partial response plots by including a bootstrap object into the plot function.
+We can also look at the random quantile residuals for a single species
+```{r, fig.width=8, fig.height=6, fig.cap="Figure 5. Random quantile residuals for spp3 from the fitted model."}
+plot(sam_fit,fitted.scale = 'logit', species="spp3")
+```
 
-```{r partial plots, fig.width=6, fig.height=6}
+We can also plot the partial responses of covariates as shown in @dunstan_model_2011 & @hui_mix_2013. The idea behind this approach is to understand the response of archetypes to a focal predictor. Firstly, we need to set up a data.frame which allows the focal.predictor to vary and averages over the other effects in the model. We demonstrate how to this in the next code chunk. We can include estimates of uncertainty in the partial response plots by including a bootstrap object into the plot function, otherwise the mean response is plotted without uncertainty in the partial response.
+
+```{r partial plots, fig.width=6, fig.height=6, fig.cap="Figure 6. Partial response plots for each covariate in the model."}
 par(mfrow=c(2,3))
 eff.df <- effectPlotData(focal.predictors = c("Temperature","Oxygen","Productivity","Depth","Time"), sam_fit)
 sam_boot <- species_mix.bootstrap(sam_fit,nboot = 10, quiet = TRUE)
 plot(x = eff.df, object = sam_fit, object2=sam_boot,ylim=c(0,1))
 ```
 
-
 #### Model prediction
-We can generate model prediction for the each archetype in ecomix using `predict()` function. The default is used to generate a point mean estimate for each archetype. With the inclusion of a species mix bootstrap object generated from `species_mix.bootstrap` we can also provide estimates of uncertainty or standard error for each prediction. We can see spatial predict the point mean and standard error in the predicted distributions of each archetype (Fig. 3e & 3f). We can also see the spatial response of each archetype is strongly correlated to it's environmental response to each covariate (Fig. 2). For example, archetype two has a strong response to depth (Fig. 3e), which is evident in the archetype responses (Fig. 3d).
+We can generate predictions for the each archetype in ecomix using `predict()` function. The default is used to generate a point mean estimate for each archetype. With the inclusion of a `species_mix.bootstrap` object we can also provide estimates of uncertainty or standard error for each prediction. We can see spatial predict the point mean and standard error in the predicted distributions of each archetype (Fig. 3e & 3f). We can also see the spatial response of each archetype is strongly correlated to it's environmental response to each covariate (Fig. 2). For example, archetype two has a strong response to depth (Fig. 3e), which is evident in the archetype responses (Fig. 3d).
 
-<!-- ```{r, echo = FALSE, eval=TRUE, message=FALSE, warning= FALSE} -->
-<!-- resids.sam <- residuals(fms[[3]][[1]]) -->
-<!-- colnames(resids.sam) <- paste0("spp",1:fms[[3]][[1]]$S) -->
-<!-- sppID <- rep( TRUE, fms[[3]][[1]]$S) -->
-<!-- preds <- predict(fms[[3]][[1]],prediction.type = "species") -->
-<!-- link <- make.link("logit") -->
-<!-- df <- data.frame(idx = 1:nrow(resids.sam),resids.sam) -->
-<!-- dfm <- reshape2::melt(df,id.var='idx') -->
-<!-- dfm$preds <- c(link$linkfun(preds)) -->
-<!-- colnames(dfm) <- c("idx","Species","SAM","preds") -->
-<!-- getPalette = colorRampPalette(RColorBrewer::brewer.pal(9, "Set1")) -->
-<!-- colourCount = length(unique(dfm$Species)) -->
-
-<!-- library(ggplot2) -->
-<!-- p2b <- ggplot(dfm,aes(x=preds,y=SAM,colour=Species))+ -->
-<!--       geom_point()+ -->
-<!--       scale_color_manual(values = getPalette(colourCount))+ -->
-<!--       xlab("Fitted values (logit scale)")+ -->
-<!--       ylab("RQR")+ -->
-<!--       ggtitle("b)")+ -->
-<!--       theme(legend.position = "none") -->
-<!-- ``` -->
-
-
-<!-- ```{r,echo=FALSE,message=FALSE, warning= FALSE} -->
-<!-- mod_spp <- length(fms[[3]][[1]]$alpha) -->
-<!-- alphaBoot <- sam3_boot[,1:mod_spp] -->
-
-<!-- set.seed(42) -->
-<!-- df <- data.frame(x = rep(1:10,each=5), y = rnorm(50)) -->
-
-<!-- library(ggplot2) -->
-<!-- library(dplyr) -->
-<!-- library(reshape2) -->
-<!-- colnames(alphaBoot) <- fms[[3]][[1]]$names$spp -->
-<!-- dfm <- melt(alphaBoot) -->
-<!-- df.summary <- dfm %>% group_by(Var2) %>% -->
-<!--     summarize(ylq = quantile(value,0.025), -->
-<!--               yuq = quantile(value,0.975), -->
-<!--               ymean = mean(value)) -->
-<!-- df.summary$alpha_true <- alphas[-which(colSums(simulated_data200[,1:100])<10)] -->
-<!-- p2c <- ggplot(df.summary, aes(x = alpha_true, y = ymean)) + -->
-<!--         geom_point(size = 2,col='dodgerblue') + -->
-<!--         geom_errorbar(aes(ymin = ylq, ymax = yuq),col='dodgerblue')+ -->
-<!--         geom_abline(intercept=0,slope=1)+ -->
-<!--         ylab("Estimated Alphas")+ -->
-<!--         xlab("Known Alphas")+ -->
-<!--         ggtitle("c)") -->
-
-<!-- betaBoot <- sam3_boot[,-1:-mod_spp] -->
-<!-- betaBoot <- betaBoot[,-13:-ncol(sam3_boot)] -->
-
-<!-- colnames(betaBoot) <- paste0(substr(rep(fms[[3]][[1]]$names$Xvars,each=3), start = 1, stop = 2),".",c("A1","A2","A3")) -->
-
-<!-- dfm <- melt(betaBoot) -->
-<!-- df.summary2 <- dfm %>% group_by(Var2) %>% -->
-<!--     summarize(ylq = quantile(value,0.025), -->
-<!--               yuq = quantile(value,0.975), -->
-<!--               ymean = mean(value)) -->
-<!-- df.summary2$beta_true <- as.numeric(betas[c(2,3,1),]) -->
-<!-- p2d <- ggplot(df.summary2, aes(x = forcats::fct_rev(Var2), y = ymean)) + -->
-<!--         geom_point(size = 2,col='dodgerblue') + -->
-<!--         geom_linerange(aes(ymin = ylq, ymax = yuq),col='dodgerblue')+ -->
-<!--         geom_point(aes(x = Var2, y = beta_true),size = 2,col='tomato') + -->
-<!--         coord_flip()+ -->
-<!--         ylab("Beta value")+ -->
-<!--         xlab("Name of Beta")+ -->
-<!--         ggtitle("d)") -->
-<!-- ``` -->
-
-```{r archetype predictions,fig.width= 4, fig.height= 6,fig.cap="Figure 3. a) The predicted probability of each species archetype across the simulated environment; b) The standard error of the predictions generated using a Bayesian bootstrap from the model fit."}
-library(ggplot2)
-library(reshape2)
+```{r archetype predictions,echo=FALSE,fig.width= 4, fig.height= 6,fig.cap="Figure 7. The predicted probability of each species archetype across the simulated environment and the standard error of the predictions generated based on the Bayesian bootstrap."}
 env.df$Time <- factor("Day",levels=c("Day","Night"))
-sam3_pred <- ecomix:::predict.species_mix(sam_fit, sam_boot, newdata=env.df)
+sam3_pred <- predict(sam_fit, sam_boot, newdata=env.df)
+pred.df <- data.frame(x=env.df$x,y=env.df$y,sam3_pred$bootPreds)
+pred.dfse <- cbind(pred.df,sam3_pred$bootSEs)
+colnames(pred.dfse)[6:8] <- paste0(colnames(pred.dfse)[6:8],".se")
+pred.dfse <- pred.dfse[,c(1,2,3,6,4,7,5,8)]
 
-pred.df <- data.frame(x=env.df$x,y=env.df$y,sam3_pred$ptPreds)
-pred.dfm <- melt(pred.df,id.vars = c("x","y"))
+pal <- function (name, flip = FALSE) {
+  cols <- RColorBrewer::brewer.pal(9, name)
+  if (flip) cols <- rev(cols)
+  colorRampPalette(cols)
+}
 
-pred.dfse <- data.frame(x=env.df$x,y=env.df$y,sam3_pred$bootSEs)
-pred.dfmse <- melt(pred.dfse,id.vars = c("x","y"))
+# plot a map for a single covariate
+plot_cov <- function (coords, values, pal, title) {
 
-p3a <- ggplot() +
-  geom_raster(data =  pred.dfm,aes(x = x, y = y,fill=value)) +
-  scale_fill_distiller(palette = "PuOr",direction = -1)+
-  labs(fill="Pr")+
-  # guide_legend(size = guide_legend(title.position="top", title.hjust = 0.5))+
-  theme(axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        # axis.text.x = element_text(angle = 30),
-        panel.grid = element_blank(),
-        legend.position="bottom",
-        legend.box="horizontal",
-        legend.key.size = unit(0.3, "cm"),
-        legend.text = element_text(size=6),
-       legend.title =  element_text(size=8)) +
-  facet_grid(variable~.,switch = "y")+
-  scale_x_continuous(expand=c(0, 0)) +
-  scale_y_continuous(expand=c(0, 0))+
-  ggtitle('a)')+
-  coord_fixed()
+  # build a raster
+  data <- data.frame(values)
+  coordinates(data) <- coords
+  spdf <- SpatialPixelsDataFrame(data, tol = 0.0001, data = data.frame(data))
+  ras <- raster(spdf, values = TRUE)
 
-pinks <- colorRampPalette(c("white","lightpink","pink"))
+  # plot
+  plot(ras, col = pal(100),
+       legend=TRUE, horizontal = TRUE, 
+       # legend.args = list(text='Prob', side = 1, line = 2),
+       axes = FALSE,
+       box = FALSE)
 
-p3b <- ggplot() +
-  geom_raster(data =  pred.dfmse,aes(x = x, y = y,fill=value)) +
- scale_fill_gradientn(colours=pinks(4))+
- labs(fill="S.E")+
- theme(axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        # axis.text.x = element_text(angle = 30),
-        panel.grid = element_blank(),
-        legend.position = "bottom",
-        legend.key.size = unit(0.3, "cm"),
-        legend.text = element_text(size=6),
-       legend.title =  element_text(size=8)) +
-  facet_grid(variable~. ,switch = "y")+
-  scale_x_continuous(expand=c(0, 0)) +
-  scale_y_continuous(expand=c(0, 0))+
-  ggtitle('b)')+
-  coord_fixed()
-grid.arrange(p3a, p3b, ncol=2)
+  # add title
+  mtext(
+    title,
+    side = 3,
+    cex = 1.2 )
+
+}
+
+# plot all the covariates
+plot_covariates <- function (covariates) {
+
+  covs <- colnames(covariates)[-(1:2)]
+  coords <- covariates[, c("x", "y")]
+
+  palettes <- list(
+    Archetype1 = pal("BrBG"),
+    Archetype2 = pal("BrBG"),
+    Archetype3 = pal("BrBG"),
+    Archetype1.se = pal("Oranges"),
+    Archetype2.se = pal("Oranges"),
+    Archetype3.se = pal("Oranges")
+  )
+
+  titles <- list(
+    Archetype1 = "Archetype 1 Mean",
+    Archetype2 = "Archetype 2 Mean",
+    Archetype3 = "Archetype 3 Mean",
+    Archetype1.se = "Archetype 1 Std. Error",
+    Archetype2.se = "Archetype 2 Std. Error",
+    Archetype3.se = "Archetype 3 Std. Error"
+  )
+
+  # temporarily set the plot panel configuration
+  mfrow <- par()$mfrow
+  on.exit(par(mfrow = mfrow), add = TRUE)
+  par(mfrow = c(3, 2), mar=c(4,2,2,2))
+  for (cov in covs) {
+    plot_cov(
+      coords = coords,
+      values = covariates[, cov],
+      pal = palettes[[cov]],
+      title = titles[[cov]]
+    )
+  }
+
+}
+
+plot_covariates(pred.dfse)
+
 ```
 
-<!-- ```{r archetype plots1, fig.width= 4, fig.height= 6, fig.cap="Figure 3. a) The count of species' occurrences within the simulated dataset, species with less that 10 occurrences across 200 sites are removed from the analysis; b) The estimated BIC values returned from the model fits, we can see three groups is the most parsomonious result; c)  The fitted versus known alphas (species intercepts); d) The fitted versus known species archetype specific parameters (betas); e) The predicted probability of each species archetype across the simulated environment; f) The standard error of the predictions generated using a Bayesian bootstrap from the model fit.", echo=FALSE} -->
-<!-- library(gridExtra) -->
-<!-- lay <- rbind(c(1,2,5,6), -->
-<!--              c(3,4,5,6)) -->
-<!-- grid.arrange(p2a,p2b, p2c, p2d,p2e, p2f,layout_matrix= lay) -->
-<!-- ``` -->
