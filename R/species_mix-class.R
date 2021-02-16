@@ -452,7 +452,8 @@
                                    family="bernoulli", offset=NULL,
                                    weights=NULL, bb_weights=NULL, size = NULL,
                                    power=1.6,
-                                   control=list(), inits=NULL,
+                                   control=list(ecm_prefit=FALSE),
+                                   inits=NULL,
                                    titbits = FALSE,
                                    nstart = 10,
                                    mc.cores = 1){

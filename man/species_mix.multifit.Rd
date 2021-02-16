@@ -17,7 +17,7 @@ species_mix.multifit(
   bb_weights = NULL,
   size = NULL,
   power = 1.6,
-  control = list(),
+  control = list(ecm_prefit = FALSE),
   inits = NULL,
   titbits = FALSE,
   nstart = 10,
