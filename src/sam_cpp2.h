@@ -26,7 +26,7 @@ class sam_data {
 		sam_data();
 		~sam_data();
 		void setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &RU, SEXP &Roffset, SEXP &Rspp_wts, SEXP &Rsite_spp_wts, SEXP &Ry_not_na, SEXP &Rbinsize,
-		 SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw, SEXP &Rpu, SEXP &RnObs, SEXP &Rdisty, SEXP &RoptiDisp, SEXP &RoptiPart, SEXP &RoptiAll);
+		 SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw, SEXP &Rpu, SEXP &RnObs, SEXP &Rdisty, SEXP &RoptiDisp, SEXP &RoptiPart, SEXP &RoptiAll, SEXP &RdoPenalties);
 		bool isDispersion() const;
 		bool doOptiDisp() const;
 		bool isPartial() const;
@@ -43,6 +43,7 @@ class sam_data {
 			optiDisp, //should the dispersion parameter be optimised (this is for negative binomial).
 			optiPart, //should the partial sam parameters be estimated.
 			optiAll, //should the all/bias sam parameters be estimated.
+			doPenalties, // should we estimate penalties?
 			NAnum;    //a common number to insert for NAs
 
 		double 	*y,	//the outcome matrix, in vector form (nObs x nS)
@@ -158,7 +159,7 @@ class sam_cpp_all_classes {
 ////////////////////////////////////////////////////////
 
 extern "C" SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW,  SEXP RU, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rbinsize,
-								SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll,
+								SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll, SEXP RdoPenalties,
 								SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rdelta, SEXP Rtheta, SEXP Rpowers,
 								SEXP RalphaPen, SEXP RbetaPen, SEXP RpiPen, SEXP RgammaPen, SEXP RdeltaPen, SEXP RthetaLocatPen, SEXP RthetaScalePen,
 								SEXP RderivsAlpha, SEXP RderivsBeta,  SEXP RderivsEta, SEXP RderivsGamma, SEXP RderivsDelta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,

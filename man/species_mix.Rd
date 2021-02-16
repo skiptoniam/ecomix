@@ -81,7 +81,7 @@ See details.}
 
 \item{inits}{NULL a numeric vector that provides approximate starting values
 for species_mix coefficients. These are family specific, but at a
-minimum you will need pis (additive_logitic transformed), alpha
+minimum you will need pi (additive_logitic transformed), alpha
 (intercepts) and beta (mixing coefs).}
 
 \item{titbits}{either a boolean or a vector of characters. If TRUE

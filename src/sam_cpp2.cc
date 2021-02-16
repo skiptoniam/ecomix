@@ -4,11 +4,11 @@
 
 extern "C" {
 	SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP RU, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rbinsize,
-					     SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll,
+					     SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll, SEXP RdoPenalties,
 						 SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rdelta, SEXP Rtheta, SEXP Rpowers,
 						 //penalties
 						 SEXP RalphaPen, SEXP RbetaPen, SEXP RpiPen,  SEXP RgammaPen,
-						 SEXP RdeltaPen, SEXP RthetaLocatPen, SEXP RthetaScalePen,
+						 SEXP RdeltaPen, SEXP RthetaLocatPen, SEXP RthetaScalePen, 
 						 //derivatives
 						 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsGamma, SEXP RderivsDelta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
 						 SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
@@ -18,7 +18,7 @@ extern "C" {
 	sam_cpp_all_classes all;
 
 	//initialise the data structures -- they are mostly just pointers to REAL()s...
-	all.data.setVals(Ry, RX, RW, RU, Roffset, Rspp_wts, Rsite_spp_wts, Ry_not_na, Rbinsize, RnS, RnG, Rpx, Rpw, Rpu, RnObs, Rdisty, RoptiDisp, RoptiPart, RoptiAll);	//read in the data
+	all.data.setVals(Ry, RX, RW, RU, Roffset, Rspp_wts, Rsite_spp_wts, Ry_not_na, Rbinsize, RnS, RnG, Rpx, Rpw, Rpu, RnObs, Rdisty, RoptiDisp, RoptiPart, RoptiAll, RdoPenalties);	//read in the data
 	all.params.setVals(all.data, Ralpha, Rbeta, Reta, Rgamma, Rdelta, Rtheta, Rpowers, RalphaPen, RbetaPen, RpiPen, RgammaPen, RdeltaPen, RthetaLocatPen, RthetaScalePen);	//read in the parameters
 	all.derivs.setVals(all.data, RderivsAlpha, RderivsBeta, RderivsEta, RderivsGamma, RderivsDelta, RderivsTheta, RgetScores, Rscores);
 	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv, Rprintparams);
@@ -137,7 +137,8 @@ double SAM_optimise( sam_cpp_all_classes &all){
 	all.params.update( vmminParams, all.data);
 	gradient_function_sam(all.params.nTot, vmminParams, vmminGrad, &all);
 	all.derivs.update( vmminGrad, all.data);
-    if(all.contr.printparams==1)all.params.printParms(all.data);
+    //if(all.contr.printparams==1)
+    //all.params.printParms(all.data);
 
 	return(vmminLogl[0]);
 }
@@ -179,13 +180,14 @@ double sam_cpp_mix_loglike(const sam_data &dat, const sam_params &params, sam_fi
 	}
 
 	//penalities.
+	if(dat.doPenalties>0){
 	penAlpha = calc_alpha_pen( dat, params);
 	penBeta = calc_beta_pen( dat, params);
-	penPi = calc_pi_pen(dat, params);
+	//penPi = calc_pi_pen(dat, params);
 
 	loglike += penAlpha;
 	loglike += penBeta;
-	loglike += penPi;
+	//loglike += penPi;
 
 	if(dat.optiPart>0){
 	penGamma = calc_gamma_pen( dat, params);
@@ -201,7 +203,7 @@ double sam_cpp_mix_loglike(const sam_data &dat, const sam_params &params, sam_fi
 	penTheta = calc_theta_pen( dat, params);
 	loglike += penTheta;
 	}
-
+	}
 	return(loglike);
 }
 
@@ -242,9 +244,6 @@ void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data
 					if(dat.disty==1){//bernoulli
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_logit(lp);
 						}
-					if(dat.disty==7){//binomial
-							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_logit(lp);
-					}
 					if(dat.disty==2){ //poisson
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
 						}
@@ -259,6 +258,9 @@ void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data
 					 }
 					if(dat.disty==6){//normal
 						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = lp;
+					}
+					if(dat.disty==7){//binomial
+						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_logit(lp);
 					}
 				}
 			}
@@ -416,11 +418,15 @@ double log_negative_binomial_deriv_theta_sam(const double &y, const double &mu, 
 	sig = exp(od);
 	theta = 1 / sig;
 
+     
+
 	res = digamma( theta+y);
 	res -= digamma( theta);
 	res += 1 + log( theta) - log(mu+theta) - (theta+y)/(theta+mu);
 	res /= -sig*sig;	//for the change of variable sig --> r
 	res *= sig;	//for the change of variable dispParm --> sig
+    //gr[0] += (digamma(pars[0]+data->y[i]) - digamma(pars[0]) + log(pars[0]) + 1 - 
+    //log( data->lp.at(i) + pars[0]) - (pars[0]+data->y[i])/(data->lp.at(i) + pars[0]))*data->w[i];
 
 	return( res);
 
@@ -575,10 +581,9 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 
 	//derivate w.r.t thetas
 	//std::cout << dat.isDispersion() << '\n';
-	if( dat.isDispersion()){
-			//std::cout << dat.isDispersion() << '\n';
-		calc_dlog_dtheta(fits.dlogdtheta, fits.allMus, dat, params);
-		calc_theta_deriv(thetaDerivs, fits.dlogdtheta, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
+	if( dat.doOptiDisp()){
+	calc_dlog_dtheta(fits.dlogdtheta, fits.allMus, dat, params);
+	calc_theta_deriv(thetaDerivs, fits.dlogdtheta, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
     }
 
 	//transform pis back to additative logistic scale to keep pi_dervis happy.
@@ -589,15 +594,17 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	calc_eta_deriv(etaDerivs, fits.dlogdpi, parpi, dat);
 
 	// update derives before penalities
-	//derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
+	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
 
 	// Add in the derivate penalites here.
+	if(dat.doPenalties>0){
     calc_alpha_pen_deriv(alphaDerivs, dat, params);
     calc_beta_pen_deriv(betaDerivs, dat, params);
     calc_gamma_pen_deriv(gammaDerivs, dat, params);
     calc_delta_pen_deriv(deltaDerivs, dat, params);
     calc_theta_pen_deriv(thetaDerivs, dat, params);
     etaDerivs.assign(etaDerivs.size(), 0.0);
+	}
 
 	//update the derivates after penalities
 	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
@@ -780,8 +787,8 @@ void calc_dlog_dtheta(vector<double> &dldt, vector<double> const &mus, const sam
 	// dlda = dlogalpha passed as fits.dflogdalpha(dat.nG*dat.nS, dat.NAnum) from function call
 	// mus = all the fitted values.
 
-	if( !dat.isDispersion())
-		return;	//nothing to do here, move along please
+	//if( !dat.isDispersion())
+		//return;	//nothing to do here, move along please
 
 	for(int g=0; g<dat.nG; g++){
 		for(int s=0;s<dat.nS; s++){
@@ -837,12 +844,13 @@ void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llSG, vector<dou
 	vector<double> pispen2((dat.nG-1), 0.0);
 	for(int g=0; g<(dat.nG-1); g++) pispen2.at(g) = params.Eta[g];
 	additive_logistic_sam(pispen2,1,dat.nG);
-
-	for( int g=0; g<dat.nG; g++){	
-      dldpi.at(g) += params.PiPen / pispen2.at(g);
-      //Rprintf( "pen %f\n", params.PiPen / pispen2.at(g));
-	}
-
+	
+	//if(dat.doPenalties>0){
+	//for( int g=0; g<dat.nG; g++){	
+		//dldpi.at(g) += params.PiPen / pispen2.at(g);
+      ////Rprintf( "pen %f\n", params.PiPen / pispen2.at(g));
+		//}
+	//}
 }
 
 //// this should calculate the derivate w.r.t alpha.
@@ -1005,6 +1013,8 @@ double calc_theta_pen( const sam_data &dat, const sam_params &params){
 
 	for( int s=0; s<dat.nS; s++){
 		penContr = - (params.Theta[s]-params.ThetaLocatPen) * (params.Theta[s]-params.ThetaLocatPen) / (2*params.ThetaScalePen*params.ThetaScalePen);	//dispersions are log-normally distributed (params are normally distributed)
+    //	penContr = - (parms.Disp[s]-parms.dispLocat) * (parms.Disp[s]-parms.dispLocat) / (2*parms.dispScale*parms.dispScale);	//dispersions are log-normally distributed (params are normally distributed)
+
 //		Rprintf( "Species: %i, param: %f, penalty: %f, Cumulative %f \n", s, parms.Disp[s], penContr, pen);
 		pen += penContr;
 	}
@@ -1019,6 +1029,12 @@ void calc_theta_pen_deriv(vector<double> &thetaDerivs, const sam_data &dat, cons
 			thetaDerivs.at(s) = -(params.Theta[s]-params.ThetaLocatPen)/(params.ThetaScalePen*params.ThetaScalePen);
 		}
 	}
+	
+	//dispDerivsI.assign(dispDerivsI.size(), 0.0);
+	//if( dat.isDispersion())
+		//for( int s=0; s<dat.nS; s++)
+			//dispDerivsI.at(s) = -(parms.Disp[s]-parms.dispLocat)/(parms.dispScale*parms.dispScale);
+	
 }
 
 

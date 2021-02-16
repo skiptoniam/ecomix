@@ -39,8 +39,8 @@ testthat::test_that('species_mix negative binomial', {
   U <- NULL
   # U <- X[,4,drop=FALSE]
   # X <- X[,-4, drop=FALSE]
-  W <- as.data.frame(X[,1,drop=FALSE])
-  X <- as.data.frame(X[,-1])
+  W <- as.matrix(X[,1,drop=FALSE])
+  X <- as.matrix(X[,-1])
 
   offset <- rep(0,nrow(y))
   weights <- rep(1,nrow(y))
@@ -58,13 +58,13 @@ testthat::test_that('species_mix negative binomial', {
   fm <- ecomix:::fit.ecm.sam(y, X, W, U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control = ecomix:::set_control_sam(list(em_refit = 3,em_steps = 100)))
 
   ## now let's try and fit the optimisation
-  start_vals <- ecomix:::starting_values_wrapper(y, as.data.frame(X), as.data.frame(W), U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control)
+  start_vals <- ecomix:::starting_values_wrapper(y, X, W, U, spp_weights, site_spp_weights, offset, y_is_na, G, S, disty, size, powers, control)
 
   tmp <- ecomix:::sam_optimise(y, X, W, U, offset, spp_weights, site_spp_weights, y_is_na, S, G, disty, size, powers, start_vals = start_vals, control)
   testthat::expect_length(tmp,21)
 
   set.seed(123)
-  tmp <- ecomix:::species_mix.fit(y=y, X=as.data.frame(X), W=as.data.frame(W), U=U, G=G, S=S,
+  tmp <- ecomix:::species_mix.fit(y=y, X=X, W=W, U=U, G=G, S=S,
                                   spp_weights=spp_weights,
                                   site_spp_weights=site_spp_weights,
                                   offset=offset, disty=disty, y_is_na=y_is_na, size=size, powers=powers,

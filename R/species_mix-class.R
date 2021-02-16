@@ -61,7 +61,7 @@
 #' See details.
 #' @param inits NULL a numeric vector that provides approximate starting values
 #' for species_mix coefficients. These are family specific, but at a
-#' minimum you will need pis (additive_logitic transformed), alpha
+#' minimum you will need pi (additive_logitic transformed), alpha
 #' (intercepts) and beta (mixing coefs).
 #' @param titbits either a boolean or a vector of characters. If TRUE
 #' (default for species_mix(qv)), then some objects used in the estimation of
@@ -243,13 +243,17 @@
   tmp$npu <- ifelse(!is.null(U),ncol(U),0);
 
   if(nArchetypes==1){
-    tmp$pis <- tmp$pis
+    tmp$pi <- tmp$pi
   }else{
-    tmp$pis <- additive_logistic(tmp$eta)
+    tmp$pi <- additive_logistic(tmp$eta)
   }
 
+  #### Need a check here for making sure dispersion parameters are on the right scale.
+  #### Comes back as a log from sam_optimise
+
+
   #get logls from parameters
-  #calc posterior probs and pis.
+  #calc posterior probs and pi.
   if(nArchetypes>1){
     fits <- tmp$coefs
     logls_mus <- get_logls_sam(y = y, X = X, W = W, U = U, G = G,
@@ -259,8 +263,8 @@
                                disty = disty, size = size,
                                powers = powers, control=control,
                                fits = fits, get_fitted = FALSE)
-    tmp$taus <- get_taus(tmp$pis,logls_mus$logl_sp,G,S)
-    tmp$pis <- colSums(tmp$taus)/S
+    tmp$tau <- get_taus(tmp$pi,logls_mus$logl_sp, G, S)
+    tmp$pi <- colSums(tmp$tau)/S
   }
 
   #Information criteria
@@ -398,7 +402,7 @@
 #' See details.
 #' @param inits NULL a numeric vector that provides approximate starting values
 #' for species_mix coefficients. These are distribution specific, but at a
-#' minimum you will need pis (additive_logitic transformed), alpha
+#' minimum you will need pi (additive_logitic transformed), alpha
 #' (intercepts) and beta (mixing coefs).
 #' @param titbits either a boolean or a vector of characters. If TRUE
 #' (default for species_mix(qv)), then some objects used in the estimation of
@@ -586,10 +590,11 @@
   tmp_fun <- function(x,gg){
     if( !control$quiet & nstart>1)
       setTxtProgressBar(pb, x)
-    tmpQuiet <- control$quiet
-    control$quiet <- TRUE
+    # tmpQuiet <- control$quiet
+    control$quiet <- TRUE; control$trace <- 0
+    control$init_method <- "random2"
     # fit species mix.
-    G <- gg
+    G <- nArchetypes <- gg
     tmp <- species_mix.fit(y=y, X=X, W=W, U=U, G=G, S=S,
                            spp_weights=spp_weights,
                            site_spp_weights=site_spp_weights,
@@ -604,15 +609,19 @@
     tmp$npw <- ifelse(ncol(W)>1,ncol(W),0);
     tmp$npu <- ifelse(!is.null(U),ncol(U),0);
 
-    if(G==1){
-      tmp$pis <- tmp$pis
+    if(nArchetypes==1){
+      tmp$pi <- tmp$pi
     }else{
-      tmp$pis <- additive_logistic(tmp$eta)
+      tmp$pi <- additive_logistic(tmp$eta)
     }
 
+    #### Need a check here for making sure dispersion parameters are on the right scale.
+    #### Comes back as a log from sam_optimise
+
+
     #get logls from parameters
-    #calc posterior probs and pis.
-    if(G>1){
+    #calc posterior probs and pi.
+    if(nArchetypes>1){
       fits <- tmp$coefs
       logls_mus <- get_logls_sam(y = y, X = X, W = W, U = U, G = G,
                                  S = S, spp_weights = spp_weights,
@@ -621,8 +630,8 @@
                                  disty = disty, size = size,
                                  powers = powers, control=control,
                                  fits = fits, get_fitted = FALSE)
-      tmp$taus <- get_taus(tmp$pis,logls_mus$logl_sp,G,S)
-      tmp$pis <- colSums(tmp$taus)/S
+      tmp$tau <- get_taus(tmp$pi,logls_mus$logl_sp, G, S)
+      tmp$pi <- colSums(tmp$tau)/S
     }
 
     #Information criteria
@@ -652,10 +661,11 @@
     many_starts <- list()
     for(ii in nArchetypes){
 
-      if( !control$quiet & nstart>1)
+      if( !control$quiet & nstart>1){
+        message(paste0("\nFitting ",ii," Archetypes"))
         pb <- txtProgressBar(min = 1, max = nstart, style = 3)
+      }
 
-      # G <- nArchetypes[ii]
       many_starts[[ii]] <- plapply(seq_len(nstart), tmp_fun, gg = nArchetypes[ii],
                                 .parallel = mc.cores,
                                 .verbose = !control$quiet)
@@ -675,7 +685,8 @@
 
    res <- list(multiple_fits = many_starts,
               nArchetypes=nArchetypes,
-              groupselection=groupselection)
+              groupselection=groupselection,
+              nstart = nstart)
 
 
    class(res) <- c("species_mix.multifit")
@@ -991,7 +1002,7 @@
   wts <- NULL
   }
   attr(res, "SAMs") <- group
-  attr(res, "pis") <- pi
+  attr(res, "pi") <- pi
   attr(res, "alpha") <- alpha
   attr(res, "beta") <- beta
   attr(res, "gamma") <- gamma
@@ -1024,14 +1035,13 @@
 
 
     fits <- list()
-    taus <- starting.sam$taus
-    fits$pis <- colMeans(taus)
+    tau <- starting.sam$tau
+    fits$pi <- colMeans(tau)
     fits$alpha <- starting.sam$alpha
-    fits$betas <- starting.sam$beta
+    fits$beta <- starting.sam$beta
     fits$gamma <- starting.sam$gamma
     fits$delta <- starting.sam$delta
     fits$theta <- starting.sam$theta
-    # if(fits$theta)
 
     diff.logl <- -100; cw.logl <- -Inf; new.logl <- 10
     mod <- list(logl = -Inf)
@@ -1040,33 +1050,38 @@
     while((diff.logl < 1-control$ecm_reltol | diff.logl > 1+control$ecm_reltol) & counter <= control$ecm_steps) {
       # if(diff.logl > 1) break;
       ## If any pi hits 0, restart with new random starts
-    if(any(fits$pis < 0.0005)) {
+    if(any(fits$pi < 0.0005)) {
     starting.sam <- get_initial_values_sam(y = y, X = X, W = W, U = U,
                                            site_spp_weights = site_spp_weights,
                                            offset = offset, y_is_na = y_is_na,
                                            G = G, S = S,
                                            disty = disty, size = size,
-                                           control = set_control_sam(list(init_method = "random2")))
+                                           control = set_control_sam(list(init_method="random2")))
 
       fits <- list()
-      taus <- starting.sam$taus
-      fits$pis <- colMeans(taus)
+      tau <- starting.sam$tau
+      fits$pi <- colMeans(tau)
       fits$alpha <- starting.sam$alpha
-      fits$betas <- starting.sam$beta
+      fits$beta <- starting.sam$beta
       fits$gamma <- starting.sam$gamma
       fits$delta <- starting.sam$delta
       fits$theta <- starting.sam$theta
       }
 
-      ## CM-step
+      ## CM-step (M step)
+      fits$pi <- colMeans(tau)
+
       ## optimise the spp coefs - alpha & gamma if present
       fm_sppParam <- plapply(seq_len(S), apply_optimise_sppParam,
-                             y, X, W, U, taus, fits,
-                             site_spp_weights, offset, y_is_na,
-                             disty, size, powers,
+                             y, X, W, U, S, G, n, tau,
+                             fits, site_spp_weights,
+                             offset, y_is_na, disty,
+                             size, powers,
                              .parallel = control$cores,
                              .verbose = FALSE)
       new.sp.params <- do.call(rbind,lapply(fm_sppParam, `[[`, 1))
+      # cat("alphas:\n")
+      # print(new.sp.params)
       fits$alpha <- update_coefs(fits$alpha,new.sp.params[,1])
       if(ncol(W)>1){
         fits$gamma <- update_coefs(fits$gamma,new.sp.params[,-1])
@@ -1074,53 +1089,61 @@
         fits$gamma <- rep(-999999,S)
       }
 
-      ## update the dispersion parameters.
-      if(disty %in% c(4,5,6)) {
-        fm_theta <- plapply(seq_len(S), apply_optimise_thetaParams,
-                            y, X, W, U, taus, fits,
-                            site_spp_weights, offset, y_is_na,
-                            disty, size, powers,
-                            .parallel = control$cores,
-                            .verbose = FALSE)
-        new.sp.thetas <- unlist(lapply(fm_theta, `[[`, 1))
-        fits$theta <- update_coefs(fits$theta,new.sp.thetas)
-      } else {
-        fits$theta <- rep(-999999,S)
-      }
+      ## Update archetype-specific coefficients
+      fm_beta <- plapply(seq_len(G), apply_optimise_betas,
+                                  y, X, W, U, site_spp_weights, offset,
+                                  y_is_na, disty, tau, fits, size, powers, control,
+                                  .parallel = control$cores,
+                                  .verbose = FALSE)
+      new.beta <- do.call(rbind,fm_beta)
+      # cat("betas:\n")
+      # print(new.beta)
+
+      fits$beta <- update_coefs(fits$beta,new.beta)
+
 
       ## Update the all parameter.
       if(!is.null(U)){
         new.deltas <- stats::optimize(f = llogl.allParams, interval = c(-30,30), maximum = TRUE,
-                               y = y, X = X, W = W, U=U, taus = taus, fits = fits,
+                               y = y, X = X, W = W, U=U, tau = tau, fits = fits,
                                site_spp_weights = site_spp_weights,
                                offset = offset, y_is_na = y_is_na,
                                disty = disty, size = size, powers = powers)$maximum
         fits$delta <- update_coefs(fits$delta, new.deltas)
       }
 
-      ## Update archetype-specific coefficients
-      fm_beta <- plapply(seq_len(G), apply_optimise_betas,
-                         y, X, W, U, site_spp_weights, offset,
-                         y_is_na, disty, taus, fits, size, powers,
-                         .parallel = control$cores,
-                         .verbose = FALSE)
-      new.betas <- do.call(rbind,fm_beta)
-      fits$beta <- update_coefs(fits$beta,new.betas)
+      ## update the dispersion parameters.
+      if(disty %in% c(4,5,6)) {
+        fm_theta <- plapply(seq_len(S), apply_optimise_thetaParams,
+                                     y, X, W, U, tau, fits,
+                                     site_spp_weights, offset, y_is_na,
+                                     disty, size, powers,
+                                     .parallel = control$cores,
+                                     .verbose = FALSE)
+        new.sp.thetas <- unlist(lapply(fm_theta, `[[`, 1))
+        # cat("thetas:\n")
+        # print(new.sp.thetas)
+
+        fits$theta <- update_coefs(fits$theta,new.sp.thetas)
+      } else {
+        fits$theta <- rep(-999999,S)
+      }
+
 
       ## E-step
       do.estep <- try(e.step(y, X, W, U, site_spp_weights,
                              offset, y_is_na, disty,
-                             fits, size, powers),
+                             fits, size, powers, control),
                       silent=TRUE)
       if(!is.finite(do.estep$logl)) {
         mod <- list(logl = -Inf); break;
       }
       if(is.finite(do.estep$logl)) {
-        taus <- do.estep$taus
+        tau <- do.estep$tau
         new.logl <- do.estep$logl
         diff.logl <- abs(new.logl/cw.logl)
 
-        if(!control$quiet) message(paste0("Iteration: ", counter, "| New loglik ", round(new.logl,3),  " | Ratio loglik ", round(diff.logl,6)));
+        if(!control$quiet) message(paste0("Iteration: ", counter, " | New loglik ", round(new.logl,3),  " | Ratio loglik ", round(diff.logl,6)));
 
         cw.logl <- new.logl
         counter <- counter + 1
@@ -1129,25 +1152,24 @@
 
     if(new.logl > mod$logl) {
       mod <- list(logl = new.logl, alpha = fits$alpha, beta = fits$beta,
-                  eta = additive_logistic(fits$pis, inv = TRUE)[-G],
+                  eta = additive_logistic(fits$pi, inv = TRUE)[-G],
                   gamma = fits$gamma, delta = fits$delta,
-                  theta = fits$theta, pis = fits$pis, taus = taus)
+                  theta = fits$theta, pi = fits$pi, tau = tau)
       mod$diff.logl <- diff.logl
       mod$counter <- counter
-      names(mod$pis) <- paste("Archetype", 1:G, sep = "");
-      mod$taus <- as.data.frame(round(mod$taus,5)); colnames(mod$taus) <- names(mod$pis); rownames(mod$taus) <- paste("Sp",1:S,sep="")
-      mod$entropy <- -sum(as.vector(mod$taus[mod$taus != 0])*log(unlist(mod$taus[mod$taus != 0])));
-      mod$beta <- round(mod$beta,6); rownames(mod$beta) <- names(mod$pis);
-      names(mod$alpha) <- rownames(mod$taus)
+      names(mod$pi) <- paste("Archetype", 1:G, sep = "");
+      mod$tau <- as.data.frame(round(mod$tau,5)); colnames(mod$tau) <- names(mod$pi); rownames(mod$tau) <- paste("Sp",1:S,sep="")
+      mod$entropy <- -sum(as.vector(mod$tau[mod$tau != 0])*log(unlist(mod$tau[mod$tau != 0])));
+      mod$beta <- round(mod$beta,6); rownames(mod$beta) <- names(mod$pi);
+      names(mod$alpha) <- rownames(mod$tau)
       if(ncol(W)>1) {
-        rownames(gamma) <- rownames(mod$taus)
+        rownames(gamma) <- rownames(mod$tau)
         colnames(gamma) <- colnames(W[,-1,drop=FALSE])
       } else {
-        names(mod$gamma) <- rownames(mod$taus)
+        names(mod$gamma) <- rownames(mod$tau)
       }
       if(!is.null(U)) names(mod$beta) <- colnames(U)
-      names(mod$theta) <- rownames(mod$taus)
-
+      names(mod$theta) <- rownames(mod$tau)
       mod$effect.param <- length(mod$beta) + G + S + ifelse(ncol(W)>1,ncol(W)-1,0) + ifelse(!is.null(U),ncol(U),0) + ifelse(disty %in% c(4,5,6),S,0)
       mod$ics <- -2*mod$logl + c(2,log(S),log(S))*mod$effect.param + c(0,0,2*mod$entropy)
       names(mod$ics) <- c("AIC","BIC with log(# of species)", "ICL")
@@ -1162,10 +1184,10 @@
 
 "e.step" <- function(y, X, W, U, site_spp_weights, offset,
                      y_is_na, disty,
-                     fits, size, sp.powers,
+                     fits, size, sp.powers, control,
                      get.fitted = FALSE) {
-  S <- ncol(y); n <- nrow(y); G <- length(fits$pis)
-  out.taus <- matrix(0,S,G)
+  S <- ncol(y); n <- nrow(y); G <- length(fits$pi)
+  out.tau <- matrix(0,S,G)
   sp.logl <- rep(0,S) ## Species specific incomplete logL
 
   if(disty%in%c(1,7)) link <- make.link('logit')
@@ -1174,98 +1196,131 @@
 
   if(get.fitted) fitted.values <- array(0,dim=c(G,n,S))
 
-  if(!is.null(U)) all.etas <- as.matrix(U)%*%c(fits$delta)
-  else all.etas <- rep(0,n)
+  if(!is.null(U)){
+    all.etas <- U%*%c(fits$delta)
+  } else {
+    all.etas <- rep(0,n)
+  }
 
   for(gg in seq_len(G)) {
-    mix.etas <- as.matrix(X)%*%fits$beta[gg,]
+    mix.etas <- X%*%fits$beta[gg,]
 
     for(ss in seq_len(S)) {
       sp_idx <- !y_is_na[,ss]
       if(ncol(W)>1){
-        spp.etas <- as.matrix(W) %*% c(fits$alpha[ss],fits$gamma[ss,])
+        spp.etas <- W %*% c(fits$alpha[ss],fits$gamma[ss,])
       }else{
-        spp.etas <- as.matrix(W) %*% c(fits$alpha[ss])
+        spp.etas <- W %*% c(fits$alpha[ss])
       }
       new.etas <- all.etas + mix.etas + spp.etas + offset
       if(disty %in% 1) {
         check.p <- link$linkinv(new.etas)
         check.p[check.p < 1e-4] <- 1e-4; check.p[check.p > (1-1e-4)] <- (1-1e-4);
         if(get.fitted) fitted.values[gg,,ss] <- check.p
-        out.taus[ss,gg] <- (sum(dbinom(y[,ss], 1, prob = check.p, log = TRUE)))
+        out.tau[ss,gg] <- (sum(dbinom(y[,ss], 1, prob = check.p, log = TRUE)))
       }
       if(disty %in% 2) {
         if(get.fitted) fitted.values[gg,,ss] <- link$linkinv(new.etas)
-        out.taus[ss,gg] <- (sum(dpois(y[,ss], lambda = link$linkinv(new.etas), log = TRUE)))
+        out.tau[ss,gg] <- (sum(dpois(y[,ss], lambda = link$linkinv(new.etas), log = TRUE)))
       }
       if(disty %in% 3) {
         if(get.fitted) fitted.values[gg,,ss] <- link$linkinv(new.etas)
-        out.taus[ss,gg] <- (y[sp_idx,ss] %*% new.etas - site_spp_weights[sp_idx,ss] %*% link$linkinv(new.etas))
+        out.tau[ss,gg] <- (y[sp_idx,ss] %*% new.etas[sp_idx,,drop=FALSE] - site_spp_weights[sp_idx,ss] %*% link$linkinv(new.etas[sp_idx,,drop=FALSE]))
       }
       if(disty %in% 4) {
         if(get.fitted) fitted.values[gg,,ss] <- link$linkinv(new.etas)
-        out.taus[ss,gg] <- (sum(dnbinom(y[,ss], mu = link$linkinv(new.etas), size = 1/fits$theta[ss], log = TRUE)))
+        out.tau[ss,gg] <- (sum(dnbinom(y[,ss], mu = link$linkinv(new.etas), size = 1/fits$theta[ss], log = TRUE)))
       }
       if(disty %in% 5) {
         if(get.fitted) fitted.values[gg,,ss] <- link$linkinv(new.etas)
-        out.taus[ss,gg] <- (sum(fishMod::dTweedie(y[,ss], mu = link$linkinv(new.etas), phi = fits$theta[ss], p = sp.powers[ss], LOG = TRUE)))
+        out.tau[ss,gg] <- (sum(fishMod::dTweedie(y[,ss], mu = link$linkinv(new.etas), phi = fits$theta[ss], p = sp.powers[ss], LOG = TRUE)))
       }
       if(disty %in% 6) {
         if(get.fitted) fitted.values[gg,,ss] <- link$linkinv(new.etas)
-        out.taus[ss,gg] <- (sum(dnorm(y[,ss], mean = link$linkinv(new.etas), sd = sqrt(fits$theta[ss]), log = TRUE)))
+        out.tau[ss,gg] <- (sum(dnorm(y[,ss], mean = link$linkinv(new.etas), sd = sqrt(fits$theta[ss]), log = TRUE)))
       }
       if(disty %in% 7) {
         check.p <- link$linkinv(new.etas)
         check.p[check.p < 1e-4] <- 1e-4; check.p[check.p > (1-1e-4)] <- (1-1e-4);
         if(get.fitted) fitted.values[gg,,ss] <- check.p
-        out.taus[ss,gg] <- (sum(dbinom(y[,ss], size, prob = check.p, log = TRUE)))
+        out.tau[ss,gg] <- (sum(dbinom(y[,ss], size, prob = check.p, log = TRUE)))
       }
 
     }
   }
 
   for(ss in seq_len(S)) {
-    eps <- max(out.taus[ss,])
-    sp.logl[ss] <- log(sum(fits$pis*exp(out.taus[ss,]-eps))) + eps
+    eps <- max(out.tau[ss,])
+    sp.logl[ss] <- log(sum(fits$pi*exp(out.tau[ss,]-eps))) + eps
   }
   for(ss in seq_len(S)) {
     for(gg in seq_len(G)) {
-      out.taus[ss,gg] <- exp((log(fits$pis[gg]) + out.taus[ss,gg]) - sp.logl[ss])
+      out.tau[ss,gg] <- exp((log(fits$pi[gg]) + out.tau[ss,gg]) - sp.logl[ss])
     }
   }
 
   full.logl <- sum(sp.logl)
-  out.list <- list(taus = out.taus, sp.logl = sp.logl, logl = full.logl)
+
+  ## Trying to add in the penalties.
+  if(control$doPenalties>0){
+    alphaPen <- calc_alpha_penalties(fits,control)
+    betaPen <- calc_beta_penalties(fits,control)
+    if(ncol(W)>1){
+      gammaPen <- calc_gamma_penalties(fits,control)
+    } else {
+      gammaPen <- 0
+    }
+    if(!is.null(U)){
+      deltaPen <- calc_delta_penalties(fits,control)
+    } else {
+      deltaPen <- 0
+    }
+    if(disty%in%c(4,5,6)){
+      thetaPen <- calc_theta_penalties(fits,control)
+    } else {
+      thetaPen <- 0
+    }
+
+    penalties <- alphaPen + betaPen + gammaPen + deltaPen + thetaPen
+
+    full.logl <- full.logl + penalties
+
+  }
+
+  out.list <- list(tau = out.tau, sp.logl = sp.logl, logl = full.logl)
   if(get.fitted) out.list$fitted = fitted.values
   return(out.list)
 }
 
-"apply_optimise_sppParam" <- function(ss, y, X, W, U, taus, fits,
+"apply_optimise_sppParam" <- function(ss, y, X, W, U, S, G, n, tau, fits,
                                       site_spp_weights, offset, y_is_na,
                                       disty, size, powers){
-  if(disty%in%6) intercept.range <- c(-200,200)
-  else intercept.range <- c(-30,30)
-  update.sppParams <- stats::optimize(f = llogl.sppParams, interval = intercept.range, maximum = TRUE, ss = ss,
-                               y = y, X = X, W = W, U=U, taus = taus, fits = fits,
+  # if(disty%in%6) intercept.range <- c(-200,200)
+  # else intercept.range <- c(-30,30)
+  if(ncol(W)>1) pars <- c(fits$alpha[ss],fits$gamma[ss,])
+  else pars <- fits$alpha[ss]
+  # print(pars)
+  update.sppParams <- stats::nlminb(start = pars, objective = llogl.sppParams, ss = ss,
+                               y = y, X = X, W = W, U=U, S=S, G=G, n=n, tau = tau, fits = fits,
                                site_spp_weights = site_spp_weights,
                                offset = offset, y_is_na = y_is_na,
-                               disty = disty, size = size, powers = powers)$maximum
+                               disty = disty, size = size, powers = powers)
   return(update.sppParams)
 }
 
-"apply_optimise_thetaParams" <- function(ss, y, X, W, U, taus, fits,
+"apply_optimise_thetaParams" <- function(ss, y, X, W, U, tau, fits,
                                    site_spp_weights, offy, y_is_na,
                                    disty, size, powers){
   update.theta <- suppressWarnings(stats::optimize(f = llogl.thetaParams, interval = c(0.001,100),
                                                    maximum = TRUE, ss = ss,
-                           y = y, X = X, W = W, U=U, taus = taus, fits = fits,
+                           y = y, X = X, W = W, U=U, tau = tau, fits = fits,
                            site_spp_weights = site_spp_weights,
                            offset = offy, disty = disty, size = size, powers = powers)$maximum)
   return(update.theta)
 }
 
 "apply_optimise_betas" <- function(gg, y, X, W, U, site_spp_weights, offset,
-                                   y_is_na, disty, taus, fits, size, powers){
+                                   y_is_na, disty, tau, fits, size, powers, control){
 
   n <- nrow(y)
   if(disty %in% c(2,3,4,5)){
@@ -1277,32 +1332,33 @@
   if(disty %in% c(6)){
   glmnet.family <- "gaussian"; glm.family <- gaussian();
   }
-        if(disty %in% 4) get.mus <- e.step(y, X, W, U, site_spp_weights,
-                                           offset, y_is_na, disty,
-                                           fits, size, powers,  get.fitted = TRUE)$fitted
 
-        Y_s <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
-        size_s <- matrix(rep(size,ncol(y)),nrow(y),ncol(y))[!y_is_na]
-        X_no_NA <- list()
-        for (jj in 1:ncol(y)){
-          X_no_NA[[jj]] <- X[!y_is_na[,jj],,drop=FALSE]
-        }
-        X_s <- do.call(rbind, X_no_NA)
+  if(disty %in% 4) get.mus <- e.step(y, X, W, U, site_spp_weights,
+                                     offset, y_is_na, disty,
+                                     fits, size, powers, control,get.fitted = TRUE)$fitted
 
-        if(!is.null(U)){
-          U_no_NA <- list()
-          for (jj in 1:ncol(y)){
-            U_no_NA[[jj]] <- U[!y_is_na[,jj],,drop=FALSE]
-          }
-          U_s <- do.call(rbind, U_no_NA)
-          offy3 <- as.matrix(U_s) %*% fits$delta
-        } else {
-          offy3 <- rep(0,nrow(X_s))
-        }
+  Y_s <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
+  size_s <- matrix(rep(size,ncol(y)),nrow(y),ncol(y))[!y_is_na]
+  X_no_NA <- list()
+  for (jj in 1:ncol(y)){
+        X_no_NA[[jj]] <- X[!y_is_na[,jj],,drop=FALSE]
+      }
+  X_s <- do.call(rbind, X_no_NA)
 
-        n_ys <- sapply(X_no_NA,nrow)
-        tau.weights <- rep(taus[,gg,drop=FALSE],c(n_ys))
-        if(disty %in% 4) tau.weights <- rep(taus[,gg,drop=FALSE],c(n_ys))/(1+rep(fits$theta,each=n)*as.vector(get.mus[gg,,]))
+  if(!is.null(U)){
+      U_no_NA <- list()
+      for (jj in 1:ncol(y)){
+          U_no_NA[[jj]] <- U[!y_is_na[,jj],,drop=FALSE]
+      }
+      U_s <- do.call(rbind, U_no_NA)
+        offy3 <- as.matrix(U_s) %*% fits$delta
+      } else {
+        offy3 <- rep(0,nrow(X_s))
+      }
+
+  n_ys <- sapply(X_no_NA,nrow)
+  tau.weights <- rep(tau[,gg,drop=FALSE],c(n_ys))
+        if(disty %in% 4) tau.weights <- rep(tau[,gg,drop=FALSE],c(n_ys))/(1+rep(fits$theta,each=n)*as.vector(get.mus[gg,,]))
         site.weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
         obs.weights <- as.vector(tau.weights*site.weights)
 
@@ -1326,8 +1382,8 @@
 
         if(ncol(X_s)==1) X_s <- cbind(1,X_s)
 
-        if (disty==7){
-          fit1 <- try(glm2::glm.fit2(y=Y_s, x=as.data.frame(cbind(1,X_s)),weights=c(obs.weights+1e-6),
+        if (disty%in%c(3,7)){
+          fit1 <- try(glm2::glm.fit2(y=Y_s, x=as.data.frame(cbind(1,X_s)),weights=c(obs.weights),
                                family=glm.family, offset=offy), silent=FALSE)
           if (any(class(fit1)[1] %in% 'try-error')){
             new.betas <- rep(NA, ncol(X))
@@ -1337,7 +1393,7 @@
           }
         } else {
           fit1 <- glmnet::glmnet(x = as.matrix(X_s), y = Y_s, family = glmnet.family, weights = obs.weights+1e-6, offset = offy, nlambda = 100, intercept = FALSE)
-        new.betas <- coef(fit1)[,ncol(coef(fit1))][-1]
+          new.betas <- coef(fit1)[,ncol(coef(fit1))][-1]
         }
         # print(new.betas)
         if(ncol(X)==1)new.betas <- new.betas[-1]
@@ -1346,111 +1402,156 @@
 
 }
 
-"llogl.sppParams" <- function(x, ss, y, X, W, U, taus, fits, site_spp_weights, offset, y_is_na, disty, size, powers) {
+"calc_alpha_penalties" <- function(fits, control){
 
-  S <- ncol(y); n <- nrow(y); G <- ncol(taus)
+  alphaPen <- -1 * fits$alpha*fits$alpha/(2*control$penalty.alpha*control$penalty.alpha)
+  alphaPenSum <- sum(alphaPen)
+  return(alphaPenSum)
+
+}
+
+"calc_beta_penalties" <- function(fits, control){
+
+  betaPen <- -1 * fits$beta*fits$beta/(2*control$penalty.beta*control$penalty.beta)
+  betaPenSum <- sum(betaPen)
+  return(betaPenSum)
+
+}
+
+"calc_gamma_penalties" <- function(fits, control){
+
+  gammaPen <- -1 * fits$gamma*fits$gamma/(2*control$penalty.gamma*control$penalty.gamma)
+  gammaPenSum <- sum(gammaPen)
+  return(gammaPenSum)
+
+}
+
+"calc_delta_penalties" <- function(fits, control){
+
+  deltaPen <- -1 * fits$delta*fits$delta/(2*control$penalty.delta*control$penalty.delta)
+  deltaPenSum <- sum(deltaPen)
+  return(deltaPenSum)
+
+}
+
+"calc_theta_penalties" <- function(fits, control){
+
+  thetaPen <- -1 * (log(1/fits$theta)*control$penalty.theta[1])*(log(1/fits$theta)*control$penalty.theta[1])/(2*control$penalty.theta[2]*control$penalty.theta[2])
+  thetaPenSum <- sum(thetaPen)
+  return(thetaPenSum)
+
+}
+
+
+"llogl.sppParams" <- function(x, ss, y, X, W, U, S, G, n, tau, fits, site_spp_weights, offset, y_is_na, disty, size, powers) {
+
+  # S <- ncol(y); n <- nrow(y); G <- ncol(tau)
   out <- 0
   sp_idx <- !y_is_na[,ss]
 
   if(disty%in%c(1,7)) link <- make.link('logit')
   if(disty%in%c(2,3,4,5)) link <- make.link('log')
-  # if(disty%in%6) link <- make.link('identity')
+  if(disty%in%6) link <- make.link('identity')
 
-  if(!is.null(U)) all.etas <- as.matrix(U)%*%c(fits$delta)
+  if(!is.null(U)) all.etas <- U%*%c(fits$delta)
   else all.etas <- rep(0,n)
 
-  mix.etas <- as.matrix(X)%*%t(fits$betas)
+  mix.etas <- tcrossprod(X,fits$beta)
 
   for(gg in seq_len(G)) {
-    eta <- as.matrix(W)%*%x + mix.etas[,gg] + all.etas + offset
+    eta <- W%*%x + mix.etas[,gg] + all.etas + offset
     if(disty %in%  1)
-      out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = 1, prob =  link$linkinv(eta), log = TRUE))
+      out <- out + sum(tau[ss,gg]*dbinom(y[,ss], size = 1, prob =  link$linkinv(eta), log = TRUE))
     if(disty %in%  2)
-      out <- out + sum(taus[ss,gg]*dpois(y[,ss], lambda =  link$linkinv(eta), log = TRUE))
+      out <- out + sum(tau[ss,gg]*dpois(y[,ss], lambda =  link$linkinv(eta), log = TRUE))
     if(disty %in%  3)
-      out <- out + sum(taus[ss,gg]*(y[sp_idx,ss] %*% eta - site_spp_weights[sp_idx,ss] %*%  link$linkinv(eta)))
+      out <- out + sum(tau[ss,gg]*(dpois(y[sp_idx,ss]/site_spp_weights[sp_idx,ss], lambda =  link$linkinv(eta), log = TRUE)*site_spp_weights[sp_idx,ss]))#(y[sp_idx,ss] %*% eta[sp_idx,,drop=FALSE] - site_spp_weights[sp_idx,ss] %*% link$linkinv(eta[sp_idx,,drop=FALSE])))
     if(disty %in%  4)
-      out <- out + sum(taus[ss,gg]*dnbinom(y[,ss], mu =  link$linkinv(eta), size = 1/fits$theta[ss], log = TRUE))
+      out <- out + sum(tau[ss,gg]*dnbinom(y[,ss], mu =  link$linkinv(eta), size = 1/fits$theta[ss], log = TRUE))
     if(disty %in%  5)
-      out <- out + sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
+      out <- out + sum(tau[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
     if(disty %in%  6)
-      out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean =  eta, sd = sqrt(fits$theta[ss]), log = TRUE))
+      out <- out + sum(tau[ss,gg]*dnorm(y[,ss], mean =  link$linkinv(eta), sd = sqrt(fits$theta[ss]), log = TRUE))
     if(disty %in%  7)
-      out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = size, prob = link$linkinv(eta), log = TRUE))
+      out <- out + sum(tau[ss,gg]*dbinom(y[,ss], size = size, prob = link$linkinv(eta), log = TRUE))
   }
-  return(out)
+  return(-out) #negative for nlmnib
 }
 
 
-"llogl.thetaParams" <- function(x, ss, y, X, W, U, taus, fits, site_spp_weights, offset, disty, size, powers) {
+"llogl.thetaParams" <- function(x, ss, y, X, W, U, tau, fits, site_spp_weights, offset, disty, size, powers) {
 
-  S <- ncol(y); n <- nrow(y); G <- ncol(taus)
+  S <- ncol(y); n <- nrow(y); G <- ncol(tau)
   out <- 0
   if(disty%in%c(4,5)) link <- make.link('log')
   if(disty%in%6) link <- make.link('identity')
 
 
-  if(!is.null(U)) all.etas <- as.matrix(U)%*%c(fits$delta)
+  if(!is.null(U)) all.etas <- U%*%c(fits$delta)
   else all.etas <- rep(0,n)
 
   if(ncol(W)>1){
-    spp.etas <- as.matrix(W) %*% c(fits$alpha[ss],fits$gamma[ss,])
+    spp.etas <- W %*% c(fits$alpha[ss],fits$gamma[ss,])
   }else{
-    spp.etas <- as.matrix(W) %*% c(fits$alpha[ss])
+    spp.etas <- W %*% c(fits$alpha[ss])
   }
-  mix.etas <- as.matrix(X) %*% t(fits$beta)
+
+  mix.etas <- tcrossprod(X,fits$beta)
+
   for(gg in seq_len(G)){
     eta <- spp.etas + mix.etas[,gg] + all.etas + offset
    if(disty==4)
-     out <- out + sum(taus[ss,gg]*dnbinom(y[,ss], mu = link$linkinv(eta), size = 1/x, log = TRUE));
+     cw.out <- sum(tau[ss,gg]*dnbinom(y[,ss], mu = link$linkinv(eta), size = 1/x, log = TRUE));
    if(disty==5)
-     out <- out + sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu = link$linkinv(eta), phi = x, prob = powers[ss], LOG = TRUE));
+     cw.out <- sum(tau[ss,gg]*fishMod::dTweedie(y[,ss], mu = link$linkinv(eta), phi = x, prob = powers[ss], LOG = TRUE));
    if(disty==6)
-     out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean = eta, sd = sqrt(x), log = TRUE))
+     cw.out <- sum(tau[ss,gg]*dnorm(y[,ss], mean = eta, sd = sqrt(x), log = TRUE))
+   out <- out + cw.out
+
   }
   return(out)
 }
 
 
 
-"llogl.allParams" <- function(x, y, X, W, U, taus, fits, site_spp_weights, offset, y_is_na, disty, size, powers) {
+"llogl.allParams" <- function(x, y, X, W, U, tau, fits, site_spp_weights, offset, y_is_na, disty, size, powers) {
 
-  S <- ncol(y); n <- nrow(y); G <- ncol(taus)
+  S <- ncol(y); n <- nrow(y); G <- ncol(tau)
   out <- 0
 
   if(disty%in%c(1,7)) link <- make.link('logit')
   if(disty%in%c(2,3,4,5)) link <- make.link('log')
   if(disty%in%6) link <- make.link('identity')
 
-  all.etas <- as.matrix(U)%*%x
+  all.etas <- U%*%x
 
-  mix.etas <- as.matrix(X)%*%t(fits$beta)
+  mix.etas <- tcrossprod(X,fits$beta)
 
   for (ss in seq_len(S)){
 
     sp_idx <- !y_is_na[,ss]
     if(ncol(W)>1){
-      spp.etas <- as.matrix(W) %*% c(fits$alpha[ss],fits$gamma[ss,])
+      spp.etas <- W %*% c(fits$alpha[ss],fits$gamma[ss,])
     }else{
-      spp.etas <- as.matrix(W) %*% c(fits$alpha[ss])
+      spp.etas <- W %*% c(fits$alpha[ss])
     }
 
     for(gg in seq_len(G)) {
       eta <- spp.etas + mix.etas[,gg] + all.etas + offset
       if(disty %in%  1)
-        out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = 1, prob =  link$linkinv(eta), log = TRUE))
+        out <- out + sum(tau[ss,gg]*dbinom(y[,ss], size = 1, prob =  link$linkinv(eta), log = TRUE))
       if(disty %in%  2)
-        out <- out + sum(taus[ss,gg]*dpois(y[,ss], lambda =  link$linkinv(eta), log = TRUE))
+        out <- out + sum(tau[ss,gg]*dpois(y[,ss], lambda =  link$linkinv(eta), log = TRUE))
       if(disty %in%  3)
-        out <- out + sum(taus[ss,gg]*(y[sp_idx,ss] %*% eta - site_spp_weights[sp_idx,ss] %*%  link$linkinv(eta)))
+        out <- out + sum(tau[ss,gg]*(y[sp_idx,ss] %*% eta[sp_idx,,drop=FALSE] - site_spp_weights[sp_idx,ss] %*%  link$linkinv(eta[sp_idx,,drop=FALSE])))
       if(disty %in%  4)
-        out <- out + sum(taus[ss,gg]*dnbinom(y[,ss], mu =  link$linkinv(eta), size = 1/fits$theta[ss], log = TRUE))
+        out <- out + sum(tau[ss,gg]*dnbinom(y[,ss], mu =  link$linkinv(eta), size = 1/fits$theta[ss], log = TRUE))
       if(disty %in%  5)
-        out <- out + sum(taus[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(eta), phi = fits$theta[ss], prob = powers[ss], LOG = TRUE))
+        out <- out + sum(tau[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(eta), phi = fits$theta[ss], prob = powers[ss], LOG = TRUE))
       if(disty %in%  6)
-        out <- out + sum(taus[ss,gg]*dnorm(y[,ss], mean =  (eta), sd = sqrt(fits$theta[ss]), log = TRUE))
+        out <- out + sum(tau[ss,gg]*dnorm(y[,ss], mean =  (eta), sd = sqrt(fits$theta[ss]), log = TRUE))
       if(disty %in%  7)
-        out <- out + sum(taus[ss,gg]*dbinom(y[,ss], size = size, prob = link$linkinv(eta), log = TRUE))
+        out <- out + sum(tau[ss,gg]*dbinom(y[,ss], size = size, prob = link$linkinv(eta), log = TRUE))
     }
 
   }
@@ -1462,7 +1563,7 @@
                                       offset, y_is_na, G, S, disty, size, powers, control){
   if(control$ecm_prefit){
     if(!control$quiet)message('Using ECM algorithm to find starting values; using ',
-                              control$ecm_refit,'refits')
+                              control$ecm_refit,' refits')
     emfits <- fit.ecm.sam(y, X, W, U, spp_weights, site_spp_weights,
                             offset, y_is_na, G, S, disty, size, powers, control)
     start_vals <- list(alpha = (emfits$alpha),
@@ -1470,12 +1571,10 @@
                        gamma = (emfits$gamma),
                        delta = (emfits$delta),
                        theta = (emfits$theta),
-                       pis = (emfits$pis))
+                       pi = (emfits$pi))
   } else {
-    message('If you are choosing to not use the ECM algorithm to estimate starting values\nwe recommend that you at least run a multifits to optimise the loglikelihood, see "species_mix.multifit".')
-    if(!control$quiet)message('You are not using the EM algorith to find
-starting values;\n starting values are generated using ',control$init_method,
-                              '.')
+    if(!control$quiet)message('If you are choosing to not use the ECM algorithm to estimate starting values\nwe recommend that you at least run a multifits to optimise the loglikelihood, see "species_mix.multifit".')
+    if(!control$quiet)message('You are not using the ECM algorith to find starting values;\n starting values are generated using ',control$init_method,'.')
     starting_values <- get_initial_values_sam(y = y, X = X, W= W, U = U,
                                               site_spp_weights = site_spp_weights,
                                               offset = offset, y_is_na = y_is_na,
@@ -1487,16 +1586,16 @@ starting values;\n starting values are generated using ',control$init_method,
                        gamma=(starting_values$gamma),
                        delta=(starting_values$delta),
                        theta=(starting_values$theta),
-                       pis=(starting_values$pis))
+                       pi=(starting_values$pi))
   }
 
   ## all the things we need to c++ optimisation.
-  start_vals$eta <- additive_logistic(start_vals$pis, inv = TRUE)[-G]
+  start_vals$eta <- additive_logistic(start_vals$pi, inv = TRUE)[-G]
   start_vals$nS <- S
   start_vals$nG <- G
   start_vals$nObs <- nrow(y)
   #put dispersion parameters on the log-scale for c++
-  if(disty%in%c(4,5,6)) start_vals$theta <- transform.theta(start_vals$theta, disty=disty, max.theta = control$max.theta)
+  if(disty%in%c(4,5,6)) start_vals$theta <- transform.theta(start_vals$theta, disty=disty, logify = TRUE)
   return(start_vals)
 }
 
@@ -1541,7 +1640,7 @@ starting values;\n starting values are generated using ',control$init_method,
   if(disty%in%4){ # negative binomial
     fit1 <- mvabund::manyglm(tmpform, data = datX,offset = offset, family = "negative.binomial")
     coefs <- t(fit1$coefficients)
-    starting.sam$theta <- ifelse(fit1$phi<1,1,fit1$phi)
+    starting.sam$theta <- fit1$phi
   }
   if(disty%in%5){ # tweedie
     fit1 <- many.fit(y, X, W, U, site_spp_weights,
@@ -1565,7 +1664,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
   # a bit of book keeping
   covarNames <- colnames(datX)
-  alphaIdx <- match(colnames(W[,1,drop=FALSE]),covarNames)
+  alphaIdx <- 1#match(colnames(W[,1,drop=FALSE]),covarNames)
   betaIdx <- match(colnames(X),covarNames)
 
   # alphas/intercepts
@@ -1589,7 +1688,6 @@ starting values;\n starting values are generated using ',control$init_method,
   } else {
     starting.sam$delta <- -999999
   }
-
 
   if(G==1) control$init_method <- 'kmeans'
 
@@ -1616,7 +1714,7 @@ starting values;\n starting values are generated using ',control$init_method,
 
   if(control$init_method=='random2'){
     if(!control$quiet) message("Initial groups parameter estimates by K-means clustering with random noise")
-    fmmvnorm <- stats::kmeans(spp.beta, centers=G, nstart=50, iter.max = 100)
+    fmmvnorm <- stats::kmeans(spp.beta, centers=G, iter.max = 200, nstart = 100)
     tmp_grp <- fmmvnorm$cluster
     grp_coefs <- apply(spp.beta, 2, function(x) tapply(x, tmp_grp, mean))
     grp_coefs <- matrix(grp_coefs,nrow=G) # not check this...
@@ -1633,25 +1731,29 @@ starting values;\n starting values are generated using ',control$init_method,
     if(disty%in%c(4,5,6)) starting.sam$theta <- random_coefs[[5]]
   }
 
-  #get taus as starting values
+  #get tau as starting values
   if(G==1){
-    taus <- matrix(1,nrow=ncol(y), ncol = G)
+    tau <- matrix(1,nrow=ncol(y), ncol = G)
   } else {
-    taus <- matrix(0,nrow=ncol(y), ncol = G)
+    tau <- matrix(0,nrow=ncol(y), ncol = G)
     if(length(sel.omit.spp)>0){
       for(j in 1:length((1:S)[-sel.omit.spp]))
-        taus[(1:S)[-sel.omit.spp][j],fmmvnorm$cluster[j]] <- 1
-      taus[sel.omit.spp,] <- matrix(runif(length(sel.omit.spp)*G),length(sel.omit.spp), G)
+        tau[(1:S)[-sel.omit.spp][j],fmmvnorm$cluster[j]] <- 1
+      tau[sel.omit.spp,] <- matrix(runif(length(sel.omit.spp)*G),length(sel.omit.spp), G)
     } else {
-      for(j in seq_len(S))taus[j,fmmvnorm$cluster[j]] <- 1
+      for(j in seq_len(S))tau[j,fmmvnorm$cluster[j]] <- 1
     }
   }
 
-  taus <- taus/rowSums(taus)
+  tau <- tau/rowSums(tau)
   # starting.sam$alpha
   starting.sam$beta <- grp_coefs
-  starting.sam$taus <- shrink_taus(taus, G=G)
-  starting.sam$pis <- colMeans(taus)
+  if(!disty%in%3){
+    starting.sam$tau <- shrink_taus(tau, G=G)
+  } else {
+    starting.sam$tau <- tau
+  }
+  starting.sam$pi <- colMeans(tau)
 
   return(starting.sam)
 }
@@ -1742,7 +1844,7 @@ starting values;\n starting values are generated using ',control$init_method,
     lambda.seq <- sort(unique( c( seq( from=1/0.001, to=1, length=25),
                                    seq( from=1, to=.1, length=10))),
                        decreasing=TRUE)
-    # if(disty==7) lambda.seq <- 0
+    if(disty==3) lambda.seq <- 0
     ft_sp <- try(glmnet::glmnet(y=outcomes, x=as.matrix(df),
                                 family=fam, offset=offset[ids_i],
                                 weights=as.numeric(site_spp_weights[ids_i,ss]),
@@ -1773,14 +1875,14 @@ starting values;\n starting values are generated using ',control$init_method,
                                                          newoffset=offset[ids_i])),
                             weights=as.matrix(site_spp_weights[ids_i,ss]),
                             dfr=length(outcomes), eps=1e-4)
-      if(tmp>5) tmp <- 5
+      # if(tmp>5) tmp <- 5
       theta <- tmp
     }
     if( disty == 6){
       preds <- as.numeric( predict(ft_sp, s=locat.s, type="link",
                                    newx=as.matrix(df), newoffset=offset[ids_i]))
       #should be something like the resid standard
-      theta <- log( sqrt( sum((outcomes - preds)^2)/length(outcomes)))
+      theta <- sum((outcomes - preds)^2)/length(outcomes)
     }
   }
 
@@ -1791,7 +1893,7 @@ starting values;\n starting values are generated using ',control$init_method,
                                data=df3, p=power[ss], vcov=FALSE,
                                residuals=FALSE, trace=0)
       my_coefs <- t(as.matrix(tmp.fm1$coef,ncol=1))
-      theta <- log(tmp.fm1$coef["phi"])
+      theta <- tmp.fm1$coef["phi"]
   }
 
   if (disty==7){
@@ -1839,12 +1941,12 @@ starting values;\n starting values are generated using ',control$init_method,
   if(ncol(W)>1){
     npw <- as.integer(ncol(W[,-1,drop=FALSE]))
     control$optiPart <- as.integer(1)
-    gamma.score <- as.numeric(matrix(NA, nrow=S, ncol=ncol(W)))
+    gamma.score <- as.numeric(rep(NA, length(gamma)))
     Wcpp <- W[,-1,drop=FALSE]
   } else {
     npw <- as.integer(1)
     control$optiPart <- as.integer(0)
-    gamma.score <- -99999
+    gamma.score <- as.numeric(rep(NA, length(gamma)))
     Wcpp <- matrix(1,nrow = n, ncol=1)
   }
 
@@ -1852,20 +1954,20 @@ if(!is.null(U)) {
     Ucpp <- U
     npu <- as.integer(ncol(U))
     control$optiAll <- as.integer(1)
-    delta.score <- as.numeric(matrix(NA, ncol=ncol(U)))
+    delta.score <- as.numeric(rep(NA, length(delta)))
   } else {
-    delta.score <- -99999
+    delta.score <- as.numeric(rep(NA, length(delta)))
     control$optiAll <- as.integer(0)
     Ucpp <- matrix(1,nrow = n,ncol=1)
     npu <- as.integer(1) # a dummy variable to stop c++ issues.
   }
 
   if(disty%in%c(4,5,6)){
-    control$optiDisp <- as.integer(1)
+    control$optiDisp <- as.integer(0)
     theta.score <- as.numeric(rep(NA, length(theta)))
   }else{
     control$optiDisp <- as.integer(0)
-    theta.score <- -99999
+    theta.score <- as.numeric(rep(NA, length(theta)))
   }
   scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,
                                        gamma.score,delta.score,theta.score))))
@@ -1901,6 +2003,7 @@ if(!is.null(U)) {
                as.integer(npw), as.integer(npu), as.integer(n),
                as.integer(disty),as.integer(control$optiDisp),
                as.integer(control$optiPart),as.integer(control$optiAll),
+               as.integer(control$doPenalties), ## should you do penalties?
                # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
                as.double(alpha), as.double(beta), as.double(eta),
                as.double(gamma), as.double(delta), as.double(theta),
@@ -1930,9 +2033,10 @@ if(!is.null(U)) {
   ret <- tmp
   ret$logl <- ret$logl * -1
   ret$mus <- array(mus, dim=c(n, S, G))
-
   ret$names <- list(spp=colnames(y), SAMs=paste("Archetype", seq_len(G), sep=""),
                     Xvars=colnames(X), Wvars=colnames(Wcpp), Uvars = colnames(Ucpp))
+
+  if(disty%in%c(4,5,6)) ret$theta <- transform.theta(ret$theta,disty,logify=FALSE)
 
   names(ret$alpha) <- ret$names$spp
   names(ret$beta) <- paste(rep(ret$names$Xvars,each=G),ret$names$SAMs,sep='.')
@@ -1958,7 +2062,7 @@ if(!is.null(U)) {
   ret$S <- S; ret$G <- G; ret$npx <- npx; ret$npw <- ifelse(ncol(W)>1,ncol(W),0);
   ret$npu <- ifelse(!is.null(U),ncol(U),0); ret$n <- n; ret$disty <- disty;
   ret$start.vals <- inits
-  ret$loglikeSG <- matrix(loglikeSG,  nrow = S, ncol = G)  #for residuals
+  ret$loglikeSG <- matrix(loglikeSG,  nrow = S, ncol = G, byrow = FALSE) # loglikes got mixed up. Need to address in c++ code.  #for residuals
   ret$loglikeS <- loglikeS  #for residuals
   gc()
   return(ret)
@@ -2158,7 +2262,7 @@ if(!is.null(U)) {
 #                      # alpha, tau, beta, gamma, disp, power,
 #                      # as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
 #                      # alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
-#                      # pis, mus, logCondDens, logls,
+#                      # pi, mus, logCondDens, logls,
 #                      # as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
 #                      # as.integer(control$optimise_cpp), as.integer(TRUE), as.integer( FALSE), as.integer(optimiseDisp), as.integer( FALSE), PACKAGE = "ecomix")
 #         message( "Updating Dispersion Parameters: ", appendLF=FALSE)
@@ -2176,13 +2280,13 @@ if(!is.null(U)) {
 #     #              alpha, tau, beta, gamma, disp, power,
 #     #              as.numeric(control$penalty), as.numeric(control$penalty.tau), as.numeric( control$penalty.gamma), as.numeric( control$penalty.disp[1]), as.numeric( control$penalty.disp[2]),
 #     #              alpha.score, tau.score, beta.score, gamma.score, disp.score, scoreContri,
-#     #              pis, mus, logCondDens, logls,
+#     #              pi, mus, logCondDens, logls,
 #     #              as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport), as.numeric(control$abstol), as.numeric(control$reltol), as.integer(conv),
 #     #              as.integer(FALSE), as.integer( TRUE), as.integer(TRUE), as.integer(TRUE), as.integer( FALSE), PACKAGE = "ecomix")
 #
 #     ret <- list()
 #
-#     ret$pis <- matrix(pis, ncol = nRCP)
+#     ret$pi <- matrix(pi, ncol = nRCP)
 #     ret$mus <- array( mus, dim=c(n,S,nRCP))
 #     ret$coefs <- list(alpha = alpha, tau = tau, beta = beta, gamma=gamma, disp=disp)
 #     if( any( ret$coefs$gamma==-999999, na.rm=TRUE))
@@ -2212,23 +2316,31 @@ if(!is.null(U)) {
 #     return( ret)
 #   }
 
-"transform.theta" <- function(thetas, disty, max.theta = NULL){
+"transform.theta" <- function(theta, disty, logify = TRUE){#, max.theta = NULL){
 
+  if(logify){
   if(disty%in%4){
-    if(!is.null(max.theta)) {
-      thetas <- ifelse(thetas>max.theta,max.theta,thetas)
-    }
+      log.new.theta <- log(theta)
   }
   if(disty%in%5){
-
+    log.new.theta  <- log(theta)
   }
   if(disty%in%6){
-    thetas <- sqrt(thetas)
+    log.new.theta <- log(sqrt(theta))
   }
-
-  log.new.thetas <- log(thetas)
-
-  return(log.new.thetas)
+    return(log.new.theta)
+  }  else {
+    if(disty%in%4){
+      new.theta <- exp(theta)
+    }
+    if(disty%in%5){
+      new.theta  <- exp(theta)
+    }
+    if(disty%in%6){
+      new.theta <- exp(theta)^2
+    }
+      return(new.theta)
+    }
 }
 
 
@@ -2256,8 +2368,8 @@ if(!is.null(U)) {
   return( tmp)
 }
 
-"calc_post_probs_sam" <- function( pis, logCondDens)  {
-  logPostProbs <- log( pis) + logCondDens
+"calc_post_probs_sam" <- function( pi, logCondDens)  {
+  logPostProbs <- log( pi) + logCondDens
   mset <- apply( logPostProbs, 1, max)
   logSums <- mset + log( rowSums( exp( logPostProbs-mset)))
   logPostProbs <- logPostProbs - logSums
@@ -2324,7 +2436,7 @@ if(!is.null(U)) {
   if(family=='ippm') na_rule <- "na.pass"
   else  na_rule <- "na.exclude"
   # form1 <- update.formula(form1, ~ . -1)
-  mf.X <- stats::model.frame(form1, data = data)
+  mf.X <- stats::model.frame(form1, data = data, na.action = na_rule)
   if(is.null(form3)){
     mf.U <- NULL
     if(!is.null( form2)){
@@ -2390,23 +2502,26 @@ if(!is.null(U)) {
    logl_sp <- matrix(NA, nrow=S, ncol=G)
 
    if(!is.null(U))eta_all <- as.matrix(U) %*% fits$delta
-   else eta_all <- rep(0,nrow(X))
+   else eta_all <- matrix(0,nrow=nrow(X),ncol=1)
 
     for(ss in 1:S){
       sp_idx<-!y_is_na[,ss]
       for(gg in 1:G){
-        eta_mix <- as.matrix(X[sp_idx,]) %*% fits$beta[gg,]
-        if(ncol(W)>1) eta_spp <- as.matrix(W[sp_idx,,drop=FALSE]) %*% c(fits$alpha[ss],fits$gamma[ss,])
-        else eta_spp <- fits$alpha[ss]
-        eta <- eta_spp + eta_mix + eta_all[sp_idx] + offset[sp_idx]
+        eta_mix <- X[sp_idx,,drop=FALSE] %*% fits$beta[gg,]
+        if(ncol(W)>1){
+          eta_spp <- W[sp_idx,,drop=FALSE] %*% c(fits$alpha[ss],fits$gamma[ss,])
+        } else {
+          eta_spp <- fits$alpha[ss]
+        }
+        eta <- eta_spp + eta_mix + eta_all[sp_idx,,drop=FALSE] + offset[sp_idx]
         if(get_fitted) fitted_values[gg,sp_idx,ss] <- link$linkinv(eta)
 
         if(disty==1) logl_sp[ss,gg] <- sum(dbinom(y[,ss], size =  1, prob =  link$linkinv(eta),log = TRUE))
         if(disty==2) logl_sp[ss,gg] <- sum(dpois(y[,ss], lambda = link$linkinv(eta),log = TRUE))
-        if(disty==3) logl_sp[ss,gg] <- y[sp_idx,ss] %*% eta - site_spp_weights[sp_idx,ss] %*% exp(eta)
-        if(disty==4) logl_sp[ss,gg] <- sum(dnbinom(y[,ss], mu=link$linkinv(eta), size = exp(-fits$theta[ss]), log=TRUE))
+        if(disty==3) logl_sp[ss,gg] <- y[sp_idx,ss] %*% eta - site_spp_weights[sp_idx,ss] %*% link$linkinv(eta)
+        if(disty==4) logl_sp[ss,gg] <- sum(dnbinom(y[,ss], mu=link$linkinv(eta), size = 1/fits$theta[ss], log=TRUE))
         if(disty==5) logl_sp[ss,gg] <- sum(fishMod::dTweedie(y[,ss], mu =  link$linkinv(eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
-        if(disty==6) logl_sp[ss,gg] <- sum(dnorm(y[,ss],mean=eta,sd=exp(fits$theta[ss]),log=TRUE))
+        if(disty==6) logl_sp[ss,gg] <- sum(dnorm(y[,ss],mean=eta,sd=sqrt(fits$theta[ss]),log=TRUE))
         if(disty==7) logl_sp[ss,gg] <- sum(dbinom(y[,ss],size =  size, prob = link$linkinv(eta),log = TRUE))
 
       }
@@ -2443,16 +2558,16 @@ if(!is.null(U)) {
 
       if(disty==1) logl_sp[ss,gg] <- sum(dbinom(y[,ss], 1, link$linkinv(eta),log = TRUE))
       if(disty==2) logl_sp[ss,gg] <- sum(dpois(y[,ss], lambda = link$linkinv(eta),log = TRUE))
-      if(disty==3) logl_sp[ss,gg] <- y[sp_idx,ss] %*% eta - site_spp_weights[sp_idx,ss] %*% exp(eta)
-      if(disty==4) logl_sp[ss,gg] <- sum(dnbinom(y[,ss], mu=link$linkinv(eta), size = exp(-fits$theta[ss]), log=TRUE))
+      if(disty==3) logl_sp[ss,gg] <- y[sp_idx,ss] %*% eta - site_spp_weights[sp_idx,ss] %*% link$linkinv(eta)
+      if(disty==4) logl_sp[ss,gg] <- sum(dnbinom(y[,ss], mu=link$linkinv(eta), size = fits$theta[ss], log=TRUE))
       if(disty==5) logl_sp[ss,gg] <- sum(fishMod::dTweedie(y[,ss], mu =  link$linkinv(eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
-      if(disty==6) logl_sp[ss,gg] <- sum(dnorm(y[,ss],mean=eta,sd=exp(fits$theta[ss]),log=TRUE))
+      if(disty==6) logl_sp[ss,gg] <- sum(dnorm(y[,ss],mean=eta,sd=sqrt(fits$theta[ss]),log=TRUE))
       if(disty==7) logl_sp[ss,gg] <- sum(dbinom(y[,ss], size, link$linkinv(eta),log = TRUE))
     }
     if(!disty%in%3)logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
   }
 
-  ak <- logl_sp + matrix(rep(log(fits$pis), each=S), nrow=S, ncol=G)
+  ak <- logl_sp + matrix(rep(log(fits$pi), each=S), nrow=S, ncol=G)
   am <- apply( ak, 1, max)
   ak <- exp( ak-am)
   sppLogls <- am + log( rowSums( ak))
@@ -2656,7 +2771,7 @@ if(!is.null(U)) {
   message("starting archetype membership:\n",paste(round(additive_logistic(eta),3)," "))
   message("starting species parameters:\n",paste(round(gamma,3)," "))
   message("starting all parameters:\n", paste(round(delta,3)," "))
-  message("starting species specific dispersion parameters:\n",paste(round(theta,3)," "))
+  message("starting species specific dispersion parameters (these are on a log scale):\n",paste(round(theta,3)," "))
 }
 
 "sam_model_clean_up_names" <- function(mod){
@@ -2664,6 +2779,7 @@ if(!is.null(U)) {
   names(mod$coefs$alpha) <- mod$names$spp
   colnames(mod$coefs$beta) <- mod$names$Xvars
   rownames(mod$coefs$beta) <- mod$names$SAMs
+  names(mod$pi) <- mod$names$SAMs
   if( any(mod$coefs$gamma==-999999, na.rm=TRUE)){
     mod$coefs$gamma <- NULL
   } else {
@@ -2675,14 +2791,16 @@ if(!is.null(U)) {
   } else {
     names(mod$coefs$delta) <- mod$names$Uvars
   }
-  if( any( mod$coefs$theta==-999999, na.rm=TRUE)){
+  if( any( mod$coefs$theta==-999999, na.rm=TRUE)|any(!mod$disty%in%c(4,5,6))){
     mod$coefs$theta <- NULL
   } else {
     names(mod$coefs$theta) <- mod$names$spp
   }
 
-  colnames(mod$taus) <- mod$names$SAMs
-  rownames(mod$taus) <-mod$names$spp
+  # if(mod$family%in%'negative.binomial') mod$coefs$phi <- mod$coefs$theta
+
+  colnames(mod$tau) <- mod$names$SAMs
+  rownames(mod$tau) <-mod$names$spp
   return(mod)
 
 }
@@ -2726,7 +2844,7 @@ if(!is.null(U)) {
 }
 
 
-"sam_internal_pred_groups" <- function(alpha, beta, taus, gamma, delta,
+"sam_internal_pred_groups" <- function(alpha, beta, tau, gamma, delta,
                                        G, S, X, W, U, offset = NULL, family){
 
   if (family %in% c("bernoulli","binomial"))
@@ -2754,13 +2872,13 @@ if(!is.null(U)) {
       s.outpred[, s] <- link.fun$linkinv(eta)
     }
 
-    outpred_arch[, g] <- apply(s.outpred*rep(taus[, g],each = dim(X)[1]),
-                               1, sum)/sum(taus[, g])
+    outpred_arch[, g] <- apply(s.outpred*rep(tau[, g],each = dim(X)[1]),
+                               1, sum)/sum(tau[, g])
   }
   return(outpred_arch)
 }
 
-"sam_internal_pred_species" <- function(alpha, beta, taus, gamma, delta,
+"sam_internal_pred_species" <- function(alpha, beta, tau, gamma, delta,
                                         G, S, X, W, U, offset = NULL, family){
 
   if (family %in% c("bernoulli","binomial"))
@@ -2783,7 +2901,7 @@ if(!is.null(U)) {
     else etaSpp <- matrix(alpha, nrow(X), S, byrow=TRUE)
     eta <- etaMix + etaSpp + etaAll + offset
     mug <- link.fun$linkinv(eta)
-    outpred_spp <- outpred_spp + mug*matrix(taus[,g], nrow(X), S, byrow=TRUE)
+    outpred_spp <- outpred_spp + mug*matrix(tau[,g], nrow(X), S, byrow=TRUE)
     }
 
   return(outpred_spp)
@@ -2870,19 +2988,20 @@ if(!is.null(U)) {
   if( control$quiet)
     control$trace <- 0  #for no tracing
   if (!("init_method" %in% names(control)))
-    control$init_method <- 'random2'
+    control$init_method <- 'kmeans'
   if (!("init_sd" %in% names(control)))
     control$init_sd <- NA
   if (!("minimum_sites_occurrence" %in% names(control)))
     control$minimum_sites_occurrence <- 0
   if (!("ecm_prefit" %in% names(control)))
-    control$ecm_prefit <- TRUE
+    control$ecm_prefit <- TRUE # if(family!="ippm")
+    # else control$ecm_prefit <- FALSE
   if (!("ecm_steps" %in% names(control)))
-    control$ecm_steps <- 5
+    control$ecm_steps <- 10
   if (!("ecm_refit" %in% names(control)))
     control$ecm_refit <- 1
   if (!("ecm_reltol" %in% names(control)))
-    control$ecm_reltol <- 1e-6
+    control$ecm_reltol <- 1e-3
   if (!("print_cpp_start_vals" %in% names(control)))
     control$print_cpp_start_vals <- FALSE
   if (!("nreport" %in% names(control)))
@@ -2901,11 +3020,13 @@ if(!is.null(U)) {
     control$derivOnly_cpp <- FALSE
   if (!("printparams_cpp" %in% names( control)))
     control$printparams_cpp <- FALSE
+  if(!("doPenalties")%in%names(control))
+    control$doPenalties <- 0
   if (!("penalty.pi" %in% names(control)))
     control$penalty.pi <- 0.01
   else
     if (control$penalty.pi < 0) {
-      message("Supplied penalty for pis is negative, reverting to the default")
+      message("Supplied penalty for pi is negative, reverting to the default")
       penalty.pi <- 0.01
     }
   if (!("penalty.alpha" %in% names( control)))
@@ -3014,11 +3135,11 @@ if(!is.null(U)) {
   return(list(mm=mm,weights=wts))
 }
 
-"shrink_taus" <- function(taus, G){
+"shrink_taus" <- function(tau, G){
   if( G==1)
-    return( taus)
+    return( tau)
   magical.alpha <- (1-0.8*G)/(0.8*(2-G)-1) ## Dunstan et al., 2013, JABES
-  taus_star <- (2*magical.alpha*taus-magical.alpha+1)/(2*magical.alpha - magical.alpha*G + G)
+  taus_star <- (2*magical.alpha*tau-magical.alpha+1)/(2*magical.alpha - magical.alpha*G + G)
   return(taus_star)
 }
 

@@ -345,7 +345,7 @@
       else idx <- seq(1,ncol(partial.preds[[i]]))
     }
 
-    sppColidx <- apply(object$taus[idx,],1,which.max)
+    sppColidx <- apply(object$tau[idx,],1,which.max)
 
     xlabel <- names(x[i])
     xx <- x[[i]][,names(x[i])]
@@ -606,7 +606,7 @@
   par( mfrow=c(1,2))
   qqnorm(obs.resid, col=spp.cols, pch=20, main=main, sub=sub)
   abline( 0,1,lwd=2)
-  preds <- sam_internal_pred_species(x$coef$alpha, x$coef$beta, x$taus,
+  preds <- sam_internal_pred_species(x$coef$alpha, x$coef$beta, x$tau,
                                      x$coef$gamma, x$coef$delta, x$G, x$S, x$titbits$X,
                                      x$titbits$W,x$titbits$U, x$titbits$offset, x$family)
 
@@ -641,7 +641,7 @@
   SAMsamp_AICs <- sapply( nSAMs_fm, function(x) sapply( x, function(y) AIC(y)))
   SAMsamp_BICs <- sapply( nSAMs_fm, function(x) sapply( x, function(y) BIC(y)))
   SAMsamp_Gs <- sapply( nSAMs_fm, function(x) sapply( x, function(y) y$G))
-  SAMsamp_minPosteriorSites <- sapply( nSAMs_fm, function(y) sapply( y, function(x) min( colSums( x$taus))))
+  SAMsamp_minPosteriorSites <- sapply( nSAMs_fm, function(y) sapply( y, function(x) min( colSums( x$tau))))
   SAMsamp_ObviouslyBad <- which(SAMsamp_minPosteriorSites < 0.5)
 
   #ll
@@ -678,7 +678,8 @@
        data = df2a,
        pch=16,
        ylab=type,
-       xlab="nArchetypes")
+       xlab="nArchetypes",
+       ...)
   lines(indice~grps,
         data = df2a)
   points(indice~grps,data=df2b,pch=16)
@@ -801,7 +802,7 @@
 
   disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
   disty <- get_family_sam(disty_cases, object$titbits$family)
-  taus <- object$taus
+  tau <- object$tau
   if (is.null(object2)) {
     if (nboot > 0) {
       if( !object$titbits$control$quiet)
@@ -870,13 +871,13 @@
                                                           beta = object$coefs$beta,
                                                           gamma = object$coefs$gamma,
                                                           delta = object$coefs$delta,
-                                                          taus = taus, G = G, S = S, X = X, W = W, U = U,
+                                                          tau = tau, G = G, S = S, X = X, W = W, U = U,
                                                           offset = offset, family = object$family),
                      species = sam_internal_pred_species(alpha = object$coefs$alpha,
                                                          beta = object$coefs$beta,
                                                          gamma = object$coefs$gamma,
                                                          delta = object$coefs$delta,
-                                                         taus = taus, G = G, S = S, X = X, W = W,  U = U,
+                                                         tau = tau, G = G, S = S, X = X, W = W,  U = U,
                                                          offset = offset, family = object$family))
     } else {
       nboot <- segments[seg]
@@ -888,13 +889,13 @@
                                                                                             beta = matrix(betaBoot[ii,],G,npx),
                                                                                             gamma = matrix(gammaBoot[ii,],S,npw),
                                                                                             delta = deltaBoot[ii,],
-                                                                                            taus = taus, G = G, S = S, X = X, W = W, U=U,
+                                                                                            tau = tau, G = G, S = S, X = X, W = W, U=U,
                                                                                             offset = offset, family = object$family),
                                                        species = sam_internal_pred_species(alpha = alphaBoot[ii,],
                                                                                            beta = matrix(betaBoot[ii,],G,npx),
                                                                                            gamma = matrix(gammaBoot[ii,],S,npw),
                                                                                            delta = deltaBoot[ii,],
-                                                                                           taus = taus, G = G, S = S, X = X, W = W, U=U,
+                                                                                           tau = tau, G = G, S = S, X = X, W = W, U=U,
                                                                                            offset = offset, family = object$family)))
 
     }
@@ -1018,10 +1019,10 @@
 
 "print.species_mix" <-  function (x,...){
   cat(x$titbits$family, "species_mix model\n")
-  cat("\nMixing probabilities\n")
-  print(x$pi)
-  cat("\nCoefficents\n")
-  print(x$coef)
+  cat("\nPi\n")
+  print(round(x$pi,3))
+  cat("\nCoefficients\n")
+  print(x$coef[-3])
 
 }
 
@@ -1038,11 +1039,31 @@
 #'}
 
 "print.species_mix.multifit" <-  function (x,...){
-  cat(x[[1]]$titbits$family,"species_mix model\n")
-  cat("\nMixing probabilities\n")
-  print(x$pi)
-  cat("\nCoefficents\n")
-  print(x$coef)
+
+  if(x$groupselection){
+
+  cat("A multiple fit",x$multiple_fits[[1]][[1]]$family,"species_mix model object\n\n")
+  cat("You fitted models with ",paste0(x$nArchetypes,collapse = ", "),"Archetypes.\n\nA total of",x$nstart,"random starts were fitted per Archetype.\n\n")
+
+  bics <- matrix(NA,x$nstart,max(seq_along(x$nArchetypes)))
+  for ( ii in seq_len(x$nstart)){
+    for ( jj in seq_along(x$nArchetypes)){
+      bics[ii,jj] <- BIC(x$multiple_fits[[jj]][[ii]])
+    }
+  }
+
+  best_mod_idx <- which(bics == min(bics,na.rm=TRUE), arr.ind = TRUE)
+  best_mod <- x$multiple_fits[[best_mod_idx[2]]][[best_mod_idx[1]]]
+
+  cat("The best model based on BIC has",best_mod$G,"archetypes\n")
+
+  print(best_mod)
+
+  cat("You can access more elements of this model using x$multiple_fits[[",best_mod_idx[2],"]][[",best_mod_idx[1],"]]\n")
+
+  } else {
+
+  }
 
 }
 
@@ -1079,10 +1100,10 @@
       if( object$family %in% c("bernoulli","poisson","ippm","negative.binomial")){
         tmpLower <- fn( object$titbits$Y[,ss]-1, object$mus[,ss,], object$coef$theta[ss])
         tmpUpper <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$theta[ss])
-        tmpLower <- rowSums( tmpLower * object$pis)
+        tmpLower <- rowSums( tmpLower * object$pi)
         tmpLower <- ifelse( tmpLower<0, 0, tmpLower) #get rid of numerical errors for really small negative values
         tmpLower <- ifelse( tmpLower>1, 1, tmpLower) #get rid of numerical errors for 1+epsilon.
-        tmpUpper <- rowSums( tmpUpper * object$pis)
+        tmpUpper <- rowSums( tmpUpper * object$pi)
         tmpUpper <- ifelse( tmpUpper<0, 0, tmpUpper) #get rid of numerical errors for really small negative values
         tmpUpper <- ifelse( tmpUpper>1, 1, tmpUpper) #get rid of numerical errors for 1+epsilon.
         resids[,ss] <- runif( object$n, min=tmpLower, max=tmpUpper)
@@ -1090,7 +1111,7 @@
       }
       if( object$family == "gaussian"){
         tmp <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$theta[ss])
-        tmp <- rowSums( tmp * object$pis)
+        tmp <- rowSums( tmp * object$pi)
         resids[,ss] <- qnorm( tmp)
       }
     }

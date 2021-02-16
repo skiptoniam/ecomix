@@ -64,9 +64,10 @@ void sam_derivs::updateDerivs( const sam_data &dat, const vector<double> &alphaD
 		}
 	}
 	if( dat.isDispersion() & dat.doOptiDisp())
-		for( int s=0; s<dat.nS; s++)
+		for( int s=0; s<dat.nS; s++){
 			Theta[s] += thetaDerivs.at(s);
-
+			//Rprintf( " %f", Theta[s],"\n");
+		}
 	////Updating the score contributions for empirical information, if requested.
 	if( getScoreFlag != 1)
 		return;
@@ -83,7 +84,7 @@ void sam_derivs::updateDerivs( const sam_data &dat, const vector<double> &alphaD
 				Scores[k++] = gammaDerivs.at(MATREF2D(s, p,(dat.nS)));
 		for( int p=0; p<dat.nPU; p++)
 			Scores[k++] = deltaDerivs.at(p);
-		if( dat.isDispersion())
+		if( dat.doOptiDisp())
 			for( int s=0; s<dat.nS; s++)
 				Scores[k++] = thetaDerivs.at(s);
 
@@ -108,19 +109,32 @@ void sam_derivs::update( double *grArr, const sam_data &dat){
 			Gamma[i] = grArr[kount];
 			kount++;
 		}
-	}
+	} else {
+	
+	kount = kount + dat.nS;
+	 	
+	}	
+		
 	if( dat.optiAll>0){
 		for( int i=0; i<(dat.nPU); i++){
 			Delta[i] = grArr[kount];
 			kount++;
 		}
-	}
-	if( dat.isDispersion()){
+	} else {
+		
+	kount = kount + dat.nPU;	
+		
+	}	
+	if( dat.doOptiDisp()){
 		for( int s=0; s<dat.nS; s++){
 			Theta[s] = grArr[kount];
 			kount++;
 		}
-	}
+	} else {
+	
+	kount = kount + dat.nS;
+	 	
+	}	
 }
 
 void sam_derivs::getArray( double *grArr, const sam_data &dat){
@@ -142,17 +156,26 @@ void sam_derivs::getArray( double *grArr, const sam_data &dat){
 		grArr[kount] = Gamma[i];
 		kount++;
 	}
-	}
+	} else {
+	
+	kount = kount + dat.nS;
+	 	
+	}	
 	if( dat.optiAll>0){
 	for( int i=0; i<(dat.nPU); i++){
 		grArr[kount] = Delta[i];
 		kount++;
 	}
-	}
-	if( dat.isDispersion()){
+	} else {
+		
+	kount = kount + dat.nPU;	
+		
+	}	
+	if( dat.doOptiDisp()){
 		for( int s=0; s<dat.nS; s++){
 			grArr[kount] = Theta[s];
 			kount++;
+			//Rprintf( " %f", kount ,"\n");
 		}
-	}
+	} 
 }
