@@ -255,15 +255,15 @@
   #get logls from parameters
   #calc posterior probs and pi.
   if(nArchetypes>1){
-    fits <- tmp$coefs
-    logls_mus <- get_logls_sam(y = y, X = X, W = W, U = U, G = G,
-                               S = S, spp_weights = spp_weights,
-                               site_spp_weights = site_spp_weights,
-                               offset = offset, y_is_na = y_is_na,
-                               disty = disty, size = size,
-                               powers = powers, control=control,
-                               fits = fits, get_fitted = FALSE)
-    tmp$tau <- get_taus(tmp$pi,logls_mus$logl_sp, G, S)
+    # fits <- tmp$coefs
+    # logls_mus <- get_logls_sam(y = y, X = X, W = W, U = U, G = G,
+    #                            S = S, spp_weights = spp_weights,
+    #                            site_spp_weights = site_spp_weights,
+    #                            offset = offset, y_is_na = y_is_na,
+    #                            disty = disty, size = size,
+    #                            powers = powers, control=control,
+    #                            fits = fits, get_fitted = FALSE)
+    tmp$tau <- get_taus(tmp$pi,tmp$loglikeSG, G, S)
     tmp$pi <- colSums(tmp$tau)/S
   }
 
@@ -452,7 +452,9 @@
                                    family="bernoulli", offset=NULL,
                                    weights=NULL, bb_weights=NULL, size = NULL,
                                    power=1.6,
-                                   control=list(), inits=NULL,
+                                   control=list(ecm_prefit=FALSE,
+                                                init_method='random2'),
+                                   inits=NULL,
                                    titbits = FALSE,
                                    nstart = 10,
                                    mc.cores = 1){
@@ -1382,7 +1384,7 @@
 
         if(ncol(X_s)==1) X_s <- cbind(1,X_s)
 
-        if (disty%in%c(3,7)){
+        if (disty%in%c(7)){
           fit1 <- try(glm2::glm.fit2(y=Y_s, x=as.data.frame(cbind(1,X_s)),weights=c(obs.weights),
                                family=glm.family, offset=offy), silent=FALSE)
           if (any(class(fit1)[1] %in% 'try-error')){
@@ -1821,7 +1823,7 @@
 
   ids_i <- !y_is_na[,ss]
 
-  if (disty==3){
+  if (disty%in%3){
     outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
   } else {
     outcomes <- as.matrix(y[ids_i,ss])
@@ -2062,7 +2064,7 @@ if(!is.null(U)) {
   ret$S <- S; ret$G <- G; ret$npx <- npx; ret$npw <- ifelse(ncol(W)>1,ncol(W),0);
   ret$npu <- ifelse(!is.null(U),ncol(U),0); ret$n <- n; ret$disty <- disty;
   ret$start.vals <- inits
-  ret$loglikeSG <- matrix(loglikeSG,  nrow = S, ncol = G, byrow = FALSE) # loglikes got mixed up. Need to address in c++ code.  #for residuals
+  ret$loglikeSG <- matrix(loglikeSG,  nrow = S, ncol = G, byrow = TRUE) # loglikes got mixed up. Need to address in c++ code.  #for residuals
   ret$loglikeS <- loglikeS  #for residuals
   gc()
   return(ret)
