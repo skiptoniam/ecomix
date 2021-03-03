@@ -2846,7 +2846,7 @@ if(!is.null(U)) {
 
 
 "sam_internal_pred_groups" <- function(alpha, beta, tau, gamma, delta,
-                                       G, S, X, W, U, offset = NULL, family){
+                                       G, S, X, W, U, offset = NULL, family, type){
 
   if (family %in% c("bernoulli","binomial"))
     link.fun <- make.link("logit")
@@ -2870,7 +2870,9 @@ if(!is.null(U)) {
       if(ncol(W)>1) etaSpp <- as.numeric(W%*%c(alpha[s],gamma[s, ]))
       else etaSpp <- alpha[s]
       eta <- etaMix + etaSpp + etaAll + offset
-      s.outpred[, s] <- link.fun$linkinv(eta)
+      if(type=='response')s.outpred[, s] <- link.fun$linkinv(eta)
+      else if (type=='link')s.outpred[, s] <- link.fun$linkinv(eta)
+      else stop ('type not known')
     }
 
     outpred_arch[, g] <- apply(s.outpred*rep(tau[, g],each = dim(X)[1]),
@@ -2880,7 +2882,7 @@ if(!is.null(U)) {
 }
 
 "sam_internal_pred_species" <- function(alpha, beta, tau, gamma, delta,
-                                        G, S, X, W, U, offset = NULL, family){
+                                        G, S, X, W, U, offset = NULL, family, type){
 
   if (family %in% c("bernoulli","binomial"))
     link.fun <- make.link("logit")
@@ -2901,7 +2903,9 @@ if(!is.null(U)) {
     if(ncol(W)>1) etaSpp <- W%*%t(cbind(alpha,gamma))
     else etaSpp <- matrix(alpha, nrow(X), S, byrow=TRUE)
     eta <- etaMix + etaSpp + etaAll + offset
-    mug <- link.fun$linkinv(eta)
+    if(type=='response') mug <- link.fun$linkinv(eta)
+    else if(type=='link') mug <- eta
+    else stop('type not known')
     outpred_spp <- outpred_spp + mug*matrix(tau[,g], nrow(X), S, byrow=TRUE)
     }
 

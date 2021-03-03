@@ -9,6 +9,7 @@
   object,
   object2 = NULL,
   nboot = 0,
+  type = "response",
   response.var = NULL,
   CI = c(0.025, 0.975),
   linecols = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02",
@@ -30,6 +31,8 @@ errors will be reported.}
 \item{nboot}{An option to do bootstrapping when plotting, this will be slow,
 better to run and save bootstrap object and pass to plotting function as
 object2.}
+
+\item{type}{The type of prediction. Default is 'response' alternative is 'link'.}
 
 \item{response.var}{What response variable to plot on the y-axis. Default is
 all Archetypes. Other options are a subset of Archetypes, names "Archetype1".

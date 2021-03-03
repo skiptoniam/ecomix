@@ -224,6 +224,7 @@
 #' @param nboot An option to do bootstrapping when plotting, this will be slow,
 #' better to run and save bootstrap object and pass to plotting function as
 #' object2.
+#' @param type The type of prediction. Default is 'response' alternative is 'link'.
 #' @param response.var What response variable to plot on the y-axis. Default is
 #' all Archetypes. Other options are a subset of Archetypes, names "Archetype1".
 #' Or species can be plotted, "Species" will plot all species predictions in the
@@ -263,7 +264,9 @@
 #' plot(eff.df,fm1)
 #'}
 "plot.species_mix_effectPlotData" <- function(x, object, object2 = NULL,
-                                            nboot = 0, response.var = NULL,
+                                            nboot = 0,
+                                            type='response',
+                                            response.var = NULL,
                                              CI = c(0.025, 0.975),
                                             linecols = c("#1B9E77","#D95F02","#7570B3",
                                                          "#E7298A","#66A61E","#E6AB02",
@@ -300,7 +303,7 @@
   partial.preds <- suppressMessages(lapply(xnew, function(ii) predict(object=object, object2=object2,
                                                                    newdata = ii, offset = NULL,
                                                                    nboot = nboot, alpha=CI[2]-CI[1],
-                                                                   prediction.type = typePred)))
+                                                                   prediction.type = typePred, type=type)))
 
   ## remove the dummy columns
   remove_dummy_rows <- function(x, partial.preds){
@@ -561,7 +564,7 @@
 #' @title plot.species_mix
 #' @param x a fitted species_mix model.
 #' @param species which species residuals to plot. Default is "AllSpecies".
-#' @param fitted.scale log or logit, this enables the plotting of residuals to be on the linear predictor scale.
+#' @param type "response" or "link" for plotting of residuals to be on the linear predictor scale.
 #' @param \\dots Extra plotting arguments.
 #' @details Plot random quantile residuals (RQR). "RQR" produces residuals for each species.
 #' @references  Dunn, P.K. and Smyth G.K. (1996) Randomized Quantile Residuals. Journal of Computational and Graphical Statistics \emph{5}: 236--244.
@@ -569,7 +572,7 @@
 
 "plot.species_mix" <- function (x,
                                 species="AllSpecies",
-                                fitted.scale="response",
+                                type="response",
                                 ...){
   # if( ! type %in% c("RQR"))
   # stop( "Unknown type of residuals. Options are 'RQR'.\n")
@@ -608,15 +611,16 @@
   abline( 0,1,lwd=2)
   preds <- sam_internal_pred_species(x$coef$alpha, x$coef$beta, x$tau,
                                      x$coef$gamma, x$coef$delta, x$G, x$S, x$titbits$X,
-                                     x$titbits$W,x$titbits$U, x$titbits$offset, x$family)
+                                     x$titbits$W,x$titbits$U, x$titbits$offset, x$family,
+                                     type=type)
 
   preds <- preds[,sppID]
 
-  switch( fitted.scale,
-          log = { loggy <- "x"},
-          logit = { loggy <- ""; preds <- log( preds / (1-preds))},
-          {loggy <- ""})
-  plot( preds, obs.resid, xlab="Fitted", ylab="RQR", main="Residual versus Fitted", sub="Colours separate species", pch=20, col=rep( 1:S, each=x$n), log=loggy)
+  # switch( fitted.scale,
+  #         log = { loggy <- "x"},
+  #         logit = { loggy <- ""; preds <- log( preds / (1-preds))},
+  #         {loggy <- ""})
+  plot( preds, obs.resid, xlab="Fitted", ylab="RQR", main="Residual versus Fitted", sub="Colours separate species", pch=20, col=rep( 1:S, each=x$n))
   abline( h=0)
 
   # }
@@ -701,6 +705,7 @@
 #'@param nboot Number of bootstraps (or simulations if using IPPM) to run if no object2 is provided.
 #'@param alpha confidence level. default is 0.95
 #'@param mc.cores number of cores to use in prediction. default is 1.
+#'@param type Do you want to predict the 'response' or the 'link'; ala glm style predictions.
 #'@param prediction.type Do you want to produce 'archetype' or 'species' level predictions. default is 'archetype'.
 #'@param na.action The type of action to apply to NA data. Default is "na.pass" see predict.lm for more details.
 #'@param \\dots Ignored
@@ -726,7 +731,8 @@
 
 "predict.species_mix" <- function(object, object2 = NULL, newdata = NULL,
                                   offset = NULL, nboot = 0, alpha = 0.95,
-                                  mc.cores = 1, prediction.type='archetype',
+                                  mc.cores = 1, type = 'response',
+                                  prediction.type='archetype',
                                   na.action = "na.pass", ...){
   if (is.null(newdata)) {
     X <- object$titbits$X
@@ -872,13 +878,13 @@
                                                           gamma = object$coefs$gamma,
                                                           delta = object$coefs$delta,
                                                           tau = tau, G = G, S = S, X = X, W = W, U = U,
-                                                          offset = offset, family = object$family),
+                                                          offset = offset, family = object$family, type = type),
                      species = sam_internal_pred_species(alpha = object$coefs$alpha,
                                                          beta = object$coefs$beta,
                                                          gamma = object$coefs$gamma,
                                                          delta = object$coefs$delta,
                                                          tau = tau, G = G, S = S, X = X, W = W,  U = U,
-                                                         offset = offset, family = object$family))
+                                                         offset = offset, family = object$family, type = type))
     } else {
       nboot <- segments[seg]
       bootSampsToUse <- (sum( segments[1:seg])-segments[seg]+1):sum(segments[1:seg])
@@ -890,13 +896,15 @@
                                                                                             gamma = matrix(gammaBoot[ii,],S,npw),
                                                                                             delta = deltaBoot[ii,],
                                                                                             tau = tau, G = G, S = S, X = X, W = W, U=U,
-                                                                                            offset = offset, family = object$family),
+                                                                                            offset = offset, family = object$family,
+                                                                                            type = type),
                                                        species = sam_internal_pred_species(alpha = alphaBoot[ii,],
                                                                                            beta = matrix(betaBoot[ii,],G,npx),
                                                                                            gamma = matrix(gammaBoot[ii,],S,npw),
                                                                                            delta = deltaBoot[ii,],
                                                                                            tau = tau, G = G, S = S, X = X, W = W, U=U,
-                                                                                           offset = offset, family = object$family)))
+                                                                                           offset = offset, family = object$family,
+                                                                                           type = type)))
 
     }
 

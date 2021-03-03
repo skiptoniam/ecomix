@@ -12,6 +12,7 @@
   nboot = 0,
   alpha = 0.95,
   mc.cores = 1,
+  type = "response",
   prediction.type = "archetype",
   na.action = "na.pass",
   ...
@@ -31,6 +32,8 @@
 \item{alpha}{confidence level. default is 0.95}
 
 \item{mc.cores}{number of cores to use in prediction. default is 1.}
+
+\item{type}{Do you want to predict the 'response' or the 'link'; ala glm style predictions.}
 
 \item{prediction.type}{Do you want to produce 'archetype' or 'species' level predictions. default is 'archetype'.}
 

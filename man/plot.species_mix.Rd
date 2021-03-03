@@ -4,14 +4,14 @@
 \alias{plot.species_mix}
 \title{plot.species_mix}
 \usage{
-\method{plot}{species_mix}(x, species = "AllSpecies", fitted.scale = "response", ...)
+\method{plot}{species_mix}(x, species = "AllSpecies", type = "response", ...)
 }
 \arguments{
 \item{x}{a fitted species_mix model.}
 
 \item{species}{which species residuals to plot. Default is "AllSpecies".}
 
-\item{fitted.scale}{log or logit, this enables the plotting of residuals to be on the linear predictor scale.}
+\item{type}{"response" or "link" for plotting of residuals to be on the linear predictor scale.}
 
 \item{\\dots}{Extra plotting arguments.}
 }
