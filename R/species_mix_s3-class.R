@@ -1401,7 +1401,7 @@
       out <- list(inv = covinv, coll = coll)
     }
 
-    vcov.mat <- try(-solve(hess))
+    vcov.mat <- try(-solvecov(hess))
     if( inherits( vcov.mat, 'try-error')){
       attr(vcov.mat, "hess") <- hess
       warning( "Hessian appears to be singular and its inverse (the vcov matrix) cannot be calculated\nThe Hessian is returned as an attribute of the result (for diagnostics).\nMy deepest sympathies.  You could try changing the specification of the model, increasing the penalties, or getting more data.")

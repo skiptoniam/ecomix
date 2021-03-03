@@ -14,6 +14,20 @@
 #' 'poisson', 'ippm' (inhomogeneous Poisson point process), 'negative.binomial',
 #' 'tweedie' and 'gaussian' distributions can be fitted using the species_mix
 #' function.
+#' \describe{
+#'  \item{maxit}{The maximum number of iterations. Default is 500.}
+#'  \item{quiet}{Should any reporting be performed? Default is FALSE, for reporting. For regional_mix.multifit(), this indicates if the progress should be printed.}
+#'  \item{trace}{Non-negative integer. If positive, tracing information on the progress of the optimization is produced. Higher values may produce more tracing information.}
+#'  \item{nreport}{The frequency of reports for optimisation. Default is 10 ??? a report for 10th iteration.}
+#'  \item{reltol}{Relative convergence tolerance. The algorithm stops if it is unable to reduce the value by a factor of reltol * (abs(val) + reltol) at a step. Defaults to sqrt(.Machine$double.eps), typically about 1e-8.}
+#'  \item{optimise}{Should optimisation for estimation occur? If TRUE (default) optimisation will occur. If FALSE no optimisation is performed.}
+#'  \item{loglOnly}{Should the log-likelihood be caulcated? If TRUE (default) then log-likelihood is calculated and returned. If FALSE then the log-likelihood is not calculated for return.}
+#'  \item{derivOnly}{Should the scores be evaluated at the (final) parameter values. If TRUE (default) then they are calculated. If FALSE then they are not calculated.}
+#'  \item{penalty}{A numeric scalar. This is the concentration for the Dirichlet-inspired penalty for the prior probabilities. Values less than zero will be set to the default (0.1). Large values give more penalisation than small ones.}
+#'  \item{penalty.tau}{A numeric scalar. This is the penalty for the tau parameters in the species model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).}
+#'  \item{penalty.gamma}{A numeric scalar. This is the penalty for the gamma parameters in the species model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).}
+#'  \item{penalty.disp}{a two element vector. These are combined to form the penalty for the dispersion parameters (if any). The dispersions are assumed to come from a log-normal distribution with log-mean penalty.disp[1] and log-standard-deviation penalty.disp[2]. Defaults to c(10,sqrt(10)), which gives shrinkage towards 1 (the mode of the penalty). Note that for Normal models, where the dispersion alone defines the variance, a strong penalty may be required to keep parameters estimable.}
+#'  }
 #' @param archetype_formula an object of class "formula" (or an object that can
 #' be coerced to that class). The response variable (left hand side of the
 #' formula) needs to be either 'occurrence', 'abundance',
