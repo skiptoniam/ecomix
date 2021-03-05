@@ -394,7 +394,7 @@
         matplot(xx, yy.mn, ylim = ylimy,
                 type = "l",
                 xaxt = "n", xlab = xlabel, ylab = ylabel)
-        axis(1, c(min(xx), (min(xx) + max(xx))/2, max(xx)),c(min(xx), (min(xx) + max(xx))/2, max(xx)))# c("min", "mean", "max"))
+        axis(1, c(min(xx), (min(xx) + max(xx))/2, max(xx)),round(c(min(xx), (min(xx) + max(xx))/2, max(xx)),3))# c("min", "mean", "max"))
         for(j in 1:ncol(yy.lwr)){
           polygon(c(xx, rev(xx)), c(yy.lwr[,j], rev(yy.upp[,j])),
                   col = polycols, border = FALSE)
@@ -495,7 +495,7 @@
       if(!fac.var){
         matplot(xx, yy.mn, ylim = ylimy,
                 type = "l", xaxt = "n", xlab = xlabel, ylab = ylabel)
-        axis(1, c(min(xx), (min(xx) + max(xx))/2, max(xx)),c(min(xx), (min(xx) + max(xx))/2, max(xx)))# c("min", "mean", "max"))
+        axis(1, c(min(xx), (min(xx) + max(xx))/2, max(xx)),round(c(min(xx), (min(xx) + max(xx))/2, max(xx)),3))# c("min", "mean", "max"))
         for(j in 1:ncol(yy.mn)){
           if(length(idx)<9)
             lines(xx, yy.mn[,j], col=cols[j],  lwd = 2)
