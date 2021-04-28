@@ -27,11 +27,11 @@ h[\mathbb{E}(y_{ij}|z_{ik})] = \alpha_j + X_i^\top\tau_j \tag{3}\label{eq:three}
 \end{equation}
 $$
 
-Where $\alpha_j$ is a species-specific intercept, $X_j^\top$ is a design matrix of covariates used to describe the RCPs. We can adjust the assemblage profile based on the species-wise expectation by incorporating a species wise covariates which can account for sampling artefacts. This extension was described in @foster_ecological_2017.
+Where $\alpha_j$ is a species-specific intercept, $Z_j^\top$ is a design matrix of covariates used to describe the RCPs. We can adjust the assemblage profile based on the species-wise expectation by incorporating a species wise covariates which can account for sampling artefacts. This extension was described in @foster_ecological_2017.
 
 $$
 \begin{equation}
-h[\mathbb{E}(y_{ij}|z_{ik})] = \alpha_j + X_i^\top\tau_j + W_i^\top\gamma_j + \nu_i \tag{4}\label{eq:four}
+h[\mathbb{E}(y_{ij}|z_{ik})] = \alpha_j + Z_i^\top\tau_j + W_i^\top\gamma_j + \nu_i \tag{4}\label{eq:four}
 \end{equation}
 $$
 Where $W_i$ is a design matrix which represents covariates that could account for sampling biases in the observation of species at sites. Examples covariates to represent $W_i$ might include the methods of collection of each sample or the time of day each sample was taken. These covariates then try and marginalize out observation difference of species at sites based on the input covariates, $\gamma_j$ are species-specific parameters which describes these biases. Similar to the SAMs models any appropriate functional form can be used to describe the species-specific responses to physical environments or sampling artefacts. $\nu_i$ is an offset which can be included to account between difference in sites specific survey effort (e.g. area survey). Any dispersion parameters, such as those for Negative Binomial, Tweedie or Gaussian model will also need to be estimated. $z_i$ is an unobserved variable and is treated as a latent factor. The model assumes that $z_i$ is the result of a multinomial sampling process with one trial and $k x 1$ probability vector $\pi_i$. The RCP model allows the RCP probability vector $\pi_i$ to vary depending on the observation site's position in environmental and geographical space. Where $\pi_i=h(X_i)$, and $X_i$ is the design matrix which contains the environmental and spatial covariates to describe site $i$. $h(.)$ is represented by a additive logistic function [@aitchison_statistical_1982] whose $k$th component is represented as:
@@ -148,6 +148,11 @@ plot_covariates(env.df)
 
 #### Model fitting
 Due to the complex nature of the likelihood surface we need to use a multiple fitting approach to converge on the best model. This is computationally expensive for a big models, but it ensures that a detailed exploration of the model log-likelihood to help find the global maximum. We can use the `regional_mix.multifit` function to do this, this will return a list of models with `nstarts` as the number of starts to trying when searching the log-likelihood. Once we have run the multiple fits we select the 'best' models based on Bayesian Information Criteria (BIC), being aware that the 'best' model in both SAMs and RCPs can change dependent on the number of groups chosen and the functional for the covariates in the model. This is typically why we fit a full model with all the covariates and their expected functional form fixed and then we iterate thought $k$ the number of groups. Once $k$ is selected we could do model selection on the covariates with a fixed number of groups if so desired. Here we present a plot of the BIC values from a 100 fits per each of the model first for one to six RCPs (fig. 4a). We can that for these data and this covariate structure three RCPs appears to be the most parsimonious fit. 
+
+```{r}
+
+
+```
 
 <!-- ```{r,eval=TRUE,message=FALSE, warning= FALSE} -->
 <!-- RCP_form <- as.formula(paste("cbind(",paste(species, collapse=", "),")~", -->
