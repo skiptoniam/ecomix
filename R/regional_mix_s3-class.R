@@ -47,7 +47,7 @@
     res$beta <- matrix(object$coefs$beta, nrow = object$nRCP - 1, ncol = object$p.x)
     colnames( res$beta) <- object$names$Xvars
   }
-  if( !any(is.null( object$coef$gamma),length( object$coef$gamma)==0)){
+  if( !is.null( object$coef$gamma)){
     res$gamma <- matrix( object$coef$gamma, nrow=object$S, ncol=object$p.w)
     colnames( res$gamma) <- object$names$Wvars
     rownames( res$gamma) <- object$names$spp
@@ -863,7 +863,7 @@
     }
     flag <- FALSE
   }
-  if( flag){  #has this already been done sequencially?
+  if( flag){  #has this already been done sequentially?
     if( !quiet)
       message( "Progress bar may not be monotonic due to the vaguaries of parallelisation")
     tmp <- parallel::mclapply( 1:nboot, my.fun, mc.silent=quiet, mc.cores=mc.cores)
