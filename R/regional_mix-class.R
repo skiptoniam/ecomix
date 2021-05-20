@@ -678,21 +678,36 @@ function( titbits, outcomes, X, W, offset, wts, data, rcp_formula, species_formu
 }
 
 
-"get_W_rcp" <- function( species_formula, mf.W){
-  form.W <- species_formula
-  if( !is.null( species_formula)){
-    if( length( form.W)>2)
-      form.W[[2]] <- NULL #get rid of outcomes
-    W <- model.matrix( form.W, mf.W)
-    tmp.fun <- function(x){ all( x==1)}
-    intercepts <- apply( W, 2, tmp.fun)
-    W <- W[,!intercepts,drop=FALSE]
-  }
-  else
-    W <- -999999
-  return( W)
-}
+# "get_W_rcp" <- function( species_formula, mf.W){
+#   form.W <- species_formula
+#   if( !is.null( species_formula)){
+#     if( length( form.W)>2)
+#       form.W[[2]] <- NULL #get rid of outcomes
+#     W <- model.matrix( form.W, mf.W)
+#     tmp.fun <- function(x){ all( x==1)}
+#     intercepts <- apply( W, 2, tmp.fun)
+#     W <- W[,!intercepts,drop=FALSE]
+#   }
+#   else
+#     W <- -999999
+#   return( W)
+# }
 
+"get_W_rcp" <- function (form.spp, mf.W){
+  form.W <- form.spp
+  if (!is.null(form.spp)) {
+    if (length(form.W) > 2)
+      form.W[[2]] <- NULL
+    W <- model.matrix(form.W, mf.W)
+    tmp.fun <- function(x) {
+      all(x == 1)
+    }
+    intercepts <- apply(W, 2, tmp.fun)
+    W <- W[, !intercepts, drop = FALSE]
+  }
+  else W <- -999999
+  return(W)
+}
 
 "get_wts_rcp" <-function ( mf){
   wts <- model.weights( mf)

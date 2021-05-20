@@ -47,7 +47,7 @@
     res$beta <- matrix(object$coefs$beta, nrow = object$nRCP - 1, ncol = object$p.x)
     colnames( res$beta) <- object$names$Xvars
   }
-  if( !is.null( object$coef$gamma)){
+  if( object$p.w>0){
     res$gamma <- matrix( object$coef$gamma, nrow=object$S, ncol=object$p.w)
     colnames( res$gamma) <- object$names$Wvars
     rownames( res$gamma) <- object$names$spp

@@ -86,7 +86,7 @@
 
       
 
-      </header><script src="RCP-example_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
+      </header><script src="RCP-example_files/header-attrs-2.7/header-attrs.js"></script><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Region of Common Profiles Example</h1>
@@ -108,10 +108,10 @@
 h[\mathbb{E}(y_{ij}|z_{ik})] = \alpha_j + X_i^\top\tau_j \tag{3}\label{eq:three}
 \end{equation}
 \]</span></p>
-<p>Where <span class="math inline">\(\alpha_j\)</span> is a species-specific intercept, <span class="math inline">\(X_j^\top\)</span> is a design matrix of covariates used to describe the RCPs. We can adjust the assemblage profile based on the species-wise expectation by incorporating a species wise covariates which can account for sampling artefacts. This extension was described in <span class="citation">Foster <em>et al.</em> (2017)</span>.</p>
+<p>Where <span class="math inline">\(\alpha_j\)</span> is a species-specific intercept, <span class="math inline">\(Z_j^\top\)</span> is a design matrix of covariates used to describe the RCPs. We can adjust the assemblage profile based on the species-wise expectation by incorporating a species wise covariates which can account for sampling artefacts. This extension was described in <span class="citation">Foster <em>et al.</em> (2017)</span>.</p>
 <p><span class="math display">\[
 \begin{equation}
-h[\mathbb{E}(y_{ij}|z_{ik})] = \alpha_j + X_i^\top\tau_j + W_i^\top\gamma_j + \nu_i \tag{4}\label{eq:four}
+h[\mathbb{E}(y_{ij}|z_{ik})] = \alpha_j + Z_i^\top\tau_j + W_i^\top\gamma_j + \nu_i \tag{4}\label{eq:four}
 \end{equation}
 \]</span> Where <span class="math inline">\(W_i\)</span> is a design matrix which represents covariates that could account for sampling biases in the observation of species at sites. Examples covariates to represent <span class="math inline">\(W_i\)</span> might include the methods of collection of each sample or the time of day each sample was taken. These covariates then try and marginalize out observation difference of species at sites based on the input covariates, <span class="math inline">\(\gamma_j\)</span> are species-specific parameters which describes these biases. Similar to the SAMs models any appropriate functional form can be used to describe the species-specific responses to physical environments or sampling artefacts. <span class="math inline">\(\nu_i\)</span> is an offset which can be included to account between difference in sites specific survey effort (e.g. area survey). Any dispersion parameters, such as those for Negative Binomial, Tweedie or Gaussian model will also need to be estimated. <span class="math inline">\(z_i\)</span> is an unobserved variable and is treated as a latent factor. The model assumes that <span class="math inline">\(z_i\)</span> is the result of a multinomial sampling process with one trial and <span class="math inline">\(k x 1\)</span> probability vector <span class="math inline">\(\pi_i\)</span>. The RCP model allows the RCP probability vector <span class="math inline">\(\pi_i\)</span> to vary depending on the observation site’s position in environmental and geographical space. Where <span class="math inline">\(\pi_i=h(X_i)\)</span>, and <span class="math inline">\(X_i\)</span> is the design matrix which contains the environmental and spatial covariates to describe site <span class="math inline">\(i\)</span>. <span class="math inline">\(h(.)\)</span> is represented by a additive logistic function <span class="citation">(Aitchison 1982)</span> whose <span class="math inline">\(k\)</span>th component is represented as:</p>
 <p><span class="math display">\[
@@ -305,27 +305,27 @@ Figure 1. Simulated environmental variables used in Species Archetype Modelling
 <!--              c(4,4,4)) -->
 <!-- grid.arrange(p4a, p4b, p4c, p4d, layout_matrix= lay) -->
 <!-- ``` -->
-<div id="refs" class="references">
-<div id="ref-aitchison_statistical_1982">
-<p>Aitchison, J. (1982). The statistical analysis of compositional data. <em>Journal of the Royal Statistical Society. Series B (Methodological)</em>, 139–177.</p>
+<div id="refs" class="references csl-bib-body hanging-indent">
+<div id="ref-aitchison_statistical_1982" class="csl-entry">
+Aitchison, J. (1982). The statistical analysis of compositional data. <em>Journal of the Royal Statistical Society. Series B (Methodological)</em>, 139–177.
 </div>
-<div id="ref-foster_modelling_2013">
-<p>Foster, S., Givens, G., Dornan, G., Dunstan, P. &amp; Darnell, R. (2013). Modelling biological regions from multi-species and environmental data. <em>Environmetrics</em>, <strong>24</strong>, 489–499.</p>
+<div id="ref-foster_modelling_2013" class="csl-entry">
+Foster, S., Givens, G., Dornan, G., Dunstan, P. &amp; Darnell, R. (2013). Modelling biological regions from multi-species and environmental data. <em>Environmetrics</em>, <strong>24</strong>, 489–499.
 </div>
-<div id="ref-foster_ecological_2017">
-<p>Foster, S.D., Hill, N.A. &amp; Lyons, M. (2017). Ecological grouping of survey sites when sampling artefacts are present. <em>Journal of the Royal Statistical Society: Series C (Applied Statistics)</em>, <strong>66</strong>, 1031–1047.</p>
+<div id="ref-foster_ecological_2017" class="csl-entry">
+Foster, S.D., Hill, N.A. &amp; Lyons, M. (2017). Ecological grouping of survey sites when sampling artefacts are present. <em>Journal of the Royal Statistical Society: Series C (Applied Statistics)</em>, <strong>66</strong>, 1031–1047.
 </div>
-<div id="ref-hill_model-based_2017">
-<p>Hill, N.A., Foster, S.D., Duhamel, G., Welsford, D., Koubbi, P. &amp; Johnson, C.R. (2017). Model-based mapping of assemblages for ecology and conservation management: A case study of demersal fish on the Kerguelen Plateau. <em>Diversity and Distributions</em>, <strong>23</strong>, 1216–1230.</p>
+<div id="ref-hill_model-based_2017" class="csl-entry">
+Hill, N.A., Foster, S.D., Duhamel, G., Welsford, D., Koubbi, P. &amp; Johnson, C.R. (2017). Model-based mapping of assemblages for ecology and conservation management: <span>A</span> case study of demersal fish on the <span>Kerguelen</span> <span>Plateau</span>. <em>Diversity and Distributions</em>, <strong>23</strong>, 1216–1230.
 </div>
-<div id="ref-hill_determining_2020">
-<p>Hill, N., Woolley, S.N., Foster, S., Dunstan, P.K., McKinlay, J., Ovaskainen, O. &amp; Johnson, C. (2020). Determining marine bioregions: A comparison of quantitative approaches. <em>Methods in Ecology and Evolution</em>, <strong>11</strong>, 1258–1272.</p>
+<div id="ref-hill_determining_2020" class="csl-entry">
+Hill, N., Woolley, S.N., Foster, S., Dunstan, P.K., McKinlay, J., Ovaskainen, O. &amp; Johnson, C. (2020). Determining marine bioregions: <span>A</span> comparison of quantitative approaches. <em>Methods in Ecology and Evolution</em>, <strong>11</strong>, 1258–1272.
 </div>
-<div id="ref-lyons_simultaneous_2017">
-<p>Lyons, M.B., Foster, S.D. &amp; Keith, D.A. (2017). Simultaneous vegetation classification and mapping at large spatial scales. <em>Journal of biogeography</em>, <strong>44</strong>, 2891–2902.</p>
+<div id="ref-lyons_simultaneous_2017" class="csl-entry">
+Lyons, M.B., Foster, S.D. &amp; Keith, D.A. (2017). Simultaneous vegetation classification and mapping at large spatial scales. <em>Journal of biogeography</em>, <strong>44</strong>, 2891–2902.
 </div>
-<div id="ref-woolley_bioregions_2020">
-<p>Woolley, S.N., Foster, S.D., Bax, N.J., Currie, J.C., Dunn, D.C., Hansen, C., Hill, N., O’Hara, T.D., Ovaskainen, O., Sayre, R. &amp; others. (2020). Bioregions in Marine Environments: Combining Biological and Environmental Data for Management and Scientific Understanding. <em>BioScience</em>, <strong>70</strong>, 48–59.</p>
+<div id="ref-woolley_bioregions_2020" class="csl-entry">
+Woolley, S.N., Foster, S.D., Bax, N.J., Currie, J.C., Dunn, D.C., Hansen, C., Hill, N., O’Hara, T.D., Ovaskainen, O., Sayre, R. &amp; others. (2020). Bioregions in <span>Marine</span> <span>Environments</span>: <span>Combining</span> <span>Biological</span> and <span>Environmental</span> <span>Data</span> for <span>Management</span> and <span>Scientific</span> <span>Understanding</span>. <em>BioScience</em>, <strong>70</strong>, 48–59.
 </div>
 </div>
 </div>

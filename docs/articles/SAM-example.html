@@ -86,7 +86,7 @@
 
       
 
-      </header><script src="SAM-example_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
+      </header><script src="SAM-example_files/header-attrs-2.7/header-attrs.js"></script><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Species Archetype Model Example</h1>
@@ -234,7 +234,7 @@ Figure 2. The simulated occurrences for the 100 species. We will remove all spec
 <div id="group-selection" class="section level4">
 <h4 class="hasAnchor">
 <a href="#group-selection" class="anchor"></a>Group selection</h4>
-<p>One challenge when developing SAMs (or any finite mixture model) is selecting <span class="math inline">\(k\)</span>; the number of groups (archetypes) in the model. The number of archetypes is latent, so must be estimated from the data and the functional form of the covariates. In this example, we know that the optimal number of groups for these data is three, because we simulated the data with these characteristics. However, <span class="math inline">\(k\)</span> is generally not known in real world applications. So one import part of the fitting process is finding <span class="math inline">\(k\)</span>, having said that it is also totally fine to define <span class="math inline">\(k\)</span> for say a management objective. We can estimate the “best” number of groups based on the most parsimonious fit to the data. We can do this based on the model log-likelihood, and information criterion such as BIC. We provide a function <code>species_mix.multifit</code> which can assist in group selection if a vector of archetypes is provided. Below is an example of how one might do this. For simplicity we have left the <code>nstart=1</code>, but for more complex models this could be increased to use multiple starts to help search to loglikelihood.</p>
+<p>One challenge when developing SAMs (or any finite mixture model) is selecting <span class="math inline">\(k\)</span>; the number of groups (archetypes) in the model. The number of archetypes is latent, so must be estimated from the data and the functional form of the covariates. In this example, we know that the optimal number of groups for these data is three, because we simulated the data with these characteristics. However, <span class="math inline">\(k\)</span> is generally not known in real world applications. So one import part of the fitting process is finding <span class="math inline">\(k\)</span>, having said that it is also totally fine to define <span class="math inline">\(k\)</span> for say a management objective. We can estimate the “best” number of groups based on the most parsimonious fit to the data. We can do this based on the model log-likelihood, and information criterion such as BIC. We provide a function <code>species_mix.multifit</code> which can assist in group selection if a vector of archetypes is provided. Below is an example of how one might do this. For simplicity we have left the <code>nstart=1</code>, but for more complex models this could be increased to use multiple starts to help search to the likelihood.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">nArchetypes</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="fl">6</span>
 <span class="va">sam_multifit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/species_mix.multifit.html">species_mix.multifit</a></span><span class="op">(</span>archetype_formula <span class="op">=</span> <span class="va">archetype_formula</span>, <span class="co"># Archetype formula</span>
@@ -243,13 +243,8 @@ Figure 2. The simulated occurrences for the 100 species. We will remove all spec
                                      nArchetypes <span class="op">=</span> <span class="va">nArchetypes</span>,             <span class="co"># Number of groups (mixtures) to fit</span>
                                      nstart <span class="op">=</span> <span class="fl">1</span>,                            <span class="co"># The number of fits per archetype.</span>
                                      family <span class="op">=</span> <span class="st">'bernoulli'</span>,                  <span class="co"># Which family to use</span>
-                                     control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>quiet <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>
+                                     control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>quiet <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/pkg/raster/man/plot.html">plot</a></span><span class="op">(</span><span class="va">sam_multifit</span>,type<span class="op">=</span><span class="st">"BIC"</span><span class="op">)</span></code></pre></div>
-<div class="figure">
-<img src="SAM-example_files/figure-html/unnamed-chunk-6-1.png" alt="Figure 3. Group selection from multiple fit function, we can see that three archetypes is the best fit to these data based on Bayesian Information Criterion (BIC)." width="480"><p class="caption">
-Figure 3. Group selection from multiple fit function, we can see that three archetypes is the best fit to these data based on Bayesian Information Criterion (BIC).
-</p>
-</div>
 </div>
 <div id="model-diagnostics-and-checking" class="section level4">
 <h4 class="hasAnchor">
@@ -292,24 +287,24 @@ Figure 6. Partial response plots for each covariate in the model.
 Figure 7. The predicted probability of each species archetype across the simulated environment and the standard error of the predictions generated based on the Bayesian bootstrap.
 </p>
 </div>
-<div id="refs" class="references">
-<div id="ref-dunn_randomized_1996">
-<p>Dunn, P.K. &amp; Smyth, G.K. (1996). Randomized Quantile Residuals. <em>Journal of Computational and Graphical Statistics</em>, <strong>5</strong>, 236.</p>
+<div id="refs" class="references csl-bib-body hanging-indent">
+<div id="ref-dunn_randomized_1996" class="csl-entry">
+Dunn, P.K. &amp; Smyth, G.K. (1996). Randomized <span>Quantile</span> <span>Residuals</span>. <em>Journal of Computational and Graphical Statistics</em>, <strong>5</strong>, 236.
 </div>
-<div id="ref-dunstan_model_2011">
-<p>Dunstan, P.K., Foster, S.D. &amp; Darnell, R. (2011). Model based grouping of species across environmental gradients. <em>Ecological Modelling</em>, <strong>222</strong>, 955–963.</p>
+<div id="ref-dunstan_model_2011" class="csl-entry">
+Dunstan, P.K., Foster, S.D. &amp; Darnell, R. (2011). Model based grouping of species across environmental gradients. <em>Ecological Modelling</em>, <strong>222</strong>, 955–963.
 </div>
-<div id="ref-dunstan_speciesmix_2013">
-<p>Dunstan, P., Foster, S. &amp; Darnell, R. (2013a). SpeciesMix: Fit mixtures of archetype species. <em>R package version 0.3</em>, <strong>1</strong>.</p>
+<div id="ref-dunstan_speciesmix_2013" class="csl-entry">
+Dunstan, P., Foster, S. &amp; Darnell, R. (2013a). <span>SpeciesMix</span>: <span>Fit</span> mixtures of archetype species. <em>R package version 0.3</em>, <strong>1</strong>.
 </div>
-<div id="ref-dunstan_finite_2013">
-<p>Dunstan, P.K., Foster, S.D., Hui, F.K. &amp; Warton, D.I. (2013b). Finite mixture of regression modeling for high-dimensional count and biomass data in ecology. <em>Journal of agricultural, biological, and environmental statistics</em>, <strong>18</strong>, 357–375.</p>
+<div id="ref-dunstan_finite_2013" class="csl-entry">
+Dunstan, P.K., Foster, S.D., Hui, F.K. &amp; Warton, D.I. (2013b). Finite mixture of regression modeling for high-dimensional count and biomass data in ecology. <em>Journal of agricultural, biological, and environmental statistics</em>, <strong>18</strong>, 357–375.
 </div>
-<div id="ref-hui_mix_2013">
-<p>Hui, F.K., Warton, D.I., Foster, S.D. &amp; Dunstan, P.K. (2013). To mix or not to mix: Comparing the predictive performance of mixture models vs. Separate species distribution models. <em>Ecology</em>, <strong>94</strong>, 1913–1919.</p>
+<div id="ref-hui_mix_2013" class="csl-entry">
+Hui, F.K., Warton, D.I., Foster, S.D. &amp; Dunstan, P.K. (2013). To mix or not to mix: Comparing the predictive performance of mixture models vs. Separate species distribution models. <em>Ecology</em>, <strong>94</strong>, 1913–1919.
 </div>
-<div id="ref-warton_model-based_2015">
-<p>Warton, D.I., Foster, S.D., De’ath, G., Stoklosa, J. &amp; Dunstan, P.K. (2015). Model-based thinking for community ecology. <em>Plant Ecology</em>, <strong>216</strong>, 669–682.</p>
+<div id="ref-warton_model-based_2015" class="csl-entry">
+Warton, D.I., Foster, S.D., De’ath, G., Stoklosa, J. &amp; Dunstan, P.K. (2015). Model-based thinking for community ecology. <em>Plant Ecology</em>, <strong>216</strong>, 669–682.
 </div>
 </div>
 </div>
