@@ -1005,37 +1005,6 @@
       message( "Some residuals, well",sum( resids==Inf | resids==-Inf), "to be precise, are very large (infinite actually).\nThese observations lie right on the edge of the realistic range of the model for the data (maybe even over the edge).")
 
   }
-  # if( type=="RQR.sim"){
-  #   nsim <- 1000
-  #   if( is.null( mc.cores))
-  #     mc.cores <- getOption("mc.cores", 4)
-  #   resids <- matrix( NA, nrow=object$n, ncol=object$S)
-  #   RQR.fun <- function(ii){
-  #     if( !quiet)
-  #       setTxtProgressBar(pb, ii)
-  #     X1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$X[ii,,drop=FALSE])
-  #     W1 <- kronecker( matrix( 1, ncol=1, nrow=nsim), fm$titbits$W[ii,,drop=FALSE])
-  #     sims <- regional_mix.simulate( nRCP=object$nRCP, S=object$S, n=nsim, p.x=object$p.x, p.w=object$p.w, alpha=object$coef$alpha, tau=object$coef$tau, beta=object$coef$beta, gamma=object$coef$gamma, logDisps=object$coef$disp, powers=object$titbits$power, X=X1, W=W1, offset=object$titbits$offset,family=object$family)
-  #     sims <- sims[,1:object$S]
-  #     yi <- object$titbits$Y[ii,,drop=FALSE]
-  #     many_yi <- matrix( rep( yi, each=nsim), ncol=object$S)
-  #     F_i <- colMeans( sims <= many_yi)
-  #     F_i_minus <- colMeans( sims < many_yi)
-  #     r_i <- runif( object$S, min=F_i_minus, max=F_i)
-  #     return( qnorm( r_i))
-  #   }
-  #   if( !quiet)
-  #     pb <- txtProgressBar(min = 1, max = object$n, style = 3, char = "><(('> ")
-  #   if( Sys.info()['sysname'] == "Windows" | mc.cores==1)
-  #     resids <- lapply( 1:object$n, RQR.fun)
-  #   else
-  #     resids <- parallel::mclapply( 1:object$n, RQR.fun, mc.cores=mc.cores)
-  #   if( !quiet)
-  #     message("")
-  #   resids <- matrix( unlist( resids), nrow=object$n, ncol=object$S, byrow=TRUE)
-  #   if( !quiet & sum( resids==Inf | resids==-Inf)>0)
-  #     message( "Some residuals, well",sum( resids==Inf | resids==-Inf), "to be precise, are very large (infinite actually).\nThese observations lie right on the edge of the Monte Carlo approximation to the distribution function.\nThis may be remedied by getting a better approximation (increasing nsim).")
-  # }
   return( resids)
 }
 
@@ -1064,37 +1033,35 @@
 #' @examples
 #' \dontrun{
 #' #generates synthetic data
-#'set.seed( 151)
-#'n <- 100
-#'S <- 10
-#'nRCP <- 3
-#'my.dist <- "negative.binomial"
-#'X <- as.data.frame( cbind( x1=runif( n, min=-10, max=10),
+#' set.seed( 151)
+#' n <- 100
+#' S <- 10
+#' nRCP <- 3
+#' my.dist <- "negative.binomial"
+#' X <- as.data.frame( cbind( x1=runif( n, min=-10, max=10),
 #'                           x2=runif( n, min=-10, max=10)))
-#'Offy <- log( runif( n, min=30, max=60))
-#'pols <- list()
-#'pols[[1]] <- poly( X$x1, degree=3)
+#' Offy <- log( runif( n, min=30, max=60))
+#' pols <- list()
+#' pols[[1]] <- poly( X$x1, degree=3)
 # Scale covariates so that regional_mix can get decent starting values
-#'pols[[2]] <- poly( X$x2, degree=3)
-#'X <- as.matrix( cbind( 1, X, pols[[1]], pols[[2]]))
-#'colnames( X) <- c("const", 'x1', 'x2', paste( "x1",1:3,sep='.'),
+#' pols[[2]] <- poly( X$x2, degree=3)
+#' X <- as.matrix( cbind( 1, X, pols[[1]], pols[[2]]))
+#' colnames( X) <- c("const", 'x1', 'x2', paste( "x1",1:3,sep='.'),
 #' paste( "x2",1:3,sep='.'))
-#'p.x <- ncol( X[,-(2:3)])
-#'p.w <- 3
-#'W <- matrix(sample( c(0,1), size=(n*p.w), replace=TRUE), nrow=n, ncol=p.w)
-#'colnames( W) <- paste( "w",1:3,sep=".")
-#'alpha <- rnorm( S)
-#'tau.var <- 0.5
-#'b <- sqrt( tau.var/2)
-#a double exponential for RCP effects
-#'tau <- matrix( rexp( n=(nRCP-1)*S,
-#' rate=1/b) - rexp( n=(nRCP-1)*S, rate=1/b), nrow=nRCP-1, ncol=S)
-#'beta <- 0.2 * matrix( c(-1.2, -2.6, 0.2, -23.4, -16.7, -18.7, -59.2, -76.0,
-#' -14.2, -28.3, -36.8, -17.8, -92.9,-2.7), nrow=nRCP-1, ncol=p.x)
-#'gamma <- matrix( rnorm( S*p.w), ncol=p.w, nrow=S)
-#'logDisp <- log( rexp( S, 1))
-#'set.seed(121)
-#'simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n,
+#' p.x <- ncol( X[,-(2:3)])
+#' p.w <- 3
+#' W <- matrix(sample( c(0,1), size=(n*p.w), replace=TRUE), nrow=n, ncol=p.w)
+#' colnames( W) <- paste( "w",1:3,sep=".")
+#' alpha <- rnorm( S)
+#' tau.var <- 0.5
+#' b <- sqrt( tau.var/2)
+# a double exponential for RCP effects
+#' tau <- matrix( rexp( n=(nRCP-1)*S,rate=1/b) - rexp( n=(nRCP-1)*S, rate=1/b), nrow=nRCP-1, ncol=S)
+#' beta <- 0.2 * matrix( c(-1.2, -2.6, 0.2, -23.4, -16.7, -18.7, -59.2, -76.0,-14.2, -28.3, -36.8, -17.8, -92.9,-2.7), nrow=nRCP-1, ncol=p.x)
+#' gamma <- matrix( rnorm( S*p.w), ncol=p.w, nrow=S)
+#' logDisp <- log( rexp( S, 1))
+#' set.seed(121)
+#' simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n,
 #' alpha=alpha, tau=tau, beta=beta, gamma=gamma, X=X[,-(2:3)], W=W,
 #' family=my.dist, logDisp=logDisp, offset=Offy)
 #'
