@@ -63,7 +63,6 @@
 #'@title cooks.distance
 #'@rdname cooks.distance
 #'@description Performs leave-some-out measures for a regional_mix model. This includes a measure of how much effect leaving out an observation has on the probability of each site's RCP label. Also, this function can be used as a cross-validation workhorse.
-
 #'@param model A regional_mix object whose fit you want to assess
 #'@param oosSize The size of the with held partitions (out-of-sample size). Use 1 (default) for leave-one-out statistics, such as Cook's distance and leave-one-out validation.
 #'@param times The number of times to perform the re-estimation (the number of leave out groups). For each 1:times a random partition of the data, of size oosSize, is taken and the model is fitted to one of the partitions. It is predicted to the other partition. The exception is when oosSize=1 and times=model$n (leave-one-out). In such cases (the default too), the observations are left out one-by-one and not randomly.
