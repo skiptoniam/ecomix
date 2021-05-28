@@ -2712,7 +2712,7 @@ if(!is.null(U)) {
 
 "get_W_sam" <- function(mf.W){
 
-  mt.w <- terms(mf.W)
+  mt.w <- stats::terms(mf.W)
   mt.w <- stats::delete.response(mt.w)
   W <- stats::model.matrix(mt.w, mf.W)
 
@@ -2731,8 +2731,6 @@ if(!is.null(U)) {
   }
   return(list(U=U,mt.u=mt.u))
 }
-
-
 
 "print_input_sam" <- function(y, X, W, U, S, archetype_formula, species_formula,
                               all_formula, family, quiet=FALSE){

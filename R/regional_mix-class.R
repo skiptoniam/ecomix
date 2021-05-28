@@ -1,5 +1,4 @@
 ##### Main species mix functions to export #####
-
 #' @title This is how you fit a regions of common profiles model in ecomix
 #' @rdname regional_mix
 #' @name regional_mix
@@ -140,7 +139,9 @@
   if( !control$quiet)
     message( "There are: ", nRCP, "RCPs to group the sites into")
   #get the design matrix for RCP part of model
-  X <- get_X_rcp(rcp_formula, dat$mf.X)
+  Xdat <- get_X_rcp(dat$mf.X) #rcp_formula,
+  X <- Xdat$X
+  xterms <- Xdat$mt.x
   p.x <- ncol( X)
   #get design matrix for spp part of the model -- if there is one
   W <- get_W_rcp( species_formula, dat$mf.W)
@@ -156,6 +157,10 @@
   disty.cases <- c("bernoulli","poisson","negative.binomial","tweedie",
                    "gaussian")
   disty <- get_dist_rcp( disty.cases, family)
+
+  ## catch the terms as a list
+  tt <- list(xterms=xterms,wterms=wterms)
+
   #get power params for Tweedie
   power <- get_power_rcp( disty, power, S)
   #summarising data to console
@@ -288,7 +293,9 @@
     if( !control$quiet)
       message( "There are: ", nRCP, "RCPs to group the sites into")
     #get the design matrix for RCP part of model
-    X <- get_X_rcp(rcp_formula, dat$mf.X)
+    Xdat <- get_X_rcp(dat$mf.X) #rcp_formula,
+    X <- Xdat$X
+    xterms <- Xdat$mt.x
     p.x <- ncol( X)
     #get design matrix for spp part of the model -- if there is one
     W <- get_W_rcp( species_formula, dat$mf.W)
@@ -709,6 +716,20 @@ function( titbits, outcomes, X, W, offset, wts, data, rcp_formula, species_formu
   return(W)
 }
 
+# "get_W_rcp" <- function(form.spp,mf.W){
+#
+#   if (!is.null(form.spp)) {
+#     mt.w <- stats::terms(mf.W)
+#     mt.w <- stats::delete.response(mt.w)
+#     W <- stats::model.matrix(mt.w, mf.W)
+#   } else {
+#
+#   }
+#   return(list(W=W, mt.w=mt.w))
+# }
+
+
+
 "get_wts_rcp" <-function ( mf){
   wts <- model.weights( mf)
   if( is.null( wts))
@@ -716,13 +737,19 @@ function( titbits, outcomes, X, W, offset, wts, data, rcp_formula, species_formu
   return( wts)
 }
 
-"get_X_rcp" <-function( rcp_formula, mf.X){
-  form.X <- rcp_formula
-  form.X[[2]] <- NULL
-  form.X <- as.formula(form.X)
-  X <- model.matrix(form.X, mf.X)
+"get_X_rcp" <-function( mf.X){ #rcp_formula,
+  # old code.
+  # form.X <- rcp_formula
+  # form.X[[2]] <- NULL
+  # form.X <- as.formula(form.X)
+  # X <- model.matrix(form.X, mf.X)
 
-  return( X)
+  mt.x <- terms(mf.X)
+  mt.x <- stats::delete.response(mt.x)
+  X <- stats::model.matrix(mt.x, mf.X)
+  # X <- delete.intercept(X)
+
+  return( list(X=X,mt.x=mt.x))
 }
 
 "globCIFinder" <-function( x, en, alpha, nsim){
@@ -1089,182 +1116,6 @@ function( titbits, outcomes, X, W, offset, wts, data, rcp_formula, species_formu
 # 	return( new.fm)
 # }
 
-"partial_mus_no_species_form" <- function(object, type, ...){
-
-  ## what are the species taus?
-  tau <- coef(object)$tau
-  tau <- rbind(tau, -colSums( tau))
-
-  ## what was the the model offset?
-  offy <- object$titbits$offset
-
-  ## what is the linear predictor (eta)
-  eta <- sweep(tau, 2, object$coefs$alpha, "+") + mean(offy)
-
-  ## what is the link function of appropriate family?
-  if(object$family=="bernoulli")
-    link.fun <- stats::make.link('logit')
-  if(object$family%in%c("poisson","negative.binomial"))
-    link.fun <- stats::make.link('log')
-  if(object$family=='guassian')
-    link.fun <- stats::make.link('identity')
-
-  ## what are the partial mus: dim[nRCPs,nSpp]
-  if(type%in%"response")partial_mus <- link.fun$linkinv(eta)
-  else partial_mus <- eta
-  dimnames(partial_mus)[[2]] <- object$names$spp
-  dimnames(partial_mus)[[1]] <- object$names$RCPs
-
-  ## return the partial mus if their is no sampling artifacts (species formula).
-  return(partial_mus)
-}
-
-
-"partial_mus_with_species_form" <- function(object, type, ... ){
-
-  ## what are the taus?
-  tau <- coef(object)$tau
-  tau <- rbind(tau, -colSums( tau))
-
-  ## what was the the model offset?
-  offy <- object$titbits$offset
-
-  ## what is the linear predictor (eta)?
-  eta <- sweep(tau, 2, coef(object)$alpha, "+") + mean(offy)
-
-  ## what is the link function of appropriate family?
-  if(object$family=="bernoulli")
-    link.fun <- stats::make.link('logit')
-  if(object$family%in%c("poisson","negative.binomial"))
-    link.fun <- stats::make.link('log')
-  if(object$family=='guassian')
-    link.fun <- stats::make.link('identity')
-
-  ## probabilities for all other levels of same sampling var
-  res<- lapply(seq_along(object$names$Wvars),function(jj){
-    new_eta <- sweep(eta, 2, coef(object)$gamma[,object$names$Wvars[jj]], "+");
-    if(type%in%"response")part_mus <- link.fun$linkinv(eta)
-    else part_mus <- eta
-    return(part_mus)})
-
-  names(res)<- object$names$Wvars
-  return(res)
-}
-
-"partial_mus_from_boostrap"  <- function(object, object2, CI=c(0.025,0.975), type){
-
-  #set up coefficient extraction
-  taus<-grepl("tau",dimnames(object2)[[2]])
-  alphas<-grepl("alpha",dimnames(object2)[[2]])
-
-  ## what is the link function of appropriate family?
-  if(object$family=="bernoulli") link.fun <- stats::make.link('logit')
-  if(object$family%in%c("poisson","negative.binomial")) link.fun <- stats::make.link('log')
-  if(object$family=='negative.binomial') link.fun <- stats::make.link('log')
-  if(object$family=='guassian') link.fun <- stats::make.link('identity')
-
-  if(check_if_sampling(object)){
-
-    res_all <- list()
-    for(i in seq_len(dim(object2)[1])){
-
-      ## bootstrap alpha (intercept)
-      tmp_alphas<-object2[i,alphas]
-
-      # bootstrap tau
-      tmp_tau <- object2[i,taus]
-      tmp_tau <- matrix(tmp_tau, nrow=length(object$names$RCPs)-1)
-      tmp_tau_all <- rbind(tmp_tau,-colSums(tmp_tau))
-      colnames(tmp_tau_all) <- object$names$spp
-      rownames(tmp_tau_all) <- object$names$RCPs
-
-      ## offset from the model if used.
-      offy <- object$titbits$offset
-
-      ## what is the linear predictor (eta)
-      tmp_eta <- sweep(tmp_tau_all, 2, tmp_alphas, "+") + mean(offy)
-
-      #calculate values
-      if(type%in%"response")part_mus <- link.fun$linkinv(tmp_eta)
-      if(type%in%"link") part_mus <- tmp_eta
-      res_all[[i]]<-as.matrix(part_mus)
-    }
-
-    overall_temp<-array(unlist(res_all), dim=c( length(object$names$RCPs),length(object$names$spp),nrow(object2)))
-    overall_res<-list( mean=apply(overall_temp, c(1,2), mean),
-                       sd= apply(overall_temp, c(1,2), sd),
-                       lower= apply(overall_temp, c(1,2), function(x) quantile(x, probs=CI[1])),
-                       upper= apply(overall_temp, c(1,2), function(x) quantile(x, probs=CI[2])))
-
-    dimnames(overall_res[[1]])<-dimnames(overall_res[[2]])<-dimnames(overall_res[[3]])<-dimnames(overall_res[[4]])<-list(object$names$RCPs, object$names$spp)
-    return (overall_res)
-  }
-
-  if (!check_if_sampling(object)){
-
-    gammas<-grepl("gamma",dimnames(object2)[[2]])
-    res_all <- list()
-    # res <- rep( list(list()), length(object$names$Wvars))
-
-
-    for(i in seq_len(dim(object2)[1])){
-      ## bootstrap alpha (intercept)
-      tmp_alphas<-object2[i,alphas]
-
-      # bootstrap tau
-      tmp_tau <- object2[i,taus]
-      tmp_tau <- matrix(tmp_tau, nrow=length(object$names$RCPs)-1)
-      tmp_tau_all <- rbind(tmp_tau,-colSums(tmp_tau))
-      colnames(tmp_tau_all) <- object$names$spp
-      rownames(tmp_tau_all) <- object$names$RCPs
-
-      ## offset from the model if used.
-      offy <- object$titbits$offset
-
-      #gamma
-      tmp_gamma<-object2[i, gammas]
-      tmp_gamma<-matrix(tmp_gamma, nrow=length(object$names$spp))
-      colnames(tmp_gamma)<-object$names$Wvars
-      rownames(tmp_gamma)<-object$names$spp
-
-      ## what is the linear predictor (eta)
-      tmp_eta <- sweep(tmp_tau_all, 2, tmp_alphas, "+") + mean(offy)
-
-      res<- lapply(seq_along(object$names$Wvars),function(jj){
-        new_eta <- sweep(tmp_eta, 2, tmp_gamma[,jj], "+");
-        if(type%in%"response")part_mus <- link.fun$linkinv(tmp_eta)
-        if(type%in%"link") part_mus <- tmp_eta
-        return(part_mus)})
-
-      names(res)<-object$names$Wvars
-      res_all[[i]] <- res
-    }
-
-    #Compile list of summaries at the sampling factor level
-    samp_res <- rep(list(list()), length(object$names$Wvars))
-    names(samp_res) <- object$names$Wvars
-
-    for(k in seq_along(object$names$Wvars)){
-      samp_res[[k]]<-list(mean=apply(simplify2array(res_all[[k]]), c(1,2), mean),
-                          sd=apply(simplify2array(res_all[[k]]), c(1,2), sd),
-                          lower=apply(simplify2array(res_all[[k]]), c(1,2), function(x) quantile(x, probs=CI[1])),
-                          upper=apply(simplify2array(res_all[[k]]), c(1,2), function(x) quantile(x, probs=CI[2])))
-    }
-
-    overall_temp<-list()
-    for(i in seq_len(dim(object2)[1])){
-      get_vals <- res_all[[i]]
-      overall_temp[[i]]<-apply(simplify2array(get_vals), c(1,2), mean)
-    }
-
-    overall_samp <-list(mean=apply(simplify2array(overall_temp), c(1,2), mean),
-                        sd= apply(simplify2array(overall_temp), c(1,2), sd),
-                        lower= apply(simplify2array(overall_temp), c(1,2), function(x) quantile(x, probs=CI[1])),
-                        upper= apply(simplify2array(overall_temp), c(1,2), function(x) quantile(x, probs=CI[2])))
-    samp_res$overall<-overall_samp
-    return(samp_res)
-  }
-}
 
 "print.data.summ" <- function( data, dat, S, rcp_formula, species_formula, disty.cases, disty, quiet=FALSE){
   if( quiet)
