@@ -1388,7 +1388,7 @@
                                family=glm.family, offset=offy), silent=FALSE)
           if (any(class(fit1)[1] %in% 'try-error')){
             new.betas <- rep(NA, ncol(X))
-            names(new.betas) <- colnames(cbind(X,W))
+            names(new.betas) <- colnames(X)
           } else {
              new.betas <- coef(fit1)[-1]
           }

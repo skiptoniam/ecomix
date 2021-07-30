@@ -144,7 +144,9 @@
   xterms <- Xdat$mt.x
   p.x <- ncol( X)
   #get design matrix for spp part of the model -- if there is one
-  W <- get_W_rcp( species_formula, dat$mf.W)
+  Wdat <- get_W_rcp( species_formula, dat$mf.W)
+  W <- Wdat$W
+  wterms <- Wdat$mt.w
   if( all( W != -999999))
     p.w <- ncol( W)
   else
@@ -186,6 +188,7 @@
   tmp$titbits$disty <- disty
   #the last bit of the regional_mix object puzzle
   tmp$call <- call
+  tmp$terms <- tt
 
   gc()
   tmp <- tmp[sort( names( tmp))]
@@ -298,11 +301,17 @@
     xterms <- Xdat$mt.x
     p.x <- ncol( X)
     #get design matrix for spp part of the model -- if there is one
-    W <- get_W_rcp( species_formula, dat$mf.W)
+    Wdat <- get_W_rcp( species_formula, dat$mf.W)
+    W <- Wdat$W
+    wterms <- Wdat$mt.w
     if( all( W != -999999))
       p.w <- ncol( W)
     else
       p.w <- 0
+
+    ## catch the terms as a list
+    tt <- list(xterms=xterms,wterms=wterms)
+
     #get offset (if not specified then it will be zeros)
     offy <- get_offset_rcp( mf, dat$mf.X, dat$mf.W)
     #get model wts (if not specified then it will be ones)
@@ -343,6 +352,7 @@
       tmp$titbits$disty <- disty
       #the last bit of the regional_mix object puzzle
       tmp$call <- call
+      tmp$terms <- tt
       class(tmp) <- "regional_mix"
       return( tmp)
     }
@@ -700,33 +710,36 @@ function( titbits, outcomes, X, W, offset, wts, data, rcp_formula, species_formu
 #   return( W)
 # }
 
-"get_W_rcp" <- function (form.spp, mf.W){
-  form.W <- form.spp
-  if (!is.null(form.spp)) {
-    if (length(form.W) > 2)
-      form.W[[2]] <- NULL
-    W <- model.matrix(form.W, mf.W)
-    tmp.fun <- function(x) {
-      all(x == 1)
-    }
-    intercepts <- apply(W, 2, tmp.fun)
-    W <- W[, !intercepts, drop = FALSE]
-  }
-  else W <- -999999
-  return(W)
-}
-
-# "get_W_rcp" <- function(form.spp,mf.W){
-#
+# "get_W_rcp" <- function (form.spp, mf.W){
+#   form.W <- form.spp
 #   if (!is.null(form.spp)) {
-#     mt.w <- stats::terms(mf.W)
-#     mt.w <- stats::delete.response(mt.w)
-#     W <- stats::model.matrix(mt.w, mf.W)
-#   } else {
-#
+#     if (length(form.spp) > 2)
+#       form.W[[2]] <- NULL
+#     W <- model.matrix(form.W, mf.W)
+#     tmp.fun <- function(x) {
+#       all(x == 1)
+#     }
+#     intercepts <- apply(W, 2, tmp.fun)
+#     W <- W[, !intercepts, drop = FALSE]
 #   }
-#   return(list(W=W, mt.w=mt.w))
+#   else W <- -999999
+#   return(W)
 # }
+
+"get_W_rcp" <- function(form.spp,mf.W){
+
+  if (!is.null(form.spp)) {
+    if (length(form.spp) > 2)
+      form.W[[2]] <- NULL
+    mt.w <- stats::terms(mf.W)
+    mt.w <- delete.intercept(mt.w)
+    W <- stats::model.matrix(mt.w, mf.W)
+  } else {
+    W <- -999999
+    mt.w <- -999999
+  }
+  return(list(W=W, mt.w=mt.w))
+}
 
 
 
@@ -746,8 +759,8 @@ function( titbits, outcomes, X, W, offset, wts, data, rcp_formula, species_formu
 
   mt.x <- terms(mf.X)
   mt.x <- stats::delete.response(mt.x)
+  mt.x <- delete.response(mt.x)
   X <- stats::model.matrix(mt.x, mf.X)
-  # X <- delete.intercept(X)
 
   return( list(X=X,mt.x=mt.x))
 }

@@ -80,10 +80,10 @@ colnames( W) <- paste( "w",1:3,sep=".")
 alpha <- rnorm( S)
 tau.var <- 0.5
 b <- sqrt( tau.var/2)
-tau <- matrix( rexp( n=(nRCP-1)*S,
-rate=1/b) - rexp( n=(nRCP-1)*S, rate=1/b), nrow=nRCP-1, ncol=S)
-beta <- 0.2 * matrix( c(-1.2, -2.6, 0.2, -23.4, -16.7, -18.7, -59.2, -76.0,
--14.2, -28.3, -36.8, -17.8, -92.9,-2.7), nrow=nRCP-1, ncol=p.x)
+tau <- matrix( rexp( n=(nRCP-1)*S,rate=1/b) - rexp( n=(nRCP-1)*S, rate=1/b),
+ nrow=nRCP-1, ncol=S)
+beta <- 0.2 * matrix( c(-1.2, -2.6, 0.2, -23.4, -16.7, -18.7, -59.2,
+ -76.0,-14.2, -28.3, -36.8, -17.8, -92.9,-2.7), nrow=nRCP-1, ncol=p.x)
 gamma <- matrix( rnorm( S*p.w), ncol=p.w, nrow=S)
 logDisp <- log( rexp( S, 1))
 set.seed(121)
