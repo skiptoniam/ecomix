@@ -189,10 +189,8 @@
   #the last bit of the regional_mix object puzzle
   tmp$call <- call
   tmp$terms <- tt
-
-  gc()
   tmp <- tmp[sort( names( tmp))]
-
+  gc()
   class(tmp) <- "regional_mix"
   return(tmp)
 
@@ -729,9 +727,10 @@ function( titbits, outcomes, X, W, offset, wts, data, rcp_formula, species_formu
 "get_W_rcp" <- function(form.spp,mf.W){
 
   if (!is.null(form.spp)) {
-    if (length(form.spp) > 2)
-      form.W[[2]] <- NULL
+    # if (length(form.spp) > 2)
+      # form.W[[2]] <- NULL
     mt.w <- stats::terms(mf.W)
+    mt.w <- stats::delete.response(mt.w)
     mt.w <- delete.intercept(mt.w)
     W <- stats::model.matrix(mt.w, mf.W)
   } else {
