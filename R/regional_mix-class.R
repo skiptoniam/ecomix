@@ -1145,15 +1145,6 @@ function( titbits, outcomes, X, W, offset, wts, data, rcp_formula, species_formu
   message("The error family is: ", disty.cases[disty])
 }
 
-
-
-# #' @rdname regional_mix
-# #' @name regional_mix_bootParametric
-# #' @param fm A fitted regional_mix model.
-# #' @param mf A model frame.
-# #' @param nboot The number of bootstraps to fit.
-# #' @export
-
 "regional_mix_bootParametric" <- function( fm, mf, nboot){
 	if( nboot > 0){
 		if( is.null( fm$vcov)){

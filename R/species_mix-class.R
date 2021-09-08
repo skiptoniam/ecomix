@@ -11,9 +11,9 @@
 #' that allows for easier data input. The data frames are merged into
 #' the appropriate format for the use in species_mix.fit.
 #' Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
-#' 'poisson', 'ippm' (inhomogeneous Poisson point process), 'negative.binomial',
-#' 'tweedie' and 'gaussian' distributions can be fitted using the species_mix
-#' function.
+#' 'poisson', 'negative.binomial' and 'gaussian' distributions can be fitted
+#' using the species_mix function. For Point Process extensions of SAMs please
+#' refer to the \link{ecomix.ppm} package.
 #' @param archetype_formula an object of class "formula" (or an object that can
 #' be coerced to that class). The response variable (left hand side of the
 #' formula) needs to be either 'occurrence', 'abundance',
@@ -35,7 +35,7 @@
 #'  a constant single set of covariates across all species and groups, typically
 #'  you might use this an alternative to an offset, where there might be some
 #'  bias in the data which is relatively constant and might arise as an
-#'  artefact of how the data was collected.
+#'  artifact of how the data was collected.
 #' @param data a matrix or data.frame which contains the 'species_data'
 #' matrix, a const and the covariates in the structure of spp1, spp2, spp3,
 #' const, temperature, rainfall. dims of matrix should be
@@ -57,11 +57,11 @@
 #' undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.
 #' @param size The size of the sample for a binomial model (defaults to 1).
 #' @param power The power parameter for a Tweedie model. Default is 1.6, and this is assigned to all species
-#' @param control a list of control parameters for optimisation and calculation.
+#' @param control a list of control parameters for optimization and calculation.
 #' See details.
 #' @param inits NULL a numeric vector that provides approximate starting values
 #' for species_mix coefficients. These are family specific, but at a
-#' minimum you will need pi (additive_logitic transformed), alpha
+#' minimum you will need pi (additive_logistic transformed), alpha
 #' (intercepts) and beta (mixing coefs).
 #' @param titbits either a boolean or a vector of characters. If TRUE
 #' (default for species_mix(qv)), then some objects used in the estimation of
