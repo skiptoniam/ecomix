@@ -402,8 +402,6 @@
 
 }
 
-
-
 "clean_data_rcp" <- function( data, form1, form2){
     mf.X <- stats::model.frame(form1, data = data, na.action = stats::na.exclude)
     if( !is.null( form2)){
