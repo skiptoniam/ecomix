@@ -17,7 +17,7 @@ species_mix.multifit(
   bb_weights = NULL,
   size = NULL,
   power = 1.6,
-  control = list(ecm_prefit = FALSE),
+  control = list(ecm.prefit = FALSE),
   inits = NULL,
   titbits = FALSE,
   nstart = 10,
@@ -30,7 +30,7 @@ species_mix.multifit(
 \item{archetype_formula}{an object of class "formula" (or an object that can
 be coerced to that class). The response variable (left hand side of the
 formula) needs to be either 'occurrence', 'abundance',
-'biomass' or 'quantity' data. The type of reponse data will help specify
+'biomass' or 'quantity' data. The type of response data will help specify
 the type of error distribution to be used. The dependent variables
 (the right hind side) of this formula specifies the dependence of the
 species archetype probabilities on covariates. For all model the basic
@@ -47,21 +47,25 @@ more than an intercept you will be fitting a partial species archetype model
 which has species specific covariates and archetype specific covariates.}
 
 \item{all_formula}{an object of class "formula", which is meant to represent
-a constant single set of covariates across all species and groups, typically you might
-use this an alternative to an offset, where there might be some bias in the
-data which is relatively constant and might arise as an artefact of how the data was collected.}
+a constant single set of covariates across all species and groups, typically
+you might use this an alternative to an offset, where there might be a set
+covariates which means artifact of how the data was collected or some other
+process like a seasonality.}
 
-\item{data}{a matrix of dataframe which contains the 'species_data'
-matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
-const, temperature, rainfall. dims of matirx should be
+\item{data}{a matrix or data.frame which contains the 'species_data'
+matrix, a const and the covariates in the structure of spp1, spp2, spp3,
+const, temperature, rainfall. dims of matrix should be
 nsites*(nspecies+const+covariates).}
 
-\item{nArchetypes}{The number of mixing components (groups) to fit.}
+\item{nArchetypes}{The number of archetypes (mixing components/groups) to
+estimate from the data. This need to be explicitly declared. By default it is
+set to 3.}
 
-\item{family}{The family of statistical distribution to use within
-the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
-"negative.binomial" and "gaussian" distributions are possible and applicable
-to specific types of data.}
+\item{family}{The family of statistical family to use within
+the ecomix models. a  choice between "bernoulli", "binomial", "poisson",
+"negative.binomial", "tweedie" and "gaussian" families are possible and
+applicable to specific types of data. If you wish to fit a point process
+version of a SAM please refer to the \link{ecomix.ppm} package.}
 
 \item{offset}{a numeric vector of length nrow(data) (n sites) that is
 included into the model as an offset. It is included into the conditional
@@ -78,15 +82,15 @@ undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
 
 \item{size}{The size of the sample for a binomial model (defaults to 1).}
 
-\item{power}{The power parameter for a Tweedie model. Default is 1.6, and
+\item{power}{The power parameter for 'tweedie' family. Default is 1.6, and
 this is assigned to all species}
 
-\item{control}{a list of control parameters for optimisation and calculation.
+\item{control}{a list of control parameters for optimization and calculation.
 See details.}
 
 \item{inits}{NULL a numeric vector that provides approximate starting values
-for species_mix coefficients. These are distribution specific, but at a
-minimum you will need pi (additive_logitic transformed), alpha
+for species_mix coefficients. These are family specific, but at a
+minimum you will need pi (additive_logistic transformed), alpha
 (intercepts) and beta (mixing coefs).}
 
 \item{titbits}{either a boolean or a vector of characters. If TRUE
@@ -117,8 +121,16 @@ the re-fitting over.}
 \item{\\dots}{Ignored}
 }
 \description{
-This version of species mix is useful for fitting models which have complex likelihoods.
-The multiple starts will enable optimisation of the loglikelihood using multiple starts.
+This version of species mix is useful for fitting models which
+have complex likelihoods. The multiple starts will enable optimization of the
+log-likelihood using multiple starts.
+}
+\details{
+species_mix.multifit is used to fit species archetype models with
+multiple fits. This can be useful for complex models where there are many
+local maximum in the likelihood. The multiple restarts using in
+`species_mix.multifit` can help search the log-likelihood using starting values
+with some random variance (noise).
 }
 \examples{
 \donttest{
@@ -131,7 +143,8 @@ beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,1.9),3,2,byrow=TRUE)
 dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
 x2=stats::rnorm(100,0,2.5))
 dat[,-1] <- scale(dat[,-1])
-simulated_data <- species_mix.simulate(archetype_formula = sam_form,species_formula = sp_form,
+simulated_data <- species_mix.simulate(archetype_formula = sam_form,
+species_formula = sp_form,
 data = dat,beta=beta,family="bernoulli")
 fm1 <- species_mix(archetype_formula = sam_form,species_formula = sp_form,
 data = simulated_data, family = 'bernoulli',  nArchetypes=3)

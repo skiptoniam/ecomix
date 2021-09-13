@@ -43,21 +43,27 @@ which has species specific covariates and archetype specific covariates.}
 
 \item{all_formula}{an object of class "formula", which is meant to represent
 a constant single set of covariates across all species and groups, typically
-you might use this an alternative to an offset, where there might be some
-bias in the data which is relatively constant and might arise as an
-artefact of how the data was collected.}
+you might use this an alternative to an offset, where there might be a set
+covariates which means artifact of how the data was collected or some other
+process like a seasonality.}
 
 \item{data}{a matrix or data.frame which contains the 'species_data'
 matrix, a const and the covariates in the structure of spp1, spp2, spp3,
 const, temperature, rainfall. dims of matrix should be
 nsites*(nspecies+const+covariates).}
 
-\item{nArchetypes}{The number of archetypes (mixing components/groups) to estimate from the data.}
+\item{nArchetypes}{The number of archetypes (mixing components/groups) to
+estimate from the data. This need to be explicitly declared. By default it is
+set to 3.}
 
 \item{family}{The family of statistical family to use within
-the ecomix models. a  choice between "bernoulli", "binomial", "poisson", "ippm",
-"negative.binomial", "tweedie" and "gaussian" families are possible and applicable
-to specific types of data.}
+the ecomix models. family can be a function from \link[stats]{family}, such as
+binomial(). OR it can be a choice between "bernoulli", "binomial", "poisson",
+"negative.binomial", "tweedie" and "gaussian" families. An error will be
+thrown if the family is not recognized. The family you use is generally
+specific to the type of data you have. One can also specify a link function
+such as "cloglog" via binomial(link="cloglog"). If you wish to fit a point
+process version of a SAM please refer to the \link{ecomix.ppm} package.}
 
 \item{offset}{a numeric vector of length nrow(data) (n sites) that is
 included into the model as an offset. It is included into the conditional
@@ -74,14 +80,15 @@ undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
 
 \item{size}{The size of the sample for a binomial model (defaults to 1).}
 
-\item{power}{The power parameter for a Tweedie model. Default is 1.6, and this is assigned to all species}
+\item{power}{The power parameter for 'tweedie' family. Default is 1.6, and
+this is assigned to all species}
 
-\item{control}{a list of control parameters for optimisation and calculation.
+\item{control}{a list of control parameters for optimization and calculation.
 See details.}
 
 \item{inits}{NULL a numeric vector that provides approximate starting values
 for species_mix coefficients. These are family specific, but at a
-minimum you will need pi (additive_logitic transformed), alpha
+minimum you will need pi (additive_logistic transformed), alpha
 (intercepts) and beta (mixing coefs).}
 
 \item{titbits}{either a boolean or a vector of characters. If TRUE
@@ -102,8 +109,7 @@ for EACH OF THE MODEL FITS. If the data is large or if nstart is large, then
 setting titbits=TRUE may give users problems with memory.}
 }
 \description{
-Fits a mixture-of-regressions to identify species archetype
-models (SAMs).
+Fits a mixture-of-regressions (SAM) to identify species archetypes.
 }
 \details{
 species_mix is used to fit mixtures of glms to multivariate
@@ -113,9 +119,46 @@ parameters. `species_mix` acts as a wrapper for species_mix.fit
 that allows for easier data input. The data frames are merged into
 the appropriate format for the use in species_mix.fit.
 Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
-'poisson', 'ippm' (inhomogeneous Poisson point process), 'negative.binomial',
-'tweedie' and 'gaussian' distributions can be fitted using the species_mix
-function.
+'poisson', 'negative.binomial' and 'gaussian' distributions can be fitted
+using the species_mix function. For Point Process extensions of SAMs please
+refer to the \link{ecomix.ppm} package.
+
+species_mix is used to fit mixtures of glms to multivariate
+species data. The function uses BFGS to optimize the mixture likelihood.
+There is the option to use ECM algorithm to get appropriate starting
+parameters. `species_mix` acts as a wrapper for species_mix.fit
+that allows for easier data input. The data frames are merged into
+the appropriate format for the use in species_mix.fit.
+Minima is found using vmmin (BFGS).
+
+Control arguments for species_mix are as follows:
+\describe{
+ \item{maxit}{The maximum number of iterations. Default is 1000.}
+ \item{quiet}{Should any reporting be performed? Default is FALSE, for reporting.}
+ \item{trace}{Non-negative integer. If positive, tracing information on the progress of the optimization is produced. Higher values may produce more tracing information. If quiet=TRUE, then trace will be set to zero.}
+ \item{init.glmnet}{Use glmnet to get initial starting values, default is TRUE, if FALSE, glm2 will be used.}
+ \item{init.method}{Which initialsation approach to use for covariates, default is "random2" which is uses k-means on the groups and adds some random noise. Alternatives are 'kmeans' and 'kmed'}
+ \item{init.sd}{The amount of gaussian variation to add to starting values, default is NA, which adds variantion in based on the standard deviation of the parameters. Otherwise should be a double like 0.3}
+ \item{minimum.presencess}{The number of presences required for each species to be included when generaling the starting values, the default is to remove all species <= 30 occurrences during inititalisation, these species will still be included in the model fit.}
+ \item{ecm.prefit}{Use ECM to generate starting values? If FALSE, the model will use starting values without the ECM.}
+ \item{ecm.refits}{The number of ECM refits to run, the default is 2, users could increase this to potentially get better starting values.}
+ \item{ecm.steps}{The numer of ECM steps/iterations to run per ECM fit, the default is 5.}
+ \item{ecm.reltol}{The relative tolerance for the ECM, default is quiet large 1e-2, makin this smaller will make the convergance tolerance stickter, you'll have to also adjust the "ecm.steps", to be larger if you make this stickter.}
+ \item{print.cpp.inits}{Print the intialisation values being passed to c++. Handy for debugging especially if 'vmmin' error call}
+ \item{nreport}{The frequency of reports for optimisation. Default is 10 a report for 10th iteration.}
+ \item{abstol}{The abstol for vmmin, the default is -Inf. See \link[stats]{optim} for further details}
+ \item{reltol}{Relative convergence tolerance. The algorithm stops if it is unable to reduce the value by a factor of reltol * (abs(val) + reltol) at a step. Defaults to sqrt(.Machine$double.eps), typically about 1e-8.}
+ \item{optimise.cpp}{Should optimisation for estimation occur? If TRUE (default) optimisation will occur. If FALSE no optimisation is performed.}
+ \item{getscores.cpp}{Should we return the scores (derivates) when doing optimsation? If FALSE (default) scores will not be returned. If TRUE scores will be returned.}
+ \item{loglOnly.cpp}{Should the log-likelihood be caulcated? If TRUE (default) then log-likelihood is calculated and returned. If FALSE then the log-likelihood is not calculated for return.}
+ \item{derivOnly.cpp}{Should the scores be evaluated at the (final) parameter values. If TRUE (default) then they are calculated. If FALSE then they are not calculated.}
+ \item{doPenalties}{A boolean 0 or 1. Default is 0 (false) and no penalities will be applied within the optimsation.}
+ \item{penalty.pi}{A numeric scalar. This is the penalty for the mixing coefs. The penality is an from a Dirichlet distribution.}
+ \item{penalty.alpha}{A numeric scalar. This is the penalty for the alpha parameters in the species model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).}
+ \item{penalty.beta}{A numeric scalar. This is the penalty for the beta parameters in the  group model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).}
+ \item{penalty.gamma}{A numeric scalar. This is the penalty for the gamma parameters in the species model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).}
+ \item{penalty.delta}{A numeric scalar. This is the penalty for the delta parameters in the bias model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).}
+ }
 }
 \examples{
 \donttest{
