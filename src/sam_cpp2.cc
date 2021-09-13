@@ -4,7 +4,8 @@
 
 extern "C" {
 	SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP RU, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rbinsize,
-					     SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll, SEXP RdoPenalties,
+					     SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty, SEXP Rlinky,
+					     SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll, SEXP RdoPenalties,
 						 SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rdelta, SEXP Rtheta, SEXP Rpowers,
 						 //penalties
 						 SEXP RalphaPen, SEXP RbetaPen, SEXP RpiPen,  SEXP RgammaPen,
@@ -18,7 +19,7 @@ extern "C" {
 	sam_cpp_all_classes all;
 
 	//initialise the data structures -- they are mostly just pointers to REAL()s...
-	all.data.setVals(Ry, RX, RW, RU, Roffset, Rspp_wts, Rsite_spp_wts, Ry_not_na, Rbinsize, RnS, RnG, Rpx, Rpw, Rpu, RnObs, Rdisty, RoptiDisp, RoptiPart, RoptiAll, RdoPenalties);	//read in the data
+	all.data.setVals(Ry, RX, RW, RU, Roffset, Rspp_wts, Rsite_spp_wts, Ry_not_na, Rbinsize, RnS, RnG, Rpx, Rpw, Rpu, RnObs, Rdisty, Rlinky, RoptiDisp, RoptiPart, RoptiAll, RdoPenalties);	//read in the data
 	all.params.setVals(all.data, Ralpha, Rbeta, Reta, Rgamma, Rdelta, Rtheta, Rpowers, RalphaPen, RbetaPen, RpiPen, RgammaPen, RdeltaPen, RthetaLocatPen, RthetaScalePen);	//read in the parameters
 	all.derivs.setVals(all.data, RderivsAlpha, RderivsBeta, RderivsEta, RderivsGamma, RderivsDelta, RderivsTheta, RgetScores, Rscores);
 	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv, Rprintparams);
@@ -183,11 +184,11 @@ double sam_cpp_mix_loglike(const sam_data &dat, const sam_params &params, sam_fi
 	if(dat.doPenalties>0){
 	penAlpha = calc_alpha_pen( dat, params);
 	penBeta = calc_beta_pen( dat, params);
-	//penPi = calc_pi_pen(dat, params);
+	//penPi = calc_pi_pen(dat, params);  // leave penality as zero.
 
 	loglike += penAlpha;
 	loglike += penBeta;
-	//loglike += penPi;
+	loglike += penPi;
 
 	if(dat.optiPart>0){
 	penGamma = calc_gamma_pen( dat, params);
@@ -242,14 +243,17 @@ void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data
 							}
 				}
 					if(dat.disty==1){//bernoulli
+						if(dat.linky==0)
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_logit(lp);
+						if(dat.linky==1)
+							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_cloglog(lp);	
 						}
 					if(dat.disty==2){ //poisson
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
 						}
-					if(dat.disty==3){ //ippm
-						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
-					}
+					//if(dat.disty==3){ //ippm
+						//fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
+					//}
 					if(dat.disty==4){ //negative binomial
 						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
 					}
@@ -283,9 +287,9 @@ void calc_sam_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam
 					if(dat.disty==2){ // poisson
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_poisson_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 						}
-					if(dat.disty==3){ // ippm
-						loglSG.at(MATREF2D(g,s,dat.nG)) += log_ippm_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.site_spp_wts[MATREF2D(i,s,dat.nObs)]);
-						}
+					//if(dat.disty==3){ // ippm
+						//loglSG.at(MATREF2D(g,s,dat.nG)) += log_ippm_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.site_spp_wts[MATREF2D(i,s,dat.nObs)]);
+						//}
 					if(dat.disty==4){ // negative binomial
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_negative_binomial_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 						}
@@ -387,22 +391,22 @@ double log_poisson_deriv_sam( const double &y, const double &mu){
 }
 
 // this should give the log-density for the ippm. fingers crossed...
-double log_ippm_sam(const double &y, const double &mu, const double &st_sp_wts){
-	double tmp, z;
-	z = y/st_sp_wts;
-	tmp = z * log(mu);
-	tmp -= mu;
-	tmp *= st_sp_wts;
-	return( tmp);
-}
+//double log_ippm_sam(const double &y, const double &mu, const double &st_sp_wts){
+	//double tmp, z;
+	//z = y/st_sp_wts;
+	//tmp = z * log(mu);
+	//tmp -= mu;
+	//tmp *= st_sp_wts;
+	//return( tmp);
+//}
 
-double log_ippm_deriv_sam( const double &y, const double &mu, const double &st_sp_wts){
-	double tmp, z;
-	z = y/st_sp_wts;
-	tmp = z/mu;
-	tmp -= 1;
-	return( tmp);
-}
+//double log_ippm_deriv_sam( const double &y, const double &mu, const double &st_sp_wts){
+	//double tmp, z;
+	//z = y/st_sp_wts;
+	//tmp = z/mu;
+	//tmp -= 1;
+	//return( tmp);
+//}
 
 double log_negative_binomial_sam( const double &y, const double &mu, const double &od){
 	double tmp, theta;
@@ -627,9 +631,9 @@ void calc_mu_deriv( vector<double> &mu_derivs, const vector<double> &fits, const
 				if(dat.disty==2){
 					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_poisson_deriv_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 				}
-				if(dat.disty==3){
-					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_ippm_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.site_spp_wts[MATREF2D(i,s,dat.nObs)]);
-				}
+				//if(dat.disty==3){
+					//mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_ippm_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.site_spp_wts[MATREF2D(i,s,dat.nObs)]);
+				//}
 				if(dat.disty==4){
 					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_negative_binomial_deriv_mu_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 				}
@@ -655,14 +659,17 @@ void calc_eta_mu_deriv( vector<double> &etaDerivs, const sam_data &dat, const ve
 			for(int i=0; i<dat.nObs; i++){
 				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
 						if(dat.disty==1){ //bernoulli
-							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * (1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS))) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//logit link
+							if(dat.linky==0)//logit link: mu*(1-mu)
+								etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * (1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS))) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//logit link
+							if(dat.linky==1)//clogloglink: -log(1-mu)*(1 - mu) 	
+								etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = (-log(1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)))*(1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)))) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));
 						}
 						if(dat.disty==7){ //binomial (size rather than 1).
 							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * (1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS))) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//logit link
 						}
-						if(dat.disty==3){ // ippm
-							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = dat.site_spp_wts[MATREF2D(i,s,dat.nObs)] * fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)); // loglink + weights
-						}
+						//if(dat.disty==3){ // ippm
+							//etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = dat.site_spp_wts[MATREF2D(i,s,dat.nObs)] * fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)); // loglink + weights
+						//}
 						if(dat.disty==2){ // poisson, negative binomial, tweedie
 							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//log link
 						}
@@ -1093,10 +1100,25 @@ bool converged_sam( double *oldP, double *newP, const sam_opt_contr &contr, int 
 
 }
 
+//Inverse link functions for binomial distributions.
 //inserve logistic link function
 double inverse_logit(const double eta){
-	double tmp;
+	double tmp, eps = 1e-16;
 	tmp = exp(eta);
 	tmp = tmp / (1+tmp);
+	if(tmp<eps)tmp=eps;
 	return( tmp);
 }
+
+
+
+//inverse complementary log-log
+double inverse_cloglog(const double eta){
+	double tmp, eps = 1e-16;
+	tmp = exp(eta);
+	tmp = -tmp;
+	tmp = 1-exp(tmp);
+	if(tmp<eps)tmp=eps;
+	return( tmp);
+}
+

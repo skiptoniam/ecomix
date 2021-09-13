@@ -26,7 +26,8 @@ class sam_data {
 		sam_data();
 		~sam_data();
 		void setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &RU, SEXP &Roffset, SEXP &Rspp_wts, SEXP &Rsite_spp_wts, SEXP &Ry_not_na, SEXP &Rbinsize,
-		 SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw, SEXP &Rpu, SEXP &RnObs, SEXP &Rdisty, SEXP &RoptiDisp, SEXP &RoptiPart, SEXP &RoptiAll, SEXP &RdoPenalties);
+		 SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw, SEXP &Rpu, SEXP &RnObs, SEXP &Rdisty, SEXP &Rlinky,
+		 SEXP &RoptiDisp, SEXP &RoptiPart, SEXP &RoptiAll, SEXP &RdoPenalties);
 		bool isDispersion() const;
 		bool doOptiDisp() const;
 		bool isPartial() const;
@@ -40,6 +41,7 @@ class sam_data {
 			nS,       //the number of species
 			nObs,     //the number of observations
 			disty,    //the distribution code
+			linky,    //which link function to use # 0 = logit, 1 = cloglog.
 			optiDisp, //should the dispersion parameter be optimised (this is for negative binomial).
 			optiPart, //should the partial sam parameters be estimated.
 			optiAll, //should the all/bias sam parameters be estimated.
@@ -159,7 +161,8 @@ class sam_cpp_all_classes {
 ////////////////////////////////////////////////////////
 
 extern "C" SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW,  SEXP RU, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rbinsize,
-								SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty, SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll, SEXP RdoPenalties,
+								SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty,
+								SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll, SEXP RdoPenalties, SEXP Rlinky,
 								SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rdelta, SEXP Rtheta, SEXP Rpowers,
 								SEXP RalphaPen, SEXP RbetaPen, SEXP RpiPen, SEXP RgammaPen, SEXP RdeltaPen, SEXP RthetaLocatPen, SEXP RthetaScalePen,
 								SEXP RderivsAlpha, SEXP RderivsBeta,  SEXP RderivsEta, SEXP RderivsGamma, SEXP RderivsDelta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
@@ -172,7 +175,7 @@ extern "C" SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW,  SEXP RU, SEXP Roffse
 double SAM_optimise(sam_cpp_all_classes &all);
 bool converged_sam( double *oldP, double *newP, const sam_opt_contr &contr, int nTot);
 
-// functions for calculating ippm likelihood.
+// functions for calculating likelihoods.
 double optimise_function_sam(int n, double *par, void *ex);
 double sam_cpp_mix_loglike(const sam_data &dat, const sam_params &params, sam_fits &fits);
 void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data &dat);
@@ -180,6 +183,7 @@ void calc_sam_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam
 double calc_sam_loglike_S(vector<double> &fits, vector<double> const &pis, const sam_data &dat, int s);
 void additive_logistic_sam(vector< double > &x,int inv, int G);
 double inverse_logit(const double eta);
+double inverse_cloglog(const double eta);
 
 // functions for calculating the gradient.
 void gradient_function_sam(int n, double *par, double *gr, void *ex);
@@ -215,8 +219,8 @@ double log_bernoulli_sam( const double &y, const double &mu);
 double log_bernoulli_deriv_sam(const double &y, const double &mu);
 double log_poisson_sam( const double &y, const double &mu);
 double log_poisson_deriv_sam( const double &y, const double &mu);
-double log_ippm_sam(const double &y, const double &mu, const double &st_sp_wts);
-double log_ippm_deriv_sam( const double &y, const double &mu, const double &st_sp_wts);
+//double log_ippm_sam(const double &y, const double &mu, const double &st_sp_wts);
+//double log_ippm_deriv_sam( const double &y, const double &mu, const double &st_sp_wts);
 double log_negative_binomial_sam( const double &y, const double &mu, const double &od);
 double log_negative_binomial_deriv_mu_sam( const double &y, const double &mu, const double &od);
 double log_negative_binomial_deriv_theta_sam(const double &y, const double &mu, const double &od);

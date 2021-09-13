@@ -8,7 +8,8 @@ void sam_data::setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &RU,
 						SEXP &Roffset, SEXP &Rspp_wts,
 						SEXP &Rsite_spp_wts, SEXP &Ry_not_na, SEXP &Rbinsize,
 						SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw, SEXP &Rpu,
-						SEXP &RnObs, SEXP &Rdisty, SEXP &RoptiDisp, SEXP &RoptiPart, SEXP &RoptiAll, SEXP &RdoPenalties){
+						SEXP &RnObs, SEXP &Rdisty, SEXP &Rlinky, 
+						SEXP &RoptiDisp, SEXP &RoptiPart, SEXP &RoptiAll, SEXP &RdoPenalties){
 
 	nS = *(INTEGER( RS));
 	nG = *(INTEGER( RG));
@@ -17,6 +18,7 @@ void sam_data::setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &RU,
 	nPU = *(INTEGER( Rpu));
 	nObs = *(INTEGER( RnObs));
 	disty = *(INTEGER( Rdisty));
+	linky = *(INTEGER( Rlinky));
 	optiDisp = *(INTEGER( RoptiDisp));
 	optiPart = *(INTEGER( RoptiPart));
 	optiAll = *(INTEGER( RoptiAll));
