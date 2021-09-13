@@ -172,7 +172,7 @@ simulated_data200 <- species_mix.simulate(archetype_formula=sam_form,
                                        beta = betas,
                                        data = env_200,
                                        nArchetypes = 3,
-                                       family = "bernoulli")
+                                       family = 'bernoulli')
 ```
 
 
@@ -193,7 +193,7 @@ axis(1, at=bp[c(0,25,50,75,100,nrow(bpdf)-1)+1,1], labels = c(0,25,50,75,100,"")
 
 In this, example we fit independent polynomials with two degrees of freedom for the four simulated covariates Temperature, Oxygen, Depth & Productivity. We do this to demonstrate a simple simulated example where can show the known response of covariates to simulated data. We include time as a factor, which represents the time in which the simulated samples were recorded, for these data the two factors are 'Day' or 'Night'. But additional discrete times could be included such as years. Below is a small code block with a basic example on how to fit a single species_mix model.
 
-```{r, echo=TRUE, eval=TRUE,message=FALSE,warning=FALSE}
+```{r, echo=TRUE, eval=FALSE,message=FALSE,warning=FALSE}
 ## load the ecomix package
 library(ecomix)
  
@@ -214,12 +214,12 @@ sam_fit <- species_mix(archetype_formula = archetype_formula, # Archetype formul
                        species_formula = species_formula,    # Species formula
                        data = samdat_10p,            # Data
                        nArchetypes = 3,              # Number of groups (mixtures) to fit
-                       family = 'bernoulli',         # Which family to use
-                       control = list(quiet = TRUE))
+                       family = binomial(),         # Which family to use
+                       control = list(quiet = FALSE))
 ```
 
 #### Group selection
-One challenge when developing SAMs (or any finite mixture model) is selecting $k$; the number of groups (archetypes) in the model. The number of archetypes is latent, so must be estimated from the data and the functional form of the covariates. In this example, we know that the optimal number of groups for these data is three, because we simulated the data with these characteristics. However, $k$ is generally not known in real world applications. So one import part of the fitting process is finding $k$, having said that it is also totally fine to define $k$ for say a management objective. We can estimate the "best" number of groups based on the most parsimonious fit to the data. We can do this based on the model log-likelihood, and information criterion such as BIC. We provide a function `species_mix.multifit` which can assist in group selection if a vector of archetypes is provided. Below is an example of how one might do this. For simplicity we have left the `nstart=1`, but for more complex models this could be increased to use multiple starts to help search to the likelihood.
+One challenge when developing SAMs (or any finite mixture model) is selecting $k$; the number of archetypes (groups) in the model. The number of archetypes is latent, so must be estimated from the data and the functional form of the covariates. In this example, we know that the optimal number of groups for these data is three, because we simulated the data with these characteristics. However, $k$ is generally not known in real world applications. So one import part of the fitting process is finding $k$, having said that it is also totally fine to define $k$ for say a management objective. We can estimate the "best" number of groups based on the most parsimonious fit to the data. We can do this based on the model log-likelihood, and information criterion such as BIC. We provide a function `species_mix.multifit` which can assist in group selection if a vector of archetypes is provided. Below is an example of how one might do this. For simplicity we have left the `nstart=1`, but for more complex models this could be increased to use multiple starts to help search to the likelihood.
 
 ```{r, eval = FALSE, fig.width=5,fig.height=4,fig.cap="Figure 3. Group selection from multiple fit function, we can see that three archetypes is the best fit to these data based on Bayesian Information Criterion (BIC)."}
 nArchetypes <- 1:6
@@ -249,13 +249,13 @@ We can also plot the partial responses of covariates as shown in @dunstan_model_
 
 ```{r partial plots, fig.width=6, fig.height=6, fig.cap="Figure 6. Partial response plots for each covariate in the model."}
 par(mfrow=c(2,3))
-eff.df <- effectPlotData(focal.predictors = c("Temperature","Oxygen","Productivity","Depth","Time"), sam_fit)
-sam_boot <- species_mix.bootstrap(sam_fit,nboot = 10, quiet = TRUE)
+eff.df <- effects_data(focal.predictors = c("Temperature","Oxygen","Productivity","Depth","Time"), sam_fit)
+sam_boot <- bootstrap(sam_fit,nboot = 10, quiet = TRUE)
 plot(x = eff.df, object = sam_fit, object2=sam_boot,ylim=c(0,1))
 ```
 
 #### Model prediction
-We can generate predictions for the each archetype in ecomix using `predict()` function. The default is used to generate a point mean estimate for each archetype. With the inclusion of a `species_mix.bootstrap` object we can also provide estimates of uncertainty or standard error for each prediction. We can see spatial predict the point mean and standard error in the predicted distributions of each archetype (Fig. 3e & 3f). We can also see the spatial response of each archetype is strongly correlated to it's environmental response to each covariate (Fig. 2). For example, archetype two has a strong response to depth (Fig. 3e), which is evident in the archetype responses (Fig. 3d).
+We can generate predictions for the each archetype in ecomix using `predict()` function. The default is used to generate a point mean estimate for each archetype. With the inclusion of a `bootstrap` object we can also provide estimates of uncertainty or standard error for each prediction. We can see spatial predict the point mean and standard error in the predicted distributions of each archetype (Fig. 3e & 3f). We can also see the spatial response of each archetype is strongly correlated to it's environmental response to each covariate (Fig. 2). For example, archetype two has a strong response to depth (Fig. 3e), which is evident in the archetype responses (Fig. 3d).
 
 ```{r archetype predictions,echo=FALSE,fig.width= 4, fig.height= 6,fig.cap="Figure 7. The predicted probability of each species archetype across the simulated environment and the standard error of the predictions generated based on the Bayesian bootstrap."}
 env.df$Time <- factor("Day",levels=c("Day","Night"))
