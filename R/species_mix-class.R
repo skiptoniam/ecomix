@@ -319,8 +319,8 @@
 #'@param site_spp_weights These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.
 #'@param offset this is a vector of site specific offsets, this might be something like area sampled at sites.
 #'@param y_is_na This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!
-#'@param disty the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.
-#'@param linky The link function to use alongside the distribution.
+#'@param disty the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.
+#'@param linky The link function to use alongside the distribution. The link function uses with the distribution (disty)
 #'@param size The size of each of binomial sample at each site. Length should be the number of sites.
 #'@param powers The power parameters for the Tweedie distribution.
 #'@param control this is a list of control parameters that alter the specifics of model fitting.
@@ -526,7 +526,7 @@
 
   # need this for the na.omit step
   rownames(mf)<-seq_len(nrow(mf))
-  dat <- clean_data_sam(mf, archetype_formula, species_formula, all_formula, family)
+  dat <- clean_data_sam(mf, archetype_formula, species_formula, all_formula)#, family)
 
   # get responses
   y <- stats::model.response(dat$mf.X)
@@ -604,7 +604,7 @@
                            offset=offset, disty=disty, linky=linky, y_is_na=y_is_na,
                            size=size, powers=powers, control=control, inits=inits)
 
-    tmp$family <- disty_cases[disty]
+    tmp$family <- family
 
     tmp$S <- S;
     tmp$G <- G;

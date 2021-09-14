@@ -52,7 +52,7 @@
       if( !quiet) setTxtProgressBar(pb, dummy)
       # disty_cases <- c("bernoulli","binomial","poisson", "ippm", "negative.binomial", "tweedie", "gaussian")
       disty <- object$disty
-      linky <- object$linky
+      linky <- object$link
       dumbOut <- capture.output(
         samp.object <- ecomix::species_mix.fit(y=object$titbits$Y,
                                                X=object$titbits$X,
