@@ -44,9 +44,9 @@ species_mix.fit(
 
 \item{y_is_na}{This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!}
 
-\item{disty}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.}
+\item{disty}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.}
 
-\item{linky}{The link function to use alongside the distribution.}
+\item{linky}{The link function to use alongside the distribution. The link function uses with the distribution (disty)}
 
 \item{size}{The size of each of binomial sample at each site. Length should be the number of sites.}
 
