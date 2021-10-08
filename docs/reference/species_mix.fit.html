@@ -158,6 +158,7 @@ function.</p>
   <span class='va'>offset</span>,
   <span class='va'>y_is_na</span>,
   <span class='va'>disty</span>,
+  <span class='va'>linky</span>,
   <span class='va'>size</span>,
   <span class='va'>powers</span>,
   <span class='va'>control</span>,
@@ -209,7 +210,11 @@ function.</p>
     </tr>
     <tr>
       <th>disty</th>
-      <td><p>the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.</p></td>
+      <td><p>the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.</p></td>
+    </tr>
+    <tr>
+      <th>linky</th>
+      <td><p>The link function to use alongside the distribution. The link function uses with the distribution (disty)</p></td>
     </tr>
     <tr>
       <th>size</th>

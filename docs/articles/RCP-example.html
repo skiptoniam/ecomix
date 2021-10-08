@@ -86,7 +86,7 @@
 
       
 
-      </header><script src="RCP-example_files/header-attrs-2.7/header-attrs.js"></script><div class="row">
+      </header><script src="RCP-example_files/header-attrs-2.9/header-attrs.js"></script><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Region of Common Profiles Example</h1>
@@ -105,13 +105,13 @@
 <p>The Regions of Common Profile (RCP) models are a type of ‘Mixture-of-Experts Models’ and try to describe how homogeneous groups of <strong>sites</strong> vary with the environment. This is done by grouping sites based on the biological content (species observed at each site) and determine how these groups vary across environmental or physical gradients <span class="citation">(Foster <em>et al.</em> 2013)</span>. This approach assumes that assemblages of species at a site exists, and each assemblage can be described by its mean expectation of all species at that site. Within the the RCP model, these indicies are used to represent the data: sites as <span class="math inline">\(i = 1...n\)</span>, species as <span class="math inline">\(j = 1...S\)</span> and groups as <span class="math inline">\(k = 1...K\)</span> (we refer to these as RCPs). The model conditional expectation (given site membership) for all species is, <span class="math inline">\(\mathbb{E}(y_{ij}|z_{ik}=1)\)</span>. The model can be described as:</p>
 <p><span class="math display">\[
 \begin{equation}
-h[\mathbb{E}(y_{ij}|z_{ik})] = \alpha_j + X_i^\top\tau_j \tag{3}\label{eq:three}
+h[\mathbb{E}(y_{ij}|z_{ik})] = \alpha_j + Z_{ik}^\top\tau_{jk} \tag{1}\label{eq:one}
 \end{equation}
 \]</span></p>
 <p>Where <span class="math inline">\(\alpha_j\)</span> is a species-specific intercept, <span class="math inline">\(Z_j^\top\)</span> is a design matrix of covariates used to describe the RCPs. We can adjust the assemblage profile based on the species-wise expectation by incorporating a species wise covariates which can account for sampling artefacts. This extension was described in <span class="citation">Foster <em>et al.</em> (2017)</span>.</p>
 <p><span class="math display">\[
 \begin{equation}
-h[\mathbb{E}(y_{ij}|z_{ik})] = \alpha_j + Z_i^\top\tau_j + W_i^\top\gamma_j + \nu_i \tag{4}\label{eq:four}
+h[\mathbb{E}(y_{ij}|z_{ik})] = \alpha_j + Z_{ik}^\top\tau_{jk} + W_i^\top\gamma_j + \nu_i \tag{4}\label{eq:four}
 \end{equation}
 \]</span> Where <span class="math inline">\(W_i\)</span> is a design matrix which represents covariates that could account for sampling biases in the observation of species at sites. Examples covariates to represent <span class="math inline">\(W_i\)</span> might include the methods of collection of each sample or the time of day each sample was taken. These covariates then try and marginalize out observation difference of species at sites based on the input covariates, <span class="math inline">\(\gamma_j\)</span> are species-specific parameters which describes these biases. Similar to the SAMs models any appropriate functional form can be used to describe the species-specific responses to physical environments or sampling artefacts. <span class="math inline">\(\nu_i\)</span> is an offset which can be included to account between difference in sites specific survey effort (e.g. area survey). Any dispersion parameters, such as those for Negative Binomial, Tweedie or Gaussian model will also need to be estimated. <span class="math inline">\(z_i\)</span> is an unobserved variable and is treated as a latent factor. The model assumes that <span class="math inline">\(z_i\)</span> is the result of a multinomial sampling process with one trial and <span class="math inline">\(k x 1\)</span> probability vector <span class="math inline">\(\pi_i\)</span>. The RCP model allows the RCP probability vector <span class="math inline">\(\pi_i\)</span> to vary depending on the observation site’s position in environmental and geographical space. Where <span class="math inline">\(\pi_i=h(X_i)\)</span>, and <span class="math inline">\(X_i\)</span> is the design matrix which contains the environmental and spatial covariates to describe site <span class="math inline">\(i\)</span>. <span class="math inline">\(h(.)\)</span> is represented by a additive logistic function <span class="citation">(Aitchison 1982)</span> whose <span class="math inline">\(k\)</span>th component is represented as:</p>
 <p><span class="math display">\[

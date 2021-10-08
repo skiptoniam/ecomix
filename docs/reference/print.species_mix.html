@@ -174,9 +174,9 @@ x2<span class='op'>=</span><span class='fu'>stats</span><span class='fu'>::</spa
 data <span class='op'>=</span> <span class='va'>dat</span>,beta<span class='op'>=</span><span class='va'>beta</span>,family<span class='op'>=</span><span class='st'>"bernoulli"</span><span class='op'>)</span>
 </div><div class='output co'>#&gt; <span class='message'>Random alpha from normal (-1,0.5) distribution</span></div><div class='input'><span class='va'>fm1</span> <span class='op'>&lt;-</span> <span class='fu'><a href='species_mix.html'>species_mix</a></span><span class='op'>(</span>archetype_formula <span class='op'>=</span> <span class='va'>sam_form</span>,species_formula <span class='op'>=</span> <span class='va'>sp_form</span>,
 data <span class='op'>=</span> <span class='va'>simulated_data</span>, family <span class='op'>=</span> <span class='st'>'bernoulli'</span>,  nArchetypes<span class='op'>=</span><span class='fl'>3</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; <span class='message'>SAM modelling</span></div><div class='output co'>#&gt; <span class='message'>There are 3 archetypes to group the species into</span></div><div class='output co'>#&gt; <span class='message'>There are 100 site observations for 20 species</span></div><div class='output co'>#&gt; <span class='message'>The model for the archetype (grouping) is ~x1 + x2</span></div><div class='output co'>#&gt; <span class='message'>The model for the species is ~1</span></div><div class='output co'>#&gt; <span class='message'>You are implementing a bernoulli Species Archetype Model.</span></div><div class='output co'>#&gt; <span class='message'>Using ECM algorithm to find starting values; using 1 refits</span></div><div class='output co'>#&gt; <span class='message'>ECM restart 1 of 1</span></div><div class='output co'>#&gt; <span class='message'>Initialising starting values</span></div><div class='output co'>#&gt; <span class='message'>Initial groups parameter estimates by K-means clustering</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 1 | New loglik -950.729 | Ratio loglik 0</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 2 | New loglik -829.843 | Ratio loglik 0.872849</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 3 | New loglik -820.246 | Ratio loglik 0.988434</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 4 | New loglik -819.839 | Ratio loglik 0.999504</span></div><div class='output co'>#&gt; initial  value 819.837658 
-#&gt; iter  10 value 819.706575
-#&gt; final  value 819.703416 
+</div><div class='output co'>#&gt; <span class='message'>SAM modelling</span></div><div class='output co'>#&gt; <span class='message'>There are 3 archetypes</span></div><div class='output co'>#&gt; <span class='message'>There are 100 site observations for 20 species</span></div><div class='output co'>#&gt; <span class='message'>The model for the archetype (grouping) is ~x1 + x2</span></div><div class='output co'>#&gt; <span class='message'>The model for the species is ~1</span></div><div class='output co'>#&gt; <span class='message'>You are implementing a bernoulli Species Archetype Model.</span></div><div class='output co'>#&gt; <span class='message'>This model uses a logit link function.</span></div><div class='output co'>#&gt; <span class='message'>Using ECM algorithm to find starting values; using 1 refits</span></div><div class='output co'>#&gt; <span class='message'>ECM restart 1 of 1</span></div><div class='output co'>#&gt; <span class='message'>Initialising starting values</span></div><div class='output co'>#&gt; <span class='message'>Initial groups parameter estimates by K-means clustering</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 1 | New loglik -950.728 | Ratio loglik 0</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 2 | New loglik -829.843 | Ratio loglik 0.87285</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 3 | New loglik -820.246 | Ratio loglik 0.988434</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 4 | New loglik -819.839 | Ratio loglik 0.999504</span></div><div class='output co'>#&gt; initial  value 819.837517 
+#&gt; iter  10 value 819.705857
+#&gt; final  value 819.703452 
 #&gt; converged</div><div class='input'><span class='fu'><a href='https://rdrr.io/r/base/print.html'>print</a></span><span class='op'>(</span><span class='va'>fm1</span><span class='op'>)</span><span class='co'># }</span>
 </div><div class='output co'>#&gt; bernoulli species_mix model
 #&gt; 
@@ -187,17 +187,17 @@ data <span class='op'>=</span> <span class='va'>simulated_data</span>, family <s
 #&gt; Coefficients
 #&gt; $alpha
 #&gt;       spp1       spp2       spp3       spp4       spp5       spp6       spp7 
-#&gt; -0.8017227 -1.6402031 -0.5752349 -1.0844096 -1.0206816 -1.1776675 -0.7334905 
+#&gt; -0.8011915 -1.6396641 -0.5750091 -1.0847860 -1.0208211 -1.1777417 -0.7332048 
 #&gt;       spp8       spp9      spp10      spp11      spp12      spp13      spp14 
-#&gt; -1.2036925 -1.6417828 -0.1856826 -0.8567273 -1.3909615 -0.7040057 -0.7040057 
+#&gt; -1.2038170 -1.6407387 -0.1856326 -0.8564656 -1.3902185 -0.7041544 -0.7041544 
 #&gt;      spp15      spp16      spp17      spp18      spp19      spp20 
-#&gt; -0.8934080 -0.3780058 -1.3858329 -1.0552211 -1.2036925 -0.4298861 
+#&gt; -0.8930676 -0.3780768 -1.3852430 -1.0548250 -1.2038170 -0.4296588 
 #&gt; 
 #&gt; $beta
 #&gt;                    x1         x2
-#&gt; Archetype1 -2.9107151 -3.5524869
-#&gt; Archetype2 -0.8299319  0.9551632
-#&gt; Archetype3  0.9916068  1.9873571
+#&gt; Archetype1 -2.9114601 -3.5538819
+#&gt; Archetype2 -0.8302329  0.9553435
+#&gt; Archetype3  0.9915783  1.9873385
 #&gt; </div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

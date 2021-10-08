@@ -47,8 +47,7 @@
 
 
 <meta property="og:title" content="This is how you fit a species archetype model (SAM) in ecomix. — species_mix" />
-<meta property="og:description" content="Fits a mixture-of-regressions to identify species archetype
-models (SAMs)." />
+<meta property="og:description" content="Fits a mixture-of-regressions (SAM) to identify species archetypes." />
 <meta property="og:image" content="/logo.svg" />
 
 
@@ -138,8 +137,7 @@ models (SAMs)." />
     </div>
 
     <div class="ref-description">
-    <p>Fits a mixture-of-regressions to identify species archetype
-models (SAMs).</p>
+    <p>Fits a mixture-of-regressions (SAM) to identify species archetypes.</p>
     </div>
 
     <pre class="usage"><span class='fu'>species_mix</span><span class='op'>(</span>
@@ -189,9 +187,9 @@ which has species specific covariates and archetype specific covariates.</p></td
       <th>all_formula</th>
       <td><p>an object of class "formula", which is meant to represent
 a constant single set of covariates across all species and groups, typically
-you might use this an alternative to an offset, where there might be some
-bias in the data which is relatively constant and might arise as an
-artefact of how the data was collected.</p></td>
+you might use this an alternative to an offset, where there might be a set
+covariates which means artifact of how the data was collected or some other
+process like a seasonality.</p></td>
     </tr>
     <tr>
       <th>data</th>
@@ -202,14 +200,20 @@ nsites*(nspecies+const+covariates).</p></td>
     </tr>
     <tr>
       <th>nArchetypes</th>
-      <td><p>The number of archetypes (mixing components/groups) to estimate from the data.</p></td>
+      <td><p>The number of archetypes (mixing components/groups) to
+estimate from the data. This need to be explicitly declared. By default it is
+set to 3.</p></td>
     </tr>
     <tr>
       <th>family</th>
       <td><p>The family of statistical family to use within
-the ecomix models. a  choice between "bernoulli", "binomial", "poisson", "ippm",
-"negative.binomial", "tweedie" and "gaussian" families are possible and applicable
-to specific types of data.</p></td>
+the ecomix models. family can be a function from <a href='https://rdrr.io/r/stats/family.html'>family</a>, such as
+binomial(). OR it can be a choice between "bernoulli", "binomial", "poisson",
+"negative.binomial", "tweedie" and "gaussian" families. An error will be
+thrown if the family is not recognized. The family you use is generally
+specific to the type of data you have. One can also specify a link function
+such as "cloglog" via binomial(link="cloglog"). If you wish to fit a point
+process version of a SAM please refer to the ecomix.ppm package.</p></td>
     </tr>
     <tr>
       <th>offset</th>
@@ -236,18 +240,19 @@ undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.</p></
     </tr>
     <tr>
       <th>power</th>
-      <td><p>The power parameter for a Tweedie model. Default is 1.6, and this is assigned to all species</p></td>
+      <td><p>The power parameter for 'tweedie' family. Default is 1.6, and
+this is assigned to all species</p></td>
     </tr>
     <tr>
       <th>control</th>
-      <td><p>a list of control parameters for optimisation and calculation.
+      <td><p>a list of control parameters for optimization and calculation.
 See details.</p></td>
     </tr>
     <tr>
       <th>inits</th>
       <td><p>NULL a numeric vector that provides approximate starting values
 for species_mix coefficients. These are family specific, but at a
-minimum you will need pi (additive_logitic transformed), alpha
+minimum you will need pi (additive_logistic transformed), alpha
 (intercepts) and beta (mixing coefs).</p></td>
     </tr>
     <tr>
@@ -280,9 +285,45 @@ parameters. `species_mix` acts as a wrapper for species_mix.fit
 that allows for easier data input. The data frames are merged into
 the appropriate format for the use in species_mix.fit.
 Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
-'poisson', 'ippm' (inhomogeneous Poisson point process), 'negative.binomial',
-'tweedie' and 'gaussian' distributions can be fitted using the species_mix
-function.</p>
+'poisson', 'negative.binomial' and 'gaussian' distributions can be fitted
+using the species_mix function. For Point Process extensions of SAMs please
+refer to the ecomix.ppm package.</p>
+<p>species_mix is used to fit mixtures of glms to multivariate
+species data. The function uses BFGS to optimize the mixture likelihood.
+There is the option to use ECM algorithm to get appropriate starting
+parameters. `species_mix` acts as a wrapper for species_mix.fit
+that allows for easier data input. The data frames are merged into
+the appropriate format for the use in species_mix.fit.
+Minima is found using vmmin (BFGS).</p>
+<p>Control arguments for species_mix are as follows:</p><dl>
+ <dt>maxit</dt><dd><p>The maximum number of iterations. Default is 1000.</p></dd>
+ <dt>quiet</dt><dd><p>Should any reporting be performed? Default is FALSE, for reporting.</p></dd>
+ <dt>trace</dt><dd><p>Non-negative integer. If positive, tracing information on the progress of the optimization is produced. Higher values may produce more tracing information. If quiet=TRUE, then trace will be set to zero.</p></dd>
+ <dt>init.glmnet</dt><dd><p>Use glmnet to get initial starting values, default is TRUE, if FALSE, glm2 will be used.</p></dd>
+ <dt>init.method</dt><dd><p>Which initialsation approach to use for covariates, default is "random2" which is uses k-means on the groups and adds some random noise. Alternatives are 'kmeans' and 'kmed'</p></dd>
+ <dt>init.sd</dt><dd><p>The amount of gaussian variation to add to starting values, default is NA, which adds variantion in based on the standard deviation of the parameters. Otherwise should be a double like 0.3</p></dd>
+ <dt>minimum.presencess</dt><dd><p>The number of presences required for each species to be included when generaling the starting values, the default is to remove all species &lt;= 30 occurrences during inititalisation, these species will still be included in the model fit.</p></dd>
+ <dt>ecm.prefit</dt><dd><p>Use ECM to generate starting values? If FALSE, the model will use starting values without the ECM.</p></dd>
+ <dt>ecm.refits</dt><dd><p>The number of ECM refits to run, the default is 2, users could increase this to potentially get better starting values.</p></dd>
+ <dt>ecm.steps</dt><dd><p>The numer of ECM steps/iterations to run per ECM fit, the default is 5.</p></dd>
+ <dt>ecm.reltol</dt><dd><p>The relative tolerance for the ECM, default is quiet large 1e-2, makin this smaller will make the convergance tolerance stickter, you'll have to also adjust the "ecm.steps", to be larger if you make this stickter.</p></dd>
+ <dt>print.cpp.inits</dt><dd><p>Print the intialisation values being passed to c++. Handy for debugging especially if 'vmmin' error call</p></dd>
+ <dt>nreport</dt><dd><p>The frequency of reports for optimisation. Default is 10 a report for 10th iteration.</p></dd>
+ <dt>abstol</dt><dd><p>The abstol for vmmin, the default is -Inf. See <a href='https://rdrr.io/r/stats/optim.html'>optim</a> for further details</p></dd>
+ <dt>reltol</dt><dd><p>Relative convergence tolerance. The algorithm stops if it is unable to reduce the value by a factor of reltol * (abs(val) + reltol) at a step. Defaults to sqrt(.Machine$double.eps), typically about 1e-8.</p></dd>
+ <dt>optimise.cpp</dt><dd><p>Should optimisation for estimation occur? If TRUE (default) optimisation will occur. If FALSE no optimisation is performed.</p></dd>
+ <dt>getscores.cpp</dt><dd><p>Should we return the scores (derivates) when doing optimsation? If FALSE (default) scores will not be returned. If TRUE scores will be returned.</p></dd>
+ <dt>loglOnly.cpp</dt><dd><p>Should the log-likelihood be caulcated? If TRUE (default) then log-likelihood is calculated and returned. If FALSE then the log-likelihood is not calculated for return.</p></dd>
+ <dt>derivOnly.cpp</dt><dd><p>Should the scores be evaluated at the (final) parameter values. If TRUE (default) then they are calculated. If FALSE then they are not calculated.</p></dd>
+ <dt>doPenalties</dt><dd><p>A boolean 0 or 1. Default is 0 (false) and no penalities will be applied within the optimsation.</p></dd>
+ <dt>penalty.pi</dt><dd><p>A numeric scalar. This is the penalty for the mixing coefs. The penality is an from a Dirichlet distribution.</p></dd>
+ <dt>penalty.alpha</dt><dd><p>A numeric scalar. This is the penalty for the alpha parameters in the species model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).</p></dd>
+ <dt>penalty.beta</dt><dd><p>A numeric scalar. This is the penalty for the beta parameters in the  group model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).</p></dd>
+ <dt>penalty.gamma</dt><dd><p>A numeric scalar. This is the penalty for the gamma parameters in the species model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).</p></dd>
+ <dt>penalty.delta</dt><dd><p>A numeric scalar. This is the penalty for the delta parameters in the bias model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).</p></dd>
+ 
+</dl>
+
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
     <pre class="examples"><div class='input'><span class='co'># \donttest{</span>
@@ -299,8 +340,8 @@ x2<span class='op'>=</span><span class='fu'>stats</span><span class='fu'>::</spa
 data <span class='op'>=</span> <span class='va'>dat</span>,beta<span class='op'>=</span><span class='va'>beta</span>,family<span class='op'>=</span><span class='st'>"bernoulli"</span><span class='op'>)</span>
 </div><div class='output co'>#&gt; <span class='message'>Random alpha from normal (-1,0.5) distribution</span></div><div class='input'><span class='va'>fm1</span> <span class='op'>&lt;-</span> <span class='fu'>species_mix</span><span class='op'>(</span>archetype_formula <span class='op'>=</span> <span class='va'>sam_form</span>,species_formula <span class='op'>=</span> <span class='va'>sp_form</span>,
 data <span class='op'>=</span> <span class='va'>simulated_data</span>, family <span class='op'>=</span> <span class='st'>'bernoulli'</span>,  nArchetypes<span class='op'>=</span><span class='fl'>3</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; <span class='message'>SAM modelling</span></div><div class='output co'>#&gt; <span class='message'>There are 3 archetypes to group the species into</span></div><div class='output co'>#&gt; <span class='message'>There are 100 site observations for 20 species</span></div><div class='output co'>#&gt; <span class='message'>The model for the archetype (grouping) is ~x1 + x2</span></div><div class='output co'>#&gt; <span class='message'>The model for the species is ~1</span></div><div class='output co'>#&gt; <span class='message'>You are implementing a bernoulli Species Archetype Model.</span></div><div class='output co'>#&gt; <span class='message'>Using ECM algorithm to find starting values; using 1 refits</span></div><div class='output co'>#&gt; <span class='message'>ECM restart 1 of 1</span></div><div class='output co'>#&gt; <span class='message'>Initialising starting values</span></div><div class='output co'>#&gt; <span class='message'>Initial groups parameter estimates by K-means clustering</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 1 | New loglik -950.729 | Ratio loglik 0</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 2 | New loglik -829.843 | Ratio loglik 0.872849</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 3 | New loglik -820.246 | Ratio loglik 0.988434</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 4 | New loglik -819.839 | Ratio loglik 0.999504</span></div><div class='output co'>#&gt; initial  value 819.837658 
-#&gt; iter  10 value 819.706575
+</div><div class='output co'>#&gt; <span class='message'>SAM modelling</span></div><div class='output co'>#&gt; <span class='message'>There are 3 archetypes</span></div><div class='output co'>#&gt; <span class='message'>There are 100 site observations for 20 species</span></div><div class='output co'>#&gt; <span class='message'>The model for the archetype (grouping) is ~x1 + x2</span></div><div class='output co'>#&gt; <span class='message'>The model for the species is ~1</span></div><div class='output co'>#&gt; <span class='message'>You are implementing a bernoulli Species Archetype Model.</span></div><div class='output co'>#&gt; <span class='message'>This model uses a logit link function.</span></div><div class='output co'>#&gt; <span class='message'>Using ECM algorithm to find starting values; using 1 refits</span></div><div class='output co'>#&gt; <span class='message'>ECM restart 1 of 1</span></div><div class='output co'>#&gt; <span class='message'>Initialising starting values</span></div><div class='output co'>#&gt; <span class='message'>Initial groups parameter estimates by K-means clustering</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 1 | New loglik -950.728 | Ratio loglik 0</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 2 | New loglik -829.843 | Ratio loglik 0.87285</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 3 | New loglik -820.246 | Ratio loglik 0.988434</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 4 | New loglik -819.839 | Ratio loglik 0.999504</span></div><div class='output co'>#&gt; initial  value 819.837517 
+#&gt; iter  10 value 819.706573
 #&gt; final  value 819.703416 
 #&gt; converged</div><div class='input'> <span class='co'># }</span>
 </div></pre>

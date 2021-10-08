@@ -47,8 +47,9 @@
 
 
 <meta property="og:title" content="species_mix.multifit — species_mix.multifit" />
-<meta property="og:description" content="This version of species mix is useful for fitting models which have complex likelihoods.
-The multiple starts will enable optimisation of the loglikelihood using multiple starts." />
+<meta property="og:description" content="This version of species mix is useful for fitting models which
+have complex likelihoods. The multiple starts will enable optimization of the
+log-likelihood using multiple starts." />
 <meta property="og:image" content="/logo.svg" />
 
 
@@ -138,8 +139,9 @@ The multiple starts will enable optimisation of the loglikelihood using multiple
     </div>
 
     <div class="ref-description">
-    <p>This version of species mix is useful for fitting models which have complex likelihoods.
-The multiple starts will enable optimisation of the loglikelihood using multiple starts.</p>
+    <p>This version of species mix is useful for fitting models which
+have complex likelihoods. The multiple starts will enable optimization of the
+log-likelihood using multiple starts.</p>
     </div>
 
     <pre class="usage"><span class='fu'>species_mix.multifit</span><span class='op'>(</span>
@@ -154,7 +156,7 @@ The multiple starts will enable optimisation of the loglikelihood using multiple
   bb_weights <span class='op'>=</span> <span class='cn'>NULL</span>,
   size <span class='op'>=</span> <span class='cn'>NULL</span>,
   power <span class='op'>=</span> <span class='fl'>1.6</span>,
-  control <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>ecm_prefit <span class='op'>=</span> <span class='cn'>FALSE</span><span class='op'>)</span>,
+  control <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>ecm.prefit <span class='op'>=</span> <span class='cn'>FALSE</span><span class='op'>)</span>,
   inits <span class='op'>=</span> <span class='cn'>NULL</span>,
   titbits <span class='op'>=</span> <span class='cn'>FALSE</span>,
   nstart <span class='op'>=</span> <span class='fl'>10</span>,
@@ -172,7 +174,7 @@ The multiple starts will enable optimisation of the loglikelihood using multiple
       <td><p>an object of class "formula" (or an object that can
 be coerced to that class). The response variable (left hand side of the
 formula) needs to be either 'occurrence', 'abundance',
-'biomass' or 'quantity' data. The type of reponse data will help specify
+'biomass' or 'quantity' data. The type of response data will help specify
 the type of error distribution to be used. The dependent variables
 (the right hind side) of this formula specifies the dependence of the
 species archetype probabilities on covariates. For all model the basic
@@ -193,27 +195,31 @@ which has species specific covariates and archetype specific covariates.</p></td
     <tr>
       <th>all_formula</th>
       <td><p>an object of class "formula", which is meant to represent
-a constant single set of covariates across all species and groups, typically you might
-use this an alternative to an offset, where there might be some bias in the
-data which is relatively constant and might arise as an artefact of how the data was collected.</p></td>
+a constant single set of covariates across all species and groups, typically
+you might use this an alternative to an offset, where there might be a set
+covariates which means artifact of how the data was collected or some other
+process like a seasonality.</p></td>
     </tr>
     <tr>
       <th>data</th>
-      <td><p>a matrix of dataframe which contains the 'species_data'
-matrix, a const and the covariates in the strucute of spp1, spp2, spp3,
-const, temperature, rainfall. dims of matirx should be
+      <td><p>a matrix or data.frame which contains the 'species_data'
+matrix, a const and the covariates in the structure of spp1, spp2, spp3,
+const, temperature, rainfall. dims of matrix should be
 nsites*(nspecies+const+covariates).</p></td>
     </tr>
     <tr>
       <th>nArchetypes</th>
-      <td><p>The number of mixing components (groups) to fit.</p></td>
+      <td><p>The number of archetypes (mixing components/groups) to
+estimate from the data. This need to be explicitly declared. By default it is
+set to 3.</p></td>
     </tr>
     <tr>
       <th>family</th>
-      <td><p>The family of statistical distribution to use within
-the ecomix models. a  choice between "bernoulli", "poisson", "ippm",
-"negative.binomial" and "gaussian" distributions are possible and applicable
-to specific types of data.</p></td>
+      <td><p>The family of statistical family to use within
+the ecomix models. a  choice between "bernoulli", "binomial", "poisson",
+"negative.binomial", "tweedie" and "gaussian" families are possible and
+applicable to specific types of data. If you wish to fit a point process
+version of a SAM please refer to the ecomix.ppm package.</p></td>
     </tr>
     <tr>
       <th>offset</th>
@@ -240,19 +246,19 @@ undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.</p></
     </tr>
     <tr>
       <th>power</th>
-      <td><p>The power parameter for a Tweedie model. Default is 1.6, and
+      <td><p>The power parameter for 'tweedie' family. Default is 1.6, and
 this is assigned to all species</p></td>
     </tr>
     <tr>
       <th>control</th>
-      <td><p>a list of control parameters for optimisation and calculation.
+      <td><p>a list of control parameters for optimization and calculation.
 See details.</p></td>
     </tr>
     <tr>
       <th>inits</th>
       <td><p>NULL a numeric vector that provides approximate starting values
-for species_mix coefficients. These are distribution specific, but at a
-minimum you will need pi (additive_logitic transformed), alpha
+for species_mix coefficients. These are family specific, but at a
+minimum you will need pi (additive_logistic transformed), alpha
 (intercepts) and beta (mixing coefs).</p></td>
     </tr>
     <tr>
@@ -294,6 +300,13 @@ the re-fitting over.</p></td>
     </tr>
     </table>
 
+    <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
+
+    <p>species_mix.multifit is used to fit species archetype models with
+multiple fits. This can be useful for complex models where there are many
+local maximum in the likelihood. The multiple restarts using in
+`species_mix.multifit` can help search the log-likelihood using starting values
+with some random variance (noise).</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
     <pre class="examples"><div class='input'><span class='co'># \donttest{</span>
@@ -306,17 +319,18 @@ collapse <span class='op'>=</span> <span class='st'>','</span><span class='op'>)
 <span class='va'>dat</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></span><span class='op'>(</span>y<span class='op'>=</span><span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='fl'>1</span>,<span class='fl'>100</span><span class='op'>)</span>,x1<span class='op'>=</span><span class='fu'>stats</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/r/stats/Uniform.html'>runif</a></span><span class='op'>(</span><span class='fl'>100</span>,<span class='fl'>0</span>,<span class='fl'>2.5</span><span class='op'>)</span>,
 x2<span class='op'>=</span><span class='fu'>stats</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/r/stats/Normal.html'>rnorm</a></span><span class='op'>(</span><span class='fl'>100</span>,<span class='fl'>0</span>,<span class='fl'>2.5</span><span class='op'>)</span><span class='op'>)</span>
 <span class='va'>dat</span><span class='op'>[</span>,<span class='op'>-</span><span class='fl'>1</span><span class='op'>]</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/scale.html'>scale</a></span><span class='op'>(</span><span class='va'>dat</span><span class='op'>[</span>,<span class='op'>-</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>)</span>
-<span class='va'>simulated_data</span> <span class='op'>&lt;-</span> <span class='fu'><a href='species_mix.simulate.html'>species_mix.simulate</a></span><span class='op'>(</span>archetype_formula <span class='op'>=</span> <span class='va'>sam_form</span>,species_formula <span class='op'>=</span> <span class='va'>sp_form</span>,
+<span class='va'>simulated_data</span> <span class='op'>&lt;-</span> <span class='fu'><a href='species_mix.simulate.html'>species_mix.simulate</a></span><span class='op'>(</span>archetype_formula <span class='op'>=</span> <span class='va'>sam_form</span>,
+species_formula <span class='op'>=</span> <span class='va'>sp_form</span>,
 data <span class='op'>=</span> <span class='va'>dat</span>,beta<span class='op'>=</span><span class='va'>beta</span>,family<span class='op'>=</span><span class='st'>"bernoulli"</span><span class='op'>)</span>
 </div><div class='output co'>#&gt; <span class='message'>Random alpha from normal (-1,0.5) distribution</span></div><div class='input'><span class='va'>fm1</span> <span class='op'>&lt;-</span> <span class='fu'><a href='species_mix.html'>species_mix</a></span><span class='op'>(</span>archetype_formula <span class='op'>=</span> <span class='va'>sam_form</span>,species_formula <span class='op'>=</span> <span class='va'>sp_form</span>,
 data <span class='op'>=</span> <span class='va'>simulated_data</span>, family <span class='op'>=</span> <span class='st'>'bernoulli'</span>,  nArchetypes<span class='op'>=</span><span class='fl'>3</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; <span class='message'>SAM modelling</span></div><div class='output co'>#&gt; <span class='message'>There are 3 archetypes to group the species into</span></div><div class='output co'>#&gt; <span class='message'>There are 100 site observations for 20 species</span></div><div class='output co'>#&gt; <span class='message'>The model for the archetype (grouping) is ~x1 + x2</span></div><div class='output co'>#&gt; <span class='message'>The model for the species is ~1</span></div><div class='output co'>#&gt; <span class='message'>You are implementing a bernoulli Species Archetype Model.</span></div><div class='output co'>#&gt; <span class='message'>Using ECM algorithm to find starting values; using 1 refits</span></div><div class='output co'>#&gt; <span class='message'>ECM restart 1 of 1</span></div><div class='output co'>#&gt; <span class='message'>Initialising starting values</span></div><div class='output co'>#&gt; <span class='message'>Initial groups parameter estimates by K-means clustering</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 1 | New loglik -950.729 | Ratio loglik 0</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 2 | New loglik -829.843 | Ratio loglik 0.872849</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 3 | New loglik -820.246 | Ratio loglik 0.988434</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 4 | New loglik -819.839 | Ratio loglik 0.999504</span></div><div class='output co'>#&gt; initial  value 819.837658 
-#&gt; iter  10 value 819.706575
+</div><div class='output co'>#&gt; <span class='message'>SAM modelling</span></div><div class='output co'>#&gt; <span class='message'>There are 3 archetypes</span></div><div class='output co'>#&gt; <span class='message'>There are 100 site observations for 20 species</span></div><div class='output co'>#&gt; <span class='message'>The model for the archetype (grouping) is ~x1 + x2</span></div><div class='output co'>#&gt; <span class='message'>The model for the species is ~1</span></div><div class='output co'>#&gt; <span class='message'>You are implementing a bernoulli Species Archetype Model.</span></div><div class='output co'>#&gt; <span class='message'>This model uses a logit link function.</span></div><div class='output co'>#&gt; <span class='message'>Using ECM algorithm to find starting values; using 1 refits</span></div><div class='output co'>#&gt; <span class='message'>ECM restart 1 of 1</span></div><div class='output co'>#&gt; <span class='message'>Initialising starting values</span></div><div class='output co'>#&gt; <span class='message'>Initial groups parameter estimates by K-means clustering</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 1 | New loglik -950.728 | Ratio loglik 0</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 2 | New loglik -829.843 | Ratio loglik 0.87285</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 3 | New loglik -820.246 | Ratio loglik 0.988434</span></div><div class='output co'>#&gt; <span class='message'>Iteration: 4 | New loglik -819.839 | Ratio loglik 0.999504</span></div><div class='output co'>#&gt; initial  value 819.837517 
+#&gt; iter  10 value 819.706573
 #&gt; final  value 819.703416 
 #&gt; converged</div><div class='input'><span class='va'>fmods</span> <span class='op'>&lt;-</span> <span class='fu'>species_mix.multifit</span><span class='op'>(</span>archetype_formula <span class='op'>=</span> <span class='va'>sam_form</span>,
 species_formula <span class='op'>=</span> <span class='va'>sp_form</span>, data<span class='op'>=</span><span class='va'>simulated_data</span>, family <span class='op'>=</span> <span class='st'>'bernoulli'</span>,
  nstart <span class='op'>=</span> <span class='fl'>10</span>, nArchetypes<span class='op'>=</span><span class='fl'>3</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; <span class='message'>SAM modelling</span></div><div class='output co'>#&gt; <span class='message'>Running species_mix.multifit using 10 starts to fit 3 Archetypes to the data.</span></div><div class='output co'>#&gt; <span class='message'>There are 3 archetypes to group the species into</span></div><div class='output co'>#&gt; <span class='message'>There are 100 site observations for 20 species</span></div><div class='output co'>#&gt; <span class='message'>The model for the archetype (grouping) is ~x1 + x2</span></div><div class='output co'>#&gt; <span class='message'>The model for the species is ~1</span></div><div class='output co'>#&gt; <span class='message'>You are implementing a bernoulli Species Archetype Model.</span></div><div class='output co'>#&gt;   |                                                                              |                                                                      |   0%.  |                                                                              |========                                                              |  11%.  |                                                                              |================                                                      |  22%.  |                                                                              |=======================                                               |  33%.  |                                                                              |===============================                                       |  44%.  |                                                                              |=======================================                               |  56%.  |                                                                              |===============================================                       |  67%.  |                                                                              |======================================================                |  78%.  |                                                                              |==============================================================        |  89%.  |                                                                              |======================================================================| 100%.</div><div class='input'><span class='co'># }</span>
+</div><div class='output co'>#&gt; <span class='message'>SAM modelling</span></div><div class='output co'>#&gt; <span class='message'>Running species_mix.multifit using 10 starts to fit 3 Archetypes to the data.</span></div><div class='output co'>#&gt; <span class='message'>There are 3 archetypes</span></div><div class='output co'>#&gt; <span class='message'>There are 100 site observations for 20 species</span></div><div class='output co'>#&gt; <span class='message'>The model for the archetype (grouping) is ~x1 + x2</span></div><div class='output co'>#&gt; <span class='message'>The model for the species is ~1</span></div><div class='output co'>#&gt; <span class='message'>You are implementing a bernoulli Species Archetype Model.</span></div><div class='output co'>#&gt; <span class='message'>This model uses a logit link function.</span></div><div class='output co'>#&gt;   |                                                                              |                                                                      |   0%.  |                                                                              |========                                                              |  11%.  |                                                                              |================                                                      |  22%.  |                                                                              |=======================                                               |  33%.  |                                                                              |===============================                                       |  44%.  |                                                                              |=======================================                               |  56%.  |                                                                              |===============================================                       |  67%.  |                                                                              |======================================================                |  78%.  |                                                                              |==============================================================        |  89%.  |                                                                              |======================================================================| 100%.</div><div class='input'><span class='co'># }</span>
 
 <span class='co'>#Print information about a species_mix model</span>
 <span class='co'># \donttest{</span>

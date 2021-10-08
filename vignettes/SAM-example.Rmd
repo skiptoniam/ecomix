@@ -31,6 +31,7 @@ $$
 where $Pr(z_{k}) = \pi_k,$ and $\sum^K_{k=1}{\pi_k=1}$. The functional form of $g_k(.)$ can be specified to be any function commonly used within a Generalized Linear Model framework. Including linear, quadratic, spline and interaction terms. Additionally an offset term $\nu_i$ can be included to account for sampling artefacts and are included into the model on a log-scale (e.g. log(area sampled)). We refer to the model as the `species_mix` in the `ecomix` package. 
 
 ```{r setup}
+# devtools::install_github("skiptoniam/ecomix@dev") # install dev version
 library(ecomix)
 ```
 
@@ -232,19 +233,19 @@ sam_multifit <- species_mix.multifit(archetype_formula = archetype_formula, # Ar
                                      control = list(quiet = TRUE))
 ```
 
-```{r,fig.width=8, fig.height=6, fig.cap="Figure 4. BIC from species archetype model fits per group."}
+```{r, fig.width=5,fig.height=4,fig.cap="Figure 3. Group selection from multiple fit function, we can see that three archetypes is the best fit to these data based on Bayesian Information Criterion (BIC)."}
 plot(sam_multifit,type="BIC")
 ```
 
 #### Model diagnostics and checking
 Once we selected the 'best' model we can start to explore the model fit via diagnostics and checks. Typically, we would look at the model residuals to understand the model diagnostics [@warton_model-based_2015]. Here we present the random quantile residuals [@dunn_randomized_1996] versus the fitted values from the model. We can see the residuals, presented on a species by species level, are approximately randomly distributed along the fitted line, which suggests nothing is untoward with the model fit.
 
-```{r, fig.width=8, fig.height=6, fig.cap="Figure 5. Random quantile residuals for all species in the fitted model."}
+```{r, fig.width=8, fig.height=6, fig.cap="Figure 4. Random quantile residuals for all species in the fitted model."}
 plot(sam_fit,fitted.scale = 'logit')
 ```
 
 We can also look at the random quantile residuals for a single species
-```{r, fig.width=8, fig.height=6, fig.cap="Figure 6. Random quantile residuals for spp3 from the fitted model."}
+```{r, fig.width=8, fig.height=6, fig.cap="Figure 5. Random quantile residuals for spp3 from the fitted model."}
 plot(sam_fit,fitted.scale = 'logit', species="spp3")
 ```
 
@@ -258,11 +259,15 @@ plot(x = eff.df, object = sam_fit, object2=sam_boot,ylim=c(0,1))
 ```
 
 #### Model prediction
-We can generate predictions for the each archetype in ecomix using `predict()` function. The default is used to generate a point mean estimate for each archetype. With the inclusion of a `bootstrap` object we can also provide estimates of uncertainty or standard error for each prediction. We can see spatial predict the point mean and standard error in the predicted distributions of each archetype (Fig. 3e & 3f). We can also see the spatial response of each archetype is strongly correlated to it's environmental response to each covariate (Fig. 2). For example, archetype two has a strong response to depth (Fig. 3e), which is evident in the archetype responses (Fig. 3d).
-
-```{r archetype predictions,echo=FALSE,fig.width= 4, fig.height= 8,fig.cap="Figure 8. The predicted probability of each species archetype across the simulated environment and the standard error of the predictions generated based on the Bayesian bootstrap."}
+We can generate predictions for the each archetype in ecomix using `predict()` function. The default is used to generate a point mean estimate for each archetype. With the inclusion of a `bootstrap` object we can also provide estimates of uncertainty or standard error for each prediction. We can see spatial predict the point mean and standard error in the predicted distributions of each archetype (Fig. 7). We can also see the spatial response of each archetype is strongly correlated to it's environmental response to each covariate (Fig. 6). For example, archetype two has a strong response to depth (Fig. 7), which is evident in the archetype responses (Fig. 3d).
+```{r predict}
 env.df$Time <- factor("Day",levels=c("Day","Night"))
 sam3_pred <- predict(sam_fit, sam_boot, newdata=env.df)
+```
+
+```{r archetype predictions,echo=FALSE,fig.width= 4, fig.height= 8,fig.cap="Figure 7. The predicted probability of each species archetype across the simulated environment and the standard error of the predictions generated based on the Bayesian bootstrap."}
+# env.df$Time <- factor("Day",levels=c("Day","Night"))
+# sam3_pred <- predict(sam_fit, sam_boot, newdata=env.df)
 pred.df <- data.frame(x=env.df$x,y=env.df$y,sam3_pred$bootPreds)
 pred.dfse <- cbind(pred.df,sam3_pred$bootSEs)
 colnames(pred.dfse)[6:8] <- paste0(colnames(pred.dfse)[6:8],".se")
@@ -274,8 +279,8 @@ pal <- function (name, flip = FALSE) {
   colorRampPalette(cols)
 }
 
-# plot a map for a single covariate
-plot_cov <- function (coords, values, pal, title) {
+# plot a map for a single prediction
+plot_pred <- function (coords, values, pal, title) {
 
   # build a raster
   data <- data.frame(values)
@@ -298,11 +303,11 @@ plot_cov <- function (coords, values, pal, title) {
 
 }
 
-# plot all the covariates
-plot_covariates <- function (covariates) {
+# plot all the predictions
+plot_predictions <- function (predictions) {
 
-  covs <- colnames(covariates)[-(1:2)]
-  coords <- covariates[, c("x", "y")]
+  preds <- colnames(predictions)[-(1:2)]
+  coords <- predictions[, c("x", "y")]
 
   palettes <- list(
     Archetype1 = pal("BrBG"),
@@ -326,18 +331,17 @@ plot_covariates <- function (covariates) {
   mfrow <- par()$mfrow
   on.exit(par(mfrow = mfrow), add = TRUE)
   par(mfrow = c(3, 2), mar=c(4,2,2,2))
-  for (cov in covs) {
-    plot_cov(
+  for (pred in preds) {
+    plot_pred(
       coords = coords,
-      values = covariates[, cov],
-      pal = palettes[[cov]],
-      title = titles[[cov]]
+      values = predictions[, pred],
+      pal = palettes[[pred]],
+      title = titles[[pred]]
     )
   }
 
 }
 
-plot_covariates(pred.dfse)
-
+plot_predictions(pred.dfse)
 ```
 
