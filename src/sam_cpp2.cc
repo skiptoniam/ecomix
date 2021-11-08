@@ -9,7 +9,7 @@ extern "C" {
 						 SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rdelta, SEXP Rtheta, SEXP Rpowers,
 						 //penalties
 						 SEXP RalphaPen, SEXP RbetaPen, SEXP RpiPen,  SEXP RgammaPen,
-						 SEXP RdeltaPen, SEXP RthetaLocatPen, SEXP RthetaScalePen, 
+						 SEXP RdeltaPen, SEXP RthetaLocatPen, SEXP RthetaScalePen,
 						 //derivatives
 						 SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsGamma, SEXP RderivsDelta, SEXP RderivsTheta, SEXP RgetScores, SEXP Rscores,
 						 SEXP Rpis, SEXP Rmus, SEXP RlogliS, SEXP RlogliSG,
@@ -246,7 +246,7 @@ void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data
 						if(dat.linky==0)
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_logit(lp);
 						if(dat.linky==1)
-							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_cloglog(lp);	
+							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_cloglog(lp);
 						}
 					if(dat.disty==2){ //poisson
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
@@ -422,14 +422,14 @@ double log_negative_binomial_deriv_theta_sam(const double &y, const double &mu, 
 	sig = exp(od);
 	theta = 1 / sig;
 
-     
+
 
 	res = digamma( theta+y);
 	res -= digamma( theta);
 	res += 1 + log( theta) - log(mu+theta) - (theta+y)/(theta+mu);
 	res /= -sig*sig;	//for the change of variable sig --> r
 	res *= sig;	//for the change of variable dispParm --> sig
-    //gr[0] += (digamma(pars[0]+data->y[i]) - digamma(pars[0]) + log(pars[0]) + 1 - 
+    //gr[0] += (digamma(pars[0]+data->y[i]) - digamma(pars[0]) + log(pars[0]) + 1 -
     //log( data->lp.at(i) + pars[0]) - (pars[0]+data->y[i])/(data->lp.at(i) + pars[0]))*data->w[i];
 
 	return( res);
@@ -661,7 +661,7 @@ void calc_eta_mu_deriv( vector<double> &etaDerivs, const sam_data &dat, const ve
 						if(dat.disty==1){ //bernoulli
 							if(dat.linky==0)//logit link: mu*(1-mu)
 								etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * (1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS))) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//logit link
-							if(dat.linky==1)//clogloglink: -log(1-mu)*(1 - mu) 	
+							if(dat.linky==1)//clogloglink: -log(1-mu)*(1 - mu)
 								etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = (-log(1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)))*(1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)))) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));
 						}
 						if(dat.disty==7){ //binomial (size rather than 1).
@@ -851,9 +851,9 @@ void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llSG, vector<dou
 	vector<double> pispen2((dat.nG-1), 0.0);
 	for(int g=0; g<(dat.nG-1); g++) pispen2.at(g) = params.Eta[g];
 	additive_logistic_sam(pispen2,1,dat.nG);
-	
+
 	//if(dat.doPenalties>0){
-	//for( int g=0; g<dat.nG; g++){	
+	//for( int g=0; g<dat.nG; g++){
 		//dldpi.at(g) += params.PiPen / pispen2.at(g);
       ////Rprintf( "pen %f\n", params.PiPen / pispen2.at(g));
 		//}
@@ -1036,12 +1036,12 @@ void calc_theta_pen_deriv(vector<double> &thetaDerivs, const sam_data &dat, cons
 			thetaDerivs.at(s) = -(params.Theta[s]-params.ThetaLocatPen)/(params.ThetaScalePen*params.ThetaScalePen);
 		}
 	}
-	
+
 	//dispDerivsI.assign(dispDerivsI.size(), 0.0);
 	//if( dat.isDispersion())
 		//for( int s=0; s<dat.nS; s++)
 			//dispDerivsI.at(s) = -(parms.Disp[s]-parms.dispLocat)/(parms.dispScale*parms.dispScale);
-	
+
 }
 
 
@@ -1103,12 +1103,19 @@ bool converged_sam( double *oldP, double *newP, const sam_opt_contr &contr, int 
 //Inverse link functions for binomial distributions.
 //inserve logistic link function
 double inverse_logit(const double eta){
-	double tmp, eps = 1e-16;
+	double tmp;//, eps = 1e-16;
 	tmp = exp(eta);
 	tmp = tmp / (1+tmp);
-	if(tmp<eps)tmp=eps;
+	// if(tmp<eps)tmp=eps;
 	return( tmp);
 }
+
+// {
+//   double tmp;
+//   tmp = exp( x);
+//   tmp = tmp / (1+tmp);
+//   return( tmp);
+// }
 
 
 
