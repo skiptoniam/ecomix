@@ -13,7 +13,7 @@ species_mix(
   family = "bernoulli",
   offset = NULL,
   weights = NULL,
-  bb_weights = NULL,
+  spp_weights = NULL,
   size = NULL,
   power = 1.6,
   control = list(),
@@ -47,7 +47,7 @@ you might use this an alternative to an offset, where there might be a set
 covariates which means artifact of how the data was collected or some other
 process like a seasonality.}
 
-\item{data}{a matrix or data.frame which contains the 'species_data'
+\item{data}{a data.frame which contains the 'species_data'
 matrix, a const and the covariates in the structure of spp1, spp2, spp3,
 const, temperature, rainfall. dims of matrix should be
 nsites*(nspecies+const+covariates).}
@@ -57,13 +57,13 @@ estimate from the data. This need to be explicitly declared. By default it is
 set to 3.}
 
 \item{family}{The family of statistical family to use within
-the ecomix models. family can be a function from \link[stats]{family}, such as
-binomial(). OR it can be a choice between "bernoulli", "binomial", "poisson",
-"negative.binomial", "tweedie" and "gaussian" families. An error will be
+the ecomix model, family can be a function from \link[stats]{family}, such as
+binomial(). Or it can be a character string of one of the following: "bernoulli", "binomial", "poisson",
+"negative.binomial", "tweedie" and "gaussian". An error will be
 thrown if the family is not recognized. The family you use is generally
-specific to the type of data you have. One can also specify a link function
-such as "cloglog" via binomial(link="cloglog"). If you wish to fit a point
-process version of a SAM please refer to the \link{ecomix.ppm} package.}
+specific to the type of data you have. Users can also specify a link function
+within the family object, eg: binomial(link="logit"). Currently, ecomix can
+implement "logit", "cloglog", "log" and "identity" link functions.}
 
 \item{offset}{a numeric vector of length nrow(data) (n sites) that is
 included into the model as an offset. It is included into the conditional
@@ -75,8 +75,10 @@ weights are assumed to be identically 1. Because we are estimating the
 log-likelihood over species (rather than sites), the weights should be a
 vector n species long.}
 
-\item{bb_weights}{a numeric vector of n species long. This is used for
-undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
+\item{spp_weights}{a numeric vector of n species long. These are weights used
+on the species log-likelihoods. We tend to use these for doing the Bayesian
+Bootstrap, where we pass a vector S long of Dirichlet weights. See
+'vcov.species_mix' for more details.}
 
 \item{size}{The size of the sample for a binomial model (defaults to 1).}
 
@@ -119,8 +121,8 @@ parameters. `species_mix` acts as a wrapper for species_mix.fit
 that allows for easier data input. The data frames are merged into
 the appropriate format for the use in species_mix.fit.
 Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
-'poisson', 'negative.binomial' and 'gaussian' distributions can be fitted
-using the species_mix function. For Point Process extensions of SAMs please
+'poisson', 'negative.binomial', 'tweedie' and 'gaussian' distributions can be fitted
+using the species_mix. For Point Process extensions of SAMs please
 refer to the \link{ecomix.ppm} package.
 
 species_mix is used to fit mixtures of glms to multivariate

@@ -14,7 +14,6 @@ species_mix.fit(
   spp_weights,
   site_spp_weights,
   offset,
-  y_is_na,
   disty,
   linky,
   size,
@@ -41,8 +40,6 @@ species_mix.fit(
 \item{site_spp_weights}{These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.}
 
 \item{offset}{this is a vector of site specific offsets, this might be something like area sampled at sites.}
-
-\item{y_is_na}{This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!}
 
 \item{disty}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.}
 

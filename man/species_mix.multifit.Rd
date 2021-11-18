@@ -14,7 +14,7 @@ species_mix.multifit(
   family = "bernoulli",
   offset = NULL,
   weights = NULL,
-  bb_weights = NULL,
+  spp_weights = NULL,
   size = NULL,
   power = 1.6,
   control = list(ecm.prefit = FALSE),
@@ -77,7 +77,7 @@ weights are assumed to be identically 1. Because we are estimating the
 log-likelihood over species (rather than sites), the weights should be a
 vector n species long.}
 
-\item{bb_weights}{a numeric vector of n species long. This is used for
+\item{spp_weights}{a numeric vector of n species long. This is used for
 undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.}
 
 \item{size}{The size of the sample for a binomial model (defaults to 1).}

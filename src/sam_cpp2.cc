@@ -189,7 +189,7 @@ double sam_cpp_mix_loglike(const sam_data &dat, const sam_params &params, sam_fi
 
 	loglike += penAlpha;
 	loglike += penBeta;
-	loglike += penPi;
+	//loglike += penPi;
 
 	if(dat.optiPart>0){
 	penGamma = calc_gamma_pen( dat, params);
@@ -828,6 +828,31 @@ double calc_pi_pen(const sam_data &dat, const sam_params &params){
 
 	return( pen);
 }
+
+// Thinking about ways to introduce the penality for pi.
+
+//double calc_pi_pen_deriv(const sam_data &dat, const sam_params &params){
+	//double pen=0.0;
+	//vector<double> pispen1((dat.nG-1), 0.0);
+	//for(int g=0; g<(dat.nG-1); g++) pispen1.at(g) = params.Eta[g];
+	//additive_logistic_sam(pispen1,1,dat.nG);
+
+	//for( int g=0; g<dat.nG; g++)
+		//pen += log(pispen1.at(g));
+	//pen *= params.PiPen;
+
+    ////Rprintf( "pi pen %f\n", pen);
+
+	////if(dat.doPenalties>0){
+	////for( int g=0; g<dat.nG; g++){
+		////dldpi.at(g) += params.PiPen / pispen2.at(g);
+      //////Rprintf( "pen %f\n", params.PiPen / pispen2.at(g));
+		////}
+	////}
+
+
+	//return( pen);
+//}
 
 
 void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llSG, vector<double> const &llS, const sam_data &dat, const sam_params &params){
