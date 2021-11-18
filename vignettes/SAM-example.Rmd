@@ -216,7 +216,7 @@ sam_fit <- species_mix(archetype_formula = archetype_formula, # Archetype formul
                        data = samdat_10p,            # Data
                        nArchetypes = 3,              # Number of groups (mixtures) to fit
                        family = binomial(),         # Which family to use
-                       control = list(quiet = TRUE))
+                       control = list(quiet = FALSE,doPenalties = 0))
 ```
 
 #### Group selection
@@ -230,7 +230,7 @@ sam_multifit <- species_mix.multifit(archetype_formula = archetype_formula, # Ar
                                      nArchetypes = nArchetypes,             # Number of groups (mixtures) to fit
                                      nstart = 1,                            # The number of fits per archetype.
                                      family = binomial(),                  # Which family to use
-                                     control = list(quiet = TRUE))
+                                     control = list(quiet = FALSE))
 ```
 
 ```{r, fig.width=5,fig.height=4,fig.cap="Figure 3. Group selection from multiple fit function, we can see that three archetypes is the best fit to these data based on Bayesian Information Criterion (BIC)."}
