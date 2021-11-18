@@ -58,8 +58,10 @@
 #' weights are assumed to be identically 1. Because we are estimating the
 #' log-likelihood over species (rather than sites), the weights should be a
 #' vector n species long.
-#' @param bb_weights a numeric vector of n species long. This is used for
-#' undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.
+#' @param spp_weights a numeric vector of n species long. These are weights used
+#'  on the species log-likelihoods. We tend to use these for doing the Bayesian
+#'  Bootstrap, where we pass a vector S long of Dirichlet weights. See
+#'  'vcov.species_mix' for more details.
 #' @param size The size of the sample for a binomial model (defaults to 1).
 #' @param power The power parameter for 'tweedie' family. Default is 1.6, and
 #' this is assigned to all species
@@ -149,7 +151,7 @@
                           data,
                           nArchetypes = 3,
                           family="bernoulli", offset=NULL,
-                          weights=NULL, bb_weights=NULL, size = NULL, power=1.6,
+                          weights=NULL, spp_weights=NULL, size = NULL, power=1.6,
                           control=list(), inits=NULL, titbits = TRUE){
 
   control <- set_control_sam(control)
@@ -227,7 +229,7 @@
   # get the weights
   species_names <- colnames(y)
   site_spp_weights <- get_site_spp_weights_sam(mf,weights,species_names)#,family)
-  spp_weights <- check_spp_weights(bb_weights,S)
+  spp_weights <- check_spp_weights(spp_weights,S)
 
   # get size for binomial
   size <- check_size_binomial(size,nrow(dat$mf.X))
@@ -433,7 +435,7 @@
 #' weights are assumed to be identically 1. Because we are estimating the
 #' log-likelihood over species (rather than sites), the weights should be a
 #' vector n species long.
-#' @param bb_weights a numeric vector of n species long. This is used for
+#' @param spp_weights a numeric vector of n species long. This is used for
 #' undertaking a Bayesian Bootstrap. See 'vcov.species_mix' for more details.
 #' @param size The size of the sample for a binomial model (defaults to 1).
 #' @param power The power parameter for 'tweedie' family. Default is 1.6, and
@@ -494,7 +496,7 @@
                                    all_formula = NULL,
                                    data, nArchetypes = 3,
                                    family="bernoulli", offset=NULL,
-                                   weights=NULL, bb_weights=NULL, size = NULL,
+                                   weights=NULL, spp_weights=NULL, size = NULL,
                                    power=1.6,
                                    control=list(ecm.prefit=FALSE),
                                    inits=NULL,
@@ -584,7 +586,7 @@
   # get the weights
   species_names <- colnames(y)
   site_spp_weights <- get_site_spp_weights_sam(mf,weights,species_names)#,family)
-  spp_weights <- check_spp_weights(bb_weights,S)
+  spp_weights <- check_spp_weights(spp_weights,S)
 
   # get size for binomial
   size <- check_size_binomial(size,nrow(dat$mf.X))
@@ -2349,11 +2351,11 @@ if(!is.null(U)) {
 
 
 
-"check_spp_weights" <- function(bb_weights, nS){
+"check_spp_weights" <- function(spp_weights, nS){
 
-  if(!is.null(bb_weights)){
-    if(all.equal(length(bb_weights),nS)) {
-      spp_weights <- bb_weights
+  if(!is.null(spp_weights)){
+    if(all.equal(length(spp_weights),nS)) {
+      spp_weights <- spp_weights
     } else {
       message('species weights for Bayesian bootstrap do not match the number of species in the model. Please check.')
       spp_weights <- rep(1,nS)
