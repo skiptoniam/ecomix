@@ -27,12 +27,12 @@ void sam_params::setVals(const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &R
 	ngamma = dat.nS*dat.nPW;
 	ndelta = dat.nPU;
 
-	if(dat.isDispersion())
+	if(dat.optiDisp>0)
 		ntheta = dat.nS;
 	else
 		ntheta = 0;
 
-	nTot = nalpha + nbeta + ngamma + neta + ntheta + ndelta;
+	nTot = nalpha + nbeta + neta + ngamma + ntheta + ndelta;
 }
 
 void sam_params::getArray(double *parArr, const sam_data &dat){
@@ -66,7 +66,7 @@ void sam_params::getArray(double *parArr, const sam_data &dat){
 	} else {
 	   kount = kount + dat.nPU;	
 	}
-	if( dat.isDispersion() ){
+	if( dat.optiDisp>0){
 		for( int i=0; i<dat.nS; i++){
 				parArr[kount] = Theta[i];
 				kount++;
@@ -108,7 +108,7 @@ void sam_params::update( double *parArr, const sam_data &dat){
 	kount = kount + dat.nPU;
 	 	
 	}	
-	if( dat.isDispersion() & dat.doOptiDisp()){
+	if( dat.optiDisp>0){
 		for( int i=0; i<dat.nS; i++){
 			Theta[i] = parArr[kount];
 			kount++;

@@ -185,8 +185,12 @@
   # get responses
   y <- stats::model.response(dat$mf.X)
 
+  # Add a check to make sure there are no silly response values in Y
+  # check_reponse_values()
+
+
   # logical matirx needed for removing NAs from response and weights.
-  y_is_na <- is.na(y)
+  # y_is_na <- is.na(y)
 
   # check names of reponses
   S <- check_reponse_sam(y)
@@ -248,7 +252,7 @@
   tmp <- species_mix.fit(y=y, X=X, W=W, U=U, G=G, S=S,
                          spp_weights=spp_weights,
                          site_spp_weights=site_spp_weights,
-                         offset=offset, disty=disty, linky=linky, y_is_na=y_is_na,
+                         offset=offset, disty=disty, linky=linky,# y_is_na=y_is_na,
                          size=size, powers=powers, control=control, inits=inits)
 
   tmp$family <- family
@@ -273,7 +277,7 @@
     logls_mus <- get_logls_sam(y = y, X = X, W = W, U = U, G = G,
                                S = S, spp_weights = spp_weights,
                                site_spp_weights = site_spp_weights,
-                               offset = offset, y_is_na = y_is_na,
+                               offset = offset, #y_is_na = y_is_na,
                                disty = disty, linky=linky, size = size,
                                powers = powers, control=control,
                                fits = fits, get_fitted = FALSE)
@@ -286,7 +290,8 @@
 
   # titbits object, if wanted/needed.
   tmp$titbits <- get_titbits_sam(titbits, y, X, W, U, spp_weights,
-                                 site_spp_weights, offset, y_is_na, size, powers,
+                                 site_spp_weights, offset, #y_is_na,
+                                 size, powers,
                                  archetype_formula, species_formula, all_formula,
                                  data, control, family, linky)
 
@@ -318,7 +323,7 @@
 #'@param spp_weights These are weights on the species logls and are specifically used in the Bayesian Bootstrap.
 #'@param site_spp_weights These are site and species specific weights. For most distributions these will be the same across all species. But this form is required to correctly estiamte the IPPMs. See \link[ecomix]{species_mix} for more details.
 #'@param offset this is a vector of site specific offsets, this might be something like area sampled at sites.
-#'@param y_is_na This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!
+# #'@param y_is_na This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!
 #'@param disty the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.
 #'@param linky The link function to use alongside the distribution. The link function uses with the distribution (disty)
 #'@param size The size of each of binomial sample at each site. Length should be the number of sites.
@@ -328,12 +333,22 @@
 #'@export
 
 "species_mix.fit" <- function(y, X, W, U, G, S, spp_weights, site_spp_weights,
-                              offset, y_is_na, disty, linky,
+                              offset, #y_is_na,
+                              disty, linky,
                               size, powers, control, inits=NULL){
 
   if(G==1){
-    tmp <- fit.ecm.sam(y, X, W, U, spp_weights, site_spp_weights,
-                       offset, y_is_na, G, S, disty, linky, size, powers,
+    tmp <- fit.ecm.sam(y=y, X=X, W=W, U=U,
+                       spp_weights=spp_weights,
+                       site_spp_weights=site_spp_weights,
+                       offset=offset,
+                       # y_is_na,
+                       G=G,
+                       S=S,
+                       disty=disty,
+                       linky=linky,
+                       size=size,
+                       powers=powers,
                        control=control)
     return(tmp)
   }
@@ -342,7 +357,7 @@
     starting_values  <- starting_values_wrapper(y = y, X = X, W = W, U = U,
                                                 site_spp_weights = site_spp_weights,
                                                 offset = offset,
-                                                y_is_na = y_is_na,
+                                                # y_is_na = y_is_na,
                                                 G = G, S = S,
                                                 disty = disty,
                                                 linky = linky,
@@ -360,7 +375,8 @@
   tmp <- sam_optimise(y = y, X = X, W = W, U = U, offset = offset,
                       spp_weights =  spp_weights,
                       site_spp_weights = site_spp_weights,
-                      y_is_na = y_is_na, S = S, G = G, disty = disty, linky = linky,
+                      # y_is_na = y_is_na,
+                      S = S, G = G, disty = disty, linky = linky,
                       size = size, powers = powers, start_vals = starting_values,
                       control = control)
 
@@ -532,7 +548,7 @@
   y <- stats::model.response(dat$mf.X)
 
   # logical matrix needed for removing NAs from response and weights.
-  y_is_na <- is.na(y)
+  # y_is_na <- is.na(y)
 
   # check names of reponses
   S <- check_reponse_sam(y)
@@ -601,7 +617,7 @@
     tmp <- species_mix.fit(y=y, X=X, W=W, U=U, G=G, S=S,
                            spp_weights=spp_weights,
                            site_spp_weights=site_spp_weights,
-                           offset=offset, disty=disty, linky=linky, y_is_na=y_is_na,
+                           offset=offset, disty=disty, linky=linky, #y_is_na=y_is_na,
                            size=size, powers=powers, control=control, inits=inits)
 
     tmp$family <- family
@@ -625,7 +641,7 @@
       logls_mus <- get_logls_sam(y = y, X = X, W = W, U = U, G = G,
                                  S = S, spp_weights = spp_weights,
                                  site_spp_weights = site_spp_weights,
-                                 offset = offset, y_is_na = y_is_na,
+                                 offset = offset, #y_is_na = y_is_na,
                                  disty = disty, linky=linky, size = size,
                                  powers = powers, control=control,
                                  fits = fits, get_fitted = FALSE)
@@ -638,7 +654,8 @@
 
     #titbits object, if wanted/needed.
     tmp$titbits <- get_titbits_sam(titbits, y, X, W, U, spp_weights,
-                                   site_spp_weights, offset, y_is_na, size, powers,
+                                   site_spp_weights, offset, #y_is_na,
+                                   size, powers,
                                    archetype_formula, species_formula, all_formula,
                                    data, control, family)
 
@@ -882,8 +899,8 @@
     outcomes <- matrix(rbinom(n * S, rep(size, S), as.numeric( fitted)), nrow = n, ncol = S)
   if( family=="poisson")
     outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
-  if( family=="ippm")
-    outcomes <- simulate_ippm_outcomes(X, W, S, grid2D, fitted)
+  # if( family=="ippm")
+  #   outcomes <- simulate_ippm_outcomes(X, W, S, grid2D, fitted)
   if( family=="negative.binomial")
     outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp(logTheta), each=n)), nrow = n, ncol = S)
   if (family=="tweedie")
@@ -895,12 +912,12 @@
 
   pi <- tapply(group, group, length)/S
 
-  if (family=='ippm'){
-    res <- outcomes$mm
-    wts <- outcomes$weights
-    colnames(wts) <- all.vars(sam_org)[1:S]
-    colnames(fitted) <- all.vars(sam_org)[1:S]
-  } else {
+  # if (family=='ippm'){
+  #   res <- outcomes$mm
+  #   wts <- outcomes$weights
+  #   colnames(wts) <- all.vars(sam_org)[1:S]
+  #   colnames(fitted) <- all.vars(sam_org)[1:S]
+  # } else {
     colnames(fitted) <- all.vars(sam_org)[1:S]
     colnames(outcomes) <-  all.vars(sam_org)[1:S]
     if(ncol(W)>1){
@@ -909,8 +926,8 @@
       res <- data.frame(outcomes,const=1, X)
     }
     if(npu>0) res <- cbind(res,U)
-  wts <- NULL
-  }
+  # wts <- NULL
+  # }
   attr(res, "SAMs") <- group
   attr(res, "pi") <- pi
   attr(res, "alpha") <- alpha
@@ -920,7 +937,7 @@
   attr(res, "logTheta") <- logTheta
   attr(res, "powers") <- powers
   attr(res, "mu") <- fitted
-  attr(res, "ippm_weights") <- wts
+  # attr(res, "ippm_weights") <- wts
   attr(res, "size") <- size
   attr(res, "offset") <- offset
   return(res)
@@ -929,7 +946,8 @@
 
 ###### internal fitting functions #####
 "fit.ecm.sam" <- function(y, X, W, U=NULL, spp_weights, site_spp_weights, offset,
-                          y_is_na, G, S, disty, linky, size, powers, control, starting.sam = NULL){
+                          # y_is_na,
+                          G, S, disty, linky, size, powers, control, starting.sam = NULL){
 
   n <- nrow(y)
   starting.sam <-  NULL
@@ -938,7 +956,7 @@
     if(!control$quiet) message(paste0("ECM restart ",t," of ", control$ecm.refits,""))
     starting.sam <- get_initial_values_sam(y = y, X = X, W = W, U = U,
                                            site_spp_weights = site_spp_weights,
-                                           offset = offset, y_is_na = y_is_na,
+                                           offset = offset, #y_is_na = y_is_na,
                                            G = G, S = S,
                                            disty = disty, linky = linky, size = size,
                                            control = control)
@@ -963,7 +981,7 @@
     if(any(fits$pi < 0.0005)) {
     starting.sam <- get_initial_values_sam(y = y, X = X, W = W, U = U,
                                            site_spp_weights = site_spp_weights,
-                                           offset = offset, y_is_na = y_is_na,
+                                           offset = offset, #y_is_na = y_is_na,
                                            G = G, S = S,
                                            disty = disty, linky = linky, size = size,
                                            control = set_control_sam(list(init.method="random2")))
@@ -982,10 +1000,11 @@
       fits$pi <- colMeans(tau)
 
       ## optimise the spp coefs - alpha & gamma if present
-      fm_sppParam <- plapply(seq_len(S), apply_optimise_sppParam,
+      fm_sppParam <- plapply(seq_len(S), apply_optimise_alpha,
                              y, X, W, U, S, G, n, tau,
                              fits, site_spp_weights,
-                             offset, y_is_na, disty, linky,
+                             offset, #y_is_na,
+                             disty, linky,
                              size, powers,
                              .parallel = control$cores,
                              .verbose = FALSE)
@@ -1000,7 +1019,8 @@
       ## Update archetype-specific coefficients
       fm_beta <- plapply(seq_len(G), apply_optimise_betas,
                          y, X, W, U, site_spp_weights, offset,
-                         y_is_na, disty, linky,
+                         # y_is_na,
+                         disty, linky,
                          tau, fits, size, powers, control,
                          .parallel = control$cores,
                          .verbose = FALSE)
@@ -1009,20 +1029,20 @@
 
       ## Update the all parameter.
       if(!is.null(U)){
-        new.delta <- stats::nlminb(start = fits$delta, objective = llogl.allParams,
+        new.delta <- stats::nlminb(start = fits$delta, objective = llogl.delta,
                                    y = y, X = X, W = W, U=U, tau = tau, fits = fits,
                                    site_spp_weights = site_spp_weights,
-                                   offset = offset, y_is_na = y_is_na,
+                                   offset = offset, #y_is_na = y_is_na,
                                    disty = disty, linky = linky,
                                    size = size, powers = powers)
         fits$delta <- update_coefs(fits$delta, new.delta)
       }
 
       ## update the dispersion parameters.
-      if(disty %in% c(4,5,6)) {
-        fm_theta <- plapply(seq_len(S), apply_optimise_thetaParams,
+      if(disty %in% c(3,4,5)) {
+        fm_theta <- plapply(seq_len(S), apply_optimise_theta,
                                      y, X, W, U, tau, fits,
-                                     site_spp_weights, offset, y_is_na,
+                                     site_spp_weights, offset, #y_is_na,
                                      disty, linky, size, powers,
                                      .parallel = control$cores,
                                      .verbose = FALSE)
@@ -1034,7 +1054,8 @@
 
       ## E-step
       do.estep <- try(e.step(y, X, W, U, site_spp_weights,
-                             offset, y_is_na, disty, linky,
+                             offset, #y_is_na,
+                             disty, linky,
                              fits, size, powers, control),
                       silent=TRUE)
       if(!is.finite(do.estep$logl)) {
@@ -1045,7 +1066,7 @@
         new.logl <- do.estep$logl
         diff.logl <- abs(new.logl/cw.logl)
 
-        if(!control$quiet) message(paste0("Iteration: ", counter, " | New loglik ", round(new.logl,3),  " | Ratio loglik ", round(diff.logl,6)));
+        if(!control$quiet) message(paste0("Iteration: ", counter, " | New loglik ", round(new.logl,3),  " | Ratio loglik ", round(diff.logl,4)));
 
         cw.logl <- new.logl
         counter <- counter + 1
@@ -1072,7 +1093,7 @@
       }
       if(!is.null(U)) names(mod$beta) <- colnames(U)
       names(mod$theta) <- rownames(mod$tau)
-      mod$effect.param <- length(mod$beta) + G + S + ifelse(ncol(W)>1,ncol(W)-1,0) + ifelse(!is.null(U),ncol(U),0) + ifelse(disty %in% c(4,5,6),S,0)
+      mod$effect.param <- length(mod$beta) + G + S + ifelse(ncol(W)>1,ncol(W)-1,0) + ifelse(!is.null(U),ncol(U),0) + ifelse(disty %in% c(3,4,5),S,0)
       mod$ics <- -2*mod$logl + c(2,log(S),log(S))*mod$effect.param + c(0,0,2*mod$entropy)
       names(mod$ics) <- c("AIC","BIC with log(# of species)", "ICL")
       mod$n <- n
@@ -1085,17 +1106,16 @@
 }
 
 "e.step" <- function(y, X, W, U, site_spp_weights, offset,
-                     y_is_na, disty, linky,
+                     # y_is_na,
+                     disty, linky,
                      fits, size, sp.powers, control,
                      get.fitted = FALSE) {
   S <- ncol(y); n <- nrow(y); G <- length(fits$pi)
   out.tau <- matrix(0,S,G)
   sp.logl <- rep(0,S) ## Species specific incomplete logL
 
+  ## set the link function
   link <- make.link(link = linky)
-  # if(disty%in%c(1,7)) link <- make.link('logit')
-  # if(disty%in%c(2,3,4,5)) link <- make.link('log')
-  # if(disty%in%6) link <- make.link('identity')
 
   if(get.fitted) fitted.values <- array(0,dim=c(G,n,S))
 
@@ -1109,40 +1129,36 @@
     mix.etas <- X%*%fits$beta[gg,]
 
     for(ss in seq_len(S)) {
-      sp_idx <- !y_is_na[,ss]
+      # sp_idx <- !y_is_na[,ss]
       if(ncol(W)>1){
         spp.etas <- W %*% c(fits$alpha[ss],fits$gamma[ss,])
       }else{
         spp.etas <- W %*% c(fits$alpha[ss])
       }
       new.etas <- all.etas + mix.etas + spp.etas + offset
-      if(disty %in% 1) {
+      if(disty == 1) {
         check.p <- link$linkinv(new.etas)
         check.p[check.p < 1e-4] <- 1e-4; check.p[check.p > (1-1e-4)] <- (1-1e-4);
         if(get.fitted) fitted.values[gg,,ss] <- check.p
         out.tau[ss,gg] <- (sum(dbinom(y[,ss], 1, prob = check.p, log = TRUE)))
       }
-      if(disty %in% 2) {
+      if(disty == 2) {
         if(get.fitted) fitted.values[gg,,ss] <- link$linkinv(new.etas)
         out.tau[ss,gg] <- (sum(dpois(y[,ss], lambda = link$linkinv(new.etas), log = TRUE)))
       }
-      # if(disty %in% 3) {
-      #   if(get.fitted) fitted.values[gg,,ss] <- link$linkinv(new.etas)
-      #   out.tau[ss,gg] <- (y[sp_idx,ss] %*% new.etas[sp_idx,,drop=FALSE] - site_spp_weights[sp_idx,ss] %*% link$linkinv(new.etas[sp_idx,,drop=FALSE]))
-      # }
-      if(disty %in% 4) {
+      if(disty == 3) {
         if(get.fitted) fitted.values[gg,,ss] <- link$linkinv(new.etas)
         out.tau[ss,gg] <- (sum(dnbinom(y[,ss], mu = link$linkinv(new.etas), size = 1/fits$theta[ss], log = TRUE)))
       }
-      if(disty %in% 5) {
+      if(disty == 4) {
         if(get.fitted) fitted.values[gg,,ss] <- link$linkinv(new.etas)
         out.tau[ss,gg] <- (sum(fishMod::dTweedie(y[,ss], mu = link$linkinv(new.etas), phi = fits$theta[ss], p = sp.powers[ss], LOG = TRUE)))
       }
-      if(disty %in% 6) {
+      if(disty == 5) {
         if(get.fitted) fitted.values[gg,,ss] <- link$linkinv(new.etas)
         out.tau[ss,gg] <- (sum(dnorm(y[,ss], mean = link$linkinv(new.etas), sd = sqrt(fits$theta[ss]), log = TRUE)))
       }
-      if(disty %in% 7) {
+      if(disty == 6) {
         check.p <- link$linkinv(new.etas)
         check.p[check.p < 1e-4] <- 1e-4; check.p[check.p > (1-1e-4)] <- (1-1e-4);
         if(get.fitted) fitted.values[gg,,ss] <- check.p
@@ -1178,7 +1194,7 @@
     } else {
       deltaPen <- 0
     }
-    if(disty%in%c(4,5,6)){
+    if(disty%in%c(3,4,5)){
       thetaPen <- calc_theta_penalties(fits,control)
     } else {
       thetaPen <- 0
@@ -1195,25 +1211,25 @@
   return(out.list)
 }
 
-"apply_optimise_sppParam" <- function(ss, y, X, W, U, S, G, n, tau, fits,
-                                      site_spp_weights, offset, y_is_na,
+"apply_optimise_alpha" <- function(ss, y, X, W, U, S, G, n, tau, fits,
+                                      site_spp_weights, offset, #y_is_na,
                                       disty, linky, size, powers){
 
   if(ncol(W)>1) pars <- c(fits$alpha[ss],fits$gamma[ss,])
   else pars <- fits$alpha[ss]
 
-  update.sppParams <- stats::nlminb(start = pars, objective = llogl.sppParams, ss = ss,
+  update.sppParams <- stats::nlminb(start = pars, objective = llogl.alpha, ss = ss,
                                y = y, X = X, W = W, U=U, S=S, G=G, n=n, tau = tau, fits = fits,
                                site_spp_weights = site_spp_weights,
-                               offset = offset, y_is_na = y_is_na,
+                               offset = offset, #y_is_na = y_is_na,
                                disty = disty, linky = linky, size = size, powers = powers)
   return(update.sppParams)
 }
 
-"apply_optimise_thetaParams" <- function(ss, y, X, W, U, tau, fits,
-                                   site_spp_weights, offy, y_is_na,
+"apply_optimise_theta" <- function(ss, y, X, W, U, tau, fits,
+                                   site_spp_weights, offy, #y_is_na,
                                    disty, linky, size, powers){
-  update.theta <- suppressWarnings(stats::optimize(f = llogl.thetaParams, interval = c(0.001,100),
+  update.theta <- suppressWarnings(stats::optimize(f = llogl.theta, interval = c(0.001,100),
                                                    maximum = TRUE, ss = ss,
                            y = y, X = X, W = W, U=U, tau = tau, fits = fits,
                            site_spp_weights = site_spp_weights,
@@ -1223,39 +1239,43 @@
 }
 
 "apply_optimise_betas" <- function(gg, y, X, W, U, site_spp_weights, offset,
-                                   y_is_na, disty, linky, tau,
+                                   #y_is_na,
+                                   disty, linky, tau,
                                    fits, size, powers, control){
 
   n <- nrow(y)
-  if(disty %in% c(2,3,4,5)){
+  if(disty %in% c(2,3,4)){
   glmnet.family <- "poisson"; glm.family <- poisson();
   }
-  if(disty %in% c(1,7)){
+  if(disty %in% c(1,6)){
     if(linky=="logit")
       glmnet.family <- glm.family <- "binomial"
     if(linky=="cloglog")
       glmnet.family <- glm.family <- binomial(link="cloglog");
   }
-  if(disty %in% c(6)){
+  if(disty %in% c(5)){
   glmnet.family <- "gaussian"; glm.family <- gaussian();
   }
 
-  if(disty %in% 4) get.mus <- e.step(y, X, W, U, site_spp_weights,
-                                     offset, y_is_na, disty, linky,
+  if(disty %in% 3) get.mus <- e.step(y, X, W, U, site_spp_weights,
+                                     offset, #y_is_na,
+                                     disty, linky,
                                      fits, size, powers, control,get.fitted = TRUE)$fitted
 
-  Y_s <- as.matrix(unlist(as.data.frame(y[!y_is_na])))
-  size_s <- matrix(rep(size,ncol(y)),nrow(y),ncol(y))[!y_is_na]
+  Y_s <- as.matrix(unlist(as.data.frame(y)))
+  size_s <- matrix(rep(size,ncol(y)),nrow(y),ncol(y))
+  # X_s <- kronecker(1:S,X)
+
   X_no_NA <- list()
   for (jj in 1:ncol(y)){
-        X_no_NA[[jj]] <- X[!y_is_na[,jj],,drop=FALSE]
+        X_no_NA[[jj]] <- X[,,drop=FALSE]
       }
   X_s <- do.call(rbind, X_no_NA)
 
   if(!is.null(U)){
       U_no_NA <- list()
       for (jj in 1:ncol(y)){
-          U_no_NA[[jj]] <- U[!y_is_na[,jj],,drop=FALSE]
+          U_no_NA[[jj]] <- U#[!y_is_na[,jj],,drop=FALSE]
       }
       U_s <- do.call(rbind, U_no_NA)
         offy3 <- as.matrix(U_s) %*% fits$delta
@@ -1265,27 +1285,27 @@
 
   n_ys <- sapply(X_no_NA,nrow)
   tau.weights <- rep(tau[,gg,drop=FALSE],c(n_ys))
-        if(disty %in% 4) tau.weights <- rep(tau[,gg,drop=FALSE],c(n_ys))/(1+rep(fits$theta,each=n)*as.vector(get.mus[gg,,]))
-        site.weights <- as.matrix(as.matrix(unlist(as.data.frame(site_spp_weights[!y_is_na]))))
-        obs.weights <- as.vector(tau.weights*site.weights)
+  # if(disty == 3) tau.weights <- rep(tau[,gg,drop=FALSE],c(n_ys))/(1+rep(fits$theta,each=n)*as.vector(get.mus[gg,,]))
+  site.weights <- as.matrix(unlist(as.data.frame(site_spp_weights)))#[!y_is_na]))))
+  obs.weights <- as.vector(tau.weights*site.weights)
 
-        offy_mat <- replicate(ncol(y),offset)
-        offy1 <- as.matrix(unlist(as.data.frame(offy_mat[!y_is_na])))
+  offy_mat <- replicate(ncol(y),offset)
+  offy1 <- as.matrix(unlist(as.data.frame(offy_mat)))
         if(ncol(W)>1){
           offy2 <- as.matrix(W) %*% t(cbind(fits$alpha,fits$gamma))
         } else {
           offy2 <- as.matrix(W) %*% c(fits$alpha)
         }
-        offy2 <- as.matrix(unlist(as.data.frame(offy2[!y_is_na])))
+        offy2 <- as.matrix(unlist(as.data.frame(offy2)))
         offy <- as.numeric(offy1 + offy2 + offy3)
 
-        if(disty%in%c(7)){
+        if(disty == 6){
           Y_s <- as.matrix(cbind(Y_s,size_s-Y_s))
         }
 
         if(ncol(X_s)==1) X_s <- cbind(1,X_s)
 
-        if (disty%in%c(7)){
+        if (disty == 6){
           fit1 <- try(glm2::glm.fit2(y=Y_s, x=as.data.frame(cbind(1,X_s)),weights=c(obs.weights),
                                family=glm.family, offset=offy), silent=FALSE)
           if (any(class(fit1)[1] %in% 'try-error')){
@@ -1346,18 +1366,13 @@
 }
 
 
-"llogl.sppParams" <- function(x, ss, y, X, W, U, S, G, n, tau,
-                              fits, site_spp_weights, offset,
-                              y_is_na, disty, linky, size, powers) {
+"llogl.alpha" <- function(x, ss, y, X, W, U, S, G, n, tau,
+                              fits, site_spp_weights, offset,# y_is_na,
+                              disty, linky, size, powers) {
 
   # S <- ncol(y); n <- nrow(y); G <- ncol(tau)
   out <- 0
-  sp_idx <- !y_is_na[,ss]
-
   link <- make.link(link=linky)
-  # if(disty%in%c(1,7)) link <- make.link('logit')
-  # if(disty%in%c(2,3,4,5)) link <- make.link('log')
-  # if(disty%in%6) link <- make.link('identity')
 
   if(!is.null(U)) all.etas <- U%*%c(fits$delta)
   else all.etas <- rep(0,n)
@@ -1366,35 +1381,30 @@
 
   for(gg in seq_len(G)) {
     eta <- W%*%x + mix.etas[,gg] + all.etas + offset
-    if(disty %in%  1)
+    if(disty ==  1)
       out <- out + sum(tau[ss,gg]*dbinom(y[,ss], size = 1, prob =  link$linkinv(eta), log = TRUE))
-    if(disty %in%  2)
+    if(disty ==  2)
       out <- out + sum(tau[ss,gg]*dpois(y[,ss], lambda =  link$linkinv(eta), log = TRUE))
-    # if(disty %in%  3)
-    #   out <- out + sum(tau[ss,gg]*(dpois(y[sp_idx,ss]/site_spp_weights[sp_idx,ss], lambda =  link$linkinv(eta), log = TRUE)*site_spp_weights[sp_idx,ss]))#(y[sp_idx,ss] %*% eta[sp_idx,,drop=FALSE] - site_spp_weights[sp_idx,ss] %*% link$linkinv(eta[sp_idx,,drop=FALSE])))
-    if(disty %in%  4)
+    if(disty ==  3)
       out <- out + sum(tau[ss,gg]*dnbinom(y[,ss], mu =  link$linkinv(eta), size = 1/fits$theta[ss], log = TRUE))
-    if(disty %in%  5)
+    if(disty ==  4)
       out <- out + sum(tau[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
-    if(disty %in%  6)
+    if(disty ==  5)
       out <- out + sum(tau[ss,gg]*dnorm(y[,ss], mean =  link$linkinv(eta), sd = sqrt(fits$theta[ss]), log = TRUE))
-    if(disty %in%  7)
+    if(disty ==  6)
       out <- out + sum(tau[ss,gg]*dbinom(y[,ss], size = size, prob = link$linkinv(eta), log = TRUE))
   }
   return(-out) #negative for nlmnib
 }
 
 
-"llogl.thetaParams" <- function(x, ss, y, X, W, U, tau, fits,
+"llogl.theta" <- function(x, ss, y, X, W, U, tau, fits,
                                 site_spp_weights, offset,
                                 disty, linky, size, powers) {
 
-  S <- ncol(y); n <- nrow(y); G <- ncol(tau)
+  # S <- ncol(y); n <- nrow(y); G <- ncol(tau)
   out <- 0
   link <- make.link(link = linky)
-  # if(disty%in%c(4,5)) link <- make.link('log')
-  # if(disty%in%6) link <- make.link('identity')
-
 
   if(!is.null(U)) all.etas <- U%*%c(fits$delta)
   else all.etas <- rep(0,n)
@@ -1409,38 +1419,36 @@
 
   for(gg in seq_len(G)){
     eta <- spp.etas + mix.etas[,gg] + all.etas + offset
-   if(disty==4)
+   if(disty == 3)
      cw.out <- sum(tau[ss,gg]*dnbinom(y[,ss], mu = link$linkinv(eta), size = 1/x, log = TRUE));
-   if(disty==5)
+   if(disty == 4)
      cw.out <- sum(tau[ss,gg]*fishMod::dTweedie(y[,ss], mu = link$linkinv(eta), phi = x, prob = powers[ss], LOG = TRUE));
-   if(disty==6)
+   if(disty == 5)
      cw.out <- sum(tau[ss,gg]*dnorm(y[,ss], mean = eta, sd = sqrt(x), log = TRUE))
    out <- out + cw.out
 
   }
-  return(out)
+  return(out) # check this
 }
 
 
 
-"llogl.allParams" <- function(x, y, X, W, U, tau, fits,
-                              site_spp_weights, offset, y_is_na,
+"llogl.delta" <- function(x, y, X, W, U, tau, fits,
+                              site_spp_weights, offset, #y_is_na,
                               disty, linky, size, powers) {
 
-  S <- ncol(y); n <- nrow(y); G <- ncol(tau)
+  # S <- ncol(y); n <- nrow(y); G <- ncol(tau)
   out <- 0
 
+  ## setup link function
   link <- make.link(link = linky)
-  # if(disty%in%c(1,7)) link <- make.link('logit')
-  # if(disty%in%c(2,3,4,5)) link <- make.link('log')
-  # if(disty%in%6) link <- make.link('identity')
 
   all.etas <- U%*%x
   mix.etas <- tcrossprod(X,fits$beta)
 
   for (ss in seq_len(S)){
 
-    sp_idx <- !y_is_na[,ss]
+    # sp_idx <- !y_is_na[,ss]
     if(ncol(W)>1){
       spp.etas <- W %*% c(fits$alpha[ss],fits$gamma[ss,])
     }else{
@@ -1449,19 +1457,17 @@
 
     for(gg in seq_len(G)) {
       eta <- spp.etas + mix.etas[,gg] + all.etas + offset
-      if(disty %in%  1)
+      if(disty ==  1)
         out <- out + sum(tau[ss,gg]*dbinom(y[,ss], size = 1, prob =  link$linkinv(eta), log = TRUE))
-      if(disty %in%  2)
+      if(disty ==  2)
         out <- out + sum(tau[ss,gg]*dpois(y[,ss], lambda =  link$linkinv(eta), log = TRUE))
-      # if(disty %in%  3)
-      #   out <- out + sum(tau[ss,gg]*(y[sp_idx,ss] %*% eta[sp_idx,,drop=FALSE] - site_spp_weights[sp_idx,ss] %*%  link$linkinv(eta[sp_idx,,drop=FALSE])))
-      if(disty %in%  4)
+      if(disty ==  3)
         out <- out + sum(tau[ss,gg]*dnbinom(y[,ss], mu =  link$linkinv(eta), size = 1/fits$theta[ss], log = TRUE))
-      if(disty %in%  5)
+      if(disty ==  4)
         out <- out + sum(tau[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(eta), phi = fits$theta[ss], prob = powers[ss], LOG = TRUE))
-      if(disty %in%  6)
+      if(disty ==  5)
         out <- out + sum(tau[ss,gg]*dnorm(y[,ss], mean =  link$linkinv(eta), sd = sqrt(fits$theta[ss]), log = TRUE))
-      if(disty %in%  7)
+      if(disty ==  6)
         out <- out + sum(tau[ss,gg]*dbinom(y[,ss], size = size, prob = link$linkinv(eta), log = TRUE))
     }
 
@@ -1470,13 +1476,14 @@
 }
 
 
-"starting_values_wrapper" <- function(y, X, W, U, spp_weights, site_spp_weights,
-                                      offset, y_is_na, G, S, disty, linky, size, powers, control){
+"starting_values_wrapper" <- function(y, X, W, U, spp_weights, site_spp_weights, offset, #y_is_na,
+                                      G, S, disty, linky, size, powers, control){
   if(control$ecm.prefit){
     if(!control$quiet)message('Using ECM algorithm to find starting values; using ',
                               control$ecm.refits,' refits')
     emfits <- fit.ecm.sam(y, X, W, U, spp_weights, site_spp_weights,
-                          offset, y_is_na, G, S, disty, linky, size,
+                          offset, #y_is_na,
+                          G, S, disty, linky, size,
                           powers, control)
     start_vals <- list(alpha = (emfits$alpha),
                        beta = (emfits$beta),
@@ -1489,7 +1496,7 @@
     if(!control$quiet)message('You are not using the ECM algorith to find starting values;\n starting values are generated using ',control$init.method,'.')
     starting_values <- get_initial_values_sam(y = y, X = X, W= W, U = U,
                                               site_spp_weights = site_spp_weights,
-                                              offset = offset, y_is_na = y_is_na,
+                                              offset = offset, #y_is_na = y_is_na,
                                               G = G, S = S,
                                               disty=disty, linky=linky,
                                               size=size, powers = powers,
@@ -1508,13 +1515,14 @@
   start_vals$nG <- G
   start_vals$nObs <- nrow(y)
   #put dispersion parameters on the log-scale for c++
-  if(disty%in%c(4,5,6)) start_vals$theta <- transform.theta(start_vals$theta, disty=disty, logify = TRUE)
+  if(disty%in%c(3,4,5)) start_vals$theta <- transform.theta(start_vals$theta, disty=disty, logify = TRUE)
   return(start_vals)
 }
 
 ## function for starting values using penalities
 "get_initial_values_sam" <- function(y, X, W, U=NULL, site_spp_weights,
-                                   offset, y_is_na, G, S, disty, linky,
+                                   offset, #y_is_na,
+                                   G, S, disty, linky,
                                    size, powers, control) {
 
   n <- nrow(y)
@@ -1536,45 +1544,40 @@
 
   tmpform <- as.formula(paste0("mvabund::mvabund(y) ~ - 1 + ."))
 
-  if(disty%in%1){ # bernoulli
+  if(disty == 1){ # bernoulli
     # if(linky==)
     fam <- binomial(link = linky)
-    # if(linky==1) fam <- binomial(link = 'cloglog')
     fit1 <- mvabund::manyglm(tmpform, data = datX, offset = offset, family = fam)
     coefs <- t(fit1$coefficients)
     starting.sam$theta <- rep(-999999,S)
   }
-  if(disty%in%2){ # poisson
+  if(disty == 2){ # poisson
     fit1 <- mvabund::manyglm(tmpform, data = datX, offset = offset, family = "poisson")
     coefs <- t(fit1$coefficients)
     starting.sam$theta <- rep(-999999,S)
   }
-  # if(disty%in%3){ # ippm
-  #   fit1 <- many.fit(y, X, W, U, site_spp_weights,
-  #                     offset, y_is_na, G, S, disty, size, powers, control)
-  #   coefs <- fit1$coefficients
-  # }
-  if(disty%in%4){ # negative binomial
+  if(disty == 3){ # negative binomial
     fit1 <- mvabund::manyglm(tmpform, data = datX,offset = offset, family = "negative.binomial")
     coefs <- t(fit1$coefficients)
     starting.sam$theta <- fit1$phi
   }
-  if(disty%in%5){ # tweedie
+  if(disty == 4){ # tweedie
     fit1 <- many.fit(y, X, W, U, site_spp_weights,
-                     offset, y_is_na, G, S, disty,
+                     offset, #y_is_na,
+                     G, S, disty,
                      size, powers, control)
     starting.sam$theta <- exp(fit1$theta)
     coefs <- fit1$coefficients
   }
-  if(disty%in%6){ # gaussian
+  if(disty == 5){ # gaussian
     fit1 <- suppressWarnings(mvabund::manylm(tmpform,data = datX))
     starting.sam$theta <- (stats::deviance(fit1)/fit1$df.residual)
     # log( sqrt( colSums((y - fit1$fitted.values)^2)/nrow(y)))
     coefs <- t(fit1$coefficients)
   }
-  if(disty%in%7){  # binomial - with variable size
-    fit1 <- many.fit(y, X, W, U, site_spp_weights,
-                     offset, y_is_na, G, S, disty, size, powers, control)
+  if(disty == 6){  # binomial - with variable size
+    fit1 <- many.fit(y, X, W, U, site_spp_weights, offset, #y_is_na,
+                     G, S, disty, size, powers, control)
     coefs <- fit1$coefficients
     starting.sam$theta <- rep(-999999,S)
   }
@@ -1645,7 +1648,7 @@
     grp_coefs <- random_coefs[[2]]
     starting.sam$gamma <- random_coefs[[3]]
     starting.sam$delta <- random_coefs[[4]]
-    if(disty%in%c(4,5,6)) starting.sam$theta <- random_coefs[[5]]
+    if(disty%in%c(3,4,5)) starting.sam$theta <- random_coefs[[5]]
   }
 
   #get tau as starting values
@@ -1675,13 +1678,13 @@
   return(starting.sam)
 }
 
-"many.fit" <- function(y, X, W, U, site_spp_weights, offset, y_is_na, G, S,
-                       disty, linky, size, powers, control){
+"many.fit" <- function(y, X, W, U, site_spp_weights, offset, #y_is_na,
+                       G, S, disty, linky, size, powers, control){
 
   options(warn = -1)
   fm_sp_mods <-  plapply(seq_len(S), apply_species_fits, y, X, W, U,
-                         site_spp_weights, offset, y_is_na, disty, linky,
-                         size, powers,
+                         site_spp_weights, offset, #y_is_na,
+                         disty, linky, size, powers,
                          .parallel = control$cores, .verbose = FALSE)
 
   alpha <- unlist(lapply(fm_sp_mods, `[[`, 1))
@@ -1727,46 +1730,42 @@
 }
 
 
-"apply_species_fits" <- function(ss, y, X, W, U = NULL, site_spp_weights,
-                                 offset, y_is_na, disty, linky, size, power){
+"apply_species_fits" <- function(ss, y, X, W, U = NULL, site_spp_weights, #y_is_na,
+                                 offset, disty, linky, size, power){
 
   # which family to use?
-  if(disty %in% c(1,7)) #binomials
+  if(disty %in% c(1,6)) #binomials
     fam <- binomial(link=linky) #glmnet
   if(disty %in% c(2,3,4))
     fam <- "poisson"
-  if(disty %in% 6)
+  if(disty == 5)
     fam <- "gaussian"
 
-  ids_i <- !y_is_na[,ss]
+  # ids_i <- !y_is_na[,ss]
 
-  # if (disty==3){
-  #   outcomes <- as.numeric(y[ids_i,ss]/site_spp_weights[ids_i,ss])
-  # } else {
-    outcomes <- as.matrix(y[ids_i,ss])
-  # }
+  outcomes <- as.matrix(y[,ss])
 
   if(ncol(X)==1){
-    X<- cbind(1,X[ids_i,,drop=FALSE])
+    X<- cbind(1,X)
   }
 
   if(ncol(W) > 1){
-    df <- cbind(X[ids_i,,drop=FALSE],W[ids_i,-1,drop=FALSE])
+    df <- cbind(X,W[,-1,drop=FALSE])
   } else {
-    df <-   X[ids_i,,drop=FALSE]
+    df <- X
   }
 
-  if(!is.null(U)) df <- cbind(df,U[ids_i,,drop=FALSE])
+  if(!is.null(U)) df <- cbind(df,U)
 
-  if(!disty %in% c(5,7)){
+  if(!disty %in% c(4,6)){
 
     lambda.seq <- sort(unique( c( seq( from=1/0.001, to=1, length=25),
                                    seq( from=1, to=.1, length=10))),
                        decreasing=TRUE)
     # if(disty==3) lambda.seq <- 0
     ft_sp <- try(glmnet::glmnet(y=outcomes, x=as.matrix(df),
-                                family=fam, offset=offset[ids_i],
-                                weights=as.numeric(site_spp_weights[ids_i,ss]),
+                                family=fam, offset=offset,
+                                weights=as.numeric(site_spp_weights[,ss]),
                                 alpha=0,
                                 lambda=lambda.seq,
                                 standardize=FALSE,
@@ -1780,32 +1779,24 @@
       my.coefs <- my.coefs[,lastID]
     }
     if (any(class(ft_sp) %in% 'try-error')){
-      my_coefs <- rep(NA, ncol(X[ids_i,]))
-      names(my_coefs) <- colnames(cbind(X[ids_i,,drop=FALSE],W[ids_i,,drop=FALSE],U[ids_i,,drop=FALSE]))
+      my_coefs <- rep(NA, ncol(X))
+      names(my_coefs) <- colnames(cbind(X,W,U))
     } else {
       if(ncol(X)==1) my_coefs <- t(as.matrix(my.coefs[-1]))
       my_coefs <- t(as.matrix(my.coefs))
     }
     theta <- -99999
-    if( disty == 4){
+    if( disty == 3){
       tmp <- MASS::theta.mm(outcomes, as.numeric(predict(ft_sp, s=locat.s,
                                                          type="response",
                                                          newx=as.matrix(df),
-                                                         newoffset=offset[ids_i])),
-                            weights=as.matrix(site_spp_weights[ids_i,ss]),
+                                                         newoffset=offset)),
+                            weights=as.matrix(site_spp_weights[,ss]),
                             dfr=length(outcomes), eps=1e-4)
       # if(tmp>5) tmp <- 5
       theta <- tmp
     }
-    if( disty == 6){
-      preds <- as.numeric( predict(ft_sp, s=locat.s, type="link",
-                                   newx=as.matrix(df), newoffset=offset[ids_i]))
-      #should be something like the resid standard
-      theta <- sum((outcomes - preds)^2)/length(outcomes)
-    }
-  }
-
-  if (disty==5) { #Tweedie needs an unconstrained fit.  May cause problems in some cases, especially if there is quasi-separation...
+    if (disty == 4) { #Tweedie needs an unconstrained fit.  May cause problems in some cases, especially if there is quasi-separation...
       df3 <- data.frame(y=outcomes, offy=offset, Intercept= 1, df)
       tmp.fm1 <- fishMod::tglm(y~-1+.-offy+offset( offy),
                                wts=c(site_spp_weights[,ss]),
@@ -1813,10 +1804,16 @@
                                residuals=FALSE, trace=0)
       my_coefs <- t(as.matrix(tmp.fm1$coef,ncol=1))
       theta <- tmp.fm1$coef["phi"]
+    }
+    if( disty == 5){
+      preds <- as.numeric( predict(ft_sp, s=locat.s, type="link",
+                                   newx=as.matrix(df), newoffset=offset))
+      #should be something like the resid standard deviation
+      theta <- sum((outcomes - preds)^2)/length(outcomes)
+    }
   }
-
-  if (disty==7){
-      outcomes <- as.matrix(cbind(y[ids_i,ss],size[ids_i]-y[ids_i,ss]))
+  if (disty == 6){
+      outcomes <- as.matrix(cbind(y[,ss],size-y[,ss]))
       fit_init <- glm2::glm.fit2(y=outcomes, x=cbind(1,df), family = binomial())
       my_coefs <- t(as.matrix(fit_init$coefficients))
       theta <- -99999
@@ -1834,7 +1831,7 @@
 }
 
 
-"sam_optimise" <- function(y, X, W, U, offset, spp_weights, site_spp_weights, y_is_na,
+"sam_optimise" <- function(y, X, W, U, offset, spp_weights, site_spp_weights, #y_is_na,
                            S, G, disty, linky, size, powers, start_vals, control){
 
   inits <- unname(c(start_vals$alpha, start_vals$beta, start_vals$eta, start_vals$gamma,
@@ -1881,7 +1878,7 @@ if(!is.null(U)) {
     npu <- as.integer(1) # a dummy variable to stop c++ issues.
   }
 
-  if(disty%in%c(4,5,6)){
+  if(disty%in%c(3,4,5)){
     control$optiDisp <- as.integer(0)
     theta.score <- as.numeric(rep(NA, length(theta)))
   }else{
@@ -1920,7 +1917,7 @@ if(!is.null(U)) {
                as.numeric(as.matrix(Wcpp)), as.numeric(as.matrix(Ucpp)),
                as.numeric(offset), as.numeric(spp_weights),
                as.numeric(as.matrix(site_spp_weights)),
-               as.integer(as.matrix(!y_is_na)),
+               # as.integer(as.matrix(!y_is_na)),
                as.numeric(size), as.integer(S), as.integer(G), as.integer(npx),
                as.integer(npw), as.integer(npu), as.integer(n),
                as.integer(disty),as.integer(linkyin),
@@ -1954,12 +1951,13 @@ if(!is.null(U)) {
                PACKAGE = "ecomix")
 
   ret <- tmp
+  ret$conv <- control$conv
   ret$logl <- ret$logl * -1
   ret$mus <- array(mus, dim=c(n, S, G))
   ret$names <- list(spp=colnames(y), SAMs=paste("Archetype", seq_len(G), sep=""),
                     Xvars=colnames(X), Wvars=colnames(Wcpp), Uvars = colnames(Ucpp))
 
-  if(disty%in%c(4,5,6)) ret$theta <- transform.theta(ret$theta,disty,logify=FALSE)
+  if(disty%in%c(3,4,5)) ret$theta <- transform.theta(ret$theta,disty,logify=FALSE)
 
   names(ret$alpha) <- ret$names$spp
   names(ret$beta) <- paste(rep(ret$names$Xvars,each=G),ret$names$SAMs,sep='.')
@@ -2242,24 +2240,24 @@ if(!is.null(U)) {
 "transform.theta" <- function(theta, disty, logify = TRUE){#, max.theta = NULL){
 
   if(logify){
-  if(disty%in%4){
+  if(disty==3){
       log.new.theta <- log(theta)
   }
-  if(disty%in%5){
+  if(disty==4){
     log.new.theta  <- log(theta)
   }
-  if(disty%in%6){
+  if(disty==5){
     log.new.theta <- log(sqrt(theta))
   }
     return(log.new.theta)
   }  else {
-    if(disty%in%4){
+    if(disty==3){
       new.theta <- exp(theta)
     }
-    if(disty%in%5){
+    if(disty==4){
       new.theta  <- exp(theta)
     }
-    if(disty%in%6){
+    if(disty==5){
       new.theta <- exp(theta)^2
     }
       return(new.theta)
@@ -2321,12 +2319,37 @@ if(!is.null(U)) {
 }
 
 "check_reponse_sam" <-function(outs) {
+
   nam <- colnames( outs)
   if( length( nam) == length( unique( nam)))
     return( length( nam))
   else
     return( FALSE)
 }
+
+"check_reponse_values" <-function(response, disty) {
+
+  if(disty==1){
+    ## bernoulli
+    # response <- matrix(rbinom(20,size=1,prob = .5),10,2)
+    if (!all(response %in% c(0, 1)))
+      stop("'bernoulli' distribution must be contain zeros or ones.")
+
+  } else if (disty %in% 2) {
+    ## Poisson and negative binomial
+    # response <- matrix(rpois(20,.5),10,2)
+    if (!all(response >= 0)) # is.integer?
+      stop("'poisson' distribution must be discrete data >= zero.")
+
+  } else if (disty == 3){
+    ## Negative binomial
+    if (!all(response >= 0)) # is.integer?
+      stop("'negative.binomial' distribution must be discrete data >= zero.")
+
+  }
+
+}
+
 
 
 "check_spp_weights" <- function(bb_weights, nS){
@@ -2414,7 +2437,7 @@ if(!is.null(U)) {
       link <- "logit"  #by default
     }
     else if (substr(family,1,3) == "bin" & !all(size==1)) {
-      disty <- 7  #logistic/binomial
+      disty <- 6  #logistic/binomial
       familyname <- "binomial"
       link <- "logit"
     }
@@ -2429,17 +2452,17 @@ if(!is.null(U)) {
       link <- "log"
     }
     else if (substr(family,1,3) == "neg") {
-      disty <- 4  #neg bin
+      disty <- 3  #neg bin
       familyname <- "negative.binomial"
       link <- "log"
     }
     else if (substr(family,1,3) == "twe") {
-      disty <- 5
+      disty <- 4
       familyname<- "tweedie"
       link <- "log" # not meaningful, we only use the lo link at the moment
     }
     else if (substr(family,1,3) == "gau") {
-      disty <- 6 # gaussian
+      disty <- 5 # gaussian
       familyname <- "gaussian"
       link <- "idenity"
     }
@@ -2456,41 +2479,33 @@ if(!is.null(U)) {
    if(get_fitted) fitted_values <- array(0,dim=c(G,nrow(y),S))
 
    #setup the right link function
-   # if(is.null(linky)){
-   # if(disty%in%c(1,7)) link <- stats::make.link(link = "logit")
-   # if(disty%in%c(2,3,4,5)) link <- stats::make.link(link = "log")
-   # if(disty%in%c(6)) link <- stats::make.link(link = "identity")
-   # } else {
    link <- stats::make.link(link=linky)
-   # }
 
+   # matrix for catching sp logls.
    logl_sp <- matrix(NA, nrow=S, ncol=G)
 
    if(!is.null(U))eta_all <- as.matrix(U) %*% fits$delta
    else eta_all <- matrix(0,nrow=nrow(X),ncol=1)
 
     for(ss in 1:S){
-      sp_idx<-!y_is_na[,ss]
-      for(gg in 1:G){
-        eta_mix <- X[sp_idx,,drop=FALSE] %*% fits$beta[gg,]
+       for(gg in 1:G){
+        eta_mix <- X %*% fits$beta[gg,]
         if(ncol(W)>1){
-          eta_spp <- W[sp_idx,,drop=FALSE] %*% c(fits$alpha[ss],fits$gamma[ss,])
+          eta_spp <- W %*% c(fits$alpha[ss],fits$gamma[ss,])
         } else {
           eta_spp <- fits$alpha[ss]
         }
-        eta <- eta_spp + eta_mix + eta_all[sp_idx,,drop=FALSE] + offset[sp_idx]
-        if(get_fitted) fitted_values[gg,sp_idx,ss] <- link$linkinv(eta)
+        eta <- eta_spp + eta_mix + eta_all + offset[sp_idx]
+        if(get_fitted) fitted_values[gg,,ss] <- link$linkinv(eta)
 
         if(disty==1) logl_sp[ss,gg] <- sum(dbinom(y[,ss], size =  1, prob =  link$linkinv(eta),log = TRUE))
         if(disty==2) logl_sp[ss,gg] <- sum(dpois(y[,ss], lambda = link$linkinv(eta),log = TRUE))
-        # if(disty==3) logl_sp[ss,gg] <- y[sp_idx,ss] %*% eta - site_spp_weights[sp_idx,ss] %*% link$linkinv(eta)
-        if(disty==4) logl_sp[ss,gg] <- sum(dnbinom(y[,ss], mu=link$linkinv(eta), size = 1/fits$theta[ss], log=TRUE))
-        if(disty==5) logl_sp[ss,gg] <- sum(fishMod::dTweedie(y[,ss], mu =  link$linkinv(eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
-        if(disty==6) logl_sp[ss,gg] <- sum(dnorm(y[,ss],mean=eta,sd=sqrt(fits$theta[ss]),log=TRUE))
-        if(disty==7) logl_sp[ss,gg] <- sum(dbinom(y[,ss],size =  size, prob = link$linkinv(eta),log = TRUE))
+        if(disty==3) logl_sp[ss,gg] <- sum(dnbinom(y[,ss], mu=link$linkinv(eta), size = 1/fits$theta[ss], log=TRUE))
+        if(disty==4) logl_sp[ss,gg] <- sum(fishMod::dTweedie(y[,ss], mu =  link$linkinv(eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
+        if(disty==5) logl_sp[ss,gg] <- sum(dnorm(y[,ss],mean=eta,sd=sqrt(fits$theta[ss]),log=TRUE))
+        if(disty==6) logl_sp[ss,gg] <- sum(dbinom(y[,ss],size =  size, prob = link$linkinv(eta),log = TRUE))
 
       }
-      # if(!disty%in%3)
       logl_sp[ss,gg] <- logl_sp[ss,gg]*spp_weights[ss]
     }
 
@@ -2551,7 +2566,7 @@ if(!is.null(U)) {
 }
 
 "get_power_sam" <- function(disty, power, S){
-  if( disty == 5){
+  if( disty == 4){
     if(length( power) == 1)
       power <- rep(power, S)
     if( length( power) != S)
@@ -2582,12 +2597,14 @@ if(!is.null(U)) {
 }
 
 "get_titbits_sam" <- function(titbits, y, X, W, U, spp_weights, site_spp_weights, offset,
-                              y_is_na, size, powers, archetype_formula, species_formula,
+                              # y_is_na,
+                              size, powers, archetype_formula, species_formula,
                               all_formula, data, control, family, link)  {
   if( titbits==TRUE)
     titbits <- list(Y = y, X = X, W = W, U = U, spp_weights = spp_weights,
                     site_spp_weights = site_spp_weights, offset = offset,
-                    y_is_na = y_is_na, size = size, powers=powers,
+                    # y_is_na = y_is_na,
+                    size = size, powers=powers,
                     archetype_formula =  archetype_formula,
                     species_formula = species_formula,
                     all_formula = all_formula, data = data, control = control,
@@ -2608,8 +2625,8 @@ if(!is.null(U)) {
       titbits$site_spp_weights <- site_spp_weights
     if( "offset" %in% titbits)
       titbits$offset <- offset
-    if( "y_is_na" %in% titbits)
-      titbits$y_is_na <- y_is_na
+    # if( "y_is_na" %in% titbits)
+    #   titbits$y_is_na <- y_is_na
     if( "size" %in% titbits)
       titbits$size <- size
     if( "powers" %in% titbits)
@@ -2787,11 +2804,11 @@ if(!is.null(U)) {
     }
     delta <- delta + rnorm(ncol(U), mean=0, my.sd)
   }
-  if(disty %in% c(4,5,6)){
+  if(disty %in% c(3,4,5)){
     my.sd <- mult*sd( theta); if( is.na( my.sd) | my.sd==0) my.sd <- 0.1
     theta <- theta + as.numeric( rnorm( S, mean=0, my.sd))
   }
-  if(disty %in% c(4,5,6)) return(list(alpha,beta,gamma,delta,theta))
+  if(disty %in% c(3,4,5)) return(list(alpha,beta,gamma,delta,theta))
   else return(list(alpha,beta,gamma,delta))
 }
 

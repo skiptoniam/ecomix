@@ -25,14 +25,14 @@ class sam_data {
 	public:
 		sam_data();
 		~sam_data();
-		void setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &RU, SEXP &Roffset, SEXP &Rspp_wts, SEXP &Rsite_spp_wts, SEXP &Ry_not_na, SEXP &Rbinsize,
+		void setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &RU, SEXP &Roffset, SEXP &Rspp_wts, SEXP &Rsite_spp_wts, SEXP &Rbinsize, //SEXP &Ry_not_na, 
 		 SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw, SEXP &Rpu, SEXP &RnObs, SEXP &Rdisty, SEXP &Rlinky,
 		 SEXP &RoptiDisp, SEXP &RoptiPart, SEXP &RoptiAll, SEXP &RdoPenalties);
-		bool isDispersion() const;
-		bool doOptiDisp() const;
-		bool isPartial() const;
-		bool doOptiPart() const;
-		void printVals( int printX, int printW, int printy);
+		//bool isDispersion() const;
+		//bool doOptiDisp() const;
+		//bool isPartial() const;
+		//bool doOptiPart() const;
+		//void printVals( int printX, int printW, int printy);
 
 		int nPX,      //the number of parameters in each of the (G-1) habitat lps, same as lpar
 			nPW,      //the number of parameters in the species level model
@@ -42,7 +42,7 @@ class sam_data {
 			nObs,     //the number of observations
 			disty,    //the distribution code
 			linky,    //which link function to use # 0 = logit, 1 = cloglog.
-			optiDisp, //should the dispersion parameter be optimised (this is for negative binomial).
+			optiDisp, //should the dispersion parameter be optimised (this is for negative binomial, tweedie, gaussian).
 			optiPart, //should the partial sam parameters be estimated.
 			optiAll, //should the all/bias sam parameters be estimated.
 			doPenalties, // should we estimate penalties?
@@ -56,7 +56,7 @@ class sam_data {
 				*spp_wts,  //the wts for the logl dependent on the species - used for the bayesian bootstrap (typically all zero and of length nObs).
 				*site_spp_wts, // the wts for the ippm.
 				*binsize; //Size for a binomial.
-		int 	*y_not_na; //a matrix which keeps track of NAs in ippm data. If non-ippm model all == 1.
+		//int 	*y_not_na; //a matrix which keeps track of NAs in ippm data. If non-ippm model all == 1. Removed 17/11/2021
 
 };
 
@@ -73,7 +73,7 @@ class sam_params {
 
 
 		double 	*Alpha, //the species' prevalences
-				*Beta,	//the habitats' free covariate params (G*xp)
+				*Beta,	//the archetype' free covariate params (G*xp)
 				*Eta,	//the pis - mmmmm pies.
 				*Gamma, //species x npw parameters form partial SAMs
 				*Delta, //bias
@@ -160,7 +160,7 @@ class sam_cpp_all_classes {
 /////////////	Function Definitions	////////////////
 ////////////////////////////////////////////////////////
 
-extern "C" SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW,  SEXP RU, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rbinsize,
+extern "C" SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW,  SEXP RU, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Rbinsize, //SEXP Ry_not_na,
 								SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty,
 								SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll, SEXP RdoPenalties, SEXP Rlinky,
 								SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rdelta, SEXP Rtheta, SEXP Rpowers,
@@ -219,8 +219,6 @@ double log_bernoulli_sam( const double &y, const double &mu);
 double log_bernoulli_deriv_sam(const double &y, const double &mu);
 double log_poisson_sam( const double &y, const double &mu);
 double log_poisson_deriv_sam( const double &y, const double &mu);
-//double log_ippm_sam(const double &y, const double &mu, const double &st_sp_wts);
-//double log_ippm_deriv_sam( const double &y, const double &mu, const double &st_sp_wts);
 double log_negative_binomial_sam( const double &y, const double &mu, const double &od);
 double log_negative_binomial_deriv_mu_sam( const double &y, const double &mu, const double &od);
 double log_negative_binomial_deriv_theta_sam(const double &y, const double &mu, const double &od);

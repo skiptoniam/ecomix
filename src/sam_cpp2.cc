@@ -3,9 +3,9 @@
 // this is the external C call which will be called by R using .Call.
 
 extern "C" {
-	SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP RU, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Ry_not_na, SEXP Rbinsize,
+	SEXP species_mix_cpp(SEXP Ry, SEXP RX, SEXP RW, SEXP RU, SEXP Roffset, SEXP Rspp_wts, SEXP Rsite_spp_wts, SEXP Rbinsize, //SEXP Ry_not_na, 
 					     SEXP RnS, SEXP RnG, SEXP Rpx, SEXP Rpw, SEXP Rpu, SEXP RnObs, SEXP Rdisty, SEXP Rlinky,
-					     SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll, SEXP RdoPenalties,
+					     SEXP RoptiDisp, SEXP RoptiPart, SEXP RoptiAll, SEXP RdoPenalties, 
 						 SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rgamma, SEXP Rdelta, SEXP Rtheta, SEXP Rpowers,
 						 //penalties
 						 SEXP RalphaPen, SEXP RbetaPen, SEXP RpiPen,  SEXP RgammaPen,
@@ -18,8 +18,9 @@ extern "C" {
 
 	sam_cpp_all_classes all;
 
-	//initialise the data structures -- they are mostly just pointers to REAL()s...
-	all.data.setVals(Ry, RX, RW, RU, Roffset, Rspp_wts, Rsite_spp_wts, Ry_not_na, Rbinsize, RnS, RnG, Rpx, Rpw, Rpu, RnObs, Rdisty, Rlinky, RoptiDisp, RoptiPart, RoptiAll, RdoPenalties);	//read in the data
+	//initialise the data structures -- they are mostly just pointers to REAL()s... 
+	// update 17/11/2021 removed Ry_not_na as used in ppm model.
+	all.data.setVals(Ry, RX, RW, RU, Roffset, Rspp_wts, Rsite_spp_wts, Rbinsize, RnS, RnG, Rpx, Rpw, Rpu, RnObs, Rdisty, Rlinky, RoptiDisp, RoptiPart, RoptiAll, RdoPenalties);	//read in the data
 	all.params.setVals(all.data, Ralpha, Rbeta, Reta, Rgamma, Rdelta, Rtheta, Rpowers, RalphaPen, RbetaPen, RpiPen, RgammaPen, RdeltaPen, RthetaLocatPen, RthetaScalePen);	//read in the parameters
 	all.derivs.setVals(all.data, RderivsAlpha, RderivsBeta, RderivsEta, RderivsGamma, RderivsDelta, RderivsTheta, RgetScores, Rscores);
 	all.contr.setVals( Rmaxit, Rtrace, RnReport, Rabstol, Rreltol, Rconv, Rprintparams);
@@ -200,7 +201,7 @@ double sam_cpp_mix_loglike(const sam_data &dat, const sam_params &params, sam_fi
 	loglike += penDelta;
 	}
 
-	if( dat.isDispersion()){
+	if(dat.optiDisp>0){
 	penTheta = calc_theta_pen( dat, params);
 	loglike += penTheta;
 	}
@@ -232,7 +233,7 @@ void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data
 				//std::cout << g << ' '<< s << ' '<<  i <<'\n'<<'\n';
 				//Rprintf( " %i\n", dat.y_not_na[MATREF2D(i,s,dat.nObs)]);
 				// need logical flag which deals with NA data.
-				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
+				//if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
 				lp = lps.at(MATREF2D(g,s,dat.nG)) + dat.offset[i] + etaAll[i];
 				for( int j=0;j<dat.nPX; j++){
 							lp += params.Beta[MATREF2D(g,j,(dat.nG))] * dat.X[MATREF2D(i,j,dat.nObs)];
@@ -251,23 +252,20 @@ void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data
 					if(dat.disty==2){ //poisson
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
 						}
-					//if(dat.disty==3){ //ippm
-						//fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
-					//}
-					if(dat.disty==4){ //negative binomial
+					if(dat.disty==3){ //negative binomial
 						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
 					}
-					if(dat.disty==5){ //tweedie
+					if(dat.disty==4){ //tweedie
 						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
 					 }
-					if(dat.disty==6){//normal
+					if(dat.disty==5){//normal
 						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = lp;
 					}
-					if(dat.disty==7){//binomial
+					if(dat.disty==6){//binomial
 						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_logit(lp);
 					}
 				}
-			}
+			//}
 		}
 	}
 }
@@ -280,29 +278,26 @@ void calc_sam_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam
 	for(int s=0; s<dat.nS; s++){
 		for( int g=0; g<dat.nG; g++){
 			for(int i=0; i<dat.nObs; i++){
-				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
+				//if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
 					if(dat.disty==1){ // bernoulli
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_bernoulli_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 						}
 					if(dat.disty==2){ // poisson
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_poisson_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 						}
-					//if(dat.disty==3){ // ippm
-						//loglSG.at(MATREF2D(g,s,dat.nG)) += log_ippm_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.site_spp_wts[MATREF2D(i,s,dat.nObs)]);
-						//}
-					if(dat.disty==4){ // negative binomial
+					if(dat.disty==3){ // negative binomial
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_negative_binomial_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 						}
-					if(dat.disty==5){ // tweedie
+					if(dat.disty==4){ // tweedie
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_tweedie_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp(params.Theta[s]), params.Power[s]);
 					}
-					if(dat.disty==6){ // normal
+					if(dat.disty==5){ // normal
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_normal_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 						}
-					if(dat.disty==7){ // binomial
+					if(dat.disty==6){ // binomial
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_binomial_sam(dat.y[MATREF2D(i,s,dat.nObs)],fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.binsize[i]);
 						}
-					}
+					//}
 				}
 			// This is for the bayesian bootstrap. For ippm this will be set to default of 1 in R as BB is to hard to do with ippms.
 			loglSG.at(MATREF2D(g,s,dat.nG)) = loglSG.at(MATREF2D(g,s,dat.nG))*dat.spp_wts[s]; //fix this up.
@@ -422,8 +417,6 @@ double log_negative_binomial_deriv_theta_sam(const double &y, const double &mu, 
 	sig = exp(od);
 	theta = 1 / sig;
 
-
-
 	res = digamma( theta+y);
 	res -= digamma( theta);
 	res += 1 + log( theta) - log(mu+theta) - (theta+y)/(theta+mu);
@@ -497,22 +490,22 @@ double log_normal_deriv_theta_sam(const double &y, const double &mu, const doubl
 
 // this should do the additive transformation of pis (pi1/piN,pi2/piN,pi(N-1)/piN)
 void additive_logistic_sam(vector< double > &x, int inv, int G){
-  int i;
+  //int i;
   // inv == 1 gives transfornmation
   // inv == 0 gives inverse transformation
   if(inv==0){
-    for(i=0;i<G;i++) x.at(i) = log(x.at(i)/x.at(G-1));
+    for(int i=0;i<G;i++) x.at(i) = log(x.at(i)/x.at(G-1));
     return;
   }
 
   vector< double > xt (x.size(),0);
   double sumx=0, sumxt=0;
 
-  for(i=0;i<x.size();i++){
+  for(int i=0;i<x.size();i++){
     xt.at(i) = exp(x.at(i));
     sumx+=xt.at(i);
   }
-  for(i=0;i<x.size();i++){
+  for(int i=0;i<x.size();i++){
     x.at(i) = xt.at(i)/(1+sumx);
     sumxt+=x.at(i);
   }
@@ -585,7 +578,7 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 
 	//derivate w.r.t thetas
 	//std::cout << dat.isDispersion() << '\n';
-	if( dat.doOptiDisp()){
+	if(dat.optiDisp>0){
 	calc_dlog_dtheta(fits.dlogdtheta, fits.allMus, dat, params);
 	calc_theta_deriv(thetaDerivs, fits.dlogdtheta, fits.log_like_species_group_contrib, fits.log_like_species_contrib, parpi, dat);
     }
@@ -608,10 +601,12 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
     calc_delta_pen_deriv(deltaDerivs, dat, params);
     calc_theta_pen_deriv(thetaDerivs, dat, params);
     etaDerivs.assign(etaDerivs.size(), 0.0);
+   	//update the derivates after penalities
+	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
 	}
 
 	//update the derivates after penalities
-	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
+	//derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
 	}
 
 /* Ok I'm going to try and generalise the derivate function across all distributions */
@@ -634,16 +629,16 @@ void calc_mu_deriv( vector<double> &mu_derivs, const vector<double> &fits, const
 				//if(dat.disty==3){
 					//mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_ippm_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.site_spp_wts[MATREF2D(i,s,dat.nObs)]);
 				//}
-				if(dat.disty==4){
+				if(dat.disty==3){
 					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_negative_binomial_deriv_mu_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 				}
-				if(dat.disty==5){
+				if(dat.disty==4){
 				 	mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_tweedie_deriv_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp( params.Theta[s]), params.Power[s]);
 				}
-				if(dat.disty==6){
+				if(dat.disty==5){
 					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_normal_deriv_mu_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 				}
-				if(dat.disty==7){
+				if(dat.disty==6){
 					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_binomial_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.binsize[i]);
 				}
 				//}
@@ -657,7 +652,7 @@ void calc_eta_mu_deriv( vector<double> &etaDerivs, const sam_data &dat, const ve
 	for( int g=0; g<dat.nG; g++){
 		for( int s=0; s<dat.nS; s++){
 			for(int i=0; i<dat.nObs; i++){
-				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
+				//if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
 						if(dat.disty==1){ //bernoulli
 							if(dat.linky==0)//logit link: mu*(1-mu)
 								etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * (1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS))) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//logit link
@@ -682,7 +677,7 @@ void calc_eta_mu_deriv( vector<double> &etaDerivs, const sam_data &dat, const ve
 						if(dat.disty==6){ // normal
 							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//identity link
 						}
-				}
+				//}
 			}
 		}
 	}
@@ -699,10 +694,10 @@ void calc_dlog_dalpha(vector<double> &dlda, vector<double> const &mu_eta_derivs,
 	for(int g=0; g<dat.nG; g++){
 		for(int s=0;s<dat.nS; s++){
 			for(int i=0; i<dat.nObs; i++){
-			  if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
+			  //if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
 					// this is the tmp log poisson derivative (lpd)
 					dlda.at(MATREF2D(g,s,dat.nG)) += mu_eta_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));
-				}
+				//}
 			}
 			dlda.at(MATREF2D(g,s,dat.nG)) = dlda.at(MATREF2D(g,s,dat.nG))*dat.spp_wts[s]; //this is for the BB weights
 		}
@@ -719,12 +714,12 @@ void calc_dlog_dbeta(vector<double> &dldb, vector<double> const &mu_eta_derivs, 
 	for(int g=0; g<dat.nG; g++){
 		for(int s=0;s<dat.nS; s++){
 			for(int i=0; i<dat.nObs; i++){
-				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
+				//if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
 						for(int j=0; j<dat.nPX; j++){
 							dldb.at(MATREF3D(g,j,s,dat.nG,dat.nPX)) += mu_eta_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * dat.X[MATREF2D(i,j,dat.nObs)];
 							//std::cout << dldb.at(MATREF3D(g,j,s,dat.nG,dat.nPX)) << '\n';
 							}
-				}
+				//}
 			}
 		for(int j=0; j<dat.nPX; j++){
 				dldb.at(MATREF3D(g,j,s,dat.nG,dat.nPX)) = dldb.at(MATREF3D(g,j,s,dat.nG,dat.nPX))*dat.spp_wts[s];
@@ -745,12 +740,12 @@ void calc_dlog_ddelta(vector<double> &dldd, vector<double> const &mu_eta_derivs,
 	for(int g=0; g<dat.nG; g++){
 		for(int s=0;s<dat.nS; s++){
 			for(int i=0; i<dat.nObs; i++){
-				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
+				//if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
 						for(int d=0; d<dat.nPU; d++){
 							dldd.at(MATREF3D(g,d,s,dat.nG,dat.nPU)) += mu_eta_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * dat.U[MATREF2D(i,d,dat.nObs)];
 							//std::cout << dldd.at(MATREF3D(g,j,s,dat.nG,dat.nPX)) << '\n';
 							}
-				}
+				//}
 			}
 		for(int d=0; d<dat.nPU; d++){
 				dldd.at(MATREF3D(g,d,s,dat.nG,dat.nPU)) = dldd.at(MATREF3D(g,d,s,dat.nG,dat.nPU))*dat.spp_wts[s];
@@ -771,13 +766,13 @@ void calc_dlog_dgamma(vector<double> &dldg, vector<double> const &mu_eta_derivs,
 	for(int g=0; g<dat.nG; g++){
 		for(int s=0;s<dat.nS; s++){
 			for(int i=0; i<dat.nObs; i++){
-				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
+				//if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
 					//tmp_lpd = log_ippm_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.st_sp_wts[MATREF2D(i,s,dat.nObs)]);
 						for(int j=0; j<dat.nPW; j++){
 							dldg.at(MATREF3D(g,j,s,dat.nG,dat.nPW)) += mu_eta_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * dat.W[MATREF2D(i,j,dat.nObs)];
 							//std::cout << dldg.at(MATREF3D(g,j,s,dat.nG,dat.nPW)) << '\n';
 							}
-				}
+				//}
 			}
 		for(int j=0; j<dat.nPW; j++){
 				dldg.at(MATREF3D(g,j,s,dat.nG,dat.nPW)) = dldg.at(MATREF3D(g,j,s,dat.nG,dat.nPW))*dat.spp_wts[s];
@@ -800,19 +795,19 @@ void calc_dlog_dtheta(vector<double> &dldt, vector<double> const &mus, const sam
 	for(int g=0; g<dat.nG; g++){
 		for(int s=0;s<dat.nS; s++){
 			for(int i=0; i<dat.nObs; i++){
-				if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
-					if(dat.disty==4){ // negative binomial
+				//if(dat.y_not_na[MATREF2D(i,s,dat.nObs)]>0){
+					if(dat.disty==3){ // negative binomial
 						dldt.at(MATREF2D(g,s,dat.nG)) += log_negative_binomial_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Theta[s]);
 					}
-					if(dat.disty==5){ // tweedie
+					if(dat.disty==4){ // tweedie
 						dldt.at(MATREF2D(g,s,dat.nG)) += log_tweedie_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Theta[s], params.Power[s]);
 				    }
-					if(dat.disty==6){ // normal
+					if(dat.disty==5){ // normal
 						dldt.at(MATREF2D(g,s,dat.nG)) += log_normal_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Theta[s]);
 					}
-				}
+				//}
 			}
-		//dldt.at(MATREF2D(g,s,dat.nG)) = dldd.at(MATREF2D(g,s,dat.nG))*dat.spp_wts[s];
+		//dldt.at(MATREF2D(g,s,dat.nG)) = dldt.at(MATREF2D(g,s,dat.nG))*dat.spp_wts[s];
 		}
 	}
 }
@@ -1031,17 +1026,11 @@ double calc_theta_pen( const sam_data &dat, const sam_params &params){
 void calc_theta_pen_deriv(vector<double> &thetaDerivs, const sam_data &dat, const sam_params &params){
 
 	thetaDerivs.assign(thetaDerivs.size(), 0.0);
-	if( dat.isDispersion()){
+	if( dat.optiDisp>0){
 		for( int s=0; s<dat.nS; s++){
 			thetaDerivs.at(s) = -(params.Theta[s]-params.ThetaLocatPen)/(params.ThetaScalePen*params.ThetaScalePen);
 		}
 	}
-
-	//dispDerivsI.assign(dispDerivsI.size(), 0.0);
-	//if( dat.isDispersion())
-		//for( int s=0; s<dat.nS; s++)
-			//dispDerivsI.at(s) = -(parms.Disp[s]-parms.dispLocat)/(parms.dispScale*parms.dispScale);
-
 }
 
 
