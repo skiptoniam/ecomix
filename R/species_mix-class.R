@@ -10,8 +10,8 @@
 #' that allows for easier data input. The data frames are merged into
 #' the appropriate format for the use in species_mix.fit.
 #' Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
-#' 'poisson', 'negative.binomial' and 'gaussian' distributions can be fitted
-#' using the species_mix function. For Point Process extensions of SAMs please
+#' 'poisson', 'negative.binomial', 'tweedie' and 'gaussian' distributions can be fitted
+#' using the species_mix. For Point Process extensions of SAMs please
 #' refer to the \link{ecomix.ppm} package.
 #' @param archetype_formula an object of class "formula" (or an object that can
 #' be coerced to that class). The response variable (left hand side of the
@@ -35,7 +35,7 @@
 #'  you might use this an alternative to an offset, where there might be a set
 #'  covariates which means artifact of how the data was collected or some other
 #'  process like a seasonality.
-#' @param data a matrix or data.frame which contains the 'species_data'
+#' @param data a data.frame which contains the 'species_data'
 #' matrix, a const and the covariates in the structure of spp1, spp2, spp3,
 #' const, temperature, rainfall. dims of matrix should be
 #' nsites*(nspecies+const+covariates).
@@ -43,13 +43,13 @@
 #' estimate from the data. This need to be explicitly declared. By default it is
 #' set to 3.
 #' @param family The family of statistical family to use within
-#' the ecomix models. family can be a function from \link[stats]{family}, such as
-#' binomial(). OR it can be a choice between "bernoulli", "binomial", "poisson",
-#' "negative.binomial", "tweedie" and "gaussian" families. An error will be
+#' the ecomix model, family can be a function from \link[stats]{family}, such as
+#' binomial(). Or it can be a character string of one of the following: "bernoulli", "binomial", "poisson",
+#' "negative.binomial", "tweedie" and "gaussian". An error will be
 #' thrown if the family is not recognized. The family you use is generally
-#' specific to the type of data you have. One can also specify a link function
-#' such as "cloglog" via binomial(link="cloglog"). If you wish to fit a point
-#' process version of a SAM please refer to the \link{ecomix.ppm} package.
+#' specific to the type of data you have. Users can also specify a link function
+#' within the family object, eg: binomial(link="logit"). Currently, ecomix can
+#' implement "logit", "cloglog", "log" and "identity" link functions.
 #' @param offset a numeric vector of length nrow(data) (n sites) that is
 #' included into the model as an offset. It is included into the conditional
 #' part of the model where conditioning is performed on the SAM.
@@ -1371,7 +1371,7 @@
                               fits, site_spp_weights, offset,# y_is_na,
                               disty, linky, size, powers) {
 
-  # S <- ncol(y); n <- nrow(y); G <- ncol(tau)
+  S <- ncol(y); n <- nrow(y); G <- ncol(tau)
   out <- 0
   link <- make.link(link=linky)
 
@@ -1403,7 +1403,7 @@
                                 site_spp_weights, offset,
                                 disty, linky, size, powers) {
 
-  # S <- ncol(y); n <- nrow(y); G <- ncol(tau)
+  S <- ncol(y); n <- nrow(y); G <- ncol(tau)
   out <- 0
   link <- make.link(link = linky)
 
@@ -1438,7 +1438,7 @@
                               site_spp_weights, offset, #y_is_na,
                               disty, linky, size, powers) {
 
-  # S <- ncol(y); n <- nrow(y); G <- ncol(tau)
+  S <- ncol(y); n <- nrow(y); G <- ncol(tau)
   out <- 0
 
   ## setup link function
@@ -2774,7 +2774,7 @@ if(!is.null(U)) {
 }
 
 
-"sam_random_inits" <- function(alpha, beta, gamma, delta, theta, S, G, X, W, U, disty, mult=0.3, control.sd = control$init.sd){
+"sam_random_inits" <- function(alpha, beta, gamma, delta, theta, S, G, X, W, U, disty, mult=0.1, control.sd = control$init.sd){
   if(is.na(control.sd)){
     my.sd <- mult*sd( alpha); if( is.na( my.sd)) my.sd <- 0.1
   } else {
@@ -2849,14 +2849,12 @@ if(!is.null(U)) {
 }
 
 "sam_internal_pred_species" <- function(alpha, beta, tau, gamma, delta,
-                                        G, S, X, W, U, offset = NULL, family, type){
+                                        G, S, X, W, U, offset = NULL, family,
+                                        linky, type){
 
-  if (family %in% c("bernoulli","binomial"))
-    link.fun <- make.link("logit")
-  if (family %in% c("negative.binomial","poisson","tweedie"))
-    link.fun <- make.link("log")
-  if (family %in% "gaussian")
-    link.fun <- make.link("identity")
+  ## use linky now that I've set it up in the model.
+  link.fun <- make.link(linky)
+
   if (is.null(offset))
     offset <- rep(0, nrow(X))
 
@@ -2870,10 +2868,10 @@ if(!is.null(U)) {
     if(ncol(W)>1) etaSpp <- W%*%t(cbind(alpha,gamma))
     else etaSpp <- matrix(alpha, nrow(X), S, byrow=TRUE)
     eta <- etaMix + etaSpp + etaAll + offset
-    if(type=='response') mug <- link.fun$linkinv(eta)
-    else if(type=='link') mug <- eta
+    if(type=='response') mu.g <- link.fun$linkinv(eta)
+    else if(type=='link') mu.g <- eta
     else stop('type not known')
-    outpred_spp <- outpred_spp + mug*matrix(tau[,g], nrow(X), S, byrow=TRUE)
+    outpred_spp <- outpred_spp + mu.g*matrix(tau[,g], nrow(X), S, byrow=TRUE)
     }
 
   return(outpred_spp)
