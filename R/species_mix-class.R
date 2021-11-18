@@ -1129,7 +1129,6 @@
     mix.etas <- X%*%fits$beta[gg,]
 
     for(ss in seq_len(S)) {
-      # sp_idx <- !y_is_na[,ss]
       if(ncol(W)>1){
         spp.etas <- W %*% c(fits$alpha[ss],fits$gamma[ss,])
       }else{
@@ -1447,8 +1446,6 @@
   mix.etas <- tcrossprod(X,fits$beta)
 
   for (ss in seq_len(S)){
-
-    # sp_idx <- !y_is_na[,ss]
     if(ncol(W)>1){
       spp.etas <- W %*% c(fits$alpha[ss],fits$gamma[ss,])
     }else{
@@ -2495,7 +2492,7 @@ if(!is.null(U)) {
         } else {
           eta_spp <- fits$alpha[ss]
         }
-        eta <- eta_spp + eta_mix + eta_all + offset[sp_idx]
+        eta <- eta_spp + eta_mix + eta_all + offset
         if(get_fitted) fitted_values[gg,,ss] <- link$linkinv(eta)
 
         if(disty==1) logl_sp[ss,gg] <- sum(dbinom(y[,ss], size =  1, prob =  link$linkinv(eta),log = TRUE))
