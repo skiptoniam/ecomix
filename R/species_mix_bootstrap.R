@@ -63,7 +63,7 @@
                                                site_spp_weights = object$titbits$site_spp_weights,
                                                G = object$G,
                                                S = object$S,
-                                               y_is_na = object$titbits$y_is_na,
+                                               # y_is_na = object$titbits$y_is_na,
                                                disty = disty,
                                                linky = linky,
                                                size = object$titbits$size,
