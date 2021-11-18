@@ -434,7 +434,7 @@
   spp_weights <- object$titbits$spp_weights
   site_spp_weights <- object$titbits$site_spp_weights
   y <- object$titbits$Y
-  y_is_na <- object$titbits$y_is_na
+  # y_is_na <- object$titbits$y_is_na
   size <- object$titbits$size
   family <- object$titbits$family
   disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
@@ -534,7 +534,7 @@
                    as.numeric(as.matrix(W)), as.numeric(as.matrix(Ucpp)),
                    as.numeric(offset), as.numeric(spp_weights),
                    as.numeric(as.matrix(site_spp_weights)),
-                   as.integer(as.matrix(!y_is_na)),
+                   # as.integer(as.matrix(!y_is_na)),
                    as.numeric(size), as.integer(S), as.integer(G), as.integer(npx),
                    as.integer(npw), as.integer(npu), as.integer(n),
                    as.integer(disty),as.integer(control$optiDisp),
