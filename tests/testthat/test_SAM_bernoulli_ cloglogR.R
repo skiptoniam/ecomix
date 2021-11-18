@@ -25,7 +25,7 @@ testthat::test_that('species mix cloglog bernoulli', {
                      nArchetypes = 3)
   testthat::expect_s3_class(fm1,'species_mix')
 
-  fm2 <- species_mix(sam_form, sp_form, data = simulated_data, family = 'bernoulli',
+  fm2 <- species_mix(sam_form, sp_form, data = simulated_data, family = binomial(link = "cloglog"),
                      nArchetypes = 3,control=list(em_prefit = FALSE))
   testthat::expect_s3_class(fm2,'species_mix')
 

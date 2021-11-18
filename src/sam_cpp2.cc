@@ -594,16 +594,16 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
 
 	// Add in the derivate penalites here.
-	if(dat.doPenalties>0){
-    calc_alpha_pen_deriv(alphaDerivs, dat, params);
-    calc_beta_pen_deriv(betaDerivs, dat, params);
-    calc_gamma_pen_deriv(gammaDerivs, dat, params);
-    calc_delta_pen_deriv(deltaDerivs, dat, params);
-    calc_theta_pen_deriv(thetaDerivs, dat, params);
-    etaDerivs.assign(etaDerivs.size(), 0.0);
-   	//update the derivates after penalities
-	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
-	}
+	//if(dat.doPenalties>0){
+    //calc_alpha_pen_deriv(alphaDerivs, dat, params);
+    //calc_beta_pen_deriv(betaDerivs, dat, params);
+    //calc_gamma_pen_deriv(gammaDerivs, dat, params);
+    //calc_delta_pen_deriv(deltaDerivs, dat, params);
+    //calc_theta_pen_deriv(thetaDerivs, dat, params);
+    //etaDerivs.assign(etaDerivs.size(), 0.0);
+   	////update the derivates after penalities
+	//derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
+	//}
 
 	//update the derivates after penalities
 	//derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);

@@ -1560,10 +1560,10 @@
     coefs <- t(fit1$coefficients)
     starting.sam$theta <- fit1$phi
   }
-  if(disty == 4){ # tweedie
+  if(disty == 4){ #
     fit1 <- many.fit(y, X, W, U, site_spp_weights,
                      offset, #y_is_na,
-                     G, S, disty,
+                     G, S, disty, linky,
                      size, powers, control)
     starting.sam$theta <- exp(fit1$theta)
     coefs <- fit1$coefficients

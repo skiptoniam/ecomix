@@ -28,7 +28,7 @@ void sam_derivs::zeroDerivs( const sam_data &dat){
 	if( dat.optiAll>0)
 		for( int i=0; i<(dat.nPU); i++)
 			Delta[i] = 0.0;
-	if(dat.optiAll>0)
+	if(dat.optiDisp>0)
 		for( int i=0; i<(dat.nS); i++)
 			Theta[i] = 0.0;
 }
@@ -63,11 +63,12 @@ void sam_derivs::updateDerivs( const sam_data &dat, const vector<double> &alphaD
 			Delta[p] = gammaDerivs.at(p);
 		}
 	}
-	if(dat.optiAll>0)
+	if(dat.optiDisp>0){
 		for( int s=0; s<dat.nS; s++){
 			Theta[s] += thetaDerivs.at(s);
 			//Rprintf( " %f", Theta[s],"\n");
 		}
+	}
 	////Updating the score contributions for empirical information, if requested.
 	if( getScoreFlag != 1)
 		return;
@@ -84,7 +85,7 @@ void sam_derivs::updateDerivs( const sam_data &dat, const vector<double> &alphaD
 				Scores[k++] = gammaDerivs.at(MATREF2D(s, p,(dat.nS)));
 		for( int p=0; p<dat.nPU; p++)
 			Scores[k++] = deltaDerivs.at(p);
-		if(dat.optiAll>0)
+		if(dat.optiDisp>0)
 			for( int s=0; s<dat.nS; s++)
 				Scores[k++] = thetaDerivs.at(s);
 
@@ -125,7 +126,7 @@ void sam_derivs::update( double *grArr, const sam_data &dat){
 	kount = kount + dat.nPU;	
 		
 	}	
-	if(dat.optiAll>0){
+	if(dat.optiDisp>0){
 		for( int s=0; s<dat.nS; s++){
 			Theta[s] = grArr[kount];
 			kount++;
@@ -171,10 +172,14 @@ void sam_derivs::getArray( double *grArr, const sam_data &dat){
 	kount = kount + dat.nPU;	
 		
 	}	
-	if(dat.optiAll>0){
+	if(dat.optiDisp>0){
 		for( int s=0; s<dat.nS; s++){
 			grArr[kount] = Theta[s];
 			kount++;
 		}
-	} 
+	} else {
+	
+	kount = kount + dat.nS;
+	 	
+	}	
 }
