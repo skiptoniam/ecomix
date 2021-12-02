@@ -184,6 +184,7 @@ double calc_sam_loglike_S(vector<double> &fits, vector<double> const &pis, const
 void additive_logistic_sam(vector< double > &x,int inv, int G);
 double inverse_logit(const double eta);
 double inverse_cloglog(const double eta);
+double inverse_log(const double eta);
 
 // functions for calculating the gradient.
 void gradient_function_sam(int n, double *par, double *gr, void *ex);

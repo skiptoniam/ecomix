@@ -183,28 +183,28 @@ double sam_cpp_mix_loglike(const sam_data &dat, const sam_params &params, sam_fi
 
 	//penalities.
 	if(dat.doPenalties>0){
-	penAlpha = calc_alpha_pen( dat, params);
-	penBeta = calc_beta_pen( dat, params);
-	//penPi = calc_pi_pen(dat, params);  // leave penality as zero.
+		penAlpha = calc_alpha_pen( dat, params);
+		penBeta = calc_beta_pen( dat, params);
+		//penPi = calc_pi_pen(dat, params);  // leave penality as zero.
 
-	loglike += penAlpha;
-	loglike += penBeta;
-	//loglike += penPi;
+		loglike += penAlpha;
+		loglike += penBeta;
+		//loglike += penPi;
 
-	if(dat.optiPart>0){
-	penGamma = calc_gamma_pen( dat, params);
-	loglike += penGamma;
-	}
+		if(dat.optiPart>0){
+		penGamma = calc_gamma_pen( dat, params);
+		loglike += penGamma;
+		}
 
-	if(dat.optiAll>0){
-	penDelta = calc_delta_pen( dat, params);
-	loglike += penDelta;
-	}
+		if(dat.optiAll>0){
+		penDelta = calc_delta_pen( dat, params);
+		loglike += penDelta;
+		}
 
-	if(dat.optiDisp>0){
-	penTheta = calc_theta_pen( dat, params);
-	loglike += penTheta;
-	}
+		if(dat.optiDisp>0){
+		penTheta = calc_theta_pen( dat, params);
+		loglike += penTheta;
+		}
 	}
 	return(loglike);
 }
@@ -250,13 +250,13 @@ void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data
 							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_cloglog(lp);
 						}
 					if(dat.disty==2){ //poisson
-							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
+							fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_log(lp);
 						}
 					if(dat.disty==3){ //negative binomial
-						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
+						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_log(lp);
 					}
 					if(dat.disty==4){ //tweedie
-						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = exp(lp);
+						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_log(lp);
 					 }
 					if(dat.disty==5){//normal
 						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = lp;
@@ -405,18 +405,19 @@ double log_poisson_deriv_sam( const double &y, const double &mu){
 
 double log_negative_binomial_sam( const double &y, const double &mu, const double &od){
 	double tmp, theta;
-	theta = 1/exp( od);
+	theta = 1/exp(od);
 	tmp = dnbinom_mu(y, theta, mu, 1);
 	return( tmp);
 }
 
 double log_negative_binomial_deriv_theta_sam(const double &y, const double &mu, const double &od){
 
-    double theta, sig, res=0.0;
-
+    double theta, res=0.0;
+    double sig;
 	sig = exp(od);
 	theta = 1 / sig;
 
+	//theta = 1/exp(od);
 	res = digamma( theta+y);
 	res -= digamma( theta);
 	res += 1 + log( theta) - log(mu+theta) - (theta+y)/(theta+mu);
@@ -591,7 +592,7 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	calc_eta_deriv(etaDerivs, fits.dlogdpi, parpi, dat);
 
 	// update derives before penalities
-	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
+	//derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
 
 	// Add in the derivate penalites here.
 	//if(dat.doPenalties>0){
@@ -606,7 +607,7 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	//}
 
 	//update the derivates after penalities
-	//derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
+	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, deltaDerivs, thetaDerivs);
 	}
 
 /* Ok I'm going to try and generalise the derivate function across all distributions */
@@ -626,9 +627,6 @@ void calc_mu_deriv( vector<double> &mu_derivs, const vector<double> &fits, const
 				if(dat.disty==2){
 					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_poisson_deriv_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)));
 				}
-				//if(dat.disty==3){
-					//mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_ippm_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), dat.site_spp_wts[MATREF2D(i,s,dat.nObs)]);
-				//}
 				if(dat.disty==3){
 					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_negative_binomial_deriv_mu_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 				}
@@ -659,23 +657,20 @@ void calc_eta_mu_deriv( vector<double> &etaDerivs, const sam_data &dat, const ve
 							if(dat.linky==1)//clogloglink: -log(1-mu)*(1 - mu)
 								etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = (-log(1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)))*(1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)))) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));
 						}
-						if(dat.disty==7){ //binomial (size rather than 1).
-							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * (1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS))) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//logit link
-						}
-						//if(dat.disty==3){ // ippm
-							//etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = dat.site_spp_wts[MATREF2D(i,s,dat.nObs)] * fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)); // loglink + weights
-						//}
 						if(dat.disty==2){ // poisson, negative binomial, tweedie
 							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//log link
+						}
+						if(dat.disty==3){
+						  etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//log link
 						}
 						if(dat.disty==4){
 						  etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//log link
 						}
-						if(dat.disty==5){
-						  etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//log link
-						}
-						if(dat.disty==6){ // normal
+						if(dat.disty==5){ // normal
 							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//identity link
+						}
+						if(dat.disty==6){ //binomial (size rather than 1).
+							etaDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) * (1-fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS))) * muDerivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS));	//logit link
 						}
 				//}
 			}
@@ -735,7 +730,8 @@ void calc_dlog_ddelta(vector<double> &dldd, vector<double> const &mu_eta_derivs,
 	// dlda = dlogbeta passed as fits.dlogdbeta(dat.nG*dat.nS*dat.nPX, dat.NAnum) from function call
 	// mus = all the fitted values.
 
-	//double tmp_lpd;
+	if(dat.optiAll>0)
+		return;	//nothing to do here, move along please
 
 	for(int g=0; g<dat.nG; g++){
 		for(int s=0;s<dat.nS; s++){
@@ -761,7 +757,8 @@ void calc_dlog_dgamma(vector<double> &dldg, vector<double> const &mu_eta_derivs,
 	// dldg = dlogdgamma passed as fits.dlogdbeta(dat.nG*dat.nS*dat.nPW, dat.NAnum) from function call
 	// mus = all the fitted values.
 
-	//double tmp_lpd;
+	if(dat.optiPart>0)
+		return;	//nothing to do here, move along please
 
 	for(int g=0; g<dat.nG; g++){
 		for(int s=0;s<dat.nS; s++){
@@ -789,8 +786,8 @@ void calc_dlog_dtheta(vector<double> &dldt, vector<double> const &mus, const sam
 	// dlda = dlogalpha passed as fits.dflogdalpha(dat.nG*dat.nS, dat.NAnum) from function call
 	// mus = all the fitted values.
 
-	//if( !dat.isDispersion())
-		//return;	//nothing to do here, move along please
+	if(dat.optiDisp>0)
+		return;	//nothing to do here, move along please
 
 	for(int g=0; g<dat.nG; g++){
 		for(int s=0;s<dat.nS; s++){
@@ -807,7 +804,7 @@ void calc_dlog_dtheta(vector<double> &dldt, vector<double> const &mus, const sam
 					}
 				//}
 			}
-		//dldt.at(MATREF2D(g,s,dat.nG)) = dldt.at(MATREF2D(g,s,dat.nG))*dat.spp_wts[s];
+		dldt.at(MATREF2D(g,s,dat.nG)) = dldt.at(MATREF2D(g,s,dat.nG))*dat.spp_wts[s];
 		}
 	}
 }
@@ -1124,15 +1121,6 @@ double inverse_logit(const double eta){
 	return( tmp);
 }
 
-// {
-//   double tmp;
-//   tmp = exp( x);
-//   tmp = tmp / (1+tmp);
-//   return( tmp);
-// }
-
-
-
 //inverse complementary log-log
 double inverse_cloglog(const double eta){
 	double tmp, eps = 1e-16;
@@ -1143,3 +1131,10 @@ double inverse_cloglog(const double eta){
 	return( tmp);
 }
 
+// log link
+double inverse_log (const double eta){
+   double tmp, eps = 1e-16;
+   tmp = exp(eta);
+   if(tmp<eps)tmp=eps;
+   return(tmp);
+}
