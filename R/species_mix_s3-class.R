@@ -28,7 +28,7 @@
   effect.param <- length(object$beta) + object$G + object$S + object$npw*object$S +
     object$npu + ifelse(object$family %in% c("negative.binomial","tweedie","gaussian"),object$S,0)
   p <- effect.param
-  k <- log(object$n)
+  k <- log(object$S)
   star.ic <- -2 * object$logl + k * p
   return(star.ic)
 }
@@ -128,7 +128,7 @@
   abline( 0,1,lwd=2)
   preds <- sam_internal_pred_species(x$coef$alpha, x$coef$beta, x$tau,
                                      x$coef$gamma, x$coef$delta, x$G, x$S, x$titbits$X,
-                                     x$titbits$W,x$titbits$U, x$titbits$offset, x$family,
+                                     x$titbits$W,x$titbits$U, x$titbits$offset, x$family, x$link,
                                      type=type)
 
   preds <- preds[,sppID]
@@ -386,7 +386,7 @@
 #'@title Estimate the Variance-covariance matrix for a species_mix object.
 #'@description Calculates variance-covariance matrix from a species_mix object
 #'@param object an object obtained from fitting a RCP (for region of common profile) mixture model. Such as that generated from a call to species_mix(qv).
-#'@param object2 an object of class \code{species_mix} containing bootstrap samples of the parameter estimates (see species_mix_boot(qv)). If NULL (default) the bootstrapping is performed from within the vcov function. If not null, then the vcov estimate is obtained from these bootstrap samples.
+#'@param boot.object an object of class \code{species_mix} containing bootstrap samples of the parameter estimates (see species_mix_boot(qv)). If NULL (default) the bootstrapping is performed from within the vcov function. If not null, then the vcov estimate is obtained from these bootstrap samples.
 #'@param method the method to calculate the variance-covariance matrix. Options are:'FiniteDifference' (default), \code{BayesBoot}, \code{SimpleBoot}, and \code{EmpiricalInfo}. The two bootstrap methods (\code{BayesBoot} and \code{SimpleBoot}, see species_mix_boot(qv)) should be more general and may possibly be more robust. The \code{EmpiricalInfo} method implements an empirical estimate of the Fisher information matrix, I can not recommend it however. It seems to behave poorly, even in well behaved simulations. It is computationally thrifty though.
 #'@param nboot the number of bootstrap samples to take for the bootstrap estimation. Argument is ignored if !method \%in\% c(\code{FiniteDifference},'EmpiricalInfo').
 #'@param mc.cores the number of cores to distribute the calculations on. Default is 4. Set to 1 if the computer is running Windows (as it cannot handle forking -- see mclapply(qv)). Ignored if method=='EmpiricalInfo'.
@@ -417,7 +417,7 @@
 #' fm1 <- species_mix(archetype_formula = sam_form,species_formula = sp_form,
 #' data = simulated_data, family = 'bernoulli',  nArchetypes=3)
 #' vcov(fm1)}
-"vcov.species_mix" <- function (object, object2=NULL, method = "BayesBoot",
+"vcov.species_mix" <- function (object, boot.object=NULL, method = "BayesBoot",
                                 nboot = 10, mc.cores = 1, ...){
   if( method %in% c("simple","Richardson"))
     method <- "FiniteDifference"
@@ -608,10 +608,10 @@
   }
   if( method %in% c( "BayesBoot","SimpleBoot")){
     object$titbits$control$optimise <- TRUE #just in case it was turned off (see species_mix.multfit)
-    if( is.null( object2))
+    if( is.null( boot.object))
       coefMat <- species_mix.bootstrap(object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE)
     else
-      coefMat <- object2
+      coefMat <- boot.object
     vcov.mat <- cov( coefMat)
   }
   return(vcov.mat)

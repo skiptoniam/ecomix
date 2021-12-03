@@ -2,10 +2,10 @@
 #'@name predict.species_mix
 #'@title Predict a species_mix model.
 #'@param object is a matrix model returned from the species_mix model.
-#'@param object2 is a species mix bootstrap object.
+#'@param boot.object is a species mix bootstrap object.
 #'@param newdata a matrix of new observations for prediction.
 #'@param offset an offset for prediction
-#'@param nboot Number of bootstraps (or simulations if using IPPM) to run if no object2 is provided.
+#'@param nboot Number of bootstraps (or simulations if using IPPM) to run if no boot.object is provided.
 #'@param alpha confidence level. default is 0.95
 #'@param mc.cores number of cores to use in prediction. default is 1.
 #'@param type Do you want to predict the 'response' or the 'link'; ala glm style predictions.
@@ -32,7 +32,7 @@
 #' preds_fm1 <- predict(fm1)
 #'}
 
-"predict.species_mix" <- function(object, object2 = NULL, newdata = NULL,
+"predict.species_mix" <- function(object, boot.object = NULL, newdata = NULL,
                                   offset = NULL, nboot = 0, alpha = 0.95,
                                   mc.cores = 1, type = 'response',
                                   prediction.type='archetype',
@@ -113,7 +113,7 @@
   # disty <- get_family_sam(disty_cases, object$titbits$family)
   disty <- object$disty
   tau <- object$tau
-  if (is.null(object2)) {
+  if (is.null(boot.object)) {
     if (nboot > 0) {
       if( !object$titbits$control$quiet)
         message("Using a parametric bootstrap based on the ML estimates and their vcov")
@@ -125,8 +125,8 @@
   } else {
     if( !object$titbits$control$quiet)
       message("Using supplied species_mix.bootstrap object (non-parametric bootstrap)")
-    allCoBoot <- as.matrix(object2)
-    nboot <- nrow(object2)
+    allCoBoot <- as.matrix(boot.object)
+    nboot <- nrow(boot.object)
   }
   if (is.null(allCoBoot))
     return(NULL)
@@ -182,13 +182,15 @@
                                                           gamma = object$coefs$gamma,
                                                           delta = object$coefs$delta,
                                                           tau = tau, G = G, S = S, X = X, W = W, U = U,
-                                                          offset = offset, family = object$family, type = type),
+                                                          offset = offset, family = object$family,
+                                                          link = object$link,type = type),
                      species = sam_internal_pred_species(alpha = object$coefs$alpha,
                                                          beta = object$coefs$beta,
                                                          gamma = object$coefs$gamma,
                                                          delta = object$coefs$delta,
                                                          tau = tau, G = G, S = S, X = X, W = W,  U = U,
-                                                         offset = offset, family = object$family, type = type))
+                                                         offset = offset, family = object$family,
+                                                         link = object$link, type = type))
     } else {
       nboot <- segments[seg]
       bootSampsToUse <- (sum( segments[1:seg])-segments[seg]+1):sum(segments[1:seg])
@@ -201,6 +203,7 @@
                                                                                             delta = deltaBoot[ii,],
                                                                                             tau = tau, G = G, S = S, X = X, W = W, U=U,
                                                                                             offset = offset, family = object$family,
+                                                                                            link = object$link,
                                                                                             type = type),
                                                        species = sam_internal_pred_species(alpha = alphaBoot[ii,],
                                                                                            beta = matrix(betaBoot[ii,],G,npx),
@@ -208,6 +211,7 @@
                                                                                            delta = deltaBoot[ii,],
                                                                                            tau = tau, G = G, S = S, X = X, W = W, U=U,
                                                                                            offset = offset, family = object$family,
+                                                                                           link = object$link,
                                                                                            type = type)))
 
     }

@@ -288,7 +288,7 @@
   }
 
   # Information criteria
-  tmp <- calc_info_crit_sam(tmp)
+  # tmp <- calc_info_crit_sam(tmp)
 
   # titbits object, if wanted/needed.
   tmp$titbits <- get_titbits_sam(titbits, y, X, W, U, spp_weights,
@@ -652,7 +652,7 @@
     }
 
     #Information criteria
-    tmp <- calc_info_crit_sam(tmp)
+    # tmp <- calc_info_crit_sam(tmp)
 
     #titbits object, if wanted/needed.
     tmp$titbits <- get_titbits_sam(titbits, y, X, W, U, spp_weights,
@@ -868,16 +868,6 @@
     }
   }
 
-  # if(family %in% c('bernoulli','binomial')) link <- make.link('logit')
-  # if(family %in% c('poisson','negative.binomial','tweedie')) link <- make.link('log')
-  # if(family %in% c('gaussian')) link <- make.link('identity')
-  # if(family %in% 'ippm') {
-  #   grid <- simulate_ippm_grid(X,W)
-  #   grid2D <- grid$grid2D
-  #   X <- grid$X
-  #   W <- grid$W
-  # }
-
   ## simulate the groups and fitted values.
   fitted <- matrix(0, dim(X)[1], S)
   group <- rep(0, S)
@@ -901,8 +891,6 @@
     outcomes <- matrix(rbinom(n * S, rep(size, S), as.numeric( fitted)), nrow = n, ncol = S)
   if( family=="poisson")
     outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
-  # if( family=="ippm")
-  #   outcomes <- simulate_ippm_outcomes(X, W, S, grid2D, fitted)
   if( family=="negative.binomial")
     outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp(logTheta), each=n)), nrow = n, ncol = S)
   if (family=="tweedie")
@@ -914,22 +902,16 @@
 
   pi <- tapply(group, group, length)/S
 
-  # if (family=='ippm'){
-  #   res <- outcomes$mm
-  #   wts <- outcomes$weights
-  #   colnames(wts) <- all.vars(sam_org)[1:S]
-  #   colnames(fitted) <- all.vars(sam_org)[1:S]
-  # } else {
-    colnames(fitted) <- all.vars(sam_org)[1:S]
-    colnames(outcomes) <-  all.vars(sam_org)[1:S]
+  colnames(fitted) <- all.vars(sam_org)[1:S]
+  colnames(outcomes) <-  all.vars(sam_org)[1:S]
     if(ncol(W)>1){
       res <- data.frame(outcomes,const=1, X, W[,-1,drop=FALSE])
     } else {
       res <- data.frame(outcomes,const=1, X)
     }
     if(npu>0) res <- cbind(res,U)
-  # wts <- NULL
-  # }
+
+  # Return simulation object.
   attr(res, "SAMs") <- group
   attr(res, "pi") <- pi
   attr(res, "alpha") <- alpha
@@ -939,7 +921,6 @@
   attr(res, "logTheta") <- logTheta
   attr(res, "powers") <- powers
   attr(res, "mu") <- fitted
-  # attr(res, "ippm_weights") <- wts
   attr(res, "size") <- size
   attr(res, "offset") <- offset
   return(res)
@@ -2279,14 +2260,13 @@ if(!is.null(U)) {
   }
 }
 
-
-"calc_info_crit_sam" <-  function(tmp) {
-  k <- length(tmp$beta) + tmp$G + tmp$S + tmp$npw*tmp$S +
-    tmp$npu + tmp$disty
-  tmp$BIC <- -2 * tmp$logl + log(tmp$n) * k
-  tmp$AIC <- -2 * tmp$logl + 2 * k
-  return( tmp)
-}
+# "calc_info_crit_sam" <-  function(tmp) {
+#   k <- length(tmp$beta) + tmp$G + tmp$S + tmp$npw*tmp$S +
+#     tmp$npu + tmp$disty
+#   tmp$BIC <- -2 * tmp$logl + log(tmp$S) * k
+#   tmp$AIC <- -2 * tmp$logl + 2 * k
+#   return( tmp)
+# }
 
 "calc_post_probs_sam" <- function( pi, logCondDens)  {
   logPostProbs <- log( pi) + logCondDens
