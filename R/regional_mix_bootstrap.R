@@ -10,6 +10,7 @@
 #' @param mc.cores an integer giving the number of cores to run the bootstrap samples on. The default is 1, that is no parallelisation. This parameter is redundant on Windows machines as the method of parallelisation, mclapply(), is not available there.
 #' @param quiet should the progress bar be printed to the output device?If quiet=FALSE (default) then the progress bar is printed.
 #' @param MLstart should each bootstrap estimation start at the original model's ML estimate? Default is TRUE for \code{yes} it should.
+#' @param \\dots Ignored
 #' @description This function can take a while to run -- it is a bootstrap function. nboot re-samples of the data are taken and then the parameters are estimated for each re-sample. The function allows for parallel calculations, via mclapply(qv), which reduces some of the computational burden. To use parallel computing, specify mc.cores>1. Note that this will not work on Windows computers, as mclapply(qv) will not work.
 #' The Bayesian bootstrap method is operationally equivalent to the simple bootstrap, except that the weightings are non-integral. See Rubin (1981). It might be tempting to reduce the tolerance for convergence of each estimation procedure. We recommend not doing this as it is likely to have the effect of artificially reducing estimates of uncertainty. This occurs as the resampled estimates are liekly to be closer to their starting values (the MLEs from the original data set).
 #' @return An object of class "regional_mix.bootstrap", which is essentially a matrix with nboot rows and the number of columns equal to the number of parameters matrix. Each row gives a bootstrap estimate of the parameters.
@@ -23,7 +24,8 @@
                                      mc.cores=1,
                                      quiet=FALSE,
                                      # orderSamps=FALSE,
-                                     MLstart=TRUE){
+                                     MLstart=TRUE,
+                                     ...){
   if (nboot < 1)
     stop( "No Boostrap samples requested.  Please set nboot to something > 1.")
   if( ! type %in% c("BayesBoot","SimpleBoot"))

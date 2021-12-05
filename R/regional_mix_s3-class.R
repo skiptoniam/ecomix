@@ -1,4 +1,3 @@
-##### S3 Class exports #####
 #' @rdname AIC.regional_mix
 #' @name AIC.regional_mix
 #' @title AIC from a regional_mix model
@@ -179,93 +178,92 @@
   return(ret)
 }
 
-#' @export
-"effect_data.regional_mix" <- function(focal.predictors, mod, ngrid = 50, ...){
-
-  if (is.null(mod$titbits))
-    stop("Model doesn't contain all information required for effectsPlotData.
-         Please supply model with titbits (from titbits=TRUE in species_mix call)")
-
-  Mode <- function(x, na.rm = FALSE) {
-    if (na.rm) {
-      x = x[!is.na(x)]
-    }
-    ux <- unique(x)
-    return(ux[which.max(tabulate(match(x, ux)))])
-  }
-
-  ## set up the data objects
-  X <- mod$titbits$X
-  W <- mod$titbits$W
-
-  ## set up the variables in the formula
-  tt <- terms(mod$titbits$rcp_formula)
-  tt <- delete.response(tt)
-  vars <- all.vars(parse(text=tt))
-  if(ncol(W)>1){
-    tt2 <- terms(mod$titbits$species_formula)
-    tt2 <- delete.response(tt2)
-    vars <- c(vars,all.vars(parse(text=tt2)))
-  }
-  nvars = length(vars)
-
-  pred.data <- mod$titbits$data
-  pred.data <- pred.data[,vars]
-
-  ## check for factors
-  factors <- NULL
-  for(ii in 1:nvars){
-    factors[ii] <- is.factor(pred.data[,vars[ii]]) | is.character(pred.data[,vars[ii]])
-  }
-
-  ## check for focal.predictors in pred.data
-  focal.ids <- lapply(focal.predictors, grep, colnames(pred.data))
-
-  # lists for data structures
-  mfs <- list() #catch model.frames
-  f.focal <- list()
-  v.focal <- list()
-  n.focal <- list()
-  for(i in 1:length(focal.ids)){
-
-    f.focal[[i]] <- factors[focal.ids[[i]]]
-    v.focal[[i]] <- pred.data[, focal.ids[[i]],drop=FALSE]
-    n.focal[[i]] <- seq_len(nvars)[-unlist(focal.ids[[i]])]
-
-    xx <- list()
-    for(j in 1:length(focal.ids[[i]])){
-      if(f.focal[[i]][j]) {
-        xx[[j]] = levels(v.focal[[i]][j])
-        ngrid = length(xx)
-      } else {
-        mi = min(v.focal[[i]][j])
-        ma = max(v.focal[[i]][j])
-        xx[[j]] = seq(mi, ma, length.out = ngrid)
-      }
-    }
-    XDataNew = data.frame(xx, stringsAsFactors = TRUE)
-    colnames(XDataNew) = vars[focal.ids[[i]]]
-    for (k in seq_len(length(n.focal[[i]]))) {
-      non.focal = n.focal[[i]][k]
-      f.non.focal = factors[non.focal]
-      v.non.focal = pred.data[, vars[non.focal]]
-      if (f.non.focal) {
-        XDataNew[, vars[non.focal]] = Mode(v.non.focal)
-      }
-      if (!f.non.focal) {
-        v.non.focal = pred.data[, vars[non.focal]]
-        XDataNew[, vars[non.focal]] = mean(v.non.focal)
-      }
-    }
-    mfs[[i]] <- XDataNew[,vars]
-  }
-
-  names(mfs) <- focal.predictors
-  class(mfs) <- "regional_mix_effectPlotData"
-
-  return(mfs)
-
-}
+# "effect_data.regional_mix" <- function(focal.predictors, mod, ngrid = 50, ...){
+#
+#   if (is.null(mod$titbits))
+#     stop("Model doesn't contain all information required for effectsPlotData.
+#          Please supply model with titbits (from titbits=TRUE in species_mix call)")
+#
+#   Mode <- function(x, na.rm = FALSE) {
+#     if (na.rm) {
+#       x = x[!is.na(x)]
+#     }
+#     ux <- unique(x)
+#     return(ux[which.max(tabulate(match(x, ux)))])
+#   }
+#
+#   ## set up the data objects
+#   X <- mod$titbits$X
+#   W <- mod$titbits$W
+#
+#   ## set up the variables in the formula
+#   tt <- terms(mod$titbits$rcp_formula)
+#   tt <- delete.response(tt)
+#   vars <- all.vars(parse(text=tt))
+#   if(ncol(W)>1){
+#     tt2 <- terms(mod$titbits$species_formula)
+#     tt2 <- delete.response(tt2)
+#     vars <- c(vars,all.vars(parse(text=tt2)))
+#   }
+#   nvars = length(vars)
+#
+#   pred.data <- mod$titbits$data
+#   pred.data <- pred.data[,vars]
+#
+#   ## check for factors
+#   factors <- NULL
+#   for(ii in 1:nvars){
+#     factors[ii] <- is.factor(pred.data[,vars[ii]]) | is.character(pred.data[,vars[ii]])
+#   }
+#
+#   ## check for focal.predictors in pred.data
+#   focal.ids <- lapply(focal.predictors, grep, colnames(pred.data))
+#
+#   # lists for data structures
+#   mfs <- list() #catch model.frames
+#   f.focal <- list()
+#   v.focal <- list()
+#   n.focal <- list()
+#   for(i in 1:length(focal.ids)){
+#
+#     f.focal[[i]] <- factors[focal.ids[[i]]]
+#     v.focal[[i]] <- pred.data[, focal.ids[[i]],drop=FALSE]
+#     n.focal[[i]] <- seq_len(nvars)[-unlist(focal.ids[[i]])]
+#
+#     xx <- list()
+#     for(j in 1:length(focal.ids[[i]])){
+#       if(f.focal[[i]][j]) {
+#         xx[[j]] = levels(v.focal[[i]][j])
+#         ngrid = length(xx)
+#       } else {
+#         mi = min(v.focal[[i]][j])
+#         ma = max(v.focal[[i]][j])
+#         xx[[j]] = seq(mi, ma, length.out = ngrid)
+#       }
+#     }
+#     XDataNew = data.frame(xx, stringsAsFactors = TRUE)
+#     colnames(XDataNew) = vars[focal.ids[[i]]]
+#     for (k in seq_len(length(n.focal[[i]]))) {
+#       non.focal = n.focal[[i]][k]
+#       f.non.focal = factors[non.focal]
+#       v.non.focal = pred.data[, vars[non.focal]]
+#       if (f.non.focal) {
+#         XDataNew[, vars[non.focal]] = Mode(v.non.focal)
+#       }
+#       if (!f.non.focal) {
+#         v.non.focal = pred.data[, vars[non.focal]]
+#         XDataNew[, vars[non.focal]] = mean(v.non.focal)
+#       }
+#     }
+#     mfs[[i]] <- XDataNew[,vars]
+#   }
+#
+#   names(mfs) <- focal.predictors
+#   class(mfs) <- "regional_mix_effectPlotData"
+#
+#   return(mfs)
+#
+# }
 
 
 #' @rdname extractAIC.regional_mix
@@ -596,53 +594,53 @@
 }
 
 #'
-
-"plot.species_effects" <-function(x,#best_mod,              # output of regimix function for final model
-                                boot_obj,              # output of regiboot function for final model
-                                legend_fact,           # levels of categorical sampling variable to plot. Coefficients relative to first level of factor.
-                                # So usually 2:n levels(sampling_variable)
-                               CI=c(0.025, 0.975),    # confidence interval to plot
-                            col="black",           # colour/s of dots and CI lines. Specified in same way as col is usually specified
-                            lty=1)                 # lty= line type of CI lines. Specified in same way as lty is usually specified
-{
-
-  require(lattice)
-  # gammas<- paste0("gamma", 1: (length(Species)*length(sampling_names)))
-  gammas<-grepl("gamma",dimnames(boot_obj)[[2]])
-  temp_dat<-boot_obj[,gammas]
-
-  temp<-data.frame(avs=as.numeric(unname(colMeans(temp_dat))),
-                   t(apply(temp_dat, 2, quantile, probs=CI)),
-                   #sampling_var=rep(sampling_names, each=length(length(best_mod$names$spp))),
-                   sampling_var=sapply(strsplit(dimnames(temp_dat)[[2]],"_"), "[", 3),
-                   #Species=factor(rep(best_mod$names$spp,length(sampling_names))))
-                   Species=factor(sapply(strsplit(dimnames(temp_dat)[[2]],"_"), "[", 1)))
-
-  names(temp)[2:3]<-c("lower", "upper")
-  temp$Species<-gsub("."," ", temp$Species, fixed=TRUE) #get rid of '.' in species names
-  temp$Species<-as.factor(temp$Species) #convert back to factor
-  temp$Species <- factor(temp$Species, levels=rev(levels(temp$Species)))
-
-  trellis.par.set(superpose.symbol=list(pch=16,col=col, cex=1.2),
-                  superpose.line=list(col="transparent"))
-  dotplot(Species ~ avs, groups=sampling_var, data=temp, cols=col, lty=lty, low=temp$lower, high=temp$upper, subscript=TRUE,
-          auto.key=list(space="top", columns=2, cex=1.4, text=legend_fact),
-          ylab=list(cex=1.4), xlab=list("Coefficient",cex=1.4),
-          scales = list(tck = c(1, 0), x=list(cex=1.2), y=list(cex=1.2)),
-          prepanel = function(x, y, ...) { list(xlim=range(temp$lower, temp$upper)) },
-          panel=panel.superpose,
-          panel.groups=function(x, y, subscripts, group.number, cols, low, high, ...)
-          {
-            if(group.number==1) jiggle <- 0.1 else jiggle <- -0.1
-            panel.abline(v=0, lty=2)
-            panel.abline(h=1:length(best_mod$names$spp), col.line="light grey", lty=1)
-            panel.dotplot(x, y+jiggle, group.number, ...)
-            panel.arrows(low[subscripts], y+jiggle, high[subscripts], y+jiggle, code=3, angle=90,
-                         length=0.05, col=cols[group.number], lty=lty[group.number])
-            #panel.segments(temp$lower, y+jiggle, + temp$upper, y+jiggle, lty = lty, col =col, lwd=2, cex=1.2)
-          })
-
-}
+#
+# "plot.species_effects" <-function(x,#best_mod,              # output of regimix function for final model
+#                                 boot_obj,              # output of regiboot function for final model
+#                                 legend_fact,           # levels of categorical sampling variable to plot. Coefficients relative to first level of factor.
+#                                 # So usually 2:n levels(sampling_variable)
+#                                CI=c(0.025, 0.975),    # confidence interval to plot
+#                             col="black",           # colour/s of dots and CI lines. Specified in same way as col is usually specified
+#                             lty=1)                 # lty= line type of CI lines. Specified in same way as lty is usually specified
+# {
+#
+#   require(lattice)
+#   # gammas<- paste0("gamma", 1: (length(Species)*length(sampling_names)))
+#   gammas<-grepl("gamma",dimnames(boot_obj)[[2]])
+#   temp_dat<-boot_obj[,gammas]
+#
+#   temp<-data.frame(avs=as.numeric(unname(colMeans(temp_dat))),
+#                    t(apply(temp_dat, 2, quantile, probs=CI)),
+#                    #sampling_var=rep(sampling_names, each=length(length(best_mod$names$spp))),
+#                    sampling_var=sapply(strsplit(dimnames(temp_dat)[[2]],"_"), "[", 3),
+#                    #Species=factor(rep(best_mod$names$spp,length(sampling_names))))
+#                    Species=factor(sapply(strsplit(dimnames(temp_dat)[[2]],"_"), "[", 1)))
+#
+#   names(temp)[2:3]<-c("lower", "upper")
+#   temp$Species<-gsub("."," ", temp$Species, fixed=TRUE) #get rid of '.' in species names
+#   temp$Species<-as.factor(temp$Species) #convert back to factor
+#   temp$Species <- factor(temp$Species, levels=rev(levels(temp$Species)))
+#
+#   trellis.par.set(superpose.symbol=list(pch=16,col=col, cex=1.2),
+#                   superpose.line=list(col="transparent"))
+#   dotplot(Species ~ avs, groups=sampling_var, data=temp, cols=col, lty=lty, low=temp$lower, high=temp$upper, subscript=TRUE,
+#           auto.key=list(space="top", columns=2, cex=1.4, text=legend_fact),
+#           ylab=list(cex=1.4), xlab=list("Coefficient",cex=1.4),
+#           scales = list(tck = c(1, 0), x=list(cex=1.2), y=list(cex=1.2)),
+#           prepanel = function(x, y, ...) { list(xlim=range(temp$lower, temp$upper)) },
+#           panel=panel.superpose,
+#           panel.groups=function(x, y, subscripts, group.number, cols, low, high, ...)
+#           {
+#             if(group.number==1) jiggle <- 0.1 else jiggle <- -0.1
+#             panel.abline(v=0, lty=2)
+#             panel.abline(h=1:length(best_mod$names$spp), col.line="light grey", lty=1)
+#             panel.dotplot(x, y+jiggle, group.number, ...)
+#             panel.arrows(low[subscripts], y+jiggle, high[subscripts], y+jiggle, code=3, angle=90,
+#                          length=0.05, col=cols[group.number], lty=lty[group.number])
+#             #panel.segments(temp$lower, y+jiggle, + temp$upper, y+jiggle, lty = lty, col =col, lwd=2, cex=1.2)
+#           })
+#
+# }
 
 #'@rdname print.regional_mix
 #'@name print.regional_mix
@@ -860,7 +858,7 @@
   }
 
   etaPi <- X %*% t(beta)
-  pis <- t(apply(etaPi, 1, ecomix:::additive_logistic))
+  pis <- t(apply(etaPi, 1, additive_logistic))
   habis <- apply(pis, 1, function(x) sample(1:nRCP, 1, FALSE, x))
 
   tau <- rbind(tau, -colSums(tau))
@@ -1307,7 +1305,7 @@
   if( method %in% c( "BayesBoot","SimpleBoot")){
     object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
     if( is.null( object2))
-      coefMat <- regional_mix.bootstrap( object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE)#, orderSamps=FALSE)
+      coefMat <- bootstrap( object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE)#, orderSamps=FALSE)
     else
       coefMat <- object2
     vcov.mat <- cov( coefMat)
