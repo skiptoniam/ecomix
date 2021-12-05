@@ -24,6 +24,8 @@ or "BayesBoot" which uses a Bayesian Bootstrap. "BayesBoot" is the default}
 \item{mc.cores}{The number of cores to use when running a bootstrap. The default is 1.}
 
 \item{quiet}{If TRUE, do not print progress of bootstrap.}
+
+\item{\\dots}{Ignored}
 }
 \description{
 bootstrap function for species archetype models

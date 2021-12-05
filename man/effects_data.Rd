@@ -5,16 +5,16 @@
 \alias{effects_data}
 \title{Generate data for plotting or predicting partial effects of covariates}
 \usage{
-effects_data(focal.predictors, mod, ...)
+effects_data(focal.predictors, mod, ngrid, ...)
 }
 \arguments{
 \item{focal.predictors}{A character or string of characters which represent covariates in the model.}
 
 \item{mod}{The fitted species_mix model.}
 
-\item{...}{other arguments}
-
 \item{ngrid}{The length of the prediction vector.}
+
+\item{...}{other arguments}
 }
 \value{
 This function should return a list of data.frames one for each focal.predictor.

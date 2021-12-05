@@ -64,8 +64,7 @@ set to 3.}
 \item{family}{The family of statistical family to use within
 the ecomix models. a  choice between "bernoulli", "binomial", "poisson",
 "negative.binomial", "tweedie" and "gaussian" families are possible and
-applicable to specific types of data. If you wish to fit a point process
-version of a SAM please refer to the \link{ecomix.ppm} package.}
+applicable to specific types of data.}
 
 \item{offset}{a numeric vector of length nrow(data) (n sites) that is
 included into the model as an offset. It is included into the conditional

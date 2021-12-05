@@ -11,7 +11,8 @@
   type = "BayesBoot",
   mc.cores = 1,
   quiet = FALSE,
-  MLstart = TRUE
+  MLstart = TRUE,
+  ...
 )
 }
 \arguments{
@@ -26,6 +27,8 @@
 \item{quiet}{should the progress bar be printed to the output device?If quiet=FALSE (default) then the progress bar is printed.}
 
 \item{MLstart}{should each bootstrap estimation start at the original model's ML estimate? Default is TRUE for \code{yes} it should.}
+
+\item{\\dots}{Ignored}
 }
 \value{
 An object of class "regional_mix.bootstrap", which is essentially a matrix with nboot rows and the number of columns equal to the number of parameters matrix. Each row gives a bootstrap estimate of the parameters.

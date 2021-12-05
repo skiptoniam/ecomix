@@ -6,7 +6,7 @@
 \usage{
 \method{predict}{species_mix}(
   object,
-  object2 = NULL,
+  boot.object = NULL,
   newdata = NULL,
   offset = NULL,
   nboot = 0,
@@ -21,13 +21,13 @@
 \arguments{
 \item{object}{is a matrix model returned from the species_mix model.}
 
-\item{object2}{is a species mix bootstrap object.}
+\item{boot.object}{is a species mix bootstrap object.}
 
 \item{newdata}{a matrix of new observations for prediction.}
 
 \item{offset}{an offset for prediction}
 
-\item{nboot}{Number of bootstraps (or simulations if using IPPM) to run if no object2 is provided.}
+\item{nboot}{Number of bootstraps (or simulations if using IPPM) to run if no boot.object is provided.}
 
 \item{alpha}{confidence level. default is 0.95}
 

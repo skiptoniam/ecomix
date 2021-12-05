@@ -122,8 +122,7 @@ that allows for easier data input. The data frames are merged into
 the appropriate format for the use in species_mix.fit.
 Minima is found using vmmin (BFGS). Currently 'bernoulli', 'binomial',
 'poisson', 'negative.binomial', 'tweedie' and 'gaussian' distributions can be fitted
-using the species_mix. For Point Process extensions of SAMs please
-refer to the \link{ecomix.ppm} package.
+using the species_mix.
 
 species_mix is used to fit mixtures of glms to multivariate
 species data. The function uses BFGS to optimize the mixture likelihood.

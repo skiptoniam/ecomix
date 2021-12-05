@@ -7,7 +7,7 @@
 \method{plot}{species_mix_effects_data}(
   x,
   object,
-  object2 = NULL,
+  boot.object = NULL,
   nboot = 0,
   type = "response",
   response.var = NULL,
@@ -25,12 +25,12 @@ effects_data}
 
 \item{object}{A fitted species_mix model.}
 
-\item{object2}{A species_mix.bootsrap object. Default is NULL, no standard
+\item{boot.object}{A species_mix.bootsrap object. Default is NULL, no standard
 errors will be reported.}
 
 \item{nboot}{An option to do bootstrapping when plotting, this will be slow,
 better to run and save bootstrap object and pass to plotting function as
-object2.}
+boot.object.}
 
 \item{type}{The type of prediction. Default is 'response' alternative is 'link'.}
 
