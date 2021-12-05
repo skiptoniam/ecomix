@@ -5,6 +5,7 @@
 #' or "BayesBoot" which uses a Bayesian Bootstrap. "BayesBoot" is the default
 #' @param mc.cores The number of cores to use when running a bootstrap. The default is 1.
 #' @param quiet If TRUE, do not print progress of bootstrap.
+#' @param \\dots Ignored
 #' @importFrom stats vcov
 
 #' @export
@@ -17,7 +18,7 @@
 
 #' @export
 "bootstrap.species_mix" <-function (object, nboot=10, type="BayesBoot",
-                                    mc.cores=1, quiet=FALSE){
+                                    mc.cores=1, quiet=FALSE,...){
   if (nboot < 1)
     stop( "No Bootstrap samples requested.  Please set nboot to something > 1.")
   if( ! type %in% c("BayesBoot","SimpleBoot"))

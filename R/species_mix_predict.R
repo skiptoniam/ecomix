@@ -183,14 +183,14 @@
                                                           delta = object$coefs$delta,
                                                           tau = tau, G = G, S = S, X = X, W = W, U = U,
                                                           offset = offset, family = object$family,
-                                                          link = object$link,type = type),
+                                                          linky = object$link, type = type),
                      species = sam_internal_pred_species(alpha = object$coefs$alpha,
                                                          beta = object$coefs$beta,
                                                          gamma = object$coefs$gamma,
                                                          delta = object$coefs$delta,
                                                          tau = tau, G = G, S = S, X = X, W = W,  U = U,
                                                          offset = offset, family = object$family,
-                                                         link = object$link, type = type))
+                                                         linky = object$link, type = type))
     } else {
       nboot <- segments[seg]
       bootSampsToUse <- (sum( segments[1:seg])-segments[seg]+1):sum(segments[1:seg])
@@ -203,7 +203,7 @@
                                                                                             delta = deltaBoot[ii,],
                                                                                             tau = tau, G = G, S = S, X = X, W = W, U=U,
                                                                                             offset = offset, family = object$family,
-                                                                                            link = object$link,
+                                                                                            linky = object$link,
                                                                                             type = type),
                                                        species = sam_internal_pred_species(alpha = alphaBoot[ii,],
                                                                                            beta = matrix(betaBoot[ii,],G,npx),
@@ -211,7 +211,7 @@
                                                                                            delta = deltaBoot[ii,],
                                                                                            tau = tau, G = G, S = S, X = X, W = W, U=U,
                                                                                            offset = offset, family = object$family,
-                                                                                           link = object$link,
+                                                                                           linky = object$link,
                                                                                            type = type)))
 
     }
@@ -311,7 +311,7 @@
 
 "sam_internal_pred_groups" <- function(alpha, beta, tau, gamma, delta,
                                        G, S, X, W, U, offset = NULL,
-                                       family, link, type){
+                                       family, linky, type){
 
   link.fun <- make.link(linky)
 
@@ -332,7 +332,7 @@
       else etaSpp <- alpha[s]
       eta <- etaMix + etaSpp + etaAll + offset
       if(type=='response')s.outpred[, s] <- link.fun$linkinv(eta)
-      else if (type=='link')s.outpred[, s] <- link.fun$linkinv(eta)
+      else if (type=='link')s.outpred[, s] <- eta
       else stop ('type not known')
     }
 

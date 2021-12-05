@@ -32,7 +32,7 @@
 #'}
 #' @rdname effects_data
 #' @export effects_data
-"effects_data" <- function (focal.predictors, mod, ...){
+"effects_data" <- function (focal.predictors, mod, ngrid, ...){
   UseMethod("effects_data", mod)
 }
 

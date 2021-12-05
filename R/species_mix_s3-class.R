@@ -76,6 +76,21 @@
   return(object$logl)
 }
 
+#' @rdname plot.species_membership
+#' @name plot.species_membership
+#' @title plot.species_membership
+#' @param x a fitted species_mix model.
+#' @param \\dots Extra plotting arguments.
+#' @details Plot the posterior taus as a heatmap. Look at
+#' @export
+
+"plot.species_membership" <- function(x,...){
+
+  stats::heatmap(x, Colv = NA, Rowv = NA, main = "Species Membership", ...)
+
+}
+
+
 #' @rdname plot.species_mix
 #' @name plot.species_mix
 #' @title plot.species_mix
@@ -310,13 +325,15 @@
     switch( object$family,
             bernoulli = { fn <- function(y,mu,logtheta) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
             poisson = { fn <- function(y,mu,logtheta) ppois( q=y, lambda=mu, lower.tail=TRUE)},
-            ippm = { fn <- function(y,mu,logtheta) ppois( q=y, lambda=mu, lower.tail=TRUE)},
+            # ippm = { fn <- function(y,mu,logtheta) ppois( q=y, lambda=mu, lower.tail=TRUE)},
             negative.binomial = { fn <- function(y,mu,logtheta) pnbinom( q=y, mu=mu, size=1/exp( logtheta), lower.tail=TRUE)},
-            gaussian = { fn <- function(y,mu,logtheta) pnorm( q=y, mean=mu, sd=exp( logtheta), lower.tail=TRUE)})
+            # tweedie = {fn <- function()},
+            gaussian = { fn <- function(y,mu,logtheta) pnorm( q=y, mean=mu, sd=exp( logtheta), lower.tail=TRUE)})#,
+            # binomial ={fn <- function(x){x}})
 
 
     for( ss in 1:object$S){
-      if( object$family %in% c("bernoulli","poisson","ippm","negative.binomial")){
+      if( object$family %in% c("bernoulli","poisson","negative.binomial")){
         tmpLower <- fn( object$titbits$Y[,ss]-1, object$mus[,ss,], object$coef$theta[ss])
         tmpUpper <- fn( object$titbits$Y[,ss], object$mus[,ss,], object$coef$theta[ss])
         tmpLower <- rowSums( tmpLower * object$pi)
@@ -340,6 +357,22 @@
   }
   return( resids)
 }
+
+#' @rdname species_membership
+#' @name species_membership
+#' @title Extract the posterior species membership per archetype.
+#' @description Extracts tau_{jk} from species_mix model object. These are the
+#' posterior memberships of each species to each archetypes. Rows should sum
+#' to 1.
+#' @param object A species_mix model object
+#' @param \\dots Ignored
+#' @export
+"species_membership" <- function(object, ...){
+  sp.meb <- object$tau
+  class(sp.meb) <- "species_membership"
+  return(sp.meb)
+}
+
 
 #' @rdname summary.species_mix
 #' @name summary.species_mix
@@ -396,27 +429,6 @@
 #'@return A square matrix of size equal to the number of parameters. It contains the variance matrix of the parameter estimates.
 #'@export
 
-#'@export
-#'
-#'@examples
-#'
-#'# Estimate the variance-covariance matrix.
-#'# This will provide estimates of uncertainty for model parameters.
-#'\donttest{
-#' library(ecomix)
-#' set.seed(42)
-#' sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
-#' collapse = ','),")~x1+x2"))
-#' sp_form <- ~ 1
-#' beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,1.9),3,2,byrow=TRUE)
-#' dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
-#' x2=stats::rnorm(100,0,2.5))
-#' dat[,-1] <- scale(dat[,-1])
-#' simulated_data <- species_mix.simulate(archetype_formula = sam_form,species_formula = sp_form,
-#' data = dat,beta=beta,family="bernoulli")
-#' fm1 <- species_mix(archetype_formula = sam_form,species_formula = sp_form,
-#' data = simulated_data, family = 'bernoulli',  nArchetypes=3)
-#' vcov(fm1)}
 "vcov.species_mix" <- function (object, boot.object=NULL, method = "BayesBoot",
                                 nboot = 10, mc.cores = 1, ...){
   if( method %in% c("simple","Richardson"))
@@ -437,7 +449,7 @@
   # y_is_na <- object$titbits$y_is_na
   size <- object$titbits$size
   family <- object$titbits$family
-  disty_cases <- c("bernoulli","poisson","ippm","negative.binomial","tweedie","gaussian","binomial")
+  disty_cases <- c("bernoulli","poisson","negative.binomial","tweedie","gaussian","binomial")
   disty <- get_family_sam(disty_cases, family)
   S <- object$S
   G <- object$G
@@ -609,7 +621,7 @@
   if( method %in% c( "BayesBoot","SimpleBoot")){
     object$titbits$control$optimise <- TRUE #just in case it was turned off (see species_mix.multfit)
     if( is.null( boot.object))
-      coefMat <- species_mix.bootstrap(object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE)
+      coefMat <- bootstrap(object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE)
     else
       coefMat <- boot.object
     vcov.mat <- cov( coefMat)
