@@ -1,5 +1,4 @@
 
-#'@export
 "glm.nbinom" <- function(form, data, weights=NULL, offset=NULL, mustart=NULL, est_var=FALSE){
     X <- stats::model.matrix(form, data)
     t1 <- stats::model.frame(form, data)
@@ -15,7 +14,6 @@
 
 }
 
-#'@export
 "glm.fit.nbinom" <- function(x, y, offset = NULL, weights = NULL,
                              mustart = NULL, est_var = FALSE){
   X <- x
@@ -32,14 +30,14 @@
   }
   fitted.values <- rep(0, length(y))
   logl <- .Call("Neg_Bin", pars, X, y, weights, offset, gradient,
-                fitted.values, PACKAGE = "nbglm")
+                fitted.values, PACKAGE = "ecomix")
   vcov <- 0
   se <- rep(0, length(pars))
   if (est_var) {
     calc_deriv <- function(p) {
       gradient <- rep(0, length(pars))
       ll <- .Call("Neg_Bin_Gradient", p, X, y, weights,
-                  offset, gradient, PACKAGE = "nbglm")
+                  offset, gradient, PACKAGE = "ecomix")
       return(gradient)
     }
     hes <- numDeriv::jacobian(calc_deriv,pars)
