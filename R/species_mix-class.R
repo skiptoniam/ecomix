@@ -2792,71 +2792,7 @@ if(!is.null(U)) {
 }
 
 
-"sam_internal_pred_groups" <- function(alpha, beta, tau, gamma, delta,
-                                       G, S, X, W, U, offset = NULL, family, type){
 
-  if (family %in% c("bernoulli","binomial"))
-    link.fun <- make.link("logit")
-  if (family %in% c("negative.binomial","poisson","tweedie"))
-    link.fun <- make.link("log")
-  if (family %in% "gaussian")
-    link.fun <- make.link("identity")
-  if (is.null(offset))
-    offset <- rep(0, nrow(X))
-
-  outpred_arch <- matrix(NA, dim(X)[1], G)
-  colnames(outpred_arch) <- paste("G", 1:G, sep = ".")
-
-  if(!is.null(U)) etaAll <- U%*%delta
-  else etaAll <- rep(0,nrow(X))
-
-  for (g in seq_len(G)) {
-    s.outpred <- matrix(NA, dim(X)[1], length(alpha))
-    for (s in seq_len(S)) {
-      etaMix <- as.numeric(as.matrix(X)%*%beta[g, ])
-      if(ncol(W)>1) etaSpp <- as.numeric(W%*%c(alpha[s],gamma[s, ]))
-      else etaSpp <- alpha[s]
-      eta <- etaMix + etaSpp + etaAll + offset
-      if(type=='response')s.outpred[, s] <- link.fun$linkinv(eta)
-      else if (type=='link')s.outpred[, s] <- link.fun$linkinv(eta)
-      else stop ('type not known')
-    }
-
-    outpred_arch[, g] <- apply(s.outpred*rep(tau[, g],each = dim(X)[1]),
-                               1, sum)/sum(tau[, g])
-  }
-  return(outpred_arch)
-}
-
-"sam_internal_pred_species" <- function(alpha, beta, tau, gamma, delta,
-                                        G, S, X, W, U, offset = NULL, family,
-                                        linky, type){
-
-  ## use linky now that I've set it up in the model.
-  link.fun <- make.link(linky)
-
-  if (is.null(offset))
-    offset <- rep(0, nrow(X))
-
-  outpred_spp <- matrix(0, dim(X)[1], S)
-
-  if(!is.null(U)) etaAll <- U%*%delta
-  else etaAll <- rep(0,nrow(X))
-
-  for (g in seq_len(G)) {
-    etaMix <- matrix(as.numeric(as.matrix(X)%*%beta[g, ]), nrow(X), S, byrow=FALSE)
-    if(ncol(W)>1) etaSpp <- W%*%t(cbind(alpha,gamma))
-    else etaSpp <- matrix(alpha, nrow(X), S, byrow=TRUE)
-    eta <- etaMix + etaSpp + etaAll + offset
-    if(type=='response') mu.g <- link.fun$linkinv(eta)
-    else if(type=='link') mu.g <- eta
-    else stop('type not known')
-    outpred_spp <- outpred_spp + mu.g*matrix(tau[,g], nrow(X), S, byrow=TRUE)
-    }
-
-  return(outpred_spp)
-
-}
 
 "setup_inits_sam" <- function(inits, S, G, X, W, U, disty, return_list=TRUE){
   if(is.null(inits))res<-NULL
