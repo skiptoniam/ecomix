@@ -7,3 +7,5 @@
 ^README.Rmd
 ^readme.md
 ^docs$
+^_pkgdown\.yml$
+^pkgdown$
