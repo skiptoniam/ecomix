@@ -2434,6 +2434,7 @@ if(!is.null(U)) {
       link <- "log"
     }
     else if (substr(family,1,3) == "twe") {
+      stop("tweedie is currently being rebuilt and will be re-released soon.")
       disty <- 4
       familyname<- "tweedie"
       link <- "log" # not meaningful, we only use the lo link at the moment
