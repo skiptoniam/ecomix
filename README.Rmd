@@ -5,9 +5,11 @@ output:
 ---
 # ecomix: Finite mixture models for multiple species grouping of ecological data <img src="man/figures/logo.png" align="right" alt="" width="160" />
 
-[![Build Status](https://travis-ci.org/skiptoniam/ecomix.svg?branch=master)](https://travis-ci.org/skiptoniam/ecomix.svg?branch=master)
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/skiptoniam/ecomix/workflows/R-CMD-check/badge.svg)](https://github.com/skiptoniam/ecomix/actions)
 [![Coverage Status](https://img.shields.io/codecov/c/github/skiptoniam/ecomix/master.svg)](https://codecov.io/github/skiptoniam/ecomix?branch=master)
 [![Project Status: Active ??? The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+<!-- badges: end -->
 
 ecomix is a package to implement statistical models on multivariate species data. Two main type of finite mixture models are available which group multivariate data at the species level (Species Archetype Models; using the `species_mix` functions) or site level (Region of Common Profiles; using the `regional_mix` functions). 
 
