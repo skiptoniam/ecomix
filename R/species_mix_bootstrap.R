@@ -1,4 +1,4 @@
-#' @title bootstrap function for species archetype models
+#' @title bootstrapping of species_mix or regional_mix fitted models.
 #' @param object A species_mix model object
 #' @param nboot The number of bootstraps to run.
 #' @param type the type of bootstrap to use, options are "SimpleBoot" which is a parametric bootstrap,
@@ -6,10 +6,11 @@
 #' @param mc.cores The number of cores to use when running a bootstrap. The default is 1.
 #' @param quiet If TRUE, do not print progress of bootstrap.
 #' @param \\dots Ignored
+#' @description This function can take a while to run -- it is a bootstrap function. nboot re-samples of the data are taken and then the parameters are estimated for each re-sample. The function allows for parallel calculations, via mclapply(qv), which reduces some of the computational burden. To use parallel computing, specify mc.cores>1. Note that this will not work on Windows computers, as mclapply(qv) will not work.
+#' The Bayesian bootstrap method is operationally equivalent to the simple bootstrap, except that the weightings are non-integral. See Rubin (1981). It might be tempting to reduce the tolerance for convergence of each estimation procedure. We recommend not doing this as it is likely to have the effect of artificially reducing estimates of uncertainty. This occurs as the resampled estimates are likely to be closer to their starting values (the MLEs from the original data set).
+#' @return An object of class "species_mix.bootstrap", which is essentially a matrix with nboot rows and the number of columns equal to the number of parameters matrix. Each row gives a bootstrap estimate of the parameters.
+#' @references Rubin, D.B. (1981) The Bayesian Bootstrap. The Annals of Statistics \emph{9}:130--134.
 #' @importFrom stats vcov
-
-#' @export
-
 #' @rdname bootstrap
 #' @export bootstrap
 "bootstrap" <- function (object, nboot=10, type="BayesBoot", mc.cores=1, quiet=TRUE, ...){
@@ -55,7 +56,7 @@
       disty <- object$disty
       linky <- object$link
       dumbOut <- capture.output(
-        samp.object <- ecomix::species_mix.fit(y=object$titbits$Y,
+        samp.object = ecomix::species_mix.fit(y=object$titbits$Y,
                                                X=object$titbits$X,
                                                W=object$titbits$W,
                                                U=object$titbits$U,
@@ -70,8 +71,8 @@
                                                size = object$titbits$size,
                                                powers = object$titbits$powers,
                                                control = object$titbits$control,
-                                               inits = my.inits))
-      # gc()
+                                               inits = my.inits)
+        )
       boot.res <- c(samp.object$alpha,samp.object$beta,samp.object$eta,
                     samp.object$gamma,samp.object$delta,samp.object$theta)
       return(boot.res)
