@@ -43,9 +43,10 @@ which has species specific covariates and archetype specific covariates.}
 
 \item{all_formula}{an object of class "formula", which is meant to represent
 a constant single set of covariates across all species and groups, typically
-you might use this an alternative to an offset, where there might be a set
-covariates which means artifact of how the data was collected or some other
-process like a seasonality.}
+you might use this an alternative to an offset, but this bias is not known
+and needs to be estimated from the data. This might a set of covariates that
+reflect how the data was collected or some other constant process
+like a seasonality (where all species/groups respond in the same way).}
 
 \item{data}{a data.frame which contains the 'species_data'
 matrix, a const and the covariates in the structure of spp1, spp2, spp3,
@@ -58,16 +59,18 @@ set to 3.}
 
 \item{family}{The family of statistical family to use within
 the ecomix model, family can be a function from \link[stats]{family}, such as
-binomial(). Or it can be a character string of one of the following: "bernoulli", "binomial", "poisson",
-"negative.binomial", "tweedie" and "gaussian". An error will be
-thrown if the family is not recognized. The family you use is generally
-specific to the type of data you have. Users can also specify a link function
-within the family object, eg: binomial(link="logit"). Currently, ecomix can
-implement "logit", "cloglog", "log" and "identity" link functions.}
+binomial(). Or it can be a character string of one of the following:
+"bernoulli", "binomial", "poisson","negative.binomial", "tweedie" and
+"gaussian". An error will be thrown if the family is not recognized.
+The family you use is generally specific to the type of data you have.
+Users can also specify a link function within the family object, eg:
+binomial(link="logit"). Currently, ecomix can implement "logit", "cloglog",
+"log" and "identity" link functions.}
 
-\item{offset}{a numeric vector of length nrow(data) (n sites) that is
-included into the model as an offset. It is included into the conditional
-part of the model where conditioning is performed on the SAM.}
+\item{offset}{a numeric vector of length nrow(data) (n sites) that represents
+a known amount of effort for models with a log or cloglog link function.
+It is included into the conditional part of the model where conditioning
+is performed on the SAM.}
 
 \item{weights}{a numeric vector of length ncol(Y) (n species) that is used
 as weights in the log-likelihood calculations. If NULL (default) then all

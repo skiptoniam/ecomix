@@ -2,7 +2,7 @@
 % Please edit documentation in R/species_mix_bootstrap.R
 \name{bootstrap}
 \alias{bootstrap}
-\title{bootstrap function for species archetype models}
+\title{bootstrapping of species_mix or regional_mix fitted models.}
 \usage{
 bootstrap(
   object,
@@ -27,6 +27,14 @@ or "BayesBoot" which uses a Bayesian Bootstrap. "BayesBoot" is the default}
 
 \item{\\dots}{Ignored}
 }
+\value{
+An object of class "rbootstrap", which is essentially a matrix with nboot rows and the number of columns equal to the number of parameters matrix. Each row gives a bootstrap estimate of the parameters.
+}
 \description{
-bootstrap function for species archetype models
+This function can take a while to run -- it is a bootstrap function. nboot re-samples of the data are taken and then the parameters are estimated for each re-sample. The function allows for parallel calculations, via mclapply(qv), which reduces some of the computational burden. To use parallel computing, specify mc.cores>1. Note that this will not work on Windows computers, as mclapply(qv) will not work.
+The Bayesian bootstrap method is operationally equivalent to the simple bootstrap, except that the weightings are non-integral. See Rubin (1981). It might be tempting to reduce the tolerance for convergence of each estimation procedure. We recommend not doing this as it is likely to have the effect of artificially reducing estimates of uncertainty. This occurs as the resampled estimates are liekly to be closer to their starting values (the MLEs from the original data set).
+}
+\references{
+Foster, S.D., Lyons, M. and Hill, N. (2017) Ecological Groupings of Sample Sites in the presence of sampling artefacts.
+Rubin, D.B. (1981) The Bayesian Bootstrap. The Annals of Statistics \emph{9}:130--134.
 }

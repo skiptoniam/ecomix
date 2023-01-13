@@ -55,7 +55,8 @@ species_mix.fit(
 }
 \description{
 species_mix.fit is similar to glm.fit and does all the heavy lifting when it
-comes to estimating species mix models. If you are unfamilar with how to use glm.fit it is
+comes to estimating species mix models. If you are unfamiliar with how to use glm.fit it is
 recommended that you use species_mix which is the user friendly wrapper around this
-function.
+function. If you are comfortable with the data strucutres for an species_mix model feel
+free to use this function for fitting (but realise many of the post processing function - )
 }
