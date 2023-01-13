@@ -31,9 +31,10 @@
 #' which has species specific covariates and archetype specific covariates.
 #' @param all_formula an object of class "formula", which is meant to represent
 #'  a constant single set of covariates across all species and groups, typically
-#'  you might use this an alternative to an offset, where there might be a set
-#'  covariates which means artifact of how the data was collected or some other
-#'  process like a seasonality.
+#'  you might use this an alternative to an offset, but this bias is not known
+#'  and needs to be estimated from the data. This might a set of covariates that
+#'  reflect how the data was collected or some other constant process
+#'  like a seasonality (where all species/groups respond in the same way).
 #' @param data a data.frame which contains the 'species_data'
 #' matrix, a const and the covariates in the structure of spp1, spp2, spp3,
 #' const, temperature, rainfall. dims of matrix should be
@@ -43,15 +44,17 @@
 #' set to 3.
 #' @param family The family of statistical family to use within
 #' the ecomix model, family can be a function from \link[stats]{family}, such as
-#' binomial(). Or it can be a character string of one of the following: "bernoulli", "binomial", "poisson",
-#' "negative.binomial", "tweedie" and "gaussian". An error will be
-#' thrown if the family is not recognized. The family you use is generally
-#' specific to the type of data you have. Users can also specify a link function
-#' within the family object, eg: binomial(link="logit"). Currently, ecomix can
-#' implement "logit", "cloglog", "log" and "identity" link functions.
-#' @param offset a numeric vector of length nrow(data) (n sites) that is
-#' included into the model as an offset. It is included into the conditional
-#' part of the model where conditioning is performed on the SAM.
+#' binomial(). Or it can be a character string of one of the following:
+#' "bernoulli", "binomial", "poisson","negative.binomial", "tweedie" and
+#' "gaussian". An error will be thrown if the family is not recognized.
+#' The family you use is generally specific to the type of data you have.
+#' Users can also specify a link function within the family object, eg:
+#' binomial(link="logit"). Currently, ecomix can implement "logit", "cloglog",
+#' "log" and "identity" link functions.
+#' @param offset a numeric vector of length nrow(data) (n sites) that represents
+#' a known amount of effort for models with a log or cloglog link function.
+#' It is included into the conditional part of the model where conditioning
+#' is performed on the SAM.
 #' @param weights a numeric vector of length ncol(Y) (n species) that is used
 #' as weights in the log-likelihood calculations. If NULL (default) then all
 #' weights are assumed to be identically 1. Because we are estimating the
@@ -186,10 +189,6 @@
   # get responses
   y <- stats::model.response(dat$mf.X)
 
-  # Add a check to make sure there are no silly response values in Y
-  # check_reponse_values()
-
-
   # logical matirx needed for removing NAs from response and weights.
   # y_is_na <- is.na(y)
 
@@ -238,6 +237,9 @@
   disty <- disty.listy$disty
   linky <- disty.listy$link
   family <- disty.listy$family
+
+  # Add a check to make sure there are no silly response values in Y
+  check_reponse_values(y,disty)
 
   # check powers
   powers <- get_power_sam(disty,power,S)
@@ -311,10 +313,11 @@
 #'@title species_mix.fit
 #'@rdname species_mix.fit
 #'@name species_mix.fit
-#' @description species_mix.fit is similar to glm.fit and does all the heavy lifting when it
-#' comes to estimating species mix models. If you are unfamilar with how to use glm.fit it is
+#'@description species_mix.fit is similar to glm.fit and does all the heavy lifting when it
+#' comes to estimating species mix models. If you are unfamiliar with how to use glm.fit it is
 #' recommended that you use species_mix which is the user friendly wrapper around this
-#' function.
+#' function. If you are comfortable with the data strucutres for an species_mix model feel
+#' free to use this function for fitting (but realise many of the post processing function - )
 #'@param y is a matrix generated from model.response containing the species information. The matrix has the dimensions n_sites * n_species.
 #'@param X is a design matrix for the archetype_formula dimension n_sites * n_covariates.
 #'@param W is a design matrix for species_formula and will be implemented if species_formula has covariates.
@@ -343,7 +346,6 @@
                        spp_weights=spp_weights,
                        site_spp_weights=site_spp_weights,
                        offset=offset,
-                       # y_is_na,
                        G=G,
                        S=S,
                        disty=disty,
@@ -927,7 +929,6 @@
 
 ###### internal fitting functions #####
 "fit.ecm.sam" <- function(y, X, W, U=NULL, spp_weights, site_spp_weights, offset,
-                          # y_is_na,
                           G, S, disty, linky, size, powers, control, starting.sam = NULL){
 
   n <- nrow(y)
@@ -1414,8 +1415,8 @@
 
 
 "llogl.delta" <- function(x, y, X, W, U, tau, fits,
-                              site_spp_weights, offset, #y_is_na,
-                              disty, linky, size, powers) {
+                          site_spp_weights, offset,
+                          disty, linky, size, powers) {
 
   S <- ncol(y); n <- nrow(y); G <- ncol(tau)
   out <- 0
@@ -1771,8 +1772,10 @@
                                                          newoffset=offset)),
                             weights=as.matrix(site_spp_weights[,ss]),
                             dfr=length(outcomes), eps=1e-4)
-      # if(tmp>5) tmp <- 5
-      theta <- tmp
+      if( tmp>2)
+        tmp <- 2
+      log1theta <- log(1/tmp)
+      theta <- log1theta
     }
     if (disty == 4) { #Tweedie needs an unconstrained fit.  May cause problems in some cases, especially if there is quasi-separation...
       df3 <- data.frame(y=outcomes, offy=offset, Intercept= 1, df)
@@ -1899,9 +1902,8 @@ if(!is.null(U)) {
                as.numeric(size), as.integer(S), as.integer(G), as.integer(npx),
                as.integer(npw), as.integer(npu), as.integer(n),
                as.integer(disty),as.integer(linkyin),
-               as.integer(control$optiDisp),
-               as.integer(control$optiPart),as.integer(control$optiAll),
-               as.integer(control$doPenalties), ## should you do penalties?
+               as.integer(control$optiDisp), as.integer(control$optiPart),
+               as.integer(control$optiAll), as.integer(control$doPenalties), ## should you do penalties?
                # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
                as.double(alpha), as.double(beta), as.double(eta),
                as.double(gamma), as.double(delta), as.double(theta),
@@ -2219,7 +2221,7 @@ if(!is.null(U)) {
 
   if(logify){
   if(disty==3){
-      log.new.theta <- log(theta)
+      log.new.theta <- log(1/theta)
   }
   if(disty==4){
     log.new.theta  <- log(theta)
@@ -2230,7 +2232,7 @@ if(!is.null(U)) {
     return(log.new.theta)
   }  else {
     if(disty==3){
-      new.theta <- exp(theta)
+      new.theta <- 1/exp(theta) ## negbin on log(1/x) scale
     }
     if(disty==4){
       new.theta  <- exp(theta)
@@ -2310,7 +2312,7 @@ if(!is.null(U)) {
     ## bernoulli
     # response <- matrix(rbinom(20,size=1,prob = .5),10,2)
     if (!all(response %in% c(0, 1)))
-      stop("'bernoulli' distribution must be contain zeros or ones.")
+      stop("'bernoulli' distribution must be contain zeros or ones and be in integer format.")
 
   } else if (disty %in% 2) {
     ## Poisson and negative binomial
@@ -2320,14 +2322,28 @@ if(!is.null(U)) {
 
   } else if (disty == 3){
     ## Negative binomial
-    if (!all(response >= 0)) # is.integer?
+    if (!all(response >= 0) ) # is.integer?
       stop("'negative.binomial' distribution must be discrete data >= zero.")
 
+  } else if (disty == 4) {
+    ## tweedie
+    # response <- matrix(fishMod::rTweedie(50,5,2,1.6),25,2)
+    if(!all(response >=0) )
+      stop("'tweedie' distribution must be continious data >= zero")
+  } else if (disty == 5) {
+    ## guassian
+    # response <- matrix(rnorm(50,5),25,2)
+    if(!all(is.numeric(response)))
+      stop("'gaussian' distribution must be continious data in the range (-Inf,Inf)")
+  } else if (disty == 6) {
+    ## guassian
+    # response <- matrix(rnorm(50,5),25,2)
+    if(!all(response >= 0))
+      stop("'binomial' distribution must be integer data >= zero")
+  } else {
+    stop (paste("The response data is in the wrong format for the family selected."))
   }
-
 }
-
-
 
 "check_spp_weights" <- function(spp_weights, nS){
 
@@ -2388,6 +2404,8 @@ if(!is.null(U)) {
 }
 
 "get_family_sam" <- function(family, size) {
+
+  ## taken from mvabund
 
  if(class(family)=="family"){
     fam = family
@@ -2556,32 +2574,22 @@ if(!is.null(U)) {
 }
 
 
-"get_site_spp_weights_sam"  <- function(mf, site_spp_weights, sp_names){#, family){
+"get_site_spp_weights_sam"  <- function(mf, site_spp_weights, sp_names){
   if(is.null(site_spp_weights))site_spp_weights <- model.weights(mf)
-  # if(family=='ippm'){
-  #   if(!is.null(site_spp_weights)){
-  #     site_spp_weights <- subset(site_spp_weights, select = colnames(site_spp_weights)%in%sp_names)
-  #   } else {
-  #     site_spp_weights <- matrix(1,nrow(mf),length(sp_names))
-  #   }
-  # } else {
     if(!is.null(site_spp_weights)){
       site_spp_weights <- replicate(length(sp_names),site_spp_weights)
     } else {
       site_spp_weights <- matrix(1,nrow(mf),length(sp_names))
     }
-  # }
   return(site_spp_weights)
 }
 
 "get_titbits_sam" <- function(titbits, y, X, W, U, spp_weights, site_spp_weights, offset,
-                              # y_is_na,
-                              size, powers, archetype_formula, species_formula,
+                               size, powers, archetype_formula, species_formula,
                               all_formula, data, control, family, link)  {
   if( titbits==TRUE)
     titbits <- list(Y = y, X = X, W = W, U = U, spp_weights = spp_weights,
                     site_spp_weights = site_spp_weights, offset = offset,
-                    # y_is_na = y_is_na,
                     size = size, powers=powers,
                     archetype_formula =  archetype_formula,
                     species_formula = species_formula,
