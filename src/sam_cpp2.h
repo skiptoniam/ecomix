@@ -103,12 +103,12 @@ class sam_derivs{
 		void getArray( double *grArr, const sam_data &dat);
 
         int getScoreFlag;	//Should the scores be calculated for empirical information
-		double 	*Alpha, //the derivatives of logl w.r.t. alpha
-				*Beta,	//the derivatives of logl w.r.t. beta
-				*Eta, 	//the derivatives of logl w.r.t. eta (transformed pi)
-				*Gamma, //the derivatives of logl w.r.t. species specific parameters.
-				*Delta, //the derivatives of logl w.r.t. bias delta.
-				*Theta, //the derivatives of logl w.r.t. dispersion parameters.
+		double 	*AlphaDeriv, //the derivatives of logl w.r.t. alpha
+				*BetaDeriv,	//the derivatives of logl w.r.t. beta
+				*EtaDeriv, 	//the derivatives of logl w.r.t. eta (transformed pi)
+				*GammaDeriv, //the derivatives of logl w.r.t. species specific parameters.
+				*DeltaDeriv, //the derivatives of logl w.r.t. bias delta.
+				*ThetaDeriv, //the derivatives of logl w.r.t. dispersion parameters.
 				*Scores;//the score contribution for each site (for empirical information)
 
 };
