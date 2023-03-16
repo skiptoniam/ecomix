@@ -56,7 +56,7 @@
       disty <- object$disty
       linky <- object$link
       dumbOut <- capture.output(
-        samp.object = ecomix::species_mix.fit(y=object$titbits$Y,
+        samp.object <- ecomix::species_mix.fit(y=object$titbits$Y,
                                                X=object$titbits$X,
                                                W=object$titbits$W,
                                                U=object$titbits$U,
