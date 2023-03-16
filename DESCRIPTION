@@ -30,12 +30,11 @@ Suggests:
     rmarkdown,
     testthat,
     covr,
-    RandomFields, 
     RColorBrewer
 Depends:
     R (>= 4.0)
 License: GPL (>= 2)
 SystemRequirements: C++11
 NeedsCompilation: yes
-RoxygenNote: 7.2.0
+RoxygenNote: 7.2.3
 VignetteBuilder: knitr
