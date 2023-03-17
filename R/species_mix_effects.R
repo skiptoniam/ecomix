@@ -4,7 +4,7 @@
 #' effect of a focal.predictor current included species_mix or regional_mix models.
 #'
 #' @title Generate data for plotting or predicting partial effects of covariates
-#' @name effect_data
+#' @name effects_data
 #' @description This function produces a list of data.frames for predicting the partial
 #' effect of a focal.predictor current included in a species_mix model.
 #' @return This function should return a list of data.frames one for each focal.predictor.
@@ -29,6 +29,7 @@
 #' fm1 <- species_mix(archetype_formula = sam_form,species_formula = sp_form,
 #' data = simulated_data, family = 'bernoulli',  nArchetypes=3)
 #' effects_data("x1",fm1)
+#'
 #'}
 #' @rdname effects_data
 #' @export effects_data

@@ -1,21 +1,5 @@
-#' Generate data for plotting or predicting partial effects of covariates
-#'
-#' This function produces a list of data.frames for predicting the partial
-#' effect of a focal.predictor current included species_mix or regional_mix models.
-#'
-#' @title Generate data for plotting or predicting partial effects of covariates
-#' @name effect_data
-#' @description This function produces a list of data.frames for predicting the partial
-#' effect of a focal.predictor current included in a species_mix model.
-#' @return This function should return a list of data.frames one for each focal.predictor.
-#' This will enable user to predict marginal effects or plot the partial response plots.
-#' @param focal.predictors A character or string of characters which represent covariates in the model.
-#' @param mod The fitted species_mix or regional_mix model.
-#' @param ngrid The length of the prediction vector.
-#' @param ... other arguments
-#' @examples
-#'
-"effect_data.regional_mix" <- function(focal.predictors, mod, ngrid = 50, ...){
+#' @export
+"effects_data.regional_mix" <- function(focal.predictors, mod, ngrid = 50, ...){
 
   # focal.predictors <- c("x1.1","x1.2","x1.3","x2.1","x2.2","x2.3")
   # mod <- fm_regional_mix
