@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 ```
 
 ### Regions of Common Profile Models
-The Regions of Common Profile (RCP) models are a type of 'Mixture-of-Experts Models' and try to describe how homogeneous groups of **sites** vary with the environment. This is done by grouping sites based on the biological content (species observed at each site) and determine how these groups vary across environmental or physical gradients [@foster_modelling_2013]. This approach assumes that assemblages of species at a site exists, and each assemblage can be described by its mean expectation of all species at that site.  Within the the RCP model, these indicies are used to represent the data: sites as $i = 1...n$, species as $j = 1...S$ and groups as $k = 1...K$ (we refer to these as RCPs). The model conditional expectation (given site membership) for all species is, $\mathbb{E}(y_{ij}|z_{ik}=1)$. The model can be described as:
+The Regions of Common Profile (RCP) models are a type of 'Mixture-of-Experts Models' and try to describe how homogeneous groups of **sites** vary with the environment. This is done by grouping sites based on the biological content (species observed at each site) and determine how these groups vary across environmental or physical gradients [@foster_modelling_2013]. This approach assumes that assemblages of species at a site exists, and each assemblage can be described by its mean expectation of all species at that site.  Within the the RCP model, these indices are used to represent the data: sites as $i = 1...n$, species as $j = 1...S$ and groups as $k = 1...K$ (we refer to these as RCPs). The model conditional expectation (given site membership) for all species is, $\mathbb{E}(y_{ij}|z_{ik}=1)$. The model can be described as:
 
 $$
 \begin{equation}
@@ -53,25 +53,24 @@ We generate a set of simulated environment predictors using Gaussian random fiel
 
 ```{r,echo=TRUE,eval=TRUE,warning=FALSE,message=FALSE}
 library(raster)
-library(RandomFields)
+library(ecomix)
 set.seed(007)
 lenny <- 100
 xSeq <- seq( from=0, to=1, length=lenny)
 ySeq <- seq( from=0, to=1, length=lenny)
+xSeq <- seq( from=0, to=1, length=lenny)
+ySeq <- seq( from=0, to=1, length=lenny)
 X <- expand.grid( x=xSeq, y=ySeq)
-Mod1 <- RMgauss( var=1, scale=0.2) + RMnugget( var=0.01)
-Mod2 <- RMgauss( var=1, scale=0.5) + RMnugget( var=0.01)
-Mod3 <- RMgauss( var=1, scale=1)# + RMnugget( var=0.01)
-Mod4 <- RMgauss( var=2, scale=0.1) + RMnugget( var=1)
-simmy1 <- RFsimulate( Mod1, x=xSeq, y=ySeq)
-simmy2 <- RFsimulate( Mod2, x=xSeq, y=ySeq)
-simmy3 <- RFsimulate( Mod3, x=xSeq, y=ySeq)
-simmy4 <- RFsimulate( Mod4, x=xSeq, y=ySeq)
-X <- cbind( X, as.numeric( as.matrix( simmy1)), as.numeric( as.matrix( simmy2)),
+simmy1 <- rGMRF(xSeq, ySeq, sig2 = 1, rho = 0.2, nu = 1/2, nugget = (0.01)^2)
+simmy2 <- rGMRF(xSeq, ySeq, sig2 = 1, rho = 0.5, nu = 1/2, nugget = (0.01)^2)
+simmy3 <- rGMRF(xSeq, ySeq, sig2 = 1, rho = 1, nu = 1/2, nugget = (0.01)^2)
+simmy4 <- rGMRF(xSeq, ySeq, sig2 = 2, rho = 0.05, nu = 3/2, nugget = (4)^2)
+
+Xsim <- cbind( X, as.numeric( as.matrix( simmy1)), as.numeric( as.matrix( simmy2)),
             as.numeric( as.matrix( simmy3)), as.numeric( as.matrix( simmy4)))
-X[,-(1:2)] <- apply( X[,-(1:2)], 2, scale)
-colnames( X) <- c("x","y","covar1","covar2","covar3","covar4")
-env <- rasterFromXYZ( X)
+Xsim[,-(1:2)] <- apply(Xsim[,-(1:2)], 2, scale)
+colnames(Xsim) <- c("x","y","covar1","covar2","covar3","covar4")
+env <- rasterFromXYZ(Xsim)
 names(env) <- c("Temperature", "Oxygen", "Depth", "Productivity")
 env.df <- as.data.frame(env,xy=TRUE)
 env_dat<-rasterToPoints(env)
