@@ -143,7 +143,7 @@
   nvars = length(vars)
 
   pred.data <- mod$titbits$data
-  pred.data <- pred.data[,vars]
+  pred.data <- pred.data[,vars,drop=FALSE]
 
   ## check for factors
   factors <- NULL
