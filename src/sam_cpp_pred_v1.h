@@ -18,16 +18,7 @@ using std::cout;
 #define MATREF2D(i,j,nx) i+nx*j
 #define MATREF3D(i,j,k,nx,ny)  i + nx*j + k*(nx*ny)
 
-////////////////////////////////////////////////////////
-/////////////	Function Definitions	////////////////////
-////////////////////////////////////////////////////////
-extern "C" SEXP sam_cpp_pred(SEXP RX, SEXP RW, SEXP RU, SEXP Roffset,
-                             SEXP RG, SEXP RS, SEXP RnObs, SEXP Rpx, SEXP Rpw, SEXP Rpu,
-                             SEXP Rdisty, SEXP Rlinky, SEXP Rtype,
-                             SEXP Ralpha, SEXP Rbeta, SEXP Rgamma, SEXP Rdelta, SEXP Rtau,
-                             // SEXP Rbootalpha, SEXP Rbootbeta, SEXP Rbootgamma, SEXP Rbootdelta, SEXP Rboottau,
-                             SEXP Rnboot);//, SEXP RptPreds, SEXP RbootPreds);
-
+// Classes
 // setting up the data class which should hold the data.
 class sam_pred_data {
 public:
@@ -74,11 +65,34 @@ void setParams(const sam_pred_data &dat,
   *Delta, //bias
   *Tau; // Derived taus from pis and loglike (G*S)
 
+
   int nalpha, nbeta, ngamma, ndelta, ntau, nTot;
 
 
 };
 
+// setting up the data class which should hold the data.
+class sam_pred_bootparams {
+public:
+  sam_pred_bootparams();
+  ~sam_pred_bootparams();
+
+  void setParams(const sam_pred_data &dat,
+                     SEXP &Rbootalpha,
+                     SEXP &Rbootbeta,
+                     SEXP &Rbootgamma,
+                     SEXP &Rbootdelta,
+                     SEXP &Rboottau);
+
+  double 	*bootAlpha, //the species' prevalences
+  *bootBeta,	//the archetype' free covariate params (G*xp)
+  *bootGamma, //species x npw parameters form partial SAMs
+  *bootDelta, //bias
+  *bootTau; // Derived taus from pis and loglike (G*S)
+
+  int nbootalpha, nbootbeta, nbootgamma, nbootdelta, nboottau, nbootTot;
+
+};
 
 class sam_pred_classes{
 public:
@@ -87,10 +101,23 @@ public:
 
   sam_pred_data data;
   sam_pred_params params;
+  sam_pred_bootparams bootparams;
 
 };
 
+////////////////////////////////////////////////////////
+/////////////	Function Definitions	////////////////////
+////////////////////////////////////////////////////////
 
+extern "C" SEXP sam_cpp_pred(SEXP RX, SEXP RW, SEXP RU, SEXP Roffset,
+                             SEXP RG, SEXP RS, SEXP RnObs, SEXP Rpx, SEXP Rpw, SEXP Rpu,
+                             SEXP Rdisty, SEXP Rlinky, SEXP Rtype,
+                             SEXP Ralpha, SEXP Rbeta, SEXP Rgamma, SEXP Rdelta, SEXP Rtau,
+                             SEXP Rbootalpha, SEXP Rbootbeta, SEXP Rbootgamma, SEXP Rbootdelta, SEXP Rboottau,
+                             SEXP Rnboot);//, SEXP RptPreds, SEXP RbootPreds);
 
+// functions to help with prediction
+void pt_predict_fun(const sam_pred_data &dat, const sam_pred_params &params, vector<double> &preds);
+void boot_predict_fun(const sam_pred_data &dat, const sam_pred_bootparams &bootparams, vector<double> &bootpreds);
 
 #endif
