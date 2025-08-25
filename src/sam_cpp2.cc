@@ -256,7 +256,7 @@ void calc_mu_fits(vector<double> &fits, const sam_params &params, const sam_data
 						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_log(lp);
 					}
 					if(dat.disty==4){ //tweedie
-						// fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_log(lp);
+						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = inverse_log(lp);
 					 }
 					if(dat.disty==5){//normal
 						fits.at( MATREF3D(i,s,g,dat.nObs,dat.nS)) = lp;
@@ -289,7 +289,7 @@ void calc_sam_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_negative_binomial_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 						}
 					if(dat.disty==4){ // tweedie
-						// loglSG.at(MATREF2D(g,s,dat.nG)) += log_tweedie_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp(params.Theta[s]), params.Power[s]);
+						loglSG.at(MATREF2D(g,s,dat.nG)) += log_tweedie_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp(params.Theta[s]), params.Power[s]);
 					}
 					if(dat.disty==5){ // normal
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_normal_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
@@ -438,28 +438,28 @@ double log_negative_binomial_deriv_mu_sam( const double &y, const double &mu, co
 	return( tmp);
 }
 
-// double log_tweedie_sam( const double &y, const double &mu, const double &phi, const double &p){
-//  	double lambda, alpha, tau, muZ, tmp, phi1;
-//  	phi1 = exp( phi);
-//  	lambda = R_pow( mu, (2-p)) / ( phi1*(2-p));
-//  	alpha = ( 2-p) / ( p-1);
-//  	tau = phi1*(p-1)*R_pow(mu,(p-1));
-//  	muZ = alpha * tau;
-//
-//  	tmp = dTweedie( y, lambda, muZ, alpha, 1);
-//  	return( tmp);
-// }
-//
-//  double log_tweedie_deriv_sam( double y, double fit, double dispParm , double p){
-//  	double phi, tmp;
-//
-//  	phi = exp( dispParm);
-//
-//  	tmp = dTweediePhi( y, fit, phi, p);
-//  	tmp *= phi;
-//
-//  	return( tmp);
-//  }
+double log_tweedie_sam( const double &y, const double &mu, const double &phi, const double &p){
+ 	double lambda, alpha, tau, muZ, tmp, phi1;
+ 	phi1 = exp( phi);
+ 	lambda = R_pow( mu, (2-p)) / ( phi1*(2-p));
+ 	alpha = ( 2-p) / ( p-1);
+ 	tau = phi1*(p-1)*R_pow(mu,(p-1));
+ 	muZ = alpha * tau;
+
+ 	tmp = dTweedie( y, lambda, muZ, alpha, 1);
+ 	return( tmp);
+}
+
+ double log_tweedie_deriv_sam( double y, double fit, double dispParm , double p){
+ 	double phi, tmp;
+
+ 	phi = exp( dispParm);
+
+ 	tmp = dTweediePhi( y, fit, phi, p);
+ 	tmp *= phi;
+
+ 	return( tmp);
+ }
 
 
 double log_normal_sam( const double &y, const double &mu, const double &sig){
@@ -631,7 +631,7 @@ void calc_mu_deriv( vector<double> &mu_derivs, const vector<double> &fits, const
 					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_negative_binomial_deriv_mu_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 				}
 				if(dat.disty==4){
-				 	// mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_tweedie_deriv_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp( params.Theta[s]), params.Power[s]);
+				 	mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_tweedie_deriv_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp( params.Theta[s]), params.Power[s]);
 				}
 				if(dat.disty==5){
 					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_normal_deriv_mu_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
@@ -797,7 +797,7 @@ void calc_dlog_dtheta(vector<double> &dldt, vector<double> const &mus, const sam
 						dldt.at(MATREF2D(g,s,dat.nG)) += log_negative_binomial_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Theta[s]);
 					}
 					if(dat.disty==4){ // tweedie
-						// dldt.at(MATREF2D(g,s,dat.nG)) += log_tweedie_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Theta[s], params.Power[s]);
+						dldt.at(MATREF2D(g,s,dat.nG)) += log_tweedie_deriv_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Theta[s], params.Power[s]);
 				    }
 					if(dat.disty==5){ // normal
 						dldt.at(MATREF2D(g,s,dat.nG)) += log_normal_deriv_theta_sam(dat.y[MATREF2D(i,s,dat.nObs)], mus.at( MATREF3D(i,s,g,dat.nObs, dat.nS)), params.Theta[s]);
