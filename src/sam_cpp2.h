@@ -6,7 +6,7 @@
 #include<Rinternals.h>
 #include<R_ext/Applic.h>
 #include<vector>
-#include"Tweedie.h"
+// #include"Tweedie.h"
 
 
 #undef length
@@ -25,7 +25,7 @@ class sam_data {
 	public:
 		sam_data();
 		~sam_data();
-		void setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &RU, SEXP &Roffset, SEXP &Rspp_wts, SEXP &Rsite_spp_wts, SEXP &Rbinsize, //SEXP &Ry_not_na, 
+		void setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &RU, SEXP &Roffset, SEXP &Rspp_wts, SEXP &Rsite_spp_wts, SEXP &Rbinsize, //SEXP &Ry_not_na,
 		 SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw, SEXP &Rpu, SEXP &RnObs, SEXP &Rdisty, SEXP &Rlinky,
 		 SEXP &RoptiDisp, SEXP &RoptiPart, SEXP &RoptiAll, SEXP &RdoPenalties);
 		//bool isDispersion() const;
@@ -223,8 +223,8 @@ double log_poisson_deriv_sam( const double &y, const double &mu);
 double log_negative_binomial_sam( const double &y, const double &mu, const double &od);
 double log_negative_binomial_deriv_mu_sam( const double &y, const double &mu, const double &od);
 double log_negative_binomial_deriv_theta_sam(const double &y, const double &mu, const double &od);
-double log_tweedie_sam( const double &y, const double &mu, const double &phi, const double &p);
-double log_tweedie_deriv_sam( double y, double fit, double dispParm , double p);
+// double log_tweedie_sam( const double &y, const double &mu, const double &phi, const double &p);
+// double log_tweedie_deriv_sam( double y, double fit, double dispParm , double p);
 double log_normal_sam( const double &y, const double &mu, const double &sig);
 double log_normal_deriv_mu_sam( const double &y, const double &mu, const double &sig);
 double log_normal_deriv_theta_sam( const double &y, const double &mu, const double &sig);

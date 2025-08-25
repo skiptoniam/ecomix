@@ -6,7 +6,7 @@
 #include<Rinternals.h>
 #include<R_ext/Applic.h>
 #include<vector>
-#include"Tweedie.h"
+//#include"Tweedie.h"
 
 #undef length
 #include <iostream>
@@ -164,7 +164,7 @@ void calcMuFits( vector<double> &fits, const myData &dat, const myParms &parms);
 double logBernoulli( const double &y, double const &mu);
 double logPoisson( const double &y, const double &mu);
 double logNegBin( const double &y, const double &mu, const double &od);
-double logTweedie( const double &y, const double &mu, const double &phi, const double &p);
+// double logTweedie( const double &y, const double &mu, const double &phi, const double &p);
 double logNormal( const double &y, const double &mu, const double &sig);
 double calcMixSum( const vector<double> &logPis, const vector<double> &condDens, double &wi, vector<double> &wij, int &maxg);
 void loglDerivs( const myData &dat, const myParms &parms, myDerivs &derivs, myFits &fits);
@@ -172,7 +172,7 @@ void weightDerivs( vector<double> &alphaDerivI, vector<double> &tauDerivsI, vect
 void calcDispDeriv( vector<double> &dispDerivsI, const vector<double> &fits, const myData &dat, const myParms &parms, const double &wi, const vector<double> &wij, const int &m, const int &i);
 void calcDispPenDeriv( vector<double> &dispDerivsI, const myData &dat, const myParms &parms);
 double logNegBinDispDer( double y, double fit, double dispParm);
-double logTweedieDispDer( double y, double fit, double dispParm , double p);
+// double logTweedieDispDer( double y, double fit, double dispParm , double p);
 double logNormalDispDer( double y, double fit, double dispParm);
 void calcDerivMu( vector<double> &muDerivs, const vector<double> &fits, const myData &dat, const myParms &parms, const double wi, const vector<double> &wij, const int &m, const int &i);
 void calcDerivEtaMu( vector<double> &etaDerivsI, const myData &dat, const vector<double> &muDerivsI, const vector<double> &fits, const int &i);
