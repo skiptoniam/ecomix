@@ -10,4 +10,5 @@
 ^_pkgdown\.yml$
 ^pkgdown$
 ^\.github$
+^Rplots\.pdf$
 
