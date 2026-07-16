@@ -67,7 +67,7 @@
 #'  \item{penalty.disp}{a two element vector. These are combined to form the penalty for the dispersion parameters (if any). The dispersions are assumed to come from a log-normal distribution with log-mean penalty.disp[1] and log-standard-deviation penalty.disp[2]. Defaults to c(10,sqrt(10)), which gives shrinkage towards 1 (the mode of the penalty). Note that for Normal models, where the dispersion alone defines the variance, a strong penalty may be required to keep parameters estimable.}
 #'  }
 #'  For calls to regimix.multifit(), titbits is set to FALSE??? so no excess memory is used. If users want this information, and there is good reason to want it, then a call to regimix() with starting values given as the best fit's estimates should be used.
-#' @return regional_mix returns an object of class \code{regional_mix} and regional_mix.multifit returns a list of objects of class \code{regional_mix}. The regional_mix class has several methods: coef, plot, predict, residuals, summary, and vcov. The regional_mix object consists of a list with the following elements:
+#' @return regional_mix returns an object of class \code{regional_mix} and regional_mix.multifit returns an object of class \code{regional_mix.multifit}, a list containing \code{multiple_fits} (a list of \code{nstart} \code{regional_mix} objects), \code{nRCP}, and \code{nstart}. The regional_mix class has several methods: coef, plot, predict, residuals, summary, and vcov. The regional_mix object consists of a list with the following elements:
 #' @return AIC Akaike an information criterion for the maximised model.
 #' @return BIC Bayesian information criterion for the maximised model.
 #' @return call the call to the function.
@@ -395,7 +395,10 @@
     if( !control$quiet)
       message("")
 
-    return(many.starts)
+    res <- list(multiple_fits = many.starts, nRCP = nRCP, nstart = nstart)
+    class(res) <- "regional_mix.multifit"
+
+    return(res)
   }
 
 #### Non S3 Class objects ####
