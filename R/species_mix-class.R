@@ -29,12 +29,6 @@
 #' for the archetype models. If you include a species specific formula which has
 #' more than an intercept you will be fitting a partial species archetype model
 #' which has species specific covariates and archetype specific covariates.
-#' @param all_formula an object of class "formula", which is meant to represent
-#'  a constant single set of covariates across all species and groups, typically
-#'  you might use this an alternative to an offset, but this bias is not known
-#'  and needs to be estimated from the data. This might a set of covariates that
-#'  reflect how the data was collected or some other constant process
-#'  like a seasonality (where all species/groups respond in the same way).
 #' @param data a data.frame which contains the 'species_data'
 #' matrix, a const and the covariates in the structure of spp1, spp2, spp3,
 #' const, temperature, rainfall. dims of matrix should be
@@ -149,7 +143,6 @@
 
 "species_mix" <- function(archetype_formula = NULL,
                           species_formula = stats::as.formula(~1),
-                          all_formula = NULL,
                           data,
                           nArchetypes = 3,
                           family="bernoulli", offset=NULL,
@@ -184,7 +177,7 @@
 
   # need this for the na.omit step
   rownames(mf)<-seq_len(nrow(mf))
-  dat <- clean_data_sam(mf, archetype_formula, species_formula, all_formula)#, family)
+  dat <- clean_data_sam(mf, archetype_formula, species_formula)#, family)
 
   # get responses
   y <- stats::model.response(dat$mf.X)
@@ -213,13 +206,10 @@
   W <- Wdat$W
   wterms <- Wdat$mt.w
 
-  # what is the U matrix (all covariates)
-  Udat <- get_U_sam(mf.U = dat$mf.U)
-  U <- Xdat$U
-  uterms <- Xdat$mt.u
+  U <- NULL
 
   # collect terms
-  tt <- list(xterms=xterms,wterms=wterms,uterms=uterms)
+  tt <- list(xterms=xterms,wterms=wterms)
 
   # get offsets
   offset <- get_offset_sam(dat$mf.X)
@@ -246,7 +236,7 @@
 
   # summarizing data to console
   if(!control$quiet) print_input_sam(y, X, W, U, S, archetype_formula,
-                                     species_formula, all_formula,
+                                     species_formula,
                                      family, linky,
                                      quiet=control$quiet)
 
@@ -295,7 +285,7 @@
   tmp$titbits <- get_titbits_sam(titbits, y, X, W, U, spp_weights,
                                  site_spp_weights, offset, #y_is_na,
                                  size, powers,
-                                 archetype_formula, species_formula, all_formula,
+                                 archetype_formula, species_formula,
                                  data, control, family, linky)
 
   # remove large annoying object if titbits == FALSE
@@ -321,7 +311,7 @@
 #'@param y is a matrix generated from model.response containing the species information. The matrix has the dimensions n_sites * n_species.
 #'@param X is a design matrix for the archetype_formula dimension n_sites * n_covariates.
 #'@param W is a design matrix for species_formula and will be implemented if species_formula has covariates.
-#'@param U is a design matrix for all_formula and will be implemented if not NULL.
+#'@param U is a design matrix of covariates with a constant effect across all species and groups, and will be implemented if not NULL.
 #'@param G is the number of species archetypes that are being estimated.
 #'@param S is the number of species to be modelled (this will be calculated internally in species_mix())
 #'@param spp_weights These are weights on the species logls and are specifically used in the Bayesian Bootstrap.
@@ -411,11 +401,6 @@
 #' for the archetype models. If you include a species specific formula which has
 #' more than an intercept you will be fitting a partial species archetype model
 #' which has species specific covariates and archetype specific covariates.
-#' @param all_formula an object of class "formula", which is meant to represent
-#'  a constant single set of covariates across all species and groups, typically
-#'  you might use this an alternative to an offset, where there might be a set
-#'  covariates which means artifact of how the data was collected or some other
-#'  process like a seasonality.
 #' @param data a matrix or data.frame which contains the 'species_data'
 #' matrix, a const and the covariates in the structure of spp1, spp2, spp3,
 #' const, temperature, rainfall. dims of matrix should be
@@ -493,7 +478,6 @@
 
 "species_mix.multifit" <- function(archetype_formula = NULL,
                                    species_formula = stats::as.formula(~1),
-                                   all_formula = NULL,
                                    data, nArchetypes = 3,
                                    family="bernoulli", offset=NULL,
                                    weights=NULL, spp_weights=NULL, size = NULL,
@@ -544,7 +528,7 @@
 
   # need this for the na.omit step
   rownames(mf)<-seq_len(nrow(mf))
-  dat <- clean_data_sam(mf, archetype_formula, species_formula, all_formula)#, family)
+  dat <- clean_data_sam(mf, archetype_formula, species_formula)#, family)
 
   # get responses
   y <- stats::model.response(dat$mf.X)
@@ -573,12 +557,9 @@
   W <- Wdat$W
   wterms <- Wdat$mt.w
 
-  # what is the U matrix (all covariates)
-  Udat <- get_U_sam(mf.U = dat$mf.U)
-  U <- Xdat$U
-  uterms <- Xdat$mt.u
+  U <- NULL
 
-  tt <- list(xterms=xterms,wterms=wterms,uterms=uterms)
+  tt <- list(xterms=xterms,wterms=wterms)
 
   # get offsets
   offset <- get_offset_sam(dat$mf.X)
@@ -602,7 +583,7 @@
 
   # summarising data to console
   if(!control$quiet) print_input_sam(y, X, W, U, S, archetype_formula,
-                                     species_formula, all_formula,
+                                     species_formula,
                                      family, linky,
                                      quiet=control$quiet)
 
@@ -658,7 +639,7 @@
     tmp$titbits <- get_titbits_sam(titbits, y, X, W, U, spp_weights,
                                    site_spp_weights, offset, #y_is_na,
                                    size, powers,
-                                   archetype_formula, species_formula, all_formula,
+                                   archetype_formula, species_formula,
                                    data, control, family)
 
     # remove large annoying object if titbits == FALSE
@@ -677,14 +658,16 @@
   if(groupselection){
 
     many_starts <- list()
-    for(ii in nArchetypes){
+    for(jj in seq_along(nArchetypes)){
+
+      gg <- nArchetypes[jj]
 
       if( !control$quiet & nstart>1){
-        message(paste0("\nFitting ",ii," Archetypes"))
+        message(paste0("\nFitting ",gg," Archetypes"))
         pb <- txtProgressBar(min = 1, max = nstart, style = 3)
       }
 
-      many_starts[[ii]] <- plapply(seq_len(nstart), tmp_fun, gg = nArchetypes[ii],
+      many_starts[[jj]] <- plapply(seq_len(nstart), tmp_fun, gg = gg,
                                 .parallel = mc.cores,
                                 .verbose = !control$quiet)
 
@@ -719,7 +702,6 @@
 #' the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2
 #' @param species_formula formula to simulate species_mix species-specific
 #' responses, e.g: ~1
-#' @param all_formula formula to simulate biases in the data
 #' @param data a matrix of variables to simulate data from.
 #' @param nArchetypes number of groups to simulate.
 #' @param alpha coefficients for each species archetype. vector S long.
@@ -727,8 +709,6 @@
 #'  parameters. Each row is a different species archetype.
 #' @param gamma coefficients for each species archetype. Matrix of S x number of
 #'  parameters. Each row is a different species archetype.
-#' @param delta coefficients for all_formula, these should describe overall
-#'  biases in the dataset.
 #' @param logTheta coefficients for the dispersion variables for negative.binomial
 #' and gaussian distributions - should be number of species long and on the
 #' natural log scale.
@@ -759,14 +739,12 @@
 ## need to update this to take the new formula framework and simulate ippm data.
 "species_mix.simulate" <-  function(archetype_formula,
                                     species_formula,
-                                    all_formula=NULL,
                                     data,
                                     offset = NULL,
                                     nArchetypes = 3,
                                     alpha=NULL,
                                     beta=NULL,
                                     gamma=NULL,
-                                    delta=NULL,
                                     logTheta=NULL,
                                     powers=NULL,
                                     size=NULL,
@@ -780,20 +758,6 @@
 
   sam_org <- archetype_formula
   spp_org <- species_formula
-
-  if(!is.null(all_formula)){
-    all_formula <- stats::as.formula(all_formula)
-    all_org <- all_formula
-
-    #drop intercept from all
-    all_formula <- update(all_formula,~.-1)
-    U <- stats::model.matrix(all_formula, data)
-    npu <- ncol(U)
-  } else {
-    all_org <- NULL
-    npu <- 0
-    U <- NULL
-  }
 
   # how many species to simulate???
   S <- length(archetype_formula[[2]])-1
@@ -841,13 +805,6 @@
     gamma <- matrix( as.numeric( gamma), nrow=S)
   }
 
-  if(!npu==0){
-    if(is.null(delta) | length(delta) != (npu)){
-      message("Random values for delta")
-      delta <- rnorm(npu)
-    }
-  }
-
   if( family == "negative.binomial" & (is.null(logTheta) | length(logTheta) != S)){
 
     message( "Random values for overdispersions")
@@ -871,11 +828,7 @@
   ## simulate the groups and fitted values.
   fitted <- matrix(0, dim(X)[1], S)
   group <- rep(0, S)
-  if(npu>0) {
-    eta_all <- U %*% delta
-  } else {
-    eta_all <- rep(0,nrow(X))
-  }
+  eta_all <- rep(0,nrow(X))
   for (ss in seq_len(S)) {
     gg <- ceiling(stats::runif(1) * G)
     eta_spp <- W %*% c(alpha[ss],gamma[ss,])
@@ -909,7 +862,6 @@
     } else {
       res <- data.frame(outcomes,const=1, X)
     }
-    if(npu>0) res <- cbind(res,U)
 
   # Return simulation object.
   attr(res, "SAMs") <- group
@@ -917,7 +869,6 @@
   attr(res, "alpha") <- alpha
   attr(res, "beta") <- beta
   attr(res, "gamma") <- gamma
-  attr(res, "delta") <- delta
   attr(res, "logTheta") <- logTheta
   attr(res, "powers") <- powers
   attr(res, "mu") <- fitted
@@ -2360,41 +2311,23 @@ if(!is.null(U)) {
   return(spp_weights)
 }
 
-"clean_data_sam" <- function(data, form1, form2, form3=NULL){#, family){
+"clean_data_sam" <- function(data, form1, form2){#, family){
   # if(family=='ippm') na_rule <- "na.pass"
   # else
   na_rule <- "na.exclude"
   # form1 <- update.formula(form1, ~ . -1)
   mf.X <- stats::model.frame(form1, data = data, na.action = na_rule)
-  if(is.null(form3)){
-    mf.U <- NULL
-    if(!is.null( form2)){
-      # deparse(form2)
-      mf.W <- stats::model.frame(form2, data = data, na.action = na_rule)
-      ids <- c( rownames( mf.W), rownames( mf.X))[duplicated( c( rownames( mf.W), rownames( mf.X)))]  #those rows of data that are good for both parts of the model.
-      mf.X <- mf.X[rownames( mf.X) %in% ids,, drop=FALSE]
-      mf.W <- mf.W[rownames( mf.W) %in% ids,, drop=FALSE]
-    } else{
-      mf.W <- NULL
-      ids <- rownames( mf.X)
-    }
-  } else {
-    if(!is.null( form2)){
-      mf.W <- stats::model.frame(form2, data = data, na.action = na_rule)
-      mf.U <- stats::model.frame(form3, data = data, na.action = na_rule)
-      ids <- c( rownames( mf.W), rownames( mf.X), rownames( mf.U))[duplicated( c( rownames( mf.W), rownames( mf.X), rownames( mf.U)))]  #those rows of data that are good for both parts of the model.
-      mf.X <- mf.X[rownames( mf.X) %in% ids,, drop=FALSE]
-      mf.W <- mf.W[rownames( mf.W) %in% ids,, drop=FALSE]
-      mf.U <- mf.U[rownames( mf.U) %in% ids,, drop=FALSE]
-    } else{
-      mf.W <- NULL
-      mf.U <- stats::model.frame(form3, data = data, na.action = na_rule)
-      ids <- c( rownames( mf.U), rownames( mf.X))[duplicated( c( rownames( mf.U), rownames( mf.X)))]  #those rows of data that are good for both parts of the model.
-      mf.X <- mf.X[rownames( mf.X) %in% ids,, drop=FALSE]
-      mf.U <- mf.U[rownames( mf.U) %in% ids,, drop=FALSE]
-    }
+  if(!is.null( form2)){
+    # deparse(form2)
+    mf.W <- stats::model.frame(form2, data = data, na.action = na_rule)
+    ids <- c( rownames( mf.W), rownames( mf.X))[duplicated( c( rownames( mf.W), rownames( mf.X)))]  #those rows of data that are good for both parts of the model.
+    mf.X <- mf.X[rownames( mf.X) %in% ids,, drop=FALSE]
+    mf.W <- mf.W[rownames( mf.W) %in% ids,, drop=FALSE]
+  } else{
+    mf.W <- NULL
+    ids <- rownames( mf.X)
   }
-  res <- list(ids=ids, mf.X=mf.X, mf.W=mf.W, mf.U=mf.U)
+  res <- list(ids=ids, mf.X=mf.X, mf.W=mf.W)
   return( res)
 }
 
@@ -2586,14 +2519,14 @@ if(!is.null(U)) {
 
 "get_titbits_sam" <- function(titbits, y, X, W, U, spp_weights, site_spp_weights, offset,
                                size, powers, archetype_formula, species_formula,
-                              all_formula, data, control, family, link)  {
+                              data, control, family, link)  {
   if( titbits==TRUE)
     titbits <- list(Y = y, X = X, W = W, U = U, spp_weights = spp_weights,
                     site_spp_weights = site_spp_weights, offset = offset,
                     size = size, powers=powers,
                     archetype_formula =  archetype_formula,
                     species_formula = species_formula,
-                    all_formula = all_formula, data = data, control = control,
+                    data = data, control = control,
                     family = family,link=link)
   else{
     titbits <- list()
@@ -2621,8 +2554,6 @@ if(!is.null(U)) {
       titbits$archetype_formula <- archetype_formula
     if( "species_formula" %in% titbits)
       titbits$species_formula <- species_formula
-    if( "all_formula" %in% titbits)
-      titbits$all_formula <- all_formula
     if( "data" %in% titbits)
       titbits$data <- data
     if( "control" %in% titbits)
@@ -2685,21 +2616,8 @@ if(!is.null(U)) {
   return(list(W=W, mt.w=mt.w))
 }
 
-"get_U_sam" <- function(mf.U){
-
-  if(!is.null(mf.U)){
-    mt.u <- terms(mf.U)
-    mt.u <- stats::delete.response(mt.u)
-    U <- stats::model.matrix(mt.u, mf.U)
-  } else {
-    U <- NULL
-    mt.u <- NULL
-  }
-  return(list(U=U,mt.u=mt.u))
-}
-
 "print_input_sam" <- function(y, X, W, U, S, archetype_formula, species_formula,
-                              all_formula, family, link, quiet=FALSE){
+                              family, link, quiet=FALSE){
   if( quiet)
     return( NULL)
   n.tot <- nrow(y)
@@ -2709,10 +2627,8 @@ if(!is.null(U)) {
   message("The model for the archetype (grouping) is ", Reduce( "paste", deparse(archetype_formula)))
   if(!is.null(species_formula))
     message("The model for the species is ", Reduce( "paste", deparse(species_formula)))
-  if(!is.null(U))
-    message("The model for the entire dataset is ", Reduce( "paste", deparse(all_formula)))
-    message("You are implementing a ", family, " Species Archetype Model.")
-    message("This model uses a ",link, " link function.")
+  message("You are implementing a ", family, " Species Archetype Model.")
+  message("This model uses a ",link, " link function.")
 }
 
 "print_starting_values" <-  function(S, G, npx, npw, npu, n, alpha, beta, gamma,
