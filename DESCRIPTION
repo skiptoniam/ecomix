@@ -22,7 +22,7 @@ Imports:
     mvabund
 Suggests:
     knitr,
-    raster,
+    terra,
     rmarkdown,
     testthat,
     covr,
@@ -30,7 +30,6 @@ Suggests:
 Depends:
     R (>= 4.0)
 License: GPL (>= 2)
-SystemRequirements: C++11
 NeedsCompilation: yes
 RoxygenNote: 7.3.2
 VignetteBuilder: knitr
