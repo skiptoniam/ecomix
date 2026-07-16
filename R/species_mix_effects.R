@@ -55,7 +55,6 @@
   ## set up the data objects
   X <- mod$titbits$X
   W <- mod$titbits$W
-  U <- mod$titbits$U
 
   ## set up the variables in the formula
   tt <- terms(mod$titbits$archetype_formula)
@@ -65,11 +64,6 @@
     tt2 <- terms(mod$titbits$species_formula)
     vars <- c(vars,all.vars(parse(text=tt2)))
   }
-  if(!is.null(U)){
-    tt3 <- terms(mod$titbits$all_formula)
-    vars <- c(vars,all.vars(parse(text=tt3)))
-  }
-
   nvars = length(vars)
 
   pred.data <- mod$titbits$data
