@@ -29,7 +29,7 @@ species_mix.fit(
 
 \item{W}{is a design matrix for species_formula and will be implemented if species_formula has covariates.}
 
-\item{U}{is a design matrix for all_formula and will be implemented if not NULL.}
+\item{U}{is a design matrix of covariates with a constant effect across all species and groups, and will be implemented if not NULL.}
 
 \item{G}{is the number of species archetypes that are being estimated.}
 
