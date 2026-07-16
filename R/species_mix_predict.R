@@ -145,200 +145,86 @@
     get_taus(pi_ii, logls_ii$logl_sp, G, S)
   }
 
-  boot.funny.sam <- function(seg) {
-    if (any(segments <= 1)) {
-      nboot <- 0
-      bootSampsToUse <- 1
-      tmp <- switch (prediction.type,
-                     archetype = sam_internal_pred_groups(alpha = object$coefs$alpha,
-                                                          beta = object$coefs$beta,
-                                                          gamma = object$coefs$gamma,
-                                                          tau = tau, G = G, S = S, X = X, W = W,
-                                                          offset = offset, family = object$family,
-                                                          linky = object$link, type = type),
-                     species = sam_internal_pred_species(alpha = object$coefs$alpha,
-                                                         beta = object$coefs$beta,
-                                                         gamma = object$coefs$gamma,
-                                                         tau = tau, G = G, S = S, X = X, W = W,
-                                                         offset = offset, family = object$family,
-                                                         linky = object$link, type = type))
-    } else {
-      nboot <- segments[seg]
-      bootSampsToUse <- (sum( segments[1:seg])-segments[seg]+1):sum(segments[1:seg])
+  windowsOS <- Sys.info()["sysname"] == "Windows"
+  if (windowsOS & mc.cores>1 & !object$titbits$control$quiet)
+    message("Parallelised version of function not available for Windows machines. Reverting to single processor.")
+  tauMcCores <- if(windowsOS) 1 else mc.cores
 
-      # add in species level preds.
-      tmp <- lapply(bootSampsToUse,function(ii){
-        theta_ii <- if(!is.null(thetaBoot)) thetaBoot[ii,] else rep(-999999,S)
-        tau_ii <- recompute_tau_sam(alpha_ii = alphaBoot[ii,],
-                                    beta_ii = matrix(betaBoot[ii,],G,npx),
-                                    eta_ii = etaBoot[ii,],
-                                    gamma_ii = matrix(gammaBoot[ii,],S,npw),
-                                    theta_ii = theta_ii)
-        switch (prediction.type,
-                archetype = sam_internal_pred_groups(alpha = alphaBoot[ii,],
-                                                     beta = matrix(betaBoot[ii,],G,npx),
-                                                     gamma = matrix(gammaBoot[ii,],S,npw),
-                                                     tau = tau_ii, G = G, S = S, X = X, W = W,
-                                                     offset = offset, family = object$family,
-                                                     linky = object$link,
-                                                     type = type),
-                species = sam_internal_pred_species(alpha = alphaBoot[ii,],
-                                                    beta = matrix(betaBoot[ii,],G,npx),
-                                                    gamma = matrix(gammaBoot[ii,],S,npw),
-                                                    tau = tau_ii, G = G, S = S, X = X, W = W,
-                                                    offset = offset, family = object$family,
-                                                    linky = object$link,
-                                                    type = type))
-      })
-
-    }
-
-    if (nboot == 0) {
-      ret_grp <- tmp
-      if(prediction.type%in%"archetype")colnames(ret_grp) <- object$names$SAMs
-      if(prediction.type%in%"species")colnames(ret_grp) <- object$names$spp
-      return(ret_grp)
-    }
-
-    if(prediction.type%in%"archetype"){
-      bootPreds <- matrix(do.call("cbind",lapply(tmp,c)), nrow = nrow(X) * G,  ncol = nboot)
-    }
-    if(prediction.type%in%"species"){
-      bootPreds <- matrix(do.call("cbind",lapply(tmp,c)), nrow = nrow(X) * S,  ncol = nboot)
-    }
-    return(bootPreds)
-  }
-
-  segments <- -999999
-  ret <- list()
-  ptPreds <- boot.funny.sam(1)
+  # tau (species-archetype posterior membership) is derived from the training data and
+  # is not fixed across bootstrap replicates -- recompute it once per replicate here, then
+  # hand the whole (nboot x S x G) array to the C++ prediction routine below.
   if (nboot > 0) {
-    if (Sys.info()["sysname"] == "Windows") {
-      if( !object$titbits$control$quiet)
-        message("Parallelised version of function not available for Windows machines. Reverting to single processor.")
-      mc.cores <- 1
-    }
-    segments <- rep(nboot%/%mc.cores, mc.cores)
-    if( nboot %% mc.cores > 0)
-      segments[1:(nboot%%mc.cores)] <- segments[1:(nboot%%mc.cores)] + 1
-
-    tmp <- parallel::mclapply(1:mc.cores, boot.funny.sam, mc.cores = mc.cores)
-    bootPreds <- do.call("cbind", tmp)
-    bPreds <- list()
-    row.exp <- rowMeans(bootPreds)
-    if(prediction.type%in%"archetype") tmp <- matrix(row.exp, nrow = nrow(X), ncol = G)
-    if(prediction.type%in%"species") tmp <- matrix(row.exp, nrow = nrow(X), ncol = S)
-    bPreds$fit <- tmp
-    tmp.grp <- sweep(bootPreds, 1, row.exp, "-")
-    tmp.grp <- tmp.grp^2
-    tmp.grp <- sqrt(rowSums(tmp.grp)/(nboot - 1))
-    if(prediction.type%in%"archetype") tmp.grp <- matrix(tmp.grp, nrow = nrow(X), ncol = G)
-    if(prediction.type%in%"species") tmp.grp <- matrix(tmp.grp, nrow = nrow(X), ncol = S)
-    bPreds$ses <- tmp.grp
-    if(prediction.type%in%"archetype") colnames(bPreds$fit) <- colnames(bPreds$ses) <- object$names$SAMs
-    if(prediction.type%in%"species") colnames(bPreds$fit) <- colnames(bPreds$ses) <- object$names$spp
-    tmp.fun <- function(x) return(quantile(bootPreds[x, ],
-                                           probs = c(0, alpha) + (1 - alpha)/2,
-                                           na.rm = TRUE))
-    tmp1 <- parallel::mclapply(seq_len(nrow(bootPreds)), tmp.fun,
-                               mc.cores = mc.cores)
-    tmp1 <- do.call("rbind", tmp1)
-    if(prediction.type%in%"archetype"){
-      tmp1 <- array(tmp1, c(nrow(X), G, 2), dimnames = list(NULL,
-                                                            NULL, NULL))
-      bPreds$cis <- tmp1[, 1:G, ]
-      dimnames(bPreds$cis) <- list(NULL, object$names$SAMs, c("lower", "upper"))
-    }
-    if(prediction.type%in%"species"){
-      tmp1 <- array(tmp1, c(nrow(X), S, 2), dimnames = list(NULL,
-                                                            NULL, NULL))
-      bPreds$cis <- tmp1[, 1:S, ]
-      dimnames(bPreds$cis) <- list(NULL, object$names$spp, c("lower", "upper"))
-    }
-
-    # dimnames(bPreds$cis) <- list(NULL, nam, c("lower", "upper"))
-    ret <- list(ptPreds = ptPreds, bootPreds = bPreds$fit,
-                bootSEs = bPreds$ses, bootCIs = bPreds$cis)
-
-    tmp.fun.grp <- function(x) return(quantile(bootPreds[x, ],
-                                               probs = c(0, alpha) + (1 - alpha)/2, na.rm = TRUE))
-    tmp1 <- parallel::mclapply(seq_len(nrow(bootPreds)), tmp.fun.grp,
-                               mc.cores = mc.cores)
-    tmp1 <- do.call("rbind", tmp1)
-    if(prediction.type%in%"archetype"){
-      tmp1 <- array(tmp1, c(nrow(X), G, 2), dimnames = list(NULL,
-                                                            NULL, NULL))
-      bPreds$fit_cis <- tmp1[, 1:G, ]
-      dimnames(bPreds$fit_cis) <- list(NULL, object$names$SAMs, c("lower", "upper"))
-    }
-    if(prediction.type%in%"species"){
-      tmp1 <- array(tmp1, c(nrow(X), S, 2), dimnames = list(NULL,
-                                                            NULL, NULL))
-      bPreds$fit_cis <- tmp1[, 1:S, ]
-      dimnames(bPreds$fit_cis) <- list(NULL, object$names$spp, c("lower", "upper"))
-    }
-    ret <- list(ptPreds = ptPreds, bootPreds = bPreds$fit,
-                bootSEs = bPreds$ses, bootCIs = bPreds$cis)
+    tau_list <- parallel::mclapply(seq_len(nboot), function(ii){
+      theta_ii <- if(!is.null(thetaBoot)) thetaBoot[ii,] else rep(-999999,S)
+      recompute_tau_sam(alpha_ii = alphaBoot[ii,],
+                        beta_ii = matrix(betaBoot[ii,],G,npx),
+                        eta_ii = etaBoot[ii,],
+                        gamma_ii = matrix(gammaBoot[ii,],S,npw),
+                        theta_ii = theta_ii)
+    }, mc.cores = tauMcCores)
+    tauBootArr <- array(0, dim = c(nboot,S,G))
+    for (ii in seq_len(nboot)) tauBootArr[ii,,] <- tau_list[[ii]]
   }
-  else ret <- ptPreds
+
+  predtype_int <- switch(prediction.type, archetype = 0L, species = 1L,
+                         stop("prediction.type not known"))
+  type_int <- switch(type, response = 0L, link = 1L, stop("type not known"))
+  linky_int <- if(object$link=="cloglog") 1L else 0L
+  Wcpp <- if(npw>0) W[,-1,drop=FALSE] else matrix(0,nrow(X),1)
+  gammaIn <- if(npw>0) object$coefs$gamma else matrix(0,S,1)
+
+  if (nboot==0) {
+    bootalpha_arg <- bootbeta_arg <- bootgamma_arg <- boottau_arg <- as.numeric(0)
+  } else {
+    bootalpha_arg <- as.numeric(alphaBoot)
+    bootbeta_arg <- as.numeric(betaBoot)
+    bootgamma_arg <- if(npw>0) as.numeric(gammaBoot) else as.numeric(matrix(0,nboot,1))
+    boottau_arg <- as.numeric(tauBootArr)
+  }
+
+  cpp_res <- .Call("sam_cpp_pred",
+                   as.numeric(as.matrix(X)), as.numeric(as.matrix(Wcpp)), as.numeric(offset),
+                   as.integer(G), as.integer(S), as.integer(nrow(X)), as.integer(npx), as.integer(npw),
+                   as.integer(disty), as.integer(linky_int), as.integer(type_int), as.integer(predtype_int),
+                   as.numeric(object$coefs$alpha), as.numeric(object$coefs$beta),
+                   as.numeric(gammaIn), as.numeric(tau),
+                   bootalpha_arg, bootbeta_arg, bootgamma_arg, boottau_arg,
+                   as.integer(nboot),
+                   PACKAGE = "ecomix")
+
+  predCols <- if(prediction.type=="archetype") G else S
+  predNames <- if(prediction.type=="archetype") object$names$SAMs else object$names$spp
+
+  ptPreds <- matrix(cpp_res$preds, nrow = nrow(X), ncol = predCols)
+  colnames(ptPreds) <- predNames
+
+  if (nboot == 0) {
+    gc()
+    return(ptPreds)
+  }
+
+  bootPreds <- matrix(cpp_res$bootPreds, nrow = nrow(X) * predCols, ncol = nboot)
+  bPreds <- list()
+  row.exp <- rowMeans(bootPreds)
+  bPreds$fit <- matrix(row.exp, nrow = nrow(X), ncol = predCols)
+  tmp.grp <- sweep(bootPreds, 1, row.exp, "-")
+  tmp.grp <- tmp.grp^2
+  tmp.grp <- sqrt(rowSums(tmp.grp)/(nboot - 1))
+  bPreds$ses <- matrix(tmp.grp, nrow = nrow(X), ncol = predCols)
+  colnames(bPreds$fit) <- colnames(bPreds$ses) <- predNames
+
+  tmp.fun <- function(x) return(quantile(bootPreds[x, ],
+                                         probs = c(0, alpha) + (1 - alpha)/2,
+                                         na.rm = TRUE))
+  tmp1 <- parallel::mclapply(seq_len(nrow(bootPreds)), tmp.fun,
+                             mc.cores = tauMcCores)
+  tmp1 <- do.call("rbind", tmp1)
+  tmp1 <- array(tmp1, c(nrow(X), predCols, 2), dimnames = list(NULL, NULL, NULL))
+  bPreds$cis <- tmp1[, 1:predCols, ]
+  dimnames(bPreds$cis) <- list(NULL, predNames, c("lower", "upper"))
+
+  ret <- list(ptPreds = ptPreds, bootPreds = bPreds$fit,
+              bootSEs = bPreds$ses, bootCIs = bPreds$cis)
   gc()
   return(ret)
-}
-
-
-"sam_internal_pred_groups" <- function(alpha, beta, tau, gamma,
-                                       G, S, X, W, offset = NULL,
-                                       family, linky, type){
-
-  link.fun <- make.link(linky)
-
-  if (is.null(offset))
-    offset <- rep(0, nrow(X))
-
-  outpred_arch <- matrix(NA, dim(X)[1], G)
-  colnames(outpred_arch) <- paste("G", 1:G, sep = ".")
-
-  for (g in seq_len(G)) {
-    s.outpred <- matrix(NA, dim(X)[1], length(alpha))
-    for (s in seq_len(S)) {
-      etaMix <- as.numeric(as.matrix(X)%*%beta[g, ])
-      if(ncol(W)>1) etaSpp <- as.numeric(W%*%c(alpha[s],gamma[s, ]))
-      else etaSpp <- alpha[s]
-      eta <- etaMix + etaSpp + offset
-      if(type=='response')s.outpred[, s] <- link.fun$linkinv(eta)
-      else if (type=='link')s.outpred[, s] <- eta
-      else stop ('type not known')
-    }
-
-    outpred_arch[, g] <- apply(s.outpred*rep(tau[, g],each = dim(X)[1]),
-                               1, sum)/sum(tau[, g])
-  }
-  return(outpred_arch)
-}
-
-"sam_internal_pred_species" <- function(alpha, beta, tau, gamma,
-                                        G, S, X, W, offset = NULL, family,
-                                        linky, type){
-
-  ## use linky now that I've set it up in the model.
-  link.fun <- make.link(linky)
-
-  if (is.null(offset))
-    offset <- rep(0, nrow(X))
-
-  outpred_spp <- matrix(0, dim(X)[1], S)
-
-  for (g in seq_len(G)) {
-    etaMix <- matrix(as.numeric(as.matrix(X)%*%beta[g, ]), nrow(X), S, byrow=FALSE)
-    if(ncol(W)>1) etaSpp <- W%*%t(cbind(alpha,gamma))
-    else etaSpp <- matrix(alpha, nrow(X), S, byrow=TRUE)
-    eta <- etaMix + etaSpp + offset
-    if(type=='response') mu.g <- link.fun$linkinv(eta)
-    else if(type=='link') mu.g <- eta
-    else stop('type not known')
-    outpred_spp <- outpred_spp + mu.g*matrix(tau[,g], nrow(X), S, byrow=TRUE)
-  }
-
-  return(outpred_spp)
-
 }

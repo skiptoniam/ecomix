@@ -141,10 +141,7 @@
   par( mfrow=c(1,2))
   qqnorm(obs.resid, col=spp.cols, pch=20, main=main, sub=sub)
   abline( 0,1,lwd=2)
-  preds <- sam_internal_pred_species(x$coef$alpha, x$coef$beta, x$tau,
-                                     x$coef$gamma, x$coef$delta, x$G, x$S, x$titbits$X,
-                                     x$titbits$W,x$titbits$U, x$titbits$offset, x$family, x$link,
-                                     type=type)
+  preds <- predict(x, prediction.type="species", type=type)
 
   preds <- preds[,sppID]
 
