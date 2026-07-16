@@ -2339,7 +2339,7 @@ if(!is.null(U)) {
 
   ## taken from mvabund
 
- if(class(family)=="family"){
+ if(inherits(family, "family")){
     fam = family
     if(fam$family=="binomial" & fam$link=="cloglog")
       family="cloglog"

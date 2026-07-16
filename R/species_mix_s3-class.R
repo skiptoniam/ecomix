@@ -372,7 +372,7 @@
 #' @rdname species_membership
 #' @name species_membership
 #' @title Extract the posterior species membership per archetype.
-#' @description Extracts tau_{jk} from species_mix model object. These are the
+#' @description Extracts tau_\{jk\} from species_mix model object. These are the
 #' posterior memberships of each species to each archetypes. Rows should sum
 #' to 1.
 #' @param object A species_mix model object

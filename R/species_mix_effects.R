@@ -67,7 +67,7 @@
   nvars = length(vars)
 
   pred.data <- mod$titbits$data
-  pred.data <- pred.data[,vars]
+  pred.data <- pred.data[,vars,drop=FALSE]
 
   ## check for factors
   factors <- NULL
@@ -115,7 +115,7 @@
         XDataNew[, vars[non.focal]] = mean(v.non.focal)
       }
     }
-    mfs[[i]] <- XDataNew[,vars]
+    mfs[[i]] <- XDataNew[,vars,drop=FALSE]
   }
 
   names(mfs) <- focal.predictors
@@ -202,7 +202,7 @@
     }
 
     x[nrow(x) + 1:degree ,factors] <- unique(x[nrow(x),factors])
-    x[nrow(x) + ((1:degree)-degree) ,!factors] <- rnorm(ncol(x[nrow(x),!factors])*degree,sd=1e-6)
+    x[nrow(x) + ((1:degree)-degree) ,!factors] <- rnorm(ncol(x[nrow(x),!factors,drop=FALSE])*degree,sd=1e-6)
 
     return(x)
 
