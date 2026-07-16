@@ -33,11 +33,14 @@
 #' each RCP across site fitted in the model. Basically sometime you can get
 #' effectively empty or single site RCPs, this function will help you check for
 #' these and remove them from model selection.
-#' @return
+#' @return For a \code{regional_mix} object, a table of the number of sites hard-assigned
+#' (by maximum posterior probability) to each RCP, with a warning if any RCP has fewer than
+#' \code{min_membership} sites. For a \code{regional_mix.multifit} object, a list of such
+#' tables, one per random start.
 #' @param object An RCP fit or a multifit RCP object.
-#' @param min_membership
+#' @param min_membership The minimum number of sites (by highest posterior membership) an RCP
+#' needs to have to not be flagged as effectively empty.
 #' @param ... other arguments
-#' @examples
 #' @examples
 #' \dontrun{
 #' set.seed( 151)
@@ -76,6 +79,7 @@
 #' form.spp <- ~w.1+w.2+w.3
 #' fm_regional_mix <- regional_mix(rcp_formula=form.RCP,species_formula=form.spp,
 #'                                 data=simDat, family='negative.binomial', nRCP=5)
+#' check_RCP_posteriors(fm_regional_mix, min_membership=5)
 #' }
 #' @rdname check_RCP_posteriors
 #' @export check_RCP_posteriors
@@ -86,13 +90,25 @@
 #' @export
 check_RCP_posteriors.regional_mix <- function(object, min_membership, ...){
 
+  hard_assign <- apply(object$postProbs, 1, which.max)
+  membership <- table(factor(hard_assign, levels=seq_len(object$nRCP)))
+  names(membership) <- paste0("RCP",seq_len(object$nRCP))
 
+  small_RCPs <- names(membership)[membership < min_membership]
+  if(length(small_RCPs)>0)
+    warning("RCP(s) ", paste(small_RCPs, collapse=", "), " have fewer than ", min_membership,
+            " sites with highest posterior membership -- consider these effectively empty.\n")
+
+  return(membership)
 }
 
 #' @export
 check_RCP_posteriors.regional_mix.multifit <- function(object, min_membership, ...){
 
+  membership <- lapply(object$multiple_fits, check_RCP_posteriors.regional_mix, min_membership=min_membership)
+  names(membership) <- paste0("start",seq_along(membership))
 
+  return(membership)
 }
 
 
@@ -639,6 +655,31 @@ check_RCP_posteriors.regional_mix.multifit <- function(object, min_membership, .
   ret$coef <- stats::coef(x)
   print( ret)
   invisible(ret)
+}
+
+#'@rdname print.regional_mix.multifit
+#'@name print.regional_mix.multifit
+#'@title Prints a summary of a regional_mix.multifit object.
+#'@param x A regional_mix.multifit object
+#'@param \\dots Ignored
+#'@description Reports the BIC of each of the random starts and identifies the best fitting model.
+#'@export
+"print.regional_mix.multifit" <- function (x, ...){
+
+  cat("A multiple fit",x$multiple_fits[[1]]$family,"regional_mix model object\n\n")
+  cat("You fitted",x$nstart,"random starts using",x$nRCP,"RCPs.\n\n")
+
+  bics <- sapply(x$multiple_fits, BIC)
+
+  best_mod_idx <- which.min(bics)
+  best_mod <- x$multiple_fits[[best_mod_idx]]
+
+  cat("The best model based on BIC was start",best_mod_idx,"\n")
+
+  print(best_mod)
+
+  cat("You can access more elements of this model using x$multiple_fits[[",best_mod_idx,"]]\n")
+
 }
 
 #' @rdname residuals.regional_mix
