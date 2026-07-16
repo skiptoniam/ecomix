@@ -327,7 +327,7 @@ check_RCP_posteriors.regional_mix.multifit <- function(object, min_membership, .
     allResids <- matrix(NA, nrow = x$n, ncol = nsim)
     X <- x$titbits$X
     p.x <- ncol( X)
-    if( class( x$titbits$species_formula)=="formula"){
+    if( inherits(x$titbits$species_formula, "formula")){
       form.W <- x$titbits$species_formula
       W <- x$titbits$W
       p.w <- ncol( W)
@@ -1253,7 +1253,7 @@ check_RCP_posteriors.regional_mix.multifit <- function(object, min_membership, .
     mc.cores <- 1
   X <- object$titbits$X
   p.x <- ncol( X)
-  if( class( object$titbits$species_formula)=="formula"){
+  if( inherits(object$titbits$species_formula, "formula")){
     form.W <- object$titbits$species_formula
     W <- object$titbits$W
     p.w <- ncol( W)

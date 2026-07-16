@@ -22,7 +22,7 @@
 "predict.regional_mix" <- function (object, object2 = NULL, ..., newdata = NULL, nboot = 0, alpha = 0.95, mc.cores = 1){
   if (is.null(newdata)) {
     X <- object$titbits$X
-    if (class(object$titbits$species_formula) == "formula") {
+    if (inherits(object$titbits$species_formula, "formula")) {
       form.W <- object$titbits$species_formula
       W <- object$titbits$W
       p.w <- ncol(W)
@@ -50,7 +50,7 @@
     contrasts.list <- Filter(Negate(anyNA),contrasts.list)
     X <- model.matrix(rcp.tm, mfx, contrasts.arg = contrasts.list)
 
-    if (class(object$titbits$species_formula) == "formula") {
+    if (inherits(object$titbits$species_formula, "formula")) {
     spp.tm <- tt[[2]]
     if(length(attr(spp.tm,"factors"))>0){
       dat.levels <- lapply(newdata,levels)
@@ -69,7 +69,7 @@
     # if (length(form.X) == 3)
       # form.X[[2]] <- NULL
     # X <- model.matrix(form.X, stats::model.frame(form.X, data = as.data.frame(newdata)))
-    # if (class(object$titbits$species_formula) == "formula") {
+    # if (inherits(object$titbits$species_formula, "formula")) {
       # W <- model.matrix(object$titbits$species_formula, stats::model.frame(object$titbits$species_formula,
                                                                            # data = as.data.frame(newdata)))
       # p.w <- ncol(W)
@@ -114,7 +114,7 @@
   tauIn <- tauIn[-1]
   betaIn <- c(NA, as.numeric(object$coef$beta))
   betaIn <- betaIn[-1]
-  if (class(object$titbits$species_formula) == "formula") {
+  if (inherits(object$titbits$species_formula, "formula")) {
     gammaIn <- c(NA, as.numeric(object$coef$gamma))
     gammaIn <- gammaIn[-1]
   }

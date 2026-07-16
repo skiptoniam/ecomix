@@ -197,7 +197,7 @@
   #get power params for Tweedie
   power <- get_power_rcp( disty, power, S)
   #summarising data to console
-  print.data.summ( data, dat, S, rcp_formula, species_formula, disty.cases,
+  print_data_summ( data, dat, S, rcp_formula, species_formula, disty.cases,
                    disty, control$quiet)
 
   tmp <- regional_mix.fit( outcomes, W, X, offy, wts, disty, nRCP, power, inits,
@@ -352,7 +352,7 @@
     # #get power params for Tweedie
     # power <- get_power_rcp( disty, power)
     #summarising data to console
-    print.data.summ( data, dat, S, rcp_formula, species_formula,
+    print_data_summ( data, dat, S, rcp_formula, species_formula,
                      disty.cases, disty, control$quiet)
 
     tmp.fun <- function(x){
@@ -1164,7 +1164,7 @@ function( titbits, outcomes, X, W, offset, wts, data, rcp_formula, species_formu
 # }
 
 
-"print.data.summ" <- function( data, dat, S, rcp_formula, species_formula, disty.cases, disty, quiet=FALSE){
+"print_data_summ" <- function( data, dat, S, rcp_formula, species_formula, disty.cases, disty, quiet=FALSE){
   if( quiet)
     return( NULL)
   n.tot <- nrow( data)
