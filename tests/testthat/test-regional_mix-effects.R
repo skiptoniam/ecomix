@@ -7,6 +7,6 @@ test_that("effects_data.regional_mix and plot.regional_mix_effects_data work for
   expect_no_error({
     pdf(NULL)
     on.exit(dev.off())
-    plot.regional_mix_effects_data(ed, fm)
+    plot(ed, fm)
   })
 })
