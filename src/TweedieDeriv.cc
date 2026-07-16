@@ -66,7 +66,7 @@ double dTweedieMu( const double &y, const double &mu, const double &phi, const d
 		tmp += tmpPt.at(j) * dPhi.at(j);
 	outDerivs.at(kount) = tmp;
 	kount++;
-	outDerivs.at(kount) = -99999.99999; //a (hopefully) obviously stuM_PId number.*/
+	outDerivs.at(kount) = -99999.99999; //a (hopefully) obviously stupid number.*/
 
 	return( tmp);
 }
@@ -237,7 +237,7 @@ void findLogWjsForDeriv( double y4, double muN4, double muZ4, double alpha4, dou
 }
 
 inline bool checkTol( const vector<double> &maxes, const double &currLogW, const double &currdlambda, const double &currdmuZ, const double &currdalpha, const double &eps1, const double &expeps1)
-//check to see if all the conditions are met for stopM_PIng series expansion
+//check to see if all the conditions are met for stopping series expansion
 //return TRUE if all not reached tolerance, FALSE if all have
 {
   return( ( currLogW-maxes.at(0) > eps1) && ( currdlambda - maxes.at(1) > eps1) && ( currdmuZ - maxes.at(2) > eps1));
