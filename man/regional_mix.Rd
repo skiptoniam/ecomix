@@ -63,7 +63,7 @@ regional_mix.multifit(
 \item{mc.cores}{for regional_mix.multifit only. The number of cores to spread the re-fitting over.}
 }
 \value{
-regional_mix returns an object of class \code{regional_mix} and regional_mix.multifit returns a list of objects of class \code{regional_mix}. The regional_mix class has several methods: coef, plot, predict, residuals, summary, and vcov. The regional_mix object consists of a list with the following elements:
+regional_mix returns an object of class \code{regional_mix} and regional_mix.multifit returns an object of class \code{regional_mix.multifit}, a list containing \code{multiple_fits} (a list of \code{nstart} \code{regional_mix} objects), \code{nRCP}, and \code{nstart}. The regional_mix class has several methods: coef, plot, predict, residuals, summary, and vcov. The regional_mix object consists of a list with the following elements:
 
 AIC Akaike an information criterion for the maximised model.
 
