@@ -1811,7 +1811,7 @@ if(!is.null(U)) {
   }
 
   if(disty%in%c(3,4,5)){
-    control$optiDisp <- as.integer(0)
+    control$optiDisp <- as.integer(1)
     theta.score <- as.numeric(rep(NA, length(theta)))
   }else{
     control$optiDisp <- as.integer(0)
@@ -2385,7 +2385,6 @@ if(!is.null(U)) {
       link <- "log"
     }
     else if (substr(family,1,3) == "twe") {
-      stop("tweedie is currently being rebuilt and will be re-released soon.")
       disty <- 4
       familyname<- "tweedie"
       link <- "log" # not meaningful, we only use the lo link at the moment
@@ -2393,7 +2392,7 @@ if(!is.null(U)) {
     else if (substr(family,1,3) == "gau") {
       disty <- 5 # gaussian
       familyname <- "gaussian"
-      link <- "idenity"
+      link <- "identity"
     }
     # FAMILY EDIT
     else stop (paste("'family'", family, "not recognised. See for currently available options."))
