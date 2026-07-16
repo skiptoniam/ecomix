@@ -461,6 +461,16 @@ double log_tweedie_sam( const double &y, const double &mu, const double &phi, co
  	return( tmp);
  }
 
+ double log_tweedie_deriv_mu_sam( double y, double fit, double dispParm , double p){
+ 	double phi, tmp;
+
+ 	phi = exp( dispParm);
+
+ 	tmp = dTweedieMu( y, fit, phi, p);
+
+ 	return( tmp);
+ }
+
 
 double log_normal_sam( const double &y, const double &mu, const double &sig){
 	double tmp = 0.0, sig1;
@@ -631,7 +641,7 @@ void calc_mu_deriv( vector<double> &mu_derivs, const vector<double> &fits, const
 					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_negative_binomial_deriv_mu_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 				}
 				if(dat.disty==4){
-				 	mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_tweedie_deriv_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp( params.Theta[s]), params.Power[s]);
+				 	mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_tweedie_deriv_mu_sam( dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s], params.Power[s]);
 				}
 				if(dat.disty==5){
 					mu_derivs.at(MATREF3D(i,s,g,dat.nObs,dat.nS)) = log_normal_deriv_mu_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
@@ -785,9 +795,6 @@ void calc_dlog_dtheta(vector<double> &dldt, vector<double> const &mus, const sam
 
 	// dlda = dlogalpha passed as fits.dflogdalpha(dat.nG*dat.nS, dat.NAnum) from function call
 	// mus = all the fitted values.
-
-	if(dat.optiDisp>0)
-		return;	//nothing to do here, move along please
 
 	for(int g=0; g<dat.nG; g++){
 		for(int s=0;s<dat.nS; s++){
