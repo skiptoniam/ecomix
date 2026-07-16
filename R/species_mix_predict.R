@@ -40,7 +40,6 @@
   if (is.null(newdata)) {
     X <- object$titbits$X
     W <- object$titbits$W
-    U <- object$titbits$U
     offset <- object$titbits$offset
   } else {
 
@@ -74,24 +73,6 @@
     contrasts.list <- Filter(Negate(anyNA),contrasts.list)
     W <- model.matrix(spp.tm, mfw, contrasts.arg = contrasts.list)
 
-    if(!is.null(object$titbits$U)){
-      all.tm <- tt[[3]]
-      if(length(attr(all.tm,"factors"))>0){
-        dat.levels <- lapply(newdata,levels)
-      } else {
-        dat.levels <- NULL
-      }
-      mfu <- model.frame(all.tm, newdata, xlev = dat.levels)
-      if (!is.null(cl <- attr(all.tm, "dataClasses")))
-        .checkMFClasses(cl, mfu)
-      dat.fac <- vapply(newdata, is.factor, logical(1L))
-      contrasts.list <- lapply(dat.fac,function(x)ifelse(x==TRUE,"contr.treatment",NA))
-      contrasts.list <- Filter(Negate(anyNA),contrasts.list)
-      U <- model.matrix(all.tm, mfu, contrasts.arg = contrasts.list)
-    } else {
-      U <- NULL
-    }
-
     offset <- model.frame(arch.tm, data = newdata)
     offset <- model.offset(offset)
   }
@@ -113,6 +94,14 @@
   # disty <- get_family_sam(disty_cases, object$titbits$family)
   disty <- object$disty
   tau <- object$tau
+
+  # training data, needed to recompute tau (species-archetype posterior membership)
+  # per bootstrap replicate -- tau is derived from the fitted parameters and the
+  # training data, not from the (possibly different) prediction covariates above.
+  Ytrain <- object$titbits$Y
+  Xtrain <- object$titbits$X
+  Wtrain <- object$titbits$W
+  offsetTrain <- object$titbits$offset
   if (is.null(boot.object)) {
     if (nboot > 0) {
       if( !object$titbits$control$quiet)
@@ -133,44 +122,28 @@
 
   alphaBoot <- allCoBoot[, seq_len(S), drop=FALSE]
   betaBoot <- allCoBoot[, S + seq_len((G*npx)), drop=FALSE]
+  etaBoot <- allCoBoot[, S + (G*npx) + seq_len(G-1), drop=FALSE]
   gammaBoot <- allCoBoot[, S + (G-1) + (G*npx) + seq_len((S*npw)), drop=FALSE]
-  deltaBoot <- allCoBoot[, S + (G-1) + (G*npx) + (S*npw) + seq_len(npu), drop=FALSE]
-
-
-  alphaIn <- c(NA, as.numeric(object$coefs$alpha))
-  alphaIn <- alphaIn[-1]
-  betaIn <- c(NA, as.numeric(object$coef$beta))
-  betaIn <- betaIn[-1]
-  # etaIn <- c(NA, as.numeric(object$coef$eta))
-  # etaIn <- etaIn[-1]
-  if (npw>0) {
-    gammaIn <- c(NA, as.numeric(object$coef$gamma))
-    gammaIn <- gammaIn[-1]
-    usegamma <- 1
+  if (disty%in%c(3,4,5)) {
+    thetaBoot <- allCoBoot[, S + (G-1) + (G*npx) + (S*npw) + npu + seq_len(S), drop=FALSE]
   } else {
-    gammaIn <- -999999
-    usegamma <- 0
-  }
-  if (npw>0) {
-    deltaIn <- c(NA, as.numeric(object$coef$gamma))
-    deltaIn <- deltaIn[-1]
-    usedelta <- 1
-  } else {
-    deltaIn <- -999999
-    usedelta <- 0
-  }
-  if (disty%in%c(4,6)) {
-    thetaIn <- c(NA, as.numeric(object$coef$theta))
-    thetaIn <- thetaIn[-1]
-    usetheta <- 1
-  } else {
-    thetaIn <- -999999
-    usetheta <- 0
+    thetaBoot <- NULL
   }
 
   outcomes <- matrix(NA, nrow = nrow(X), ncol = S)
   myContr <- object$titbits$control
   nam <- paste("G", 1:G, sep = "_")
+
+  recompute_tau_sam <- function(alpha_ii, beta_ii, eta_ii, gamma_ii, theta_ii){
+    pi_ii <- additive_logistic(eta_ii)
+    fits_ii <- list(alpha = alpha_ii, beta = beta_ii, gamma = gamma_ii, theta = theta_ii)
+    logls_ii <- get_logls_sam(y = Ytrain, X = Xtrain, W = Wtrain, U = NULL, G = G, S = S,
+                              spp_weights = spp_wts, site_spp_weights = site_spp_wts,
+                              offset = offsetTrain, disty = disty, linky = object$link,
+                              size = object$titbits$size, powers = object$titbits$powers,
+                              control = myContr, fits = fits_ii, get_fitted = FALSE)
+    get_taus(pi_ii, logls_ii$logl_sp, G, S)
+  }
 
   boot.funny.sam <- function(seg) {
     if (any(segments <= 1)) {
@@ -180,15 +153,13 @@
                      archetype = sam_internal_pred_groups(alpha = object$coefs$alpha,
                                                           beta = object$coefs$beta,
                                                           gamma = object$coefs$gamma,
-                                                          delta = object$coefs$delta,
-                                                          tau = tau, G = G, S = S, X = X, W = W, U = U,
+                                                          tau = tau, G = G, S = S, X = X, W = W,
                                                           offset = offset, family = object$family,
                                                           linky = object$link, type = type),
                      species = sam_internal_pred_species(alpha = object$coefs$alpha,
                                                          beta = object$coefs$beta,
                                                          gamma = object$coefs$gamma,
-                                                         delta = object$coefs$delta,
-                                                         tau = tau, G = G, S = S, X = X, W = W,  U = U,
+                                                         tau = tau, G = G, S = S, X = X, W = W,
                                                          offset = offset, family = object$family,
                                                          linky = object$link, type = type))
     } else {
@@ -196,23 +167,29 @@
       bootSampsToUse <- (sum( segments[1:seg])-segments[seg]+1):sum(segments[1:seg])
 
       # add in species level preds.
-      tmp <- lapply(bootSampsToUse,function(ii)switch (prediction.type,
-                                                       archetype = sam_internal_pred_groups(alpha = alphaBoot[ii,],
-                                                                                            beta = matrix(betaBoot[ii,],G,npx),
-                                                                                            gamma = matrix(gammaBoot[ii,],S,npw),
-                                                                                            delta = deltaBoot[ii,],
-                                                                                            tau = tau, G = G, S = S, X = X, W = W, U=U,
-                                                                                            offset = offset, family = object$family,
-                                                                                            linky = object$link,
-                                                                                            type = type),
-                                                       species = sam_internal_pred_species(alpha = alphaBoot[ii,],
-                                                                                           beta = matrix(betaBoot[ii,],G,npx),
-                                                                                           gamma = matrix(gammaBoot[ii,],S,npw),
-                                                                                           delta = deltaBoot[ii,],
-                                                                                           tau = tau, G = G, S = S, X = X, W = W, U=U,
-                                                                                           offset = offset, family = object$family,
-                                                                                           linky = object$link,
-                                                                                           type = type)))
+      tmp <- lapply(bootSampsToUse,function(ii){
+        theta_ii <- if(!is.null(thetaBoot)) thetaBoot[ii,] else rep(-999999,S)
+        tau_ii <- recompute_tau_sam(alpha_ii = alphaBoot[ii,],
+                                    beta_ii = matrix(betaBoot[ii,],G,npx),
+                                    eta_ii = etaBoot[ii,],
+                                    gamma_ii = matrix(gammaBoot[ii,],S,npw),
+                                    theta_ii = theta_ii)
+        switch (prediction.type,
+                archetype = sam_internal_pred_groups(alpha = alphaBoot[ii,],
+                                                     beta = matrix(betaBoot[ii,],G,npx),
+                                                     gamma = matrix(gammaBoot[ii,],S,npw),
+                                                     tau = tau_ii, G = G, S = S, X = X, W = W,
+                                                     offset = offset, family = object$family,
+                                                     linky = object$link,
+                                                     type = type),
+                species = sam_internal_pred_species(alpha = alphaBoot[ii,],
+                                                    beta = matrix(betaBoot[ii,],G,npx),
+                                                    gamma = matrix(gammaBoot[ii,],S,npw),
+                                                    tau = tau_ii, G = G, S = S, X = X, W = W,
+                                                    offset = offset, family = object$family,
+                                                    linky = object$link,
+                                                    type = type))
+      })
 
     }
 
@@ -309,8 +286,8 @@
 }
 
 
-"sam_internal_pred_groups" <- function(alpha, beta, tau, gamma, delta,
-                                       G, S, X, W, U, offset = NULL,
+"sam_internal_pred_groups" <- function(alpha, beta, tau, gamma,
+                                       G, S, X, W, offset = NULL,
                                        family, linky, type){
 
   link.fun <- make.link(linky)
@@ -321,16 +298,13 @@
   outpred_arch <- matrix(NA, dim(X)[1], G)
   colnames(outpred_arch) <- paste("G", 1:G, sep = ".")
 
-  if(!is.null(U)) etaAll <- U%*%delta
-  else etaAll <- rep(0,nrow(X))
-
   for (g in seq_len(G)) {
     s.outpred <- matrix(NA, dim(X)[1], length(alpha))
     for (s in seq_len(S)) {
       etaMix <- as.numeric(as.matrix(X)%*%beta[g, ])
       if(ncol(W)>1) etaSpp <- as.numeric(W%*%c(alpha[s],gamma[s, ]))
       else etaSpp <- alpha[s]
-      eta <- etaMix + etaSpp + etaAll + offset
+      eta <- etaMix + etaSpp + offset
       if(type=='response')s.outpred[, s] <- link.fun$linkinv(eta)
       else if (type=='link')s.outpred[, s] <- eta
       else stop ('type not known')
@@ -342,8 +316,8 @@
   return(outpred_arch)
 }
 
-"sam_internal_pred_species" <- function(alpha, beta, tau, gamma, delta,
-                                        G, S, X, W, U, offset = NULL, family,
+"sam_internal_pred_species" <- function(alpha, beta, tau, gamma,
+                                        G, S, X, W, offset = NULL, family,
                                         linky, type){
 
   ## use linky now that I've set it up in the model.
@@ -354,14 +328,11 @@
 
   outpred_spp <- matrix(0, dim(X)[1], S)
 
-  if(!is.null(U)) etaAll <- U%*%delta
-  else etaAll <- rep(0,nrow(X))
-
   for (g in seq_len(G)) {
     etaMix <- matrix(as.numeric(as.matrix(X)%*%beta[g, ]), nrow(X), S, byrow=FALSE)
     if(ncol(W)>1) etaSpp <- W%*%t(cbind(alpha,gamma))
     else etaSpp <- matrix(alpha, nrow(X), S, byrow=TRUE)
-    eta <- etaMix + etaSpp + etaAll + offset
+    eta <- etaMix + etaSpp + offset
     if(type=='response') mu.g <- link.fun$linkinv(eta)
     else if(type=='link') mu.g <- eta
     else stop('type not known')

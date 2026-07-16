@@ -723,7 +723,7 @@ check_RCP_posteriors.regional_mix.multifit <- function(object, min_membership, .
             bernoulli = { fn <- function(y,mu,logdisp,power) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
             poisson = { fn <- function(y,mu,logdisp,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
             negative.binomial = { fn <- function(y,mu,logdisp,power) pnbinom( q=y, mu=mu, size=1/exp( logdisp), lower.tail=TRUE)},
-            tweedie = { fn <- function(y,mu,logdisp,power) fishMod::pTweedie( q=y, mu=mu, phi=exp( logdisp), p=power)},#CHECK!!!
+            tweedie = { fn <- function(y,mu,logdisp,power) fishMod::pTweedie( q=y, mu=mu, phi=exp( logdisp), p=power)},
             gaussian = { fn <- function(y,mu,logdisp,power) pnorm( q=y, mean=mu, sd=exp( logdisp), lower.tail=TRUE)})
 
     for( ss in 1:object$S){
@@ -854,6 +854,14 @@ check_RCP_posteriors.regional_mix.multifit <- function(object, min_membership, .
     message( "Random values for overdispersions")
     logDisps <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
   }
+  if( family == "tweedie" & (is.null( logDisps) | length( logDisps) != S)){
+    message( "Random values for species' dispersion parameters")
+    logDisps <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
+  }
+  if( family == "tweedie" & (is.null( powers) | length( powers) != S)){
+    message( "Power parameter assigned to 1.6 for each species")
+    powers <- rep(1.6, S)
+  }
   if( family=="gaussian" & (is.null( logDisps) | length( logDisps) != S)){
     message( "Random values for species' variance parameters")
     logDisps <- log( 1 + rgamma( n+S, shape=1, scale=0.75))
@@ -898,7 +906,7 @@ check_RCP_posteriors.regional_mix.multifit <- function(object, min_membership, .
 
   if( family=="bernoulli")
     mu <- inv.logit(etaMu)
-  if( family %in% c("poisson","negative.binomial"))#,"tweedie"))
+  if( family %in% c("poisson","negative.binomial","tweedie"))
     mu <- exp( etaMu)
   if( family == "gaussian")
     mu <- etaMu
@@ -913,6 +921,10 @@ check_RCP_posteriors.regional_mix.multifit <- function(object, min_membership, .
     outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
   if( family=="negative.binomial")
     outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp( logDisps), each=n)), nrow = n, ncol = S)
+  if( family=="tweedie")
+    outcomes <- matrix(fishMod::rTweedie(n * S, mu = as.numeric(fitted),
+                                         phi = rep(exp(logDisps), each = n),
+                                         p = rep(powers, each = n)), nrow = n, ncol = S)
   if( family=="gaussian")
     outcomes <- matrix( rnorm( n=n*S, mean=as.numeric( fitted), sd=rep( exp( logDisps), each=n)), nrow=n, ncol=S)
 

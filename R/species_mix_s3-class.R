@@ -507,7 +507,7 @@
     Ucpp <- matrix(1,nrow = n,ncol=1)
     npu <- as.integer(1) # a dummy variable to stop c++ issues.
   }
-  if(disty%in%c(4,6)){
+  if(disty%in%c(3,4,5)){
     control$optiDisp <- as.integer(1)
     theta.score <- as.numeric(rep(NA, length(theta)))
   }else{
@@ -549,7 +549,7 @@
         delta <- -999999
         # start <- start + 1
       }
-      if(disty%in%c(4,6)){
+      if(disty%in%c(3,4,5)){
         theta <- x[start + seq_len(S)]
       } else {
         theta <- rep(-999999,S)
@@ -600,7 +600,7 @@
         tmp1 <- c(tmp1, delta.score)
         names(tmp1) <- c(names(object$delta),names(tmp1))
       }
-      if(disty%in%c(4,6)){
+      if(disty%in%c(3,4,5)){
         tmp1 <- c( tmp1, theta.score)
         names(tmp1) <- c(names(object$theta),names(tmp1))
       }
@@ -618,7 +618,7 @@
     if(!is.null( object$titbits$all_formula)){
       hess.names <- c(names(object$delta),hess.names)
     }
-    if(disty%in%c(4,6)){
+    if(disty%in%c(3,4,5)){
       hess.names <- c(names(object$theta),hess.names)
     }
 

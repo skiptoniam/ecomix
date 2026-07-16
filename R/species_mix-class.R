@@ -892,6 +892,7 @@
                                            offset = offset, #y_is_na = y_is_na,
                                            G = G, S = S,
                                            disty = disty, linky = linky, size = size,
+                                           powers = powers,
                                            control = control)
 
 
@@ -917,6 +918,7 @@
                                            offset = offset, #y_is_na = y_is_na,
                                            G = G, S = S,
                                            disty = disty, linky = linky, size = size,
+                                           powers = powers,
                                            control = set_control_sam(list(init.method="random2")))
 
       fits <- list()
@@ -1354,7 +1356,7 @@
    if(disty == 3)
      cw.out <- sum(tau[ss,gg]*dnbinom(y[,ss], mu = link$linkinv(eta), size = 1/x, log = TRUE));
    if(disty == 4)
-     cw.out <- sum(tau[ss,gg]*fishMod::dTweedie(y[,ss], mu = link$linkinv(eta), phi = x, prob = powers[ss], LOG = TRUE));
+     cw.out <- sum(tau[ss,gg]*fishMod::dTweedie(y[,ss], mu = link$linkinv(eta), phi = x, p = powers[ss], LOG = TRUE));
    if(disty == 5)
      cw.out <- sum(tau[ss,gg]*dnorm(y[,ss], mean = eta, sd = sqrt(x), log = TRUE))
    out <- out + cw.out
@@ -1394,7 +1396,7 @@
       if(disty ==  3)
         out <- out + sum(tau[ss,gg]*dnbinom(y[,ss], mu =  link$linkinv(eta), size = 1/fits$theta[ss], log = TRUE))
       if(disty ==  4)
-        out <- out + sum(tau[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(eta), phi = fits$theta[ss], prob = powers[ss], LOG = TRUE))
+        out <- out + sum(tau[ss,gg]*fishMod::dTweedie(y[,ss], mu =  link$linkinv(eta), phi = fits$theta[ss], p = powers[ss], LOG = TRUE))
       if(disty ==  5)
         out <- out + sum(tau[ss,gg]*dnorm(y[,ss], mean =  link$linkinv(eta), sd = sqrt(fits$theta[ss]), log = TRUE))
       if(disty ==  6)
@@ -1675,7 +1677,13 @@
 
   outcomes <- as.matrix(y[,ss])
 
-  if(ncol(X)==1){
+  # glmnet requires x to have >=2 columns; pad with a dummy constant column
+  # when there is only one archetype covariate. This dummy column must be
+  # dropped again before building any design matrix that adds its own
+  # explicit intercept (disty==4/6 below), otherwise the two constant
+  # columns are collinear.
+  X_was_padded <- (ncol(X)==1)
+  if(X_was_padded){
     X<- cbind(1,X)
   }
 
@@ -1728,15 +1736,6 @@
       log1theta <- log(1/tmp)
       theta <- log1theta
     }
-    if (disty == 4) { #Tweedie needs an unconstrained fit.  May cause problems in some cases, especially if there is quasi-separation...
-      df3 <- data.frame(y=outcomes, offy=offset, Intercept= 1, df)
-      tmp.fm1 <- fishMod::tglm(y~-1+.-offy+offset( offy),
-                               wts=c(site_spp_weights[,ss]),
-                               data=df3, p=power[ss], vcov=FALSE,
-                               residuals=FALSE, trace=0)
-      my_coefs <- t(as.matrix(tmp.fm1$coef,ncol=1))
-      theta <- tmp.fm1$coef["phi"]
-    }
     if( disty == 5){
       preds <- as.numeric( predict(ft_sp, s=locat.s, type="link",
                                    newx=as.matrix(df), newoffset=offset))
@@ -1744,9 +1743,20 @@
       theta <- sum((outcomes - preds)^2)/length(outcomes)
     }
   }
+  if (disty == 4) { #Tweedie needs an unconstrained fit.  May cause problems in some cases, especially if there is quasi-separation...
+      df_tw <- if(X_was_padded) df[,-1,drop=FALSE] else df
+      df3 <- data.frame(y=outcomes, offy=offset, Intercept= 1, df_tw)
+      tmp.fm1 <- fishMod::tglm(y~-1+.-offy+offset( offy),
+                               wts=c(site_spp_weights[,ss]),
+                               data=df3, p=power[ss], vcov=FALSE,
+                               residuals=FALSE, trace=0)
+      my_coefs <- t(as.matrix(tmp.fm1$coef,ncol=1))
+      theta <- tmp.fm1$coef["phi"]
+    }
   if (disty == 6){
       outcomes <- as.matrix(cbind(y[,ss],size-y[,ss]))
-      fit_init <- glm2::glm.fit2(y=outcomes, x=cbind(1,df), family = binomial())
+      df_bin <- if(X_was_padded) df[,-1,drop=FALSE] else df
+      fit_init <- glm2::glm.fit2(y=outcomes, x=cbind(1,df_bin), family = binomial())
       my_coefs <- t(as.matrix(fit_init$coefficients))
       theta <- -99999
     }
@@ -2663,7 +2673,7 @@ if(!is.null(U)) {
   } else {
     names(mod$coefs$delta) <- mod$names$Uvars
   }
-  if( any( mod$coefs$theta==-999999, na.rm=TRUE)|any(!mod$disty%in%c(4,5,6))){
+  if( any( mod$coefs$theta==-999999, na.rm=TRUE)|any(!mod$disty%in%c(3,4,5))){
     mod$coefs$theta <- NULL
   } else {
     names(mod$coefs$theta) <- mod$names$spp
@@ -2739,7 +2749,7 @@ if(!is.null(U)) {
     } else{
       delta <- -999999
     }
-    if(disty%in%c(4,5,6)){
+    if(disty%in%c(3,4,5)){
       theta <- as.numeric(inits$theta)
     } else {
       theta <- rep(-999999,S)
@@ -2769,7 +2779,7 @@ if(!is.null(U)) {
     } else{
       delta <- -999999
     }
-    if(disty%in%c(4,5,6)){
+    if(disty%in%c(3,4,5)){
       theta <- inits[start + 1:S]
     } else {
       theta <- rep(-999999,S)

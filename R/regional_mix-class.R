@@ -243,7 +243,7 @@
 #'@param disty the error family to used in regional_mix estimation. Currently, 'bernoulli', 'poisson', 'negative.binomial' and 'guassian' are available - internal conversion of family to a integer.
 #'@param nRCP is the number of species archetypes that are being estimated.
 #'@param control this is a list of control parameters that alter the specifics of model fitting.
-#'@param power This is for the Tweedie distribution - currently not in use (until we fix the Tweedie computational stuff).
+#'@param power This is the power parameter for the Tweedie distribution.
 #'@param inits This will be a vector of starting values for regional_mix (i.e you've fitted a model and want to refit it).
 #'@param n the number of sites in the data
 #'@param S is the number of species to be modelled (this will be calculated internally in regional_mix())
@@ -590,7 +590,10 @@ function( site.logls, outcomes, family, coef, nRCP, type="deviance", powers=NULL
       }
       else{ #Tweedie needs an unconstrained fit.  May cause problems in some cases, especially if there is quasi-separation...
         df3 <- as.data.frame( cbind( y=outcomes[,ss], offy=offy, df))
-        colnames( df3)[-(1:2)] <- c( paste( "grp", 1:G, sep=""), paste( "w",seq_len(ncol(W)), sep=""))
+        if( length( W) != 1)
+          colnames( df3)[-(1:2)] <- c( paste( "grp", 1:G, sep=""), paste( "w",seq_len(ncol(W)), sep=""))
+        else
+          colnames( df3)[-(1:2)] <- paste( "grp", 1:G, sep="")
         tmp.fm1 <- fishMod::tglm( y~-1+.-offy+offset( offy), wts=wts, data=df3, p=power[ss], vcov=FALSE, residuals=FALSE, trace=0)
         my.coefs <- c( NA, tmp.fm1$coef)
         disp[ss] <- log( tmp.fm1$coef["phi"])
