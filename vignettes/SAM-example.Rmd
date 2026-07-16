@@ -41,7 +41,7 @@ Here we will demonstrate how to fit and interpret a Species Archetype Models (SA
 We generate a set of simulated environment predictors using Gaussian random fields with nugget effects on some of the variables. 
 
 ```{r,echo=TRUE,eval=TRUE,warning=FALSE,message=FALSE}
-library(raster)
+library(terra)
 set.seed(007)
 lenny <- 100
 xSeq <- seq( from=0, to=1, length=lenny)
@@ -56,11 +56,11 @@ Xsim <- cbind( X, as.numeric( as.matrix( simmy1)), as.numeric( as.matrix( simmy2
             as.numeric( as.matrix( simmy3)), as.numeric( as.matrix( simmy4)))
 Xsim[,-(1:2)] <- apply(Xsim[,-(1:2)], 2, scale)
 colnames(Xsim) <- c("x","y","covar1","covar2","covar3","covar4")
-env <- rasterFromXYZ(Xsim)
+env <- terra::rast(Xsim, type="xyz")
 
 names(env) <- c("Temperature", "Oxygen", "Depth", "Productivity")
 env.df <- as.data.frame(env,xy=TRUE)
-env_dat<-rasterToPoints(env)
+env_dat <- terra::as.data.frame(env,xy=TRUE)
 ```
 
 ```{r envplots, fig.width= 4, fig.height= 4, fig.cap="Figure 1. Simulated environmental variables used in Species Archetype Modelling", echo=FALSE}
@@ -74,10 +74,7 @@ pal <- function (name, flip = FALSE) {
 plot_cov <- function (coords, values, pal, title) {
 
   # build a raster
-  data <- data.frame(values)
-  coordinates(data) <- coords
-  spdf <- SpatialPixelsDataFrame(data, tol = 0.0001, data = data.frame(data))
-  ras <- raster(spdf, values = TRUE)
+  ras <- terra::rast(data.frame(coords, value = values), type = "xyz")
 
   # plot
   plot(ras, col = pal(100),
@@ -280,15 +277,11 @@ pal <- function (name, flip = FALSE) {
 plot_pred <- function (coords, values, pal, title) {
 
   # build a raster
-  data <- data.frame(values)
-  coordinates(data) <- coords
-  spdf <- SpatialPixelsDataFrame(data, tolerance = 0.0001, data = data.frame(data))
-  ras <- raster(spdf, values = TRUE)
+  ras <- terra::rast(data.frame(coords, value = values), type = "xyz")
 
   # plot
   plot(ras, col = pal(100),
-       legend=TRUE, horizontal = TRUE, 
-       # legend.args = list(text='Prob', side = 1, line = 2),
+       legend=TRUE, plg=list(horiz = TRUE),
        axes = FALSE,
        box = FALSE)
 
