@@ -297,6 +297,20 @@
 
   } else {
 
+  cat("A multiple fit",x$multiple_fits[[1]]$family,"species_mix model object\n\n")
+  cat("You fitted",x$nstart,"random starts using",x$nArchetypes,"Archetypes.\n\n")
+
+  bics <- sapply(x$multiple_fits, BIC)
+
+  best_mod_idx <- which.min(bics)
+  best_mod <- x$multiple_fits[[best_mod_idx]]
+
+  cat("The best model based on BIC was start",best_mod_idx,"\n")
+
+  print(best_mod)
+
+  cat("You can access more elements of this model using x$multiple_fits[[",best_mod_idx,"]]\n")
+
   }
 
 }
