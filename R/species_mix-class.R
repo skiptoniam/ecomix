@@ -259,7 +259,7 @@
   tmp$npu <- ifelse(!is.null(U),ncol(U),0);
 
   if(nArchetypes==1){
-    tmp$pi <- tmp$pi
+    tmp$pi <- 1
   }else{
     tmp$pi <- additive_logistic(tmp$eta)
   }
@@ -276,6 +276,8 @@
                                fits = fits, get_fitted = FALSE)
     tmp$tau <- get_taus(tmp$pi,logls_mus$logl_sp, G, S)
     tmp$pi <- colSums(tmp$tau)/S
+  } else {
+    tmp$tau <- matrix(1, nrow=S, ncol=1)
   }
 
   # Information criteria
@@ -330,21 +332,6 @@
                               offset, #y_is_na,
                               disty, linky,
                               size, powers, control, inits=NULL){
-
-  if(G==1){
-    tmp <- fit.ecm.sam(y=y, X=X, W=W, U=U,
-                       spp_weights=spp_weights,
-                       site_spp_weights=site_spp_weights,
-                       offset=offset,
-                       G=G,
-                       S=S,
-                       disty=disty,
-                       linky=linky,
-                       size=size,
-                       powers=powers,
-                       control=control)
-    return(tmp)
-  }
 
   if(is.null(inits)){
     starting_values  <- starting_values_wrapper(y = y, X = X, W = W, U = U,
@@ -612,7 +599,7 @@
     tmp$npu <- ifelse(!is.null(U),ncol(U),0);
 
     if(nArchetypes==1){
-      tmp$pi <- tmp$pi
+      tmp$pi <- 1
     }else{
       tmp$pi <- additive_logistic(tmp$eta)
     }
@@ -630,6 +617,8 @@
                                  fits = fits, get_fitted = FALSE)
       tmp$tau <- get_taus(tmp$pi,logls_mus$logl_sp, G, S)
       tmp$pi <- colSums(tmp$tau)/S
+    } else {
+      tmp$tau <- matrix(1, nrow=S, ncol=1)
     }
 
     #Information criteria
@@ -1902,7 +1891,7 @@ if(!is.null(U)) {
 
   names(ret$alpha) <- ret$names$spp
   names(ret$beta) <- paste(rep(ret$names$Xvars,each=G),ret$names$SAMs,sep='.')
-  names(ret$eta) <- paste0("eta",seq_len(G-1))
+  if(G>1) names(ret$eta) <- paste0("eta",seq_len(G-1))
   if(ncol(W)>1) names(ret$gamma) <- paste(rep(ret$names$Wvars,each=S),ret$names$spp,sep='.')
   if(!is.null(U)) names(ret$delta) <- ret$names$Uvars
   names(ret$theta) <- paste0("theta.",ret$names$spp)
