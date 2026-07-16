@@ -12,7 +12,7 @@ species_membership(object, ...)
 \item{\\dots}{Ignored}
 }
 \description{
-Extracts tau_{jk} from species_mix model object. These are the
+Extracts tau_\{jk\} from species_mix model object. These are the
 posterior memberships of each species to each archetypes. Rows should sum
 to 1.
 }
