@@ -214,7 +214,7 @@ sam_fit <- species_mix(archetype_formula = archetype_formula, # Archetype formul
 ```
 
 #### Group selection
-One challenge when developing SAMs (or any finite mixture model) is selecting $k$; the number of archetypes (groups) in the model. The number of archetypes is latent, so must be estimated from the data and the functional form of the covariates. In this example, we know that the optimal number of groups for these data is three, because we simulated the data with these characteristics. However, $k$ is generally not known in real world applications. So one import part of the fitting process is finding $k$, having said that it is also totally fine to define $k$ for say a management objective. We can estimate the "best" number of groups based on the most parsimonious fit to the data. We can do this based on the model log-likelihood, and information criterion such as BIC. We provide a function `species_mix.multifit` which can assist in group selection if a vector of archetypes is provided. Below is an example of how one might do this. For simplicity we have left the `nstart=1`, but for more complex models this could be increased to use multiple starts to help search to the likelihood.
+One challenge when developing SAMs (or any finite mixture model) is selecting $k$; the number of archetypes (groups) in the model. The number of archetypes is latent, so must be estimated from the data and the functional form of the covariates. In this example, we know that the optimal number of groups for these data is three, because we simulated the data with these characteristics. However, $k$ is generally not known in real world applications. So one import part of the fitting process is finding $k$, having said that it is also totally fine to define $k$ for say a management objective. We can estimate the "best" number of groups based on the most parsimonious fit to the data. We can do this based on the model log-likelihood, and information criterion such as BIC. We provide a function `species_mix.multifit` which can assist in group selection if a vector of archetypes is provided. Below is an example of how one might do this. Note that with only a single random start per archetype count (`nstart=1`), some fits -- especially for larger $k$ -- can land on a degenerate solution where an archetype collapses to (near) zero species; `species_mix.multifit`/`plot.species_mix.multifit` detect and drop these, which can leave gaps in the BIC curve. Using a handful of random starts per archetype count (`nstart=3` here) makes it far more likely that at least one converges to a sensible solution; for real applications, increase `nstart` further still.
 
 ```{r, eval = TRUE, fig.width=5,fig.height=4,fig.cap="Figure 3. Group selection from multiple fit function, we can see that three archetypes is the best fit to these data based on Bayesian Information Criterion (BIC).", cache=TRUE}
 nArchetypes <- 1:6
@@ -222,7 +222,7 @@ sam_multifit <- species_mix.multifit(archetype_formula = archetype_formula, # Ar
                                      species_formula = species_formula,     # Species formula
                                      data = samdat_10p,                     # Data
                                      nArchetypes = nArchetypes,             # Number of groups (mixtures) to fit
-                                     nstart = 1,                            # The number of fits per archetype.
+                                     nstart = 3,                            # The number of fits per archetype.
                                      family = binomial(),                  # Which family to use
                                      control = list(quiet = FALSE))
 ```
@@ -249,7 +249,7 @@ We can also plot the partial responses of covariates as shown in @dunstan_model_
 par(mfrow=c(2,3))
 eff.df <- effects_data(focal.predictors = c("Temperature","Oxygen","Productivity","Depth","Time"), sam_fit)
 sam_boot <- bootstrap(sam_fit,nboot = 10, quiet = TRUE)
-plot(x = eff.df, object = sam_fit, object2=sam_boot,ylim=c(0,1))
+plot(x = eff.df, object = sam_fit, boot.object=sam_boot,ylim=c(0,1))
 ```
 
 #### Model prediction
