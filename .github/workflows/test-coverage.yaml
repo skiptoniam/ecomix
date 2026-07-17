@@ -5,7 +5,7 @@ on:
     branches: [main, master, dev] ## also check dev branch
   pull_request:
     branches: [main, master, dev]
-name: test-coverage.yaml
+name: codecov-coverage.yaml
 permissions: read-all
 jobs:
   test-coverage:
