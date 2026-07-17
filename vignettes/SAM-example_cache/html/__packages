@@ -6,5 +6,4 @@ grDevices
 graphics
 stats
 ecomix
-sp
-raster
+terra
