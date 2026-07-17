@@ -31,7 +31,6 @@ $$
 where $Pr(z_{k}) = \pi_k,$ and $\sum^K_{k=1}{\pi_k=1}$. The functional form of $g_k(.)$ can be specified to be any function commonly used within a Generalized Linear Model framework. Including linear, quadratic, spline and interaction terms. Additionally an offset term $\nu_i$ can be included to account for sampling artefacts and are included into the model on a log-scale (e.g. log(area sampled)). We refer to the model as the `species_mix` in the `ecomix` package. 
 
 ```{r setup}
-# devtools::install_github("skiptoniam/ecomix@dev") # install dev version
 library(ecomix)
 ```
 
