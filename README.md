@@ -2,7 +2,7 @@
 
 <!-- badges: start -->
 
-[![R-CMD-check](https://github.com/skiptoniam/ecomix/workflows/R-CMD-check/badge.svg)](https://github.com/skiptoniam/ecomix/actions)
+[![R-CMD-check.yaml](https://github.com/skiptoniam/ecomix/actions/workflows/check-standard.yaml/badge.svg)](https://github.com/skiptoniam/ecomix/actions/workflows/check-standard.yaml)
 [![Coverage
 Status](https://codecov.io/github/skiptoniam/ecomix/coverage.svg?branch=master)](https://codecov.io/github/skiptoniam/ecomix?branch=master)
 [![Project Status: Active ??? The project has reached a stable, usable
