@@ -173,20 +173,24 @@
   SAMsamp_minPosteriorSites <- sapply( nSAMs_fm, function(y) sapply( y, function(x) min( colSums( x$tau))))
   SAMsamp_ObviouslyBad <- which(SAMsamp_minPosteriorSites < 0.5)
 
-  #ll
+  best_per_group <- function(m, best){
+    apply(m, 2, function(x) if(all(is.na(x))) NA_real_ else best(x, na.rm=TRUE))
+  }
+
+  #ll higher logLik is better, so take the max of the (valid) refits
   SAMsamp_ll[SAMsamp_ObviouslyBad] <- NA
   SAMsamp_ll <- matrix(SAMsamp_ll, nrow = length(nSAMs_fm[[1]]))
-  SAMsamp_minll <- apply( SAMsamp_ll, 2, min, na.rm=TRUE)
+  SAMsamp_minll <- best_per_group(SAMsamp_ll, max)
 
-  # AIC
+  # AIC -- lower is better
   SAMsamp_AICs[SAMsamp_ObviouslyBad] <- NA
   SAMsamp_AICs <- matrix(SAMsamp_AICs, nrow = length(nSAMs_fm[[1]]))
-  SAMsamp_minAICs <- apply( SAMsamp_AICs, 2, min, na.rm=TRUE)
+  SAMsamp_minAICs <- best_per_group(SAMsamp_AICs, min)
 
-  #BIC
+  #BIC -- lower is better
   SAMsamp_BICs[SAMsamp_ObviouslyBad] <- NA
   SAMsamp_BICs <- matrix(SAMsamp_BICs, nrow = length(nSAMs_fm[[1]]))
-  SAMsamp_minBICs <- apply( SAMsamp_BICs, 2, min, na.rm=TRUE)
+  SAMsamp_minBICs <- best_per_group(SAMsamp_BICs, min)
 
   type <- match.arg(type)
 
