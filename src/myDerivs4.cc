@@ -42,7 +42,7 @@ void myDerivs::updateDerivs( const myData &dat, const vector<double> &alphaDeriv
 	for( int s=0; s<dat.nS; s++)
 		for( int p=0; p<dat.npw; p++)
 			Gamma[MATREF2D(s,p,dat.nS)] += gammaDerivsI.at(MATREF2D(s,p,dat.nS));
-	if( dat.isDispersion() & dat.doOptiDisp())
+	if( dat.isDispersion() && dat.doOptiDisp())
 		for( int s=0; s<dat.nS; s++)
 			Disp[s] += dispDerivsI.at(s);
 	
