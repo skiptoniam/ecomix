@@ -161,7 +161,7 @@
 
     nrow.orig <- nrow(x)
 
-    if(length(partial.preds)==4){
+    if(is.list(partial.preds)){
       partial.preds$ptPreds <- partial.preds$ptPreds[1:nrow.orig, ,drop=FALSE]
       partial.preds$bootPreds <- partial.preds$bootPreds[1:nrow.orig, ,drop=FALSE]
       partial.preds$bootSEs <- partial.preds$bootSEs[1:nrow.orig, ,drop=FALSE]
@@ -182,7 +182,7 @@
   for (i in seq_len(length(partial.preds))){
 
     se.plots <- FALSE
-    if(length(partial.preds[[i]])==4) se.plots <- TRUE
+    if(is.list(partial.preds[[i]])) se.plots <- TRUE
 
     idx <- which(nam %in% response.var)
 

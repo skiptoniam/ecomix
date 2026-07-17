@@ -222,7 +222,7 @@
 
     nrow.orig <- nrow(x)
 
-    if(length(partial.preds)==4){
+    if(is.list(partial.preds)){
       partial.preds$ptPreds <- partial.preds$ptPreds[1:nrow.orig, ,drop=FALSE]
       partial.preds$bootPreds <- partial.preds$bootPreds[1:nrow.orig, ,drop=FALSE]
       partial.preds$bootSEs <- partial.preds$bootSEs[1:nrow.orig, ,drop=FALSE]
@@ -249,7 +249,7 @@
   for (i in seq_len(length(partial.preds))){
 
     se.plots <- FALSE
-    if(length(partial.preds[[i]])==4) se.plots <- TRUE
+    if(is.list(partial.preds[[i]])) se.plots <- TRUE
 
     if( any(response.var %in% object$names$spp)){
       idx <- which(object$names$spp %in% response.var)
@@ -260,7 +260,7 @@
       else idx <- seq(1,ncol(partial.preds[[i]]))
     }
 
-    sppColidx <- apply(object$tau[idx,],1,which.max)
+    sppColidx <- apply(object$tau[idx,,drop=FALSE],1,which.max)
 
     xlabel <- names(x[i])
     xx <- x[[i]][,names(x[i])]

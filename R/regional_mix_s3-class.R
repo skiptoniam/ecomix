@@ -1026,8 +1026,8 @@ check_RCP_posteriors.regional_mix.multifit <- function(object, min_membership, .
   ## probabilities for all other levels of same sampling var
   res<- lapply(seq_along(object$names$Wvars),function(jj){
     new_eta <- sweep(eta, 2, coef(object)$gamma[,object$names$Wvars[jj]], "+");
-    if(type%in%"response")part_mus <- link.fun$linkinv(eta)
-    else part_mus <- eta
+    if(type%in%"response")part_mus <- link.fun$linkinv(new_eta)
+    else part_mus <- new_eta
     return(part_mus)})
 
   names(res)<- object$names$Wvars
@@ -1115,8 +1115,8 @@ check_RCP_posteriors.regional_mix.multifit <- function(object, min_membership, .
 
       res<- lapply(seq_along(object$names$Wvars),function(jj){
         new_eta <- sweep(tmp_eta, 2, tmp_gamma[,jj], "+");
-        if(type%in%"response")part_mus <- link.fun$linkinv(tmp_eta)
-        if(type%in%"link") part_mus <- tmp_eta
+        if(type%in%"response")part_mus <- link.fun$linkinv(new_eta)
+        if(type%in%"link") part_mus <- new_eta
         return(part_mus)})
 
       names(res)<-object$names$Wvars
@@ -1128,10 +1128,13 @@ check_RCP_posteriors.regional_mix.multifit <- function(object, min_membership, .
     names(samp_res) <- object$names$Wvars
 
     for(k in seq_along(object$names$Wvars)){
-      samp_res[[k]]<-list(mean=apply(simplify2array(res_all[[k]]), c(1,2), mean),
-                          sd=apply(simplify2array(res_all[[k]]), c(1,2), sd),
-                          lower=apply(simplify2array(res_all[[k]]), c(1,2), function(x) quantile(x, probs=CI[1])),
-                          upper=apply(simplify2array(res_all[[k]]), c(1,2), function(x) quantile(x, probs=CI[2])))
+      # res_all is indexed by bootstrap draw; pull out level k's prediction
+      # from every draw before aggregating across draws.
+      level_k <- lapply(res_all, `[[`, k)
+      samp_res[[k]]<-list(mean=apply(simplify2array(level_k), c(1,2), mean),
+                          sd=apply(simplify2array(level_k), c(1,2), sd),
+                          lower=apply(simplify2array(level_k), c(1,2), function(x) quantile(x, probs=CI[1])),
+                          upper=apply(simplify2array(level_k), c(1,2), function(x) quantile(x, probs=CI[2])))
     }
 
     overall_temp<-list()
