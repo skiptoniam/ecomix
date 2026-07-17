@@ -44,7 +44,7 @@
       all.wts <- object$S * gtools::rdirichlet( nboot, rep( 1, object$S))
     my.inits <- setup_inits_sam(object$coefs, object$S, object$G,
                                 object$titbits$X, object$titbits$W,
-                                object$titbits$U, object$disty,
+                                object$disty,
                                 return_list = TRUE)
 
     tmpOldQuiet <- object$titbits$control$quiet
@@ -58,7 +58,6 @@
         samp.object <- ecomix::species_mix.fit(y=object$titbits$Y,
                                                X=object$titbits$X,
                                                W=object$titbits$W,
-                                               U=object$titbits$U,
                                                offset = object$titbits$offset,
                                                spp_weights = all.wts[dummy,,drop=TRUE],
                                                site_spp_weights = object$titbits$site_spp_weights,
@@ -73,7 +72,7 @@
                                                inits = my.inits)
         )
       boot.res <- c(samp.object$alpha,samp.object$beta,samp.object$eta,
-                    samp.object$gamma,samp.object$delta,samp.object$theta)
+                    samp.object$gamma,samp.object$theta)
       return(boot.res)
     }
 

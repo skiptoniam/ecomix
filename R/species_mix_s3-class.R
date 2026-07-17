@@ -9,7 +9,7 @@
 
 "AIC.species_mix" <- function (object, k=NULL, ...){
   effect.param <- length(object$beta) + object$G + object$S + object$npw*object$S +
-    object$npu + ifelse(object$family %in% c("negative.binomial","tweedie","gaussian"),object$S,0)
+    ifelse(object$family %in% c("negative.binomial","tweedie","gaussian"),object$S,0)
   p <- effect.param
   if (is.null(k))
     k <- 2
@@ -26,7 +26,7 @@
 
 "BIC.species_mix" <-  function (object, ...){
   effect.param <- length(object$beta) + object$G + object$S + object$npw*object$S +
-    object$npu + ifelse(object$family %in% c("negative.binomial","tweedie","gaussian"),object$S,0)
+    ifelse(object$family %in% c("negative.binomial","tweedie","gaussian"),object$S,0)
   p <- effect.param
   k <- log(object$S)
   star.ic <- -2 * object$logl + k * p
@@ -52,10 +52,6 @@
     res$gamma <- matrix(object$coefs$gamma, nrow = object$S, ncol = object$npw)
     rownames(res$gamma) <- object$names$spp
     colnames(res$gamma) <- object$names$Wvars
-  }
-  if((object$npu)>0){
-    res$delta <- object$coefs$delta
-    names(res$delta) <- object$names$Uvars
   }
   if(object$family%in%c('negative.binomial','tweedie','gaussian')){
     res$theta <- object$coef$theta
@@ -452,34 +448,31 @@
   }
   X <- object$titbits$X
   W <- object$titbits$W
-  U <- object$titbits$U
   offset <- object$titbits$offset
   spp_weights <- object$titbits$spp_weights
   site_spp_weights <- object$titbits$site_spp_weights
   y <- object$titbits$Y
+  powers <- object$titbits$powers
   # y_is_na <- object$titbits$y_is_na
   size <- object$titbits$size
   family <- object$titbits$family
-  disty_cases <- c("bernoulli","poisson","negative.binomial","tweedie","gaussian","binomial")
-  disty <- get_family_sam(disty_cases, family)
+  disty <- object$disty
   S <- object$S
   G <- object$G
   n <- object$n
   npx <- object$npx
   npw <- object$npw
-  npu <- object$npu
   control <- object$titbits$control
 
   # values for optimisation.
   inits <- object$coefs
-  start_vals <- setup_inits_sam(inits, S, G, X, W, U, disty, return_list = TRUE)
+  start_vals <- setup_inits_sam(inits, S, G, X, W, disty, return_list = TRUE)
 
   # parameters to optimise
   alpha <- as.numeric(start_vals$alpha)
   beta <- as.numeric(start_vals$beta)
   eta <- as.numeric(start_vals$eta)
   gamma <- as.numeric(start_vals$gamma)
-  delta <- as.numeric(start_vals$delta)
   theta <- as.numeric(start_vals$theta)
 
   #scores
@@ -494,16 +487,6 @@
     control$optiPart <- as.integer(0)
     gamma.score <- rep(-999999,S)
   }
-  if(!is.null(U)) {
-    npu <- as.integer(ncol(U))
-    control$optiAll <- as.integer(1)
-    delta.score <- as.numeric(matrix(NA, ncol=ncol(U)))
-  } else {
-    delta.score <- -99999
-    control$optiAll <- as.integer(0)
-    Ucpp <- matrix(1,nrow = n,ncol=1)
-    npu <- as.integer(1) # a dummy variable to stop c++ issues.
-  }
   if(disty%in%c(3,4,5)){
     control$optiDisp <- as.integer(1)
     theta.score <- as.numeric(rep(NA, length(theta)))
@@ -511,8 +494,8 @@
     control$optiDisp <- as.integer(0)
     theta.score <- rep(-999999,S)
   }
-  scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,gamma.score,delta.score,theta.score))))
-  conv <- FALSE
+  scores <- as.numeric(rep(NA,length(c(alpha.score,beta.score,eta.score,gamma.score,theta.score))))
+  control$conv <- as.integer(0)
 
   #model quantities
   pis_out <- as.numeric(rep(NA, G))  #container for the fitted RCP model
@@ -523,7 +506,7 @@
   #remove finite for now, as we only need it for ippm
   if (method %in% c("FiniteDifference")) {
     grad_fun <- function(x) {
-      x <- setup_inits_sam(x, S, G, X, W, U, disty, return_list = FALSE)
+      x <- setup_inits_sam(x, S, G, X, W, disty, return_list = FALSE)
       #x is a vector of first order derivates to optimise using numDeriv in order to find second order derivates.
       start <- 0
       alpha <- x[start + seq_len(S)]
@@ -539,42 +522,36 @@
         gamma <- rep(-999999,S)
         # start <- start + 1
       }
-      if(npu>0) {
-        delta <- x[start + seq_len(npu)]
-        start <- start + npu
-      } else {
-        delta <- -999999
-        # start <- start + 1
-      }
       if(disty%in%c(3,4,5)){
         theta <- x[start + seq_len(S)]
       } else {
         theta <- rep(-999999,S)
       }
+      linkyin <- if(object$link=="cloglog") as.integer(1) else as.integer(0)
       #c++ call to optimise the model (needs pretty good starting values)
       tmp <- .Call("species_mix_cpp",
                    as.numeric(as.matrix(y)), as.numeric(as.matrix(X)),
-                   as.numeric(as.matrix(W)), as.numeric(as.matrix(Ucpp)),
+                   as.numeric(as.matrix(W)),
                    as.numeric(offset), as.numeric(spp_weights),
                    as.numeric(as.matrix(site_spp_weights)),
                    # as.integer(as.matrix(!y_is_na)),
                    as.numeric(size), as.integer(S), as.integer(G), as.integer(npx),
-                   as.integer(npw), as.integer(npu), as.integer(n),
-                   as.integer(disty),as.integer(control$optiDisp),
-                   as.integer(control$optiPart),as.integer(control$optiAll),
+                   as.integer(npw), as.integer(n),
+                   as.integer(disty),as.integer(linkyin),
+                   as.integer(control$optiDisp),
+                   as.integer(control$optiPart),as.integer(control$doPenalties),
                    # SEXP RnS, SEXP RnG, SEXP Rp, SEXP RnObs, SEXP Rdisty, //data
                    as.double(alpha), as.double(beta), as.double(eta),
-                   as.double(gamma), as.double(delta), as.double(theta),
+                   as.double(gamma), as.double(theta),
                    as.double(powers),
                    # SEXP Ralpha, SEXP Rbeta, SEXP Reta, SEXP Rdisp,
                    as.numeric(control$penalty.alpha),as.numeric(control$penalty.beta),
                    as.numeric(control$penalty.pi),as.numeric(control$penalty.gamma),
-                   as.numeric(control$penalty.delta),
                    as.numeric(control$penalty.theta[1]),
                    as.numeric(control$penalty.theta[2]),
                    # SEXP &RalphaPen, SEXP &RbetaPen, SEXP &RpiPen,  SEXP &RgammaPen,
-                   # SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen,
-                   alpha.score, beta.score, eta.score, gamma.score, delta.score,
+                   # SEXP &RthetaLocatPen, SEXP &RthetaScalePen,
+                   alpha.score, beta.score, eta.score, gamma.score,
                    theta.score, as.integer(control$getscores.cpp), as.numeric(scores),
                    # SEXP RderivsAlpha, SEXP RderivsBeta, SEXP RderivsEta, SEXP RderivsDisp, SEXP RgetScores, SEXP Rscores,
                    pis_out, mus, loglikeS, loglikeSG,
@@ -588,19 +565,13 @@
                    PACKAGE = "ecomix")
 
       tmp1 <- c(alpha.score, beta.score, eta.score)
-      names(tmp1) <- c(names(object$alpha),names(object$beta),names(object$eta))
-      if( npw > 0){#class( object$titbits$species_formula) == "formula")
+      if( npw > 0)#class( object$titbits$species_formula) == "formula")
         tmp1 <- c(tmp1, gamma.score)
-        names(tmp1) <- c(names(object$gamma),names(tmp1))
-      }
-      if(!is.null( object$titbits$all_formula)){
-        tmp1 <- c(tmp1, delta.score)
-        names(tmp1) <- c(names(object$delta),names(tmp1))
-      }
-      if(disty%in%c(3,4,5)){
+      if(disty%in%c(3,4,5))
         tmp1 <- c( tmp1, theta.score)
-        names(tmp1) <- c(names(object$theta),names(tmp1))
-      }
+      names(tmp1) <- c(names(object$alpha),names(object$beta),names(object$eta),
+                       if( npw > 0) names(object$gamma),
+                       if(disty%in%c(3,4,5)) names(object$theta))
       gc()
       return(tmp1)
     }
@@ -608,16 +579,9 @@
     x.in <- unlist(object$coefs)
     hess <- numDeriv::jacobian(grad_fun, x = x.in, method="simple")
 
-    hess.names <- c(names(object$alpha),names(object$beta),names(object$eta))
-    if( npw > 0){#class( object$titbits$species_formula) == "formula")
-      hess.names <- c(names(object$gamma),hess.names)
-    }
-    if(!is.null( object$titbits$all_formula)){
-      hess.names <- c(names(object$delta),hess.names)
-    }
-    if(disty%in%c(3,4,5)){
-      hess.names <- c(names(object$theta),hess.names)
-    }
+    hess.names <- c(names(object$alpha),names(object$beta),names(object$eta),
+                    if( npw > 0) names(object$gamma),
+                    if(disty%in%c(3,4,5)) names(object$theta))
 
     colnames(hess)<-rownames(hess)<-hess.names
 

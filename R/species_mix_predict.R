@@ -85,7 +85,6 @@
   n <- object$n
   npx <- object$npx
   npw <- object$npw
-  npu <- object$npu
 
   spp_wts <- object$titbits$spp_weights
   site_spp_wts <- object$titbits$site_spp_weights
@@ -125,7 +124,7 @@
   etaBoot <- allCoBoot[, S + (G*npx) + seq_len(G-1), drop=FALSE]
   gammaBoot <- allCoBoot[, S + (G-1) + (G*npx) + seq_len((S*npw)), drop=FALSE]
   if (disty%in%c(3,4,5)) {
-    thetaBoot <- allCoBoot[, S + (G-1) + (G*npx) + (S*npw) + npu + seq_len(S), drop=FALSE]
+    thetaBoot <- allCoBoot[, S + (G-1) + (G*npx) + (S*npw) + seq_len(S), drop=FALSE]
   } else {
     thetaBoot <- NULL
   }
@@ -137,7 +136,7 @@
   recompute_tau_sam <- function(alpha_ii, beta_ii, eta_ii, gamma_ii, theta_ii){
     pi_ii <- additive_logistic(eta_ii)
     fits_ii <- list(alpha = alpha_ii, beta = beta_ii, gamma = gamma_ii, theta = theta_ii)
-    logls_ii <- get_logls_sam(y = Ytrain, X = Xtrain, W = Wtrain, U = NULL, G = G, S = S,
+    logls_ii <- get_logls_sam(y = Ytrain, X = Xtrain, W = Wtrain, G = G, S = S,
                               spp_weights = spp_wts, site_spp_weights = site_spp_wts,
                               offset = offsetTrain, disty = disty, linky = object$link,
                               size = object$titbits$size, powers = object$titbits$powers,
