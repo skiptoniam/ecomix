@@ -3,12 +3,11 @@
 sam_derivs::sam_derivs(){};
 sam_derivs::~sam_derivs(){};
 
-void sam_derivs::setVals( const sam_data &dat, SEXP &RderivsAlpha, SEXP &RderivsBeta, SEXP &RderivsEta, SEXP &RderivsGamma, SEXP &RderivsDelta, SEXP &RderivsTheta, SEXP &RgetScores, SEXP &Rscores){
+void sam_derivs::setVals( const sam_data &dat, SEXP &RderivsAlpha, SEXP &RderivsBeta, SEXP &RderivsEta, SEXP &RderivsGamma, SEXP &RderivsTheta, SEXP &RgetScores, SEXP &Rscores){
 	AlphaDeriv = REAL(RderivsAlpha);
 	BetaDeriv = REAL(RderivsBeta);
 	EtaDeriv = REAL(RderivsEta);
 	GammaDeriv = REAL(RderivsGamma);
-	DeltaDeriv = REAL(RderivsDelta);
 	ThetaDeriv = REAL(RderivsTheta);
 	getScoreFlag = *INTEGER(RgetScores);
 	Scores = REAL(Rscores);
@@ -25,16 +24,13 @@ void sam_derivs::zeroDerivs( const sam_data &dat){
 	if( dat.optiPart>0)
 		for( int i=0; i<((dat.nS*dat.nPW)); i++)
 			GammaDeriv[i] = 0.0;
-	if( dat.optiAll>0)
-		for( int i=0; i<(dat.nPU); i++)
-			DeltaDeriv[i] = 0.0;
 	if(dat.optiDisp>0)
 		for( int i=0; i<(dat.nS); i++)
 			ThetaDeriv[i] = 0.0;
 }
 
 void sam_derivs::updateDerivs( const sam_data &dat, const vector<double> &alphaDerivs, const vector<double> &betaDerivs,
-							   const vector<double> &etaDerivs, const vector<double> &gammaDerivs, const vector<double> &deltaDerivs,
+							   const vector<double> &etaDerivs, const vector<double> &gammaDerivs,
 							   const vector<double> &thetaDerivs)
 {
 	for(int s=0; s<(dat.nS); s++){
@@ -58,11 +54,6 @@ void sam_derivs::updateDerivs( const sam_data &dat, const vector<double> &alphaD
 			}
 		}
 	}
-	if( dat.optiAll>0){
-		for( int p=0; p<(dat.nPU); p++){
-			DeltaDeriv[p] = gammaDerivs.at(p);
-		}
-	}
 	if(dat.optiDisp>0){
 		for( int s=0; s<dat.nS; s++){
 			ThetaDeriv[s] += thetaDerivs.at(s);
@@ -84,16 +75,11 @@ void sam_derivs::updateDerivs( const sam_data &dat, const vector<double> &alphaD
 		for( int g=0; g<(dat.nG-1); g++){
 				Scores[k++] = etaDerivs.at(g);
 		}
-		if( dat.optiPart>0){		
+		if( dat.optiPart>0){
 			for( int p=0; p<dat.nPW; p++){
 				for( int s=0; s<(dat.nS); s++){
 					Scores[k++] = gammaDerivs.at(MATREF2D(s, p,(dat.nS)));
 				}
-			}
-		}
-		if( dat.optiPart>0){
-			for( int p=0; p<dat.nPU; p++){
-				Scores[k++] = deltaDerivs.at(p);
 			}
 		}
 		if(dat.optiDisp>0){
@@ -123,31 +109,20 @@ void sam_derivs::update( double *grArr, const sam_data &dat){
 			kount++;
 		}
 	} else {
-	
+
 	kount = kount + dat.nS;
-	 	
-	}	
-		
-	if( dat.optiAll>0){
-		for( int i=0; i<(dat.nPU); i++){
-			DeltaDeriv[i] = grArr[kount];
-			kount++;
-		}
-	} else {
-		
-	kount = kount + dat.nPU;	
-		
-	}	
+
+	}
 	if(dat.optiDisp>0){
 		for( int s=0; s<dat.nS; s++){
 			ThetaDeriv[s] = grArr[kount];
 			kount++;
 		}
 	} else {
-	
+
 	kount = kount + dat.nS;
-	 	
-	}	
+
+	}
 }
 
 void sam_derivs::getArray( double *grArr, const sam_data &dat){
@@ -170,28 +145,18 @@ void sam_derivs::getArray( double *grArr, const sam_data &dat){
 		kount++;
 	}
 	} else {
-	
+
 	kount = kount + dat.nS;
-	 	
-	}	
-	if( dat.optiAll>0){
-	for( int i=0; i<(dat.nPU); i++){
-		grArr[kount] = DeltaDeriv[i];
-		kount++;
+
 	}
-	} else {
-		
-	kount = kount + dat.nPU;	
-		
-	}	
 	if(dat.optiDisp>0){
 		for( int s=0; s<dat.nS; s++){
 			grArr[kount] = ThetaDeriv[s];
 			kount++;
 		}
 	} else {
-	
+
 	kount = kount + dat.nS;
-	 	
-	}	
+
+	}
 }
