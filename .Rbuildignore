@@ -12,3 +12,5 @@
 ^\.github$
 ^Rplots\.pdf$
 
+^doc$
+^Meta$
