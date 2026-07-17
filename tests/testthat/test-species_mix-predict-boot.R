@@ -18,8 +18,9 @@ test_that("bootstrap.species_mix produces varying dispersion estimates across re
   expect_s3_class(boot.obj, "species_mix.bootstrap")
   expect_equal(nrow(boot.obj), 4)
 
-  S <- fm$S; G <- fm$G; npx <- fm$npx; npw <- fm$npw; npu <- fm$npu
-  thetaBoot <- boot.obj[, S + (G - 1) + (G * npx) + (S * npw) + npu + seq_len(S), drop = FALSE]
+  S <- fm$S; G <- fm$G; npx <- fm$npx; npw <- fm$npw
+  thetaBoot <- boot.obj[, S + (G - 1) + (G * npx) + (S * npw) + seq_len(S), drop = FALSE]
+  expect_equal(ncol(thetaBoot), S)
   # theta must vary across bootstrap replicates, not be frozen at a fixed value
   expect_true(all(apply(thetaBoot, 2, sd) > 0))
 })

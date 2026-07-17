@@ -64,3 +64,29 @@ test_that("species_mix.fit errors informatively without an archetype_formula", {
                                     family = "bernoulli", nArchetypes = 2))
   expect_null(fm)
 })
+
+test_that("species_mix fits with doPenalties=1 and shrinks coefficients relative to an unpenalised fit", {
+  d <- make_sam_data("bernoulli")
+  fm_pen <- species_mix(archetype_formula = d$archetype_formula, species_formula = d$species_formula,
+                         data = d$data, family = "bernoulli", nArchetypes = 2,
+                         control = list(quiet = TRUE, doPenalties = 1))
+  fm_nopen <- species_mix(archetype_formula = d$archetype_formula, species_formula = d$species_formula,
+                           data = d$data, family = "bernoulli", nArchetypes = 2,
+                           control = list(quiet = TRUE, doPenalties = 0))
+  expect_s3_class(fm_pen, "species_mix")
+  expect_true(is.finite(fm_pen$logl))
+  expect_true(all(vapply(fm_pen$coefs, function(x) all(is.finite(x)), logical(1))))
+  # the penalty must actually move the fit away from the unpenalised optimum
+  expect_false(isTRUE(all.equal(fm_pen$coefs$alpha, fm_nopen$coefs$alpha)))
+})
+
+test_that("species_mix fits with doPenalties=1 for a partial SAM with dispersion (exercises gamma and theta penalties)", {
+  d <- make_sam_data_partial("negative.binomial", seed = 3, S = 6, n = 150)
+  fm <- species_mix(archetype_formula = d$archetype_formula, species_formula = d$species_formula,
+                     data = d$data, family = "negative.binomial", nArchetypes = 2,
+                     control = list(quiet = TRUE, doPenalties = 1))
+  expect_s3_class(fm, "species_mix")
+  expect_true(is.finite(fm$logl))
+  expect_true(all(vapply(fm$coefs, function(x) all(is.finite(x)), logical(1))))
+  expect_true(all(fm$coefs$theta > 0))
+})
