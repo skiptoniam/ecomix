@@ -51,4 +51,28 @@ make_rcp_data <- function(family = "bernoulli", nRCP = 2, S = 6, n = 80,
   list(data = sim, rcp_formula = form.RCP)
 }
 
+make_rcp_data_partial <- function(family = "bernoulli", nRCP = 2, S = 6, n = 80,
+                                   seed = 1, power = 1.6) {
+  set.seed(seed)
+  x1 <- stats::runif(n, -2, 2)
+  w1 <- stats::rbinom(n, 1, 0.5)
+  Xmat <- cbind(1, x1)
+  Wmat <- matrix(w1, ncol = 1, dimnames = list(NULL, "w1"))
+  form.RCP <- stats::as.formula(paste0("cbind(",
+    paste0("spp", 1:S, collapse = ","), ")~x1"))
+  form.spp <- ~w1
+  gamma <- matrix(rnorm(S, 0, 1), nrow = S, ncol = 1)
+  sim <- suppressMessages(regional_mix.simulate(nRCP = nRCP, S = S, p.x = 2, p.w = 1, n = n,
+    alpha = rnorm(S, 1, 0.3),
+    tau = matrix(rnorm((nRCP - 1) * S, 0, 0.5), nrow = nRCP - 1),
+    beta = matrix(rnorm((nRCP - 1) * 2, 0, 0.3), nrow = nRCP - 1),
+    gamma = gamma,
+    X = Xmat, W = Wmat, family = family,
+    logDisps = if (family %in% c("negative.binomial", "tweedie", "gaussian")) rep(0, S) else NULL,
+    powers = if (family == "tweedie") rep(power, S) else NULL))
+  sim$x1 <- x1
+  sim$w1 <- w1
+  list(data = sim, rcp_formula = form.RCP, species_formula = form.spp, gamma = gamma)
+}
+
 quiet_control <- list(quiet = TRUE)
