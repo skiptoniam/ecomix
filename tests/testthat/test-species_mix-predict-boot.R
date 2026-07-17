@@ -35,3 +35,35 @@ test_that("predict.species_mix with a bootstrap object gives bootPreds/bootSEs/b
   expect_true(all(p$bootSEs >= 0))
   expect_true(any(p$bootSEs > 0))
 })
+
+test_that("predict.species_mix with a bootstrap object gives species-level uncertainty (sam_cpp_pred species path)", {
+  d <- make_sam_data("bernoulli")
+  fm <- species_mix(archetype_formula = d$archetype_formula, species_formula = d$species_formula,
+                     data = d$data, family = "bernoulli", nArchetypes = 2, control = quiet_control)
+  set.seed(2)
+  boot.obj <- bootstrap(fm, nboot = 8, type = "BayesBoot", mc.cores = 1, quiet = TRUE)
+
+  p <- predict(fm, boot.object = boot.obj, prediction.type = "species", mc.cores = 1)
+  expect_named(p, c("ptPreds", "bootPreds", "bootSEs", "bootCIs"))
+  expect_equal(dim(p$ptPreds), c(fm$n, fm$S))
+  expect_equal(dim(p$bootPreds), dim(p$ptPreds))
+  expect_equal(dim(p$bootSEs), dim(p$ptPreds))
+  expect_equal(dim(p$bootCIs), c(dim(p$ptPreds), 2))
+  expect_true(all(p$ptPreds >= 0 & p$ptPreds <= 1))
+  expect_true(all(p$bootSEs >= 0))
+  expect_true(any(p$bootSEs > 0))
+  expect_true(all(p$bootCIs[, , 1] <= p$bootCIs[, , 2]))
+
+  # species-level bootstrap predictions also need to work with newdata, and
+  # for a partial SAM (species_formula with real covariates)
+  dp <- make_sam_data_partial("bernoulli", seed = 42)
+  fmp <- species_mix(archetype_formula = dp$archetype_formula, species_formula = dp$species_formula,
+                      data = dp$data, family = "bernoulli", nArchetypes = 2, control = quiet_control)
+  set.seed(3)
+  boot.objp <- bootstrap(fmp, nboot = 8, type = "BayesBoot", mc.cores = 1, quiet = TRUE)
+  newdata <- fmp$titbits$data[1:10, ]
+  p2 <- predict(fmp, boot.object = boot.objp, newdata = newdata, prediction.type = "species", mc.cores = 1)
+  expect_equal(dim(p2$ptPreds), c(10, fmp$S))
+  expect_true(all(p2$bootSEs >= 0))
+  expect_true(any(p2$bootSEs > 0))
+})
