@@ -2,10 +2,28 @@
 % Please edit documentation in R/package.R
 \docType{package}
 \name{ecomix}
+\alias{ecomix-package}
 \alias{ecomix}
 \title{package file}
 \description{
 ecomix is a package for implementing species archetype models (SAM) and region of
   common profile models (RCP) in R. The main function is \code{ecomix}, which fits either a SAM or RCP
   based on input parameters.
+}
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/skiptoniam/ecomix}
+}
+
+}
+\author{
+\strong{Maintainer}: Skipton Woolley \email{skip.woolley@csiro.au}
+
+Authors:
+\itemize{
+  \item Scott Foster \email{scott.foster@csiro.au}
+  \item Piers Dunstan \email{Piers.Dunstan@csiro.au}
+}
+
 }

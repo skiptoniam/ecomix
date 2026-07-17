@@ -3,36 +3,33 @@
 sam_params::sam_params(){};
 sam_params::~sam_params(){};
 
-void sam_params::setVals(const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Reta, SEXP &Rgamma, SEXP &Rdelta, SEXP &Rtheta, SEXP &Rpowers, SEXP &RalphaPen, SEXP &RbetaPen,
-						 SEXP &RpiPen, SEXP &RgammaPen, SEXP &RdeltaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen){
+void sam_params::setVals(const sam_data &dat, SEXP &Ralpha, SEXP &Rbeta, SEXP &Reta, SEXP &Rgamma, SEXP &Rtheta, SEXP &Rpowers, SEXP &RalphaPen, SEXP &RbetaPen,
+						 SEXP &RpiPen, SEXP &RgammaPen, SEXP &RthetaLocatPen, SEXP &RthetaScalePen){
 //	double *tmpD;
 
 	Alpha = REAL( Ralpha);
 	Beta = REAL( Rbeta);
 	Eta = REAL( Reta);
 	Gamma = REAL( Rgamma);
-	Delta = REAL( Rdelta);
 	Theta = REAL( Rtheta);
 	Power = REAL( Rpowers);
 	AlphaPen = *(REAL( RalphaPen));
 	BetaPen = *(REAL( RbetaPen));
-	PiPen = *(REAL( RpiPen)); //penalties on the pis, rather than the etas. Should represent a symetric dirichlet. 
+	PiPen = *(REAL( RpiPen)); //penalties on the pis, rather than the etas. Should represent a symetric dirichlet.
 	GammaPen = *(REAL( RgammaPen));
-	DeltaPen = *(REAL( RdeltaPen));
 	ThetaLocatPen = *(REAL( RthetaLocatPen));
 	ThetaScalePen = *(REAL( RthetaScalePen));
 	nalpha = dat.nS;
 	nbeta = dat.nG*dat.nPX;
 	neta = (dat.nG-1);
 	ngamma = dat.nS*dat.nPW;
-	ndelta = dat.nPU;
 
-	if(dat.isDispersion())
+	if(dat.optiDisp>0)
 		ntheta = dat.nS;
 	else
 		ntheta = 0;
 
-	nTot = nalpha + nbeta + ngamma + neta + ntheta + ndelta;
+	nTot = nalpha + nbeta + neta + ngamma + ntheta;
 }
 
 void sam_params::getArray(double *parArr, const sam_data &dat){
@@ -57,16 +54,8 @@ void sam_params::getArray(double *parArr, const sam_data &dat){
 	} else {
 	  kount = kount + dat.nS;
 	}
-	
-	if( dat.optiAll>0){
-	for( int i=0; i<((dat.nPU)); i++){
-			parArr[kount] = Delta[i];
-			kount++;
-		}
-	} else {
-	   kount = kount + dat.nPU;	
-	}
-	if( dat.isDispersion() ){
+
+	if( dat.optiDisp>0){
 		for( int i=0; i<dat.nS; i++){
 				parArr[kount] = Theta[i];
 				kount++;
@@ -94,21 +83,11 @@ void sam_params::update( double *parArr, const sam_data &dat){
 			kount++;
 		}
 	} else {
-	
+
 	kount = kount + dat.nS;
-	 	
-	}	
-	if( dat.optiAll>0){
-		for( int i=0; i<(dat.nPU); i++){
-			Delta[i] = parArr[kount];
-			kount++;
-		}
-	} else {
-	
-	kount = kount + dat.nPU;
-	 	
-	}	
-	if( dat.isDispersion() & dat.doOptiDisp()){
+
+	}
+	if( dat.optiDisp>0){
 		for( int i=0; i<dat.nS; i++){
 			Theta[i] = parArr[kount];
 			kount++;

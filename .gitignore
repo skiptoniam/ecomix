@@ -15,5 +15,8 @@ dev/
 src/*.o
 src/*.so
 src/*.dll
-
+old/
 inst/doc
+Rplots.pdf
+/doc/
+/Meta/

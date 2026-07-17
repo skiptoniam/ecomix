@@ -76,7 +76,7 @@ void myParms::update( double *parArr, const myData &dat)
 		Gamma[i] = parArr[kount];
 		kount++;
 	}
-	if( dat.isDispersion() & dat.doOptiDisp())
+	if( dat.isDispersion() && dat.doOptiDisp())
 		for( int i=0; i<dat.nS; i++){
 			Disp[i] = parArr[kount];
 			kount++;

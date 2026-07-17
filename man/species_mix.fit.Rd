@@ -8,14 +8,13 @@ species_mix.fit(
   y,
   X,
   W,
-  U,
   G,
   S,
   spp_weights,
   site_spp_weights,
   offset,
-  y_is_na,
   disty,
+  linky,
   size,
   powers,
   control,
@@ -29,8 +28,6 @@ species_mix.fit(
 
 \item{W}{is a design matrix for species_formula and will be implemented if species_formula has covariates.}
 
-\item{U}{is a design matrix for all_formula and will be implemented if not NULL.}
-
 \item{G}{is the number of species archetypes that are being estimated.}
 
 \item{S}{is the number of species to be modelled (this will be calculated internally in species_mix())}
@@ -41,9 +38,9 @@ species_mix.fit(
 
 \item{offset}{this is a vector of site specific offsets, this might be something like area sampled at sites.}
 
-\item{y_is_na}{This is a logical matrix used specifically with 'ippm' modelling - don't worry about this, it'll be worked out for you. Yay!}
+\item{disty}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.}
 
-\item{disty}{the error distribution to used in species_mix estimation. Currently, 'bernoulli', 'poisson', 'ippm' (Poisson point process), 'negative.binomial' and 'guassian' are available - internal conversion of distribution to a integer.}
+\item{linky}{The link function to use alongside the distribution. The link function uses with the distribution (disty)}
 
 \item{size}{The size of each of binomial sample at each site. Length should be the number of sites.}
 
@@ -55,7 +52,8 @@ species_mix.fit(
 }
 \description{
 species_mix.fit is similar to glm.fit and does all the heavy lifting when it
-comes to estimating species mix models. If you are unfamilar with how to use glm.fit it is
+comes to estimating species mix models. If you are unfamiliar with how to use glm.fit it is
 recommended that you use species_mix which is the user friendly wrapper around this
-function.
+function. If you are comfortable with the data strucutres for an species_mix model feel
+free to use this function for fitting (but realise many of the post processing function - )
 }

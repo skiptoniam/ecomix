@@ -149,7 +149,7 @@ double calcGammaPen( const myData &dat, const myParms &parms)
 double calcPiPen( const vector<double> &logPis, const myData &dat, const myParms &parms)
 {
 	double pen=0.0;
-	
+
 
 
 	for( int g=0; g<dat.nG; g++)
@@ -269,11 +269,11 @@ double logBernoulli( const double &y, const double &mu)
 }
 
 //double logBinomial( const double &y, const double &mu, const int &N){
-	
+
 	//double tmp;
 	//tmp = log(N-mu);
-	//return(tmp);	
-	
+	//return(tmp);
+
 	//}
 
 double logPoisson( const double &y, const double &mu)

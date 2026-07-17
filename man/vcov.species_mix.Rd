@@ -6,7 +6,7 @@
 \usage{
 \method{vcov}{species_mix}(
   object,
-  object2 = NULL,
+  boot.object = NULL,
   method = "BayesBoot",
   nboot = 10,
   mc.cores = 1,
@@ -16,7 +16,7 @@
 \arguments{
 \item{object}{an object obtained from fitting a RCP (for region of common profile) mixture model. Such as that generated from a call to species_mix(qv).}
 
-\item{object2}{an object of class \code{species_mix} containing bootstrap samples of the parameter estimates (see species_mix_boot(qv)). If NULL (default) the bootstrapping is performed from within the vcov function. If not null, then the vcov estimate is obtained from these bootstrap samples.}
+\item{boot.object}{an object of class \code{species_mix} containing bootstrap samples of the parameter estimates (see species_mix_boot(qv)). If NULL (default) the bootstrapping is performed from within the vcov function. If not null, then the vcov estimate is obtained from these bootstrap samples.}
 
 \item{method}{the method to calculate the variance-covariance matrix. Options are:'FiniteDifference' (default), \code{BayesBoot}, \code{SimpleBoot}, and \code{EmpiricalInfo}. The two bootstrap methods (\code{BayesBoot} and \code{SimpleBoot}, see species_mix_boot(qv)) should be more general and may possibly be more robust. The \code{EmpiricalInfo} method implements an empirical estimate of the Fisher information matrix, I can not recommend it however. It seems to behave poorly, even in well behaved simulations. It is computationally thrifty though.}
 
@@ -35,24 +35,4 @@ Calculates variance-covariance matrix from a species_mix object
 \details{
 If method is \code{FiniteDifference}, then the estimates variance matrix is based on a finite difference approximation to the observed information matrix.
 If method is either "BayesBoot" or "SimpleBoot", then the estimated variance matrix is calculated from bootstrap samples of the parameter estimates. See Foster et al (in prep) for details of how the bootstrapping is actually done, and species_mix_boot(qv) for its implementation.
-}
-\examples{
-
-# Estimate the variance-covariance matrix.
-# This will provide estimates of uncertainty for model parameters.
-\donttest{
-library(ecomix)
-set.seed(42)
-sam_form <- stats::as.formula(paste0('cbind(',paste(paste0('spp',1:20),
-collapse = ','),")~x1+x2"))
-sp_form <- ~ 1
-beta <- matrix(c(-2.9,-3.6,-0.9,1,.9,1.9),3,2,byrow=TRUE)
-dat <- data.frame(y=rep(1,100),x1=stats::runif(100,0,2.5),
-x2=stats::rnorm(100,0,2.5))
-dat[,-1] <- scale(dat[,-1])
-simulated_data <- species_mix.simulate(archetype_formula = sam_form,species_formula = sp_form,
-data = dat,beta=beta,family="bernoulli")
-fm1 <- species_mix(archetype_formula = sam_form,species_formula = sp_form,
-data = simulated_data, family = 'bernoulli',  nArchetypes=3)
-vcov(fm1)}
 }

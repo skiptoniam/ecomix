@@ -4,10 +4,10 @@
 #include<R.h>
 #include<Rmath.h>
 #include<Rinternals.h>
+#undef length
 #include<R_ext/Applic.h>
 #include<vector>
 
-#undef length
 #include <iostream>
 
 using namespace std;

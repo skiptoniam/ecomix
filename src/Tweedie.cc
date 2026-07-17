@@ -14,7 +14,7 @@ double dTweedie( double y, double muN, double muZ, double alpha, int myLog)
   else{
     beta0 = muZ / alpha;
     z1 = log( muN) + alpha*log( y / muZ) + 1;
-    z2 = 0.5*log( alpha) - log( 2*PI) + 1;
+    z2 = 0.5*log( alpha) - log( 2*M_PI) + 1;
     logW = findW( y, muN, muZ, alpha, beta0, z1, z2);	//Calculate Bessel Function
     logf = -y / beta0 - muN - log( y) + logW;
   }

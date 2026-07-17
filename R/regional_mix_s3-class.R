@@ -1,4 +1,3 @@
-##### S3 Class exports #####
 #' @rdname AIC.regional_mix
 #' @name AIC.regional_mix
 #' @title AIC from a regional_mix model
@@ -27,6 +26,92 @@
   star.ic <- -2 * object$logl + k * p
   return(star.ic)
 }
+
+#' @title Check posterior probabilities of RCPs for each model fit
+#' @name check_RCP_posteriors
+#' @description This function checks for the minimum posterior probabilities of
+#' each RCP across site fitted in the model. Basically sometime you can get
+#' effectively empty or single site RCPs, this function will help you check for
+#' these and remove them from model selection.
+#' @return For a \code{regional_mix} object, a table of the number of sites hard-assigned
+#' (by maximum posterior probability) to each RCP, with a warning if any RCP has fewer than
+#' \code{min_membership} sites. For a \code{regional_mix.multifit} object, a list of such
+#' tables, one per random start.
+#' @param object An RCP fit or a multifit RCP object.
+#' @param min_membership The minimum number of sites (by highest posterior membership) an RCP
+#' needs to have to not be flagged as effectively empty.
+#' @param ... other arguments
+#' @examples
+#' \dontrun{
+#' set.seed( 151)
+#' n <- 100
+#' S <- 10
+#' nRCP <- 3
+#' my.dist <- "negative.binomial"
+#' X <- as.data.frame( cbind( x1=runif( n, min=-10, max=10),
+#'                           x2=runif( n, min=-10, max=10)))
+#' Offy <- log( runif( n, min=30, max=60))
+#' pols <- list()
+#' pols[[1]] <- poly( X$x1, degree=3)
+#' pols[[2]] <- poly( X$x2, degree=3)
+#' X <- as.matrix( cbind( 1, X, pols[[1]], pols[[2]]))
+#' colnames( X) <- c("const", 'x1', 'x2', paste( "x1",1:3,sep='.'),
+#' paste( "x2",1:3,sep='.'))
+#' p.x <- ncol( X[,-(2:3)])
+#' p.w <- 3
+#' W <- matrix(sample( c(0,1), size=(n*p.w), replace=TRUE), nrow=n, ncol=p.w)
+#' colnames( W) <- paste( "w",1:3,sep=".")
+#' alpha <- rnorm( S)
+#' tau.var <- 0.5
+#' b <- sqrt( tau.var/2)
+#' tau <- matrix( rexp( n=(nRCP-1)*S,rate=1/b) - rexp( n=(nRCP-1)*S, rate=1/b),
+#'  nrow=nRCP-1, ncol=S)
+#' beta <- 0.2 * matrix( c(-1.2, -2.6, 0.2, -23.4, -16.7, -18.7, -59.2,
+#'  -76.0,-14.2, -28.3, -36.8, -17.8, -92.9,-2.7), nrow=nRCP-1, ncol=p.x)
+#' gamma <- matrix( rnorm( S*p.w), ncol=p.w, nrow=S)
+#' logDisp <- log( rexp( S, 1))
+#' set.seed(121)
+#' simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n,
+#' alpha=alpha, tau=tau, beta=beta, gamma=gamma, X=X[,-(2:3)], W=W,
+#' family=my.dist, logDisp=logDisp, offset=Offy)
+#' form.RCP <- paste( paste( paste('cbind(', paste( paste( 'spp', 1:S, sep=''),
+#'  collapse=','), sep=''),')',sep=''),'~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
+#' form.spp <- ~w.1+w.2+w.3
+#' fm_regional_mix <- regional_mix(rcp_formula=form.RCP,species_formula=form.spp,
+#'                                 data=simDat, family='negative.binomial', nRCP=5)
+#' check_RCP_posteriors(fm_regional_mix, min_membership=5)
+#' }
+#' @rdname check_RCP_posteriors
+#' @export check_RCP_posteriors
+"check_RCP_posteriors" <- function(object, min_membership, ...){
+  UseMethod("check_RCP_posteriors", object)
+}
+
+#' @export
+check_RCP_posteriors.regional_mix <- function(object, min_membership, ...){
+
+  hard_assign <- apply(object$postProbs, 1, which.max)
+  membership <- table(factor(hard_assign, levels=seq_len(object$nRCP)))
+  names(membership) <- paste0("RCP",seq_len(object$nRCP))
+
+  small_RCPs <- names(membership)[membership < min_membership]
+  if(length(small_RCPs)>0)
+    warning("RCP(s) ", paste(small_RCPs, collapse=", "), " have fewer than ", min_membership,
+            " sites with highest posterior membership -- consider these effectively empty.\n")
+
+  return(membership)
+}
+
+#' @export
+check_RCP_posteriors.regional_mix.multifit <- function(object, min_membership, ...){
+
+  membership <- lapply(object$multiple_fits, check_RCP_posteriors.regional_mix, min_membership=min_membership)
+  names(membership) <- paste0("start",seq_along(membership))
+
+  return(membership)
+}
+
+
 
 #' @rdname coef.regional_mix
 #' @name coef.regional_mix
@@ -179,96 +264,6 @@
   return(ret)
 }
 
-#' @rdname effectPlotData
-#' @export
-"effectPlotData.regional_mix" <- function(focal.predictors, mod, ngrid = 50, ...){
-
-  if (is.null(mod$titbits))
-    stop("Model doesn't contain all information required for effectsPlotData.
-         Please supply model with titbits (from titbits=TRUE in species_mix call)")
-
-  Mode <- function(x, na.rm = FALSE) {
-    if (na.rm) {
-      x = x[!is.na(x)]
-    }
-    ux <- unique(x)
-    return(ux[which.max(tabulate(match(x, ux)))])
-  }
-
-  ## set up the data objects
-  X <- mod$titbits$X
-  W <- mod$titbits$W
-
-  ## set up the variables in the formula
-  tt <- terms(mod$titbits$rcp_formula)
-  tt <- delete.response(tt)
-  vars <- all.vars(parse(text=tt))
-  if(ncol(W)>1){
-    tt2 <- terms(mod$titbits$species_formula)
-    tt2 <- delete.response(tt2)
-    vars <- c(vars,all.vars(parse(text=tt2)))
-  }
-  nvars = length(vars)
-
-  pred.data <- mod$titbits$data
-  pred.data <- pred.data[,vars]
-
-  ## check for factors
-  factors <- NULL
-  for(ii in 1:nvars){
-    factors[ii] <- is.factor(pred.data[,vars[ii]]) | is.character(pred.data[,vars[ii]])
-  }
-
-  ## check for focal.predictors in pred.data
-  focal.ids <- lapply(focal.predictors, grep, colnames(pred.data))
-
-  # lists for data structures
-  mfs <- list() #catch model.frames
-  f.focal <- list()
-  v.focal <- list()
-  n.focal <- list()
-  for(i in 1:length(focal.ids)){
-
-    f.focal[[i]] <- factors[focal.ids[[i]]]
-    v.focal[[i]] <- pred.data[, focal.ids[[i]],drop=FALSE]
-    n.focal[[i]] <- seq_len(nvars)[-unlist(focal.ids[[i]])]
-
-    xx <- list()
-    for(j in 1:length(focal.ids[[i]])){
-      if(f.focal[[i]][j]) {
-        xx[[j]] = levels(v.focal[[i]][j])
-        ngrid = length(xx)
-      } else {
-        mi = min(v.focal[[i]][j])
-        ma = max(v.focal[[i]][j])
-        xx[[j]] = seq(mi, ma, length.out = ngrid)
-      }
-    }
-    XDataNew = data.frame(xx, stringsAsFactors = TRUE)
-    colnames(XDataNew) = vars[focal.ids[[i]]]
-    for (k in seq_len(length(n.focal[[i]]))) {
-      non.focal = n.focal[[i]][k]
-      f.non.focal = factors[non.focal]
-      v.non.focal = pred.data[, vars[non.focal]]
-      if (f.non.focal) {
-        XDataNew[, vars[non.focal]] = Mode(v.non.focal)
-      }
-      if (!f.non.focal) {
-        v.non.focal = pred.data[, vars[non.focal]]
-        XDataNew[, vars[non.focal]] = mean(v.non.focal)
-      }
-    }
-    mfs[[i]] <- XDataNew[,vars]
-  }
-
-  names(mfs) <- focal.predictors
-  class(mfs) <- "regional_mix_effectPlotData"
-
-  return(mfs)
-
-}
-
-
 #' @rdname extractAIC.regional_mix
 #' @name extractAIC.regional_mix
 #' @title Extract AIC from regional_mix model.
@@ -332,7 +327,7 @@
     allResids <- matrix(NA, nrow = x$n, ncol = nsim)
     X <- x$titbits$X
     p.x <- ncol( X)
-    if( class( x$titbits$species_formula)=="formula"){
+    if( inherits(x$titbits$species_formula, "formula")){
       form.W <- x$titbits$species_formula
       W <- x$titbits$W
       p.w <- ncol( W)
@@ -597,232 +592,53 @@
 }
 
 #'
-
-"plot.species_effects" <-function(x,#best_mod,              # output of regimix function for final model
-                                boot_obj,              # output of regiboot function for final model
-                                legend_fact,           # levels of categorical sampling variable to plot. Coefficients relative to first level of factor.
-                                # So usually 2:n levels(sampling_variable)
-                               CI=c(0.025, 0.975),    # confidence interval to plot
-                            col="black",           # colour/s of dots and CI lines. Specified in same way as col is usually specified
-                            lty=1)                 # lty= line type of CI lines. Specified in same way as lty is usually specified
-{
-
-  require(lattice)
-  # gammas<- paste0("gamma", 1: (length(Species)*length(sampling_names)))
-  gammas<-grepl("gamma",dimnames(boot_obj)[[2]])
-  temp_dat<-boot_obj[,gammas]
-
-  temp<-data.frame(avs=as.numeric(unname(colMeans(temp_dat))),
-                   t(apply(temp_dat, 2, quantile, probs=CI)),
-                   #sampling_var=rep(sampling_names, each=length(length(best_mod$names$spp))),
-                   sampling_var=sapply(strsplit(dimnames(temp_dat)[[2]],"_"), "[", 3),
-                   #Species=factor(rep(best_mod$names$spp,length(sampling_names))))
-                   Species=factor(sapply(strsplit(dimnames(temp_dat)[[2]],"_"), "[", 1)))
-
-  names(temp)[2:3]<-c("lower", "upper")
-  temp$Species<-gsub("."," ", temp$Species, fixed=TRUE) #get rid of '.' in species names
-  temp$Species<-as.factor(temp$Species) #convert back to factor
-  temp$Species <- factor(temp$Species, levels=rev(levels(temp$Species)))
-
-  trellis.par.set(superpose.symbol=list(pch=16,col=col, cex=1.2),
-                  superpose.line=list(col="transparent"))
-  dotplot(Species ~ avs, groups=sampling_var, data=temp, cols=col, lty=lty, low=temp$lower, high=temp$upper, subscript=TRUE,
-          auto.key=list(space="top", columns=2, cex=1.4, text=legend_fact),
-          ylab=list(cex=1.4), xlab=list("Coefficient",cex=1.4),
-          scales = list(tck = c(1, 0), x=list(cex=1.2), y=list(cex=1.2)),
-          prepanel = function(x, y, ...) { list(xlim=range(temp$lower, temp$upper)) },
-          panel=panel.superpose,
-          panel.groups=function(x, y, subscripts, group.number, cols, low, high, ...)
-          {
-            if(group.number==1) jiggle <- 0.1 else jiggle <- -0.1
-            panel.abline(v=0, lty=2)
-            panel.abline(h=1:length(best_mod$names$spp), col.line="light grey", lty=1)
-            panel.dotplot(x, y+jiggle, group.number, ...)
-            panel.arrows(low[subscripts], y+jiggle, high[subscripts], y+jiggle, code=3, angle=90,
-                         length=0.05, col=cols[group.number], lty=lty[group.number])
-            #panel.segments(temp$lower, y+jiggle, + temp$upper, y+jiggle, lty = lty, col =col, lwd=2, cex=1.2)
-          })
-
-}
-
-
-#' @rdname predict.regional_mix
-#' @name predict.regional_mix
-#' @title Predicts RCP probabilities at a series of sites. Confidence intervals are available too.
-#' @param object an object obtained from fitting a RCP mixture model. Such as that generated from a call to regional_mix(qv).
-#' @param object2 a regional_mix object obtained from bootstrapping the regional_mix object. Such as that generated from a call to regional_mix.bootstrap(qv). If not supplied, then predict.regional_mix will do parametric bootstrapping (otherwise non-parametric bootstrap).
-#' @param newdata a data.frame (or something that can be coerced) containing the values of the covariates where predictions are to be made. If NULL (the default) then predictions are made at the locations of the original data.
-#' @param nboot the number of parametric bootstrap samples to take for the bootstrap predictions, standard errors and confidence intervals. The default is 0, that is no bootstrapping is to be done and point predictions only are given. If object2 is not NULL, then the number of bootstrap samples is taken from that object (this argument is then ignored).
-#' @param alpha a numeric within [0,1] (well [0.5,1] really) indicating the specified confidence for the confidence interval. Argument is redundant if nboot == 0.
-#' @param mc.cores the number of cores to spread the computations over. Ignored if running on a Windows machine.
-#' @param \\dots additional predict calls	ignorned
-#' @details This function implements two separate, and quite different, bootstrapping routines. The first, attributable to Foster et al (2013), which implements a parametric bootstrap, whereby parameters are drawn from their sampling distribution (defined by the ML estimates and their asymptotic vcov matrix). Yes, the vcov function needs to be run first and stored in the the regional_mix object as $vcov. Typically, the vcov matrix is obtained using numerical derivatives, which can be slow to calculate and somewhat unstable/erratic. This was the original suggestion and has been superceeded by the non-parametric bootstrap routine. This is described in Foster et al (in prep) and bootstraps the sampling site data repeatedly, and for each bootstrap sample the model is re-estimated. Variation in the bootstrap samples is carried forward to the prediction step to guage the uncertainty.
-#' The parametric bootsrap implementation of this function can take a while to run ??? it is a bootstrap function. nboot samples of the parameters are taken and then used to predict at each set of covariates defined in newdata. Quantiles of the resulting sets of bootstrap predictions are then taken. It is the last step that really takes a while. The non-parametric version of this function should not take as long as the grunt work of bootstrapping is carried out in the regional_mix.bootstrap(qv) function.
-#' Note that this function is not implemented. It could be, using the parallel package, but it is currently not. The bulk of the bootstrap calculations are done in C++, which reduces the waiting time but parallelising it would be even better.
-#' @return If nboot==0 then a n x H matrix of prior predictions (n=nrow(newdata), H=number of RCPs). Each row should sum to one.
-#' \item{ if nboot!=0 then a list is returned. It has elements:}{}
-#' \item{ ptPreds}{the n x H matrix of point predictions}
-#' \item{ bootPreds}{the n x H matrix of bootstrap point predictions (mean of bootstrap samples)}
-#' \item{ bootSEs}{the n x H matrix of bootstrap standard errors for predictions}
-#' \item{ bootCIs}{the n x H x 2 array of bootstrap confidence intervals. Note that bootCIs[,,1] gives the lower CIs and bootCIs[,,2] gives the upper CIs.}
-#' @export
-
-"predict.regional_mix" <- function (object, object2 = NULL, ..., newdata = NULL, nboot = 0, alpha = 0.95, mc.cores = 1){
-  if (is.null(newdata)) {
-    X <- object$titbits$X
-    if (class(object$titbits$species_formula) == "formula") {
-      form.W <- object$titbits$species_formula
-      W <- object$titbits$W
-      p.w <- ncol(W)
-    }
-    else {
-      form.W <- NULL
-      W <- -999999
-      p.w <- 0
-    }
-  }
-  else {
-    form.X <- as.formula(object$titbit$rcp_formula)
-    if (length(form.X) == 3)
-      form.X[[2]] <- NULL
-    X <- model.matrix(form.X, stats::model.frame(form.X, data = as.data.frame(newdata)))
-    if (class(object$titbits$species_formula) == "formula") {
-      W <- model.matrix(object$titbits$species_formula, stats::model.frame(object$titbits$species_formula,
-                                                                           data = as.data.frame(newdata)))
-      p.w <- ncol(W)
-    }
-    else {
-      form.W <- NULL
-      W <- -999999
-      p.w <- 0
-    }
-  }
-  offy <- rep(0, nrow(X))
-  S <- object$S
-  G <- object$nRCP
-  n <- nrow(X)
-  p.x <- object$p.x
-  p.w <- object$p.w
-  if (is.null(object2)) {
-    if (nboot > 0) {
-      if( !object$titbits$control$quiet)
-        message("Using a parametric bootstrap based on the ML estimates and their vcov")
-      my.nboot <- nboot
-    }
-    else
-      my.nboot <- 0
-    allCoBoot <- regional_mix_bootParametric(fm = object, mf = mf,
-                                             nboot = my.nboot)
-  }
-  else {
-    if( !object$titbits$control$quiet)
-      message("Using supplied regional_mix.bootstrap object (non-parametric bootstrap)")
-    allCoBoot <- as.matrix(object2)
-    nboot <- nrow(object2)
-  }
-  if (is.null(allCoBoot))
-    return(NULL)
-  alphaBoot <- allCoBoot[, 1:S,drop=FALSE]
-  tauBoot <- allCoBoot[, S + 1:((G - 1) * S),drop=FALSE]
-  betaBoot <- allCoBoot[, S + (G - 1) * S + 1:((G - 1) * p.x),drop=FALSE]
-  alphaIn <- c(NA, as.numeric(object$coefs$alpha))
-  alphaIn <- alphaIn[-1]
-  tauIn <- c(NA, as.numeric(object$coef$tau))
-  tauIn <- tauIn[-1]
-  betaIn <- c(NA, as.numeric(object$coef$beta))
-  betaIn <- betaIn[-1]
-  if (class(object$titbits$species_formula) == "formula") {
-    gammaIn <- c(NA, as.numeric(object$coef$gamma))
-    gammaIn <- gammaIn[-1]
-  }
-  else gammaIn <- -999999
-  if (any(!is.null(object$coef$disp))) {
-    dispIn <- c(NA, as.numeric(object$coef$disp))
-    dispIn <- dispIn[-1]
-  }
-  else dispIn <- -999999
-  powerIn <- c(NA, as.numeric(object$titbits$power))
-  powerIn <- powerIn[-1]
-  predCol <- G
-  ptPreds <- as.numeric(matrix(NA, nrow = n, ncol = predCol))
-  bootPreds <- as.numeric(array(NA, c(n, predCol, nboot)))
-  conc <- as.numeric(NA)
-  mysd <- as.numeric(NA)
-  outcomes <- matrix(NA, nrow = nrow(X), ncol = S)
-  myContr <- object$titbits$control
-  nam <- paste("RCP", 1:G, sep = "_")
-  boot.funny <- function(seg) {
-    if (any(segments <= 0)) {
-      nboot <- 0
-      bootSampsToUse <- 1
-    }
-    else {
-      nboot <- segments[seg]
-      bootSampsToUse <- (sum( segments[1:seg])-segments[seg]+1):sum(segments[1:seg])
-    }
-    bootPreds <- as.numeric(array(NA, c(n, predCol, nboot)))
-    tmp <- .Call("RCP_predict_C", as.numeric(-999999), as.numeric(X),
-                 as.numeric(W), as.numeric(offy), as.numeric(object$titbits$wts),
-                 as.integer(S), as.integer(G), as.integer(p.x), as.integer(p.w),
-                 as.integer(n), as.integer(object$titbits$disty),
-                 as.numeric(alphaIn), as.numeric(tauIn), as.numeric(betaIn),
-                 as.numeric(gammaIn), as.numeric(dispIn), as.numeric(powerIn),
-                 as.numeric(myContr$penalty), as.numeric(myContr$penalty.tau),
-                 as.numeric(myContr$penalty.gamma), as.numeric(myContr$penalty.disp[1]),
-                 as.numeric(myContr$penalty.disp[2]), as.numeric(alphaBoot[bootSampsToUse,]),
-                 as.numeric(tauBoot[bootSampsToUse,]), as.numeric(betaBoot[bootSampsToUse,]),
-                 as.integer(nboot), as.numeric(ptPreds), as.numeric(bootPreds), as.integer(1),
-                 PACKAGE = "ecomix")
-    if (nboot == 0) {
-      ret <- matrix(ptPreds, nrow = nrow(X), ncol = predCol)
-      colnames(ret) <- nam
-      return(ret)
-    }
-    bootPreds <- matrix(bootPreds, nrow = nrow(X) * predCol,
-                        ncol = nboot)
-    return(bootPreds)
-  }
-  segments <- -999999
-  ret <- list()
-  ptPreds <- boot.funny(1)
-  if (nboot > 0) {
-    if (Sys.info()["sysname"] == "Windows") {
-      if( !object$titbits$control$quiet)
-        message("Parallelised version of function not available for Windows machines. Reverting to single processor.")
-      mc.cores <- 1
-    }
-    segments <- rep(nboot%/%mc.cores, mc.cores)
-    if( nboot %% mc.cores > 0)
-      segments[1:(nboot%%mc.cores)] <- segments[1:(nboot%%mc.cores)] + 1
-
-    tmp <- parallel::mclapply(1:mc.cores, boot.funny, mc.cores = mc.cores)
-    bootPreds <- do.call("cbind", tmp)
-    bPreds <- list()
-    row.exp <- rowMeans(bootPreds)
-    tmp <- matrix(row.exp, nrow = nrow(X), ncol = predCol)
-    bPreds$fit <- tmp
-    tmp <- sweep(bootPreds, 1, row.exp, "-")
-    tmp <- tmp^2
-    tmp <- sqrt(rowSums(tmp)/(nboot - 1))
-    tmp <- matrix(tmp, nrow = nrow(X), ncol = predCol)
-    bPreds$ses <- tmp
-    colnames(bPreds$fit) <- colnames(bPreds$ses) <- nam
-    tmp.fun <- function(x) return(quantile(bootPreds[x, ],
-                                           probs = c(0, alpha) + (1 - alpha)/2, na.rm = TRUE))
-    tmp1 <- parallel::mclapply(seq_len(nrow(bootPreds)), tmp.fun,
-                               mc.cores = mc.cores)
-    tmp1 <- do.call("rbind", tmp1)
-    tmp1 <- array(tmp1, c(nrow(X), predCol, 2), dimnames = list(NULL,
-                                                                NULL, NULL))
-    bPreds$cis <- tmp1[, 1:predCol, ]
-    dimnames(bPreds$cis) <- list(NULL, nam, c("lower", "upper"))
-    ret <- list(ptPreds = ptPreds, bootPreds = bPreds$fit,
-                bootSEs = bPreds$ses, bootCIs = bPreds$cis)
-  }
-  else ret <- ptPreds
-  gc()
-  return(ret)
-}
+#
+# "plot.species_effects" <-function(x,#best_mod,              # output of regimix function for final model
+#                                 boot_obj,              # output of regiboot function for final model
+#                                 legend_fact,           # levels of categorical sampling variable to plot. Coefficients relative to first level of factor.
+#                                 # So usually 2:n levels(sampling_variable)
+#                                CI=c(0.025, 0.975),    # confidence interval to plot
+#                             col="black",           # colour/s of dots and CI lines. Specified in same way as col is usually specified
+#                             lty=1)                 # lty= line type of CI lines. Specified in same way as lty is usually specified
+# {
+#
+#   require(lattice)
+#   # gammas<- paste0("gamma", 1: (length(Species)*length(sampling_names)))
+#   gammas<-grepl("gamma",dimnames(boot_obj)[[2]])
+#   temp_dat<-boot_obj[,gammas]
+#
+#   temp<-data.frame(avs=as.numeric(unname(colMeans(temp_dat))),
+#                    t(apply(temp_dat, 2, quantile, probs=CI)),
+#                    #sampling_var=rep(sampling_names, each=length(length(best_mod$names$spp))),
+#                    sampling_var=sapply(strsplit(dimnames(temp_dat)[[2]],"_"), "[", 3),
+#                    #Species=factor(rep(best_mod$names$spp,length(sampling_names))))
+#                    Species=factor(sapply(strsplit(dimnames(temp_dat)[[2]],"_"), "[", 1)))
+#
+#   names(temp)[2:3]<-c("lower", "upper")
+#   temp$Species<-gsub("."," ", temp$Species, fixed=TRUE) #get rid of '.' in species names
+#   temp$Species<-as.factor(temp$Species) #convert back to factor
+#   temp$Species <- factor(temp$Species, levels=rev(levels(temp$Species)))
+#
+#   trellis.par.set(superpose.symbol=list(pch=16,col=col, cex=1.2),
+#                   superpose.line=list(col="transparent"))
+#   dotplot(Species ~ avs, groups=sampling_var, data=temp, cols=col, lty=lty, low=temp$lower, high=temp$upper, subscript=TRUE,
+#           auto.key=list(space="top", columns=2, cex=1.4, text=legend_fact),
+#           ylab=list(cex=1.4), xlab=list("Coefficient",cex=1.4),
+#           scales = list(tck = c(1, 0), x=list(cex=1.2), y=list(cex=1.2)),
+#           prepanel = function(x, y, ...) { list(xlim=range(temp$lower, temp$upper)) },
+#           panel=panel.superpose,
+#           panel.groups=function(x, y, subscripts, group.number, cols, low, high, ...)
+#           {
+#             if(group.number==1) jiggle <- 0.1 else jiggle <- -0.1
+#             panel.abline(v=0, lty=2)
+#             panel.abline(h=1:length(best_mod$names$spp), col.line="light grey", lty=1)
+#             panel.dotplot(x, y+jiggle, group.number, ...)
+#             panel.arrows(low[subscripts], y+jiggle, high[subscripts], y+jiggle, code=3, angle=90,
+#                          length=0.05, col=cols[group.number], lty=lty[group.number])
+#             #panel.segments(temp$lower, y+jiggle, + temp$upper, y+jiggle, lty = lty, col =col, lwd=2, cex=1.2)
+#           })
+#
+# }
 
 #'@rdname print.regional_mix
 #'@name print.regional_mix
@@ -841,89 +657,29 @@
   invisible(ret)
 }
 
-#' @rdname regional_mix.bootstrap
-#' @name regional_mix.bootstrap
-#' @title Performs bootstrap sample and estimation for regimix objects. Useful for calculating measures of uncertainty in predictions from a regimix object, and also about the regimix parameter estimates. This function can be used in conjunction with vcov.regimix(qv) and predict.regimix(qv). In partciular, these bootstrap samples can be used to gauge variability in parameter estimates and hence the model itself.
-#' @aliases regional_mix.bootstrap
-#' @title Bootstraps a regional_mix object.
-#' @description Performs bootstrap sample and estimation for regional_mix objects. Useful for calculating measures of uncertainty in predictions from a regional_mix object, and also about the regional_mix parameter estimates. This function can be used in conjunction with vcov.regional_mix(qv) and predict.regional_mix(qv). In partciular, these bootstrap samples can be used to gauge variability in parameter estimates and hence the model itself.
-#' @param object an object obtained from fitting a RCP mixture model (class "regional_mix"). Such as that generated from a call to regional_mix(qv). This object will need to be created with the argument titbits=TRUE as these pieces of data are needed in the re-fitting. Of course, you could try to just save parts of titbits but the memory-hungry data is all required.
-#' @param nboot a numeric scalar giving the number of bootstrap samples to obtain. More is better, but takes longer.
-#' @param type a character string giving the type of bootstrap to perform. Options are:"SimpleBoot" which gives sample resampling, and "BayesBoot" (default) which gives Bayesian Bootstrap sampling. The nomenclature, and the Bayesian Bootstrap, come from Rubin (1981).
-#' @param mc.cores an integer giving the number of cores to run the bootstrap samples on. The default is 1, that is no parallelisation. This parameter is redundant on Windows machines as the method of parallelisation, mclapply(), is not available there.
-#' @param quiet should the progress bar be printed to the output device?If quiet=FALSE (default) then the progress bar is printed.
-#' @param MLstart should each bootstrap estimation start at the original model's ML estimate? Default is TRUE for \code{yes} it should.
-#' @description This function can take a while to run -- it is a bootstrap function. nboot re-samples of the data are taken and then the parameters are estimated for each re-sample. The function allows for parallel calculations, via mclapply(qv), which reduces some of the computational burden. To use parallel computing, specify mc.cores>1. Note that this will not work on Windows computers, as mclapply(qv) will not work.
-#' The Bayesian bootstrap method is operationally equivalent to the simple bootstrap, except that the weightings are non-integral. See Rubin (1981). It might be tempting to reduce the tolerance for convergence of each estimation procedure. We recommend not doing this as it is likely to have the effect of artificially reducing estimates of uncertainty. This occurs as the resampled estimates are liekly to be closer to their starting values (the MLEs from the original data set).
-#' @return An object of class "regional_mix.bootstrap", which is essentially a matrix with nboot rows and the number of columns equal to the number of parameters matrix. Each row gives a bootstrap estimate of the parameters.
-#' @references Foster, S.D., Lyons, M. and Hill, N. (in prep.) Ecological Groupings of Sample Sites in the presence of sampling artefacts.
-#' Rubin, D.B. (1981) The Bayesian Bootstrap. The Annals of Statistics \emph{9}:130--134.
-#' @export
+#'@rdname print.regional_mix.multifit
+#'@name print.regional_mix.multifit
+#'@title Prints a summary of a regional_mix.multifit object.
+#'@param x A regional_mix.multifit object
+#'@param \\dots Ignored
+#'@description Reports the BIC of each of the random starts and identifies the best fitting model.
+#'@export
+"print.regional_mix.multifit" <- function (x, ...){
 
-"regional_mix.bootstrap" <-function (object,
-                                nboot=1000,
-                                type="BayesBoot",
-                                mc.cores=1,
-                                quiet=FALSE,
-                                # orderSamps=FALSE,
-                                MLstart=TRUE){
-  if (nboot < 1)
-    stop( "No Boostrap samples requested.  Please set nboot to something > 1.")
-  if( ! type %in% c("BayesBoot","SimpleBoot"))
-    stop( "Unknown boostrap type, choices are BayesBoot and SimpleBoot.")
-  n.reorder <- 0
-  object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
-  if( !quiet){
-    chars <- c("><(('> ","_@_'' ")
-    pb <- txtProgressBar(min = 1, max = nboot, style = 3, char = chars[sample(length(chars),1)]) }
-  if( type == "SimpleBoot"){
-    all.wts <- matrix( sample( 1:object$n, nboot*object$n, replace=TRUE), nrow=nboot, ncol=object$n)
-    tmp <- apply( all.wts, 1, table)
-    all.wts <- matrix( 0, nrow=nboot, ncol=object$n)
-    for( ii in seq_along( tmp))
-      all.wts[ii, as.numeric( names( tmp[[ii]]))] <- tmp[[ii]]
-  }
-  if( type == "BayesBoot")
-    all.wts <- object$n * gtools::rdirichlet( nboot, rep( 1, object$n))
-  if( MLstart)
-    my.inits <- unlist( object$coef)
-  else{
-    my.inits <- "random"
-    orderSamps <- TRUE
-  }
+  cat("A multiple fit",x$multiple_fits[[1]]$family,"regional_mix model object\n\n")
+  cat("You fitted",x$nstart,"random starts using",x$nRCP,"RCPs.\n\n")
 
-  my.fun <- function(dummy){
-    if( !quiet)
-      setTxtProgressBar(pb, dummy)
-    dumbOut <- capture.output(
-      samp.object <- regional_mix.fit( outcomes=object$titbits$Y, W=object$titbits$W, X=object$titbits$X, offy=object$titbits$offset, wts=object$titbits$wts * all.wts[dummy,,drop=TRUE], disty=object$titbits$disty, nRCP=object$nRCP, power=object$titbits$power, inits=my.inits, control=object$titbits$control, n=object$n, S=object$S, p.x=object$p.x, p.w=object$p.w))
-    return( unlist( samp.object$coef))
-  }
+  bics <- sapply(x$multiple_fits, BIC)
 
-  flag <- TRUE
-  tmpOldQuiet <- object$titbits$control$quiet
-  object$titbits$control$quiet <- TRUE
-  if( Sys.info()['sysname'] == "Windows" | mc.cores==1){
-    boot.estis <- matrix(NA, nrow = nboot, ncol = length(unlist(object$coef)))
-    for (ii in 1:nboot) {
-      if( !quiet)
-        setTxtProgressBar(pb, ii)
-      boot.estis[ii, ] <- my.fun( ii)
-    }
-    flag <- FALSE
-  }
-  if( flag){  #has this already been done sequentially?
-    if( !quiet)
-      message( "Progress bar may not be monotonic due to the vaguaries of parallelisation")
-    tmp <- parallel::mclapply( 1:nboot, my.fun, mc.silent=quiet, mc.cores=mc.cores)
-    boot.estis <- do.call( "rbind", tmp)
-  }
-  object$titbits$control$quiet <- tmpOldQuiet
-  if( !quiet)
-    message( "")
-  colnames( boot.estis) <- get_long_names_rcp( object)
-  class( boot.estis) <- "regional_mix.bootstrap"
-  return( boot.estis)
+  best_mod_idx <- which.min(bics)
+  best_mod <- x$multiple_fits[[best_mod_idx]]
+
+  cat("The best model based on BIC was start",best_mod_idx,"\n")
+
+  print(best_mod)
+
+  cat("You can access more elements of this model using x$multiple_fits[[",best_mod_idx,"]]\n")
+
 }
 
 #' @rdname residuals.regional_mix
@@ -967,7 +723,7 @@
             bernoulli = { fn <- function(y,mu,logdisp,power) pbinom( q=y, size=1, prob=mu, lower.tail=TRUE)},
             poisson = { fn <- function(y,mu,logdisp,power) ppois( q=y, lambda=mu, lower.tail=TRUE)},
             negative.binomial = { fn <- function(y,mu,logdisp,power) pnbinom( q=y, mu=mu, size=1/exp( logdisp), lower.tail=TRUE)},
-            tweedie = { fn <- function(y,mu,logdisp,power) fishMod::pTweedie( q=y, mu=mu, phi=exp( logdisp), p=power)},#CHECK!!!
+            tweedie = { fn <- function(y,mu,logdisp,power) fishMod::pTweedie( q=y, mu=mu, phi=exp( logdisp), p=power)},
             gaussian = { fn <- function(y,mu,logdisp,power) pnorm( q=y, mean=mu, sd=exp( logdisp), lower.tail=TRUE)})
 
     for( ss in 1:object$S){
@@ -1098,6 +854,14 @@
     message( "Random values for overdispersions")
     logDisps <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
   }
+  if( family == "tweedie" & (is.null( logDisps) | length( logDisps) != S)){
+    message( "Random values for species' dispersion parameters")
+    logDisps <- log( 1 + rgamma( n=S, shape=1, scale=0.75))
+  }
+  if( family == "tweedie" & (is.null( powers) | length( powers) != S)){
+    message( "Power parameter assigned to 1.6 for each species")
+    powers <- rep(1.6, S)
+  }
   if( family=="gaussian" & (is.null( logDisps) | length( logDisps) != S)){
     message( "Random values for species' variance parameters")
     logDisps <- log( 1 + rgamma( n+S, shape=1, scale=0.75))
@@ -1125,7 +889,7 @@
   }
 
   etaPi <- X %*% t(beta)
-  pis <- t(apply(etaPi, 1, ecomix:::additive_logistic))
+  pis <- t(apply(etaPi, 1, additive_logistic))
   habis <- apply(pis, 1, function(x) sample(1:nRCP, 1, FALSE, x))
 
   tau <- rbind(tau, -colSums(tau))
@@ -1142,7 +906,7 @@
 
   if( family=="bernoulli")
     mu <- inv.logit(etaMu)
-  if( family %in% c("poisson","negative.binomial"))#,"tweedie"))
+  if( family %in% c("poisson","negative.binomial","tweedie"))
     mu <- exp( etaMu)
   if( family == "gaussian")
     mu <- etaMu
@@ -1157,6 +921,10 @@
     outcomes <- matrix(rpois(n * S, lambda=as.numeric( fitted)), nrow = n, ncol = S)
   if( family=="negative.binomial")
     outcomes <- matrix(rnbinom(n * S, mu=as.numeric( fitted), size=1/rep(exp( logDisps), each=n)), nrow = n, ncol = S)
+  if( family=="tweedie")
+    outcomes <- matrix(fishMod::rTweedie(n * S, mu = as.numeric(fitted),
+                                         phi = rep(exp(logDisps), each = n),
+                                         p = rep(powers, each = n)), nrow = n, ncol = S)
   if( family=="gaussian")
     outcomes <- matrix( rnorm( n=n*S, mean=as.numeric( fitted), sd=rep( exp( logDisps), each=n)), nrow=n, ncol=S)
 
@@ -1258,8 +1026,8 @@
   ## probabilities for all other levels of same sampling var
   res<- lapply(seq_along(object$names$Wvars),function(jj){
     new_eta <- sweep(eta, 2, coef(object)$gamma[,object$names$Wvars[jj]], "+");
-    if(type%in%"response")part_mus <- link.fun$linkinv(eta)
-    else part_mus <- eta
+    if(type%in%"response")part_mus <- link.fun$linkinv(new_eta)
+    else part_mus <- new_eta
     return(part_mus)})
 
   names(res)<- object$names$Wvars
@@ -1347,8 +1115,8 @@
 
       res<- lapply(seq_along(object$names$Wvars),function(jj){
         new_eta <- sweep(tmp_eta, 2, tmp_gamma[,jj], "+");
-        if(type%in%"response")part_mus <- link.fun$linkinv(tmp_eta)
-        if(type%in%"link") part_mus <- tmp_eta
+        if(type%in%"response")part_mus <- link.fun$linkinv(new_eta)
+        if(type%in%"link") part_mus <- new_eta
         return(part_mus)})
 
       names(res)<-object$names$Wvars
@@ -1360,10 +1128,13 @@
     names(samp_res) <- object$names$Wvars
 
     for(k in seq_along(object$names$Wvars)){
-      samp_res[[k]]<-list(mean=apply(simplify2array(res_all[[k]]), c(1,2), mean),
-                          sd=apply(simplify2array(res_all[[k]]), c(1,2), sd),
-                          lower=apply(simplify2array(res_all[[k]]), c(1,2), function(x) quantile(x, probs=CI[1])),
-                          upper=apply(simplify2array(res_all[[k]]), c(1,2), function(x) quantile(x, probs=CI[2])))
+      # res_all is indexed by bootstrap draw; pull out level k's prediction
+      # from every draw before aggregating across draws.
+      level_k <- lapply(res_all, `[[`, k)
+      samp_res[[k]]<-list(mean=apply(simplify2array(level_k), c(1,2), mean),
+                          sd=apply(simplify2array(level_k), c(1,2), sd),
+                          lower=apply(simplify2array(level_k), c(1,2), function(x) quantile(x, probs=CI[1])),
+                          upper=apply(simplify2array(level_k), c(1,2), function(x) quantile(x, probs=CI[2])))
     }
 
     overall_temp<-list()
@@ -1485,7 +1256,7 @@
     mc.cores <- 1
   X <- object$titbits$X
   p.x <- ncol( X)
-  if( class( object$titbits$species_formula)=="formula"){
+  if( inherits(object$titbits$species_formula, "formula")){
     form.W <- object$titbits$species_formula
     W <- object$titbits$W
     p.w <- ncol( W)
@@ -1572,7 +1343,7 @@
   if( method %in% c( "BayesBoot","SimpleBoot")){
     object$titbits$control$optimise <- TRUE #just in case it was turned off (see regional_mix.multfit)
     if( is.null( object2))
-      coefMat <- regional_mix.bootstrap( object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE)#, orderSamps=FALSE)
+      coefMat <- bootstrap( object, nboot=nboot, type=method, mc.cores=mc.cores, quiet=TRUE)#, orderSamps=FALSE)
     else
       coefMat <- object2
     vcov.mat <- cov( coefMat)

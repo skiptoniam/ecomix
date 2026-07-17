@@ -7,14 +7,12 @@
 species_mix.simulate(
   archetype_formula,
   species_formula,
-  all_formula = NULL,
   data,
   offset = NULL,
   nArchetypes = 3,
   alpha = NULL,
   beta = NULL,
   gamma = NULL,
-  delta = NULL,
   logTheta = NULL,
   powers = NULL,
   size = NULL,
@@ -27,8 +25,6 @@ the format: cbind(spp1,spp2,spp3,...,sppN)~1 + x1 + x2}
 
 \item{species_formula}{formula to simulate species_mix species-specific
 responses, e.g: ~1}
-
-\item{all_formula}{formula to simulate biases in the data}
 
 \item{data}{a matrix of variables to simulate data from.}
 
@@ -43,9 +39,6 @@ parameters. Each row is a different species archetype.}
 
 \item{gamma}{coefficients for each species archetype. Matrix of S x number of
 parameters. Each row is a different species archetype.}
-
-\item{delta}{coefficients for all_formula, these should describe overall
-biases in the dataset.}
 
 \item{logTheta}{coefficients for the dispersion variables for negative.binomial
 and gaussian distributions - should be number of species long and on the

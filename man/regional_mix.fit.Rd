@@ -36,7 +36,7 @@ regional_mix.fit(
 
 \item{nRCP}{is the number of species archetypes that are being estimated.}
 
-\item{power}{This is for the Tweedie distribution - currently not in use (until we fix the Tweedie computational stuff).}
+\item{power}{This is the power parameter for the Tweedie distribution.}
 
 \item{inits}{This will be a vector of starting values for regional_mix (i.e you've fitted a model and want to refit it).}
 

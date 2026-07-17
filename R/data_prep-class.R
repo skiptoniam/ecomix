@@ -71,12 +71,12 @@ make_mixture_data <- function(species_data,covariate_data){
 
 species_data_check <- function(x){
   stopifnot(is.matrix(x)|is.data.frame(x))
-  stopifnot(all(is.finite(x)))
+  stopifnot(all(is.finite(as.matrix(x))))
 }
 
 covariate_data_check <- function(x){
   stopifnot(is.matrix(x)|is.data.frame(x))
-  stopifnot(all(is.finite(x)))
+  stopifnot(all(is.finite(as.matrix(x))))
 }
 
 

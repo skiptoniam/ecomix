@@ -4,61 +4,61 @@ sam_data::sam_data(){};
 sam_data::~sam_data(){};
 
 
-void sam_data::setVals( SEXP &Ry, SEXP &RX, SEXP &RW, SEXP &RU,
+void sam_data::setVals( SEXP &Ry, SEXP &RX, SEXP &RW,
 						SEXP &Roffset, SEXP &Rspp_wts,
-						SEXP &Rsite_spp_wts, SEXP &Ry_not_na, SEXP &Rbinsize,
-						SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw, SEXP &Rpu,
-						SEXP &RnObs, SEXP &Rdisty, SEXP &RoptiDisp, SEXP &RoptiPart, SEXP &RoptiAll, SEXP &RdoPenalties){
+						SEXP &Rsite_spp_wts, //SEXP &Ry_not_na,
+						SEXP &Rbinsize,
+						SEXP &RS, SEXP &RG, SEXP &Rpx, SEXP &Rpw,
+						SEXP &RnObs, SEXP &Rdisty, SEXP &Rlinky,
+						SEXP &RoptiDisp, SEXP &RoptiPart, SEXP &RdoPenalties){
 
 	nS = *(INTEGER( RS));
 	nG = *(INTEGER( RG));
 	nPX = *(INTEGER( Rpx));
 	nPW = *(INTEGER( Rpw));
-	nPU = *(INTEGER( Rpu));
 	nObs = *(INTEGER( RnObs));
 	disty = *(INTEGER( Rdisty));
+	linky = *(INTEGER( Rlinky));
 	optiDisp = *(INTEGER( RoptiDisp));
 	optiPart = *(INTEGER( RoptiPart));
-	optiAll = *(INTEGER( RoptiAll));
 	doPenalties = *(INTEGER( RdoPenalties));
 	NAnum = -999999;
 
 	y = REAL( Ry);
 	X = REAL( RX);
 	W = REAL( RW);
-	U = REAL( RU);
 	offset = REAL( Roffset);
 	spp_wts = REAL( Rspp_wts); // this is for the bayesian bootstrap
 	site_spp_wts = REAL( Rsite_spp_wts); //this is for the ippm
 	binsize = REAL(Rbinsize);
-	y_not_na = INTEGER(Ry_not_na);
+	//y_not_na = INTEGER(Ry_not_na);
 
 
 }
 
- bool sam_data::doOptiPart() const{
- 	if( optiPart == 1)
-		return( TRUE);
-	return( FALSE);
- }
+ //bool sam_data::doOptiPart() const{
+ 	//if( optiPart == 1)
+		//return( TRUE);
+	//return( FALSE);
+ //}
 
-bool sam_data::isDispersion() const{ // currently just check if negative binomial.
-	if((disty == 4) | (disty == 5) | (disty == 6) )
-		return( true);
-	return( false);
-}
+//bool sam_data::isDispersion() const{ // currently just check if negative binomial.
+	//if((disty == 3) | (disty == 4) | (disty == 5) )
+		//return( true);
+	//return( false);
+//}
 
-bool sam_data::doOptiDisp() const{
-	if( optiDisp == 1)
-		return( TRUE);
-	return( FALSE);
-}
+//bool sam_data::doOptiDisp() const{
+	//if( optiDisp == 1)
+		//return( TRUE);
+	//return( FALSE);
+//}
 
- bool sam_data::isPartial() const{ // currently just check if negative binomial.
- 	if(optiPart==1)
- 		return( true);
- 	return( false);
- }
+ //bool sam_data::isPartial() const{ // currently just check if negative binomial.
+ 	//if(optiPart==1)
+ 		//return( true);
+ 	//return( false);
+ //}
 
 
 // void sam_data::printVals( int printX=0, int printW=0, int printy = 0){

@@ -67,7 +67,7 @@
 #'  \item{penalty.disp}{a two element vector. These are combined to form the penalty for the dispersion parameters (if any). The dispersions are assumed to come from a log-normal distribution with log-mean penalty.disp[1] and log-standard-deviation penalty.disp[2]. Defaults to c(10,sqrt(10)), which gives shrinkage towards 1 (the mode of the penalty). Note that for Normal models, where the dispersion alone defines the variance, a strong penalty may be required to keep parameters estimable.}
 #'  }
 #'  For calls to regimix.multifit(), titbits is set to FALSE??? so no excess memory is used. If users want this information, and there is good reason to want it, then a call to regimix() with starting values given as the best fit's estimates should be used.
-#' @return regional_mix returns an object of class \code{regional_mix} and regional_mix.multifit returns a list of objects of class \code{regional_mix}. The regional_mix class has several methods: coef, plot, predict, residuals, summary, and vcov. The regional_mix object consists of a list with the following elements:
+#' @return regional_mix returns an object of class \code{regional_mix} and regional_mix.multifit returns an object of class \code{regional_mix.multifit}, a list containing \code{multiple_fits} (a list of \code{nstart} \code{regional_mix} objects), \code{nRCP}, and \code{nstart}. The regional_mix class has several methods: coef, plot, predict, residuals, summary, and vcov. The regional_mix object consists of a list with the following elements:
 #' @return AIC Akaike an information criterion for the maximised model.
 #' @return BIC Bayesian information criterion for the maximised model.
 #' @return call the call to the function.
@@ -91,11 +91,42 @@
 #' @export
 #' @examples
 #' \dontrun{
-#' rcp_form <- as.formula(paste0("cbind(",paste(colnames(simulated_data[,1:20]),
-#' collapse = ','),")~1+x1+x2+x3"))
-#' spp_form <- observations ~ 1 + w1 + w2
-#' fm_regional_mix <- regional_mix(rcp_formula=rcp_form,species_formula=spp_form,
-#'                                 data=data, family='bernoulli', nRCP=5)
+#' set.seed( 151)
+#' n <- 100
+#' S <- 10
+#' nRCP <- 3
+#' my.dist <- "negative.binomial"
+#' X <- as.data.frame( cbind( x1=runif( n, min=-10, max=10),
+#'                           x2=runif( n, min=-10, max=10)))
+#' Offy <- log( runif( n, min=30, max=60))
+#' pols <- list()
+#' pols[[1]] <- poly( X$x1, degree=3)
+#' pols[[2]] <- poly( X$x2, degree=3)
+#' X <- as.matrix( cbind( 1, X, pols[[1]], pols[[2]]))
+#' colnames( X) <- c("const", 'x1', 'x2', paste( "x1",1:3,sep='.'),
+#' paste( "x2",1:3,sep='.'))
+#' p.x <- ncol( X[,-(2:3)])
+#' p.w <- 3
+#' W <- matrix(sample( c(0,1), size=(n*p.w), replace=TRUE), nrow=n, ncol=p.w)
+#' colnames( W) <- paste( "w",1:3,sep=".")
+#' alpha <- rnorm( S)
+#' tau.var <- 0.5
+#' b <- sqrt( tau.var/2)
+#' tau <- matrix( rexp( n=(nRCP-1)*S,rate=1/b) - rexp( n=(nRCP-1)*S, rate=1/b),
+#'  nrow=nRCP-1, ncol=S)
+#' beta <- 0.2 * matrix( c(-1.2, -2.6, 0.2, -23.4, -16.7, -18.7, -59.2,
+#'  -76.0,-14.2, -28.3, -36.8, -17.8, -92.9,-2.7), nrow=nRCP-1, ncol=p.x)
+#' gamma <- matrix( rnorm( S*p.w), ncol=p.w, nrow=S)
+#' logDisp <- log( rexp( S, 1))
+#' set.seed(121)
+#' simDat <- regional_mix.simulate( nRCP=nRCP, S=S, p.x=p.x, p.w=p.w, n=n,
+#' alpha=alpha, tau=tau, beta=beta, gamma=gamma, X=X[,-(2:3)], W=W,
+#' family=my.dist, logDisp=logDisp, offset=Offy)
+#' form.RCP <- paste( paste( paste('cbind(', paste( paste( 'spp', 1:S, sep=''),
+#'  collapse=','), sep=''),')',sep=''),'~x1.1+x1.2+x1.3+x2.1+x2.2+x2.3',sep='')
+#' form.spp <- ~w.1+w.2+w.3
+#' fm_regional_mix <- regional_mix(rcp_formula=form.RCP,species_formula=form.spp,
+#'                                 data=simDat, family='negative.binomial', nRCP=5)
 #' }
 "regional_mix" <- function (rcp_formula = NULL, species_formula = NULL, data,
                             nRCP = 3, family="bernoulli", offset=NULL,
@@ -166,7 +197,7 @@
   #get power params for Tweedie
   power <- get_power_rcp( disty, power, S)
   #summarising data to console
-  print.data.summ( data, dat, S, rcp_formula, species_formula, disty.cases,
+  print_data_summ( data, dat, S, rcp_formula, species_formula, disty.cases,
                    disty, control$quiet)
 
   tmp <- regional_mix.fit( outcomes, W, X, offy, wts, disty, nRCP, power, inits,
@@ -212,7 +243,7 @@
 #'@param disty the error family to used in regional_mix estimation. Currently, 'bernoulli', 'poisson', 'negative.binomial' and 'guassian' are available - internal conversion of family to a integer.
 #'@param nRCP is the number of species archetypes that are being estimated.
 #'@param control this is a list of control parameters that alter the specifics of model fitting.
-#'@param power This is for the Tweedie distribution - currently not in use (until we fix the Tweedie computational stuff).
+#'@param power This is the power parameter for the Tweedie distribution.
 #'@param inits This will be a vector of starting values for regional_mix (i.e you've fitted a model and want to refit it).
 #'@param n the number of sites in the data
 #'@param S is the number of species to be modelled (this will be calculated internally in regional_mix())
@@ -321,7 +352,7 @@
     # #get power params for Tweedie
     # power <- get_power_rcp( disty, power)
     #summarising data to console
-    print.data.summ( data, dat, S, rcp_formula, species_formula,
+    print_data_summ( data, dat, S, rcp_formula, species_formula,
                      disty.cases, disty, control$quiet)
 
     tmp.fun <- function(x){
@@ -364,7 +395,10 @@
     if( !control$quiet)
       message("")
 
-    return(many.starts)
+    res <- list(multiple_fits = many.starts, nRCP = nRCP, nstart = nstart)
+    class(res) <- "regional_mix.multifit"
+
+    return(res)
   }
 
 #### Non S3 Class objects ####
@@ -401,8 +435,6 @@
     return( FALSE)
 
 }
-
-
 
 "clean_data_rcp" <- function( data, form1, form2){
     mf.X <- stats::model.frame(form1, data = data, na.action = stats::na.exclude)
@@ -558,7 +590,10 @@ function( site.logls, outcomes, family, coef, nRCP, type="deviance", powers=NULL
       }
       else{ #Tweedie needs an unconstrained fit.  May cause problems in some cases, especially if there is quasi-separation...
         df3 <- as.data.frame( cbind( y=outcomes[,ss], offy=offy, df))
-        colnames( df3)[-(1:2)] <- c( paste( "grp", 1:G, sep=""), paste( "w",seq_len(ncol(W)), sep=""))
+        if( length( W) != 1)
+          colnames( df3)[-(1:2)] <- c( paste( "grp", 1:G, sep=""), paste( "w",seq_len(ncol(W)), sep=""))
+        else
+          colnames( df3)[-(1:2)] <- paste( "grp", 1:G, sep="")
         tmp.fm1 <- fishMod::tglm( y~-1+.-offy+offset( offy), wts=wts, data=df3, p=power[ss], vcov=FALSE, residuals=FALSE, trace=0)
         my.coefs <- c( NA, tmp.fm1$coef)
         disp[ss] <- log( tmp.fm1$coef["phi"])
@@ -1129,7 +1164,7 @@ function( titbits, outcomes, X, W, offset, wts, data, rcp_formula, species_formu
 # }
 
 
-"print.data.summ" <- function( data, dat, S, rcp_formula, species_formula, disty.cases, disty, quiet=FALSE){
+"print_data_summ" <- function( data, dat, S, rcp_formula, species_formula, disty.cases, disty, quiet=FALSE){
   if( quiet)
     return( NULL)
   n.tot <- nrow( data)
@@ -1143,21 +1178,6 @@ function( titbits, outcomes, X, W, offset, wts, data, rcp_formula, species_formu
   else
     message("There is NO model for each species (apart from intercept(s))")
   message("The error family is: ", disty.cases[disty])
-}
-
-"regional_mix_bootParametric" <- function( fm, mf, nboot){
-	if( nboot > 0){
-		if( is.null( fm$vcov)){
-			message( "An estimate of the variance matrix for regression parameters is required. Please run fm$vcov <- vcov(), see ?vcov.regional_mix for help")
-			return( NULL)
-		}
-	  allCoBoot <- my.rmvnorm( n=nboot, mean=as.numeric( unlist( fm$coefs)), sigma=fm$vcov, method='eigen')
-		return( allCoBoot)
-	}
-	else{
-		boot.estis <- matrix( unlist( fm$coef), nrow=1)
-		return( boot.estis)
-	}
 }
 
 "scotts.rdirichlet" <-

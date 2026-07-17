@@ -8,7 +8,7 @@
 double dTweedieMu( const double &y, const double &mu, const double &phi, const double &p)
 {
 	double lambda, alpha, tau, muZ;
-	
+
 	lambda = ( pow( mu, (2-p))) / ( phi*(2-p));
 	alpha = ( 2-p) / ( p-1);
 	tau = phi*(p-1)*pow( mu, (p-1));
@@ -31,7 +31,7 @@ double dTweedieMu( const double &y, const double &mu, const double &phi, const d
 		logWjs.clear();
 		Beta0 = muZ / alpha;
 		z1 = log( lambda) + alpha*log( y / muZ) + 1;
-		z2 = 0.5*log( alpha) - log( 2*PI) + 1;
+		z2 = 0.5*log( alpha) - log( 2*M_PI) + 1;
 		findWDeriv( y, lambda, muZ, alpha, Beta0, z1, z2, jmax, jlims, deri);	//Calculate Bessel Function and its derivatives w.r.t. alpha, mu.Z and lambda. Note that logWjs and jmax, jlims and deri are all altered in this call
 		tmpPt.at(0) = -1 + deri.at(1);			//updating the return object
 		tmpPt.at(1) = y*alpha / pow( muZ, 2) + deri.at(2);
@@ -67,7 +67,7 @@ double dTweedieMu( const double &y, const double &mu, const double &phi, const d
 	outDerivs.at(kount) = tmp;
 	kount++;
 	outDerivs.at(kount) = -99999.99999; //a (hopefully) obviously stupid number.*/
-	
+
 	return( tmp);
 }
 
@@ -75,7 +75,7 @@ double dTweedieMu( const double &y, const double &mu, const double &phi, const d
 double dTweediePhi( const double &y, const double &mu, const double &phi, const double &p)
 {
 	double lambda, alpha, tau, muZ;
-	
+
 	lambda = ( pow( mu, (2-p))) / ( phi*(2-p));
 	alpha = ( 2-p) / ( p-1);
 	tau = phi*(p-1)*pow( mu, (p-1));
@@ -98,7 +98,7 @@ double dTweediePhi( const double &y, const double &mu, const double &phi, const 
 		logWjs.clear();
 		Beta0 = muZ / alpha;
 		z1 = log( lambda) + alpha*log( y / muZ) + 1;
-		z2 = 0.5*log( alpha) - log( 2*PI) + 1;
+		z2 = 0.5*log( alpha) - log( 2*M_PI) + 1;
 		findWDeriv( y, lambda, muZ, alpha, Beta0, z1, z2, jmax, jlims, deri);	//Calculate Bessel Function and its derivatives w.r.t. alpha, mu.Z and lambda. Note that logWjs and jmax, jlims and deri are all altered in this call
 		tmpPt.at(0) = -1 + deri.at(1);			//updating the return object
 		tmpPt.at(1) = y*alpha / pow( muZ, 2) + deri.at(2);
@@ -118,7 +118,7 @@ double dTweediePhi( const double &y, const double &mu, const double &phi, const 
 	tmp = 0.0;
 	for( size_t j=0; j<3; j++)
 		tmp += tmpPt.at(j) * dPhi.at(j);
-	
+
 	return( tmp);
 }
 
