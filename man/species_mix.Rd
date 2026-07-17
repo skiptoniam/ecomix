@@ -153,7 +153,6 @@ Control arguments for species_mix are as follows:
  \item{penalty.alpha}{A numeric scalar. This is the penalty for the alpha parameters in the species model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).}
  \item{penalty.beta}{A numeric scalar. This is the penalty for the beta parameters in the  group model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).}
  \item{penalty.gamma}{A numeric scalar. This is the penalty for the gamma parameters in the species model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).}
- \item{penalty.delta}{A numeric scalar. This is the penalty for the delta parameters in the bias model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).}
  }
 }
 \examples{

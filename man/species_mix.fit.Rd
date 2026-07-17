@@ -8,7 +8,6 @@ species_mix.fit(
   y,
   X,
   W,
-  U,
   G,
   S,
   spp_weights,
@@ -28,8 +27,6 @@ species_mix.fit(
 \item{X}{is a design matrix for the archetype_formula dimension n_sites * n_covariates.}
 
 \item{W}{is a design matrix for species_formula and will be implemented if species_formula has covariates.}
-
-\item{U}{is a design matrix of covariates with a constant effect across all species and groups, and will be implemented if not NULL.}
 
 \item{G}{is the number of species archetypes that are being estimated.}
 
