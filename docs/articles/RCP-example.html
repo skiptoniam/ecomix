@@ -26,6 +26,8 @@
 <![endif]-->
 </head>
 <body data-spy="scroll" data-target="#toc">
+    
+
     <div class="container template-article">
       <header><div class="navbar navbar-default navbar-fixed-top" role="navigation">
   <div class="container">
@@ -38,23 +40,17 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">ecomix</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.1</span>
       </span>
     </div>
 
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
 <li>
-  <a href="../index.html">
-    <span class="fas fa-home fa-lg"></span>
-     
-  </a>
-</li>
-<li>
   <a href="../reference/index.html">Reference</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Articles
      
     <span class="caret"></span>
@@ -71,7 +67,7 @@
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://github.com/skiptoniam/ecomix/">
+  <a href="https://github.com/skiptoniam/ecomix/" class="external-link">
     <span class="fab fa-github fa-lg"></span>
      
   </a>
@@ -86,82 +82,162 @@
 
       
 
-      </header><script src="RCP-example_files/header-attrs-2.9/header-attrs.js"></script><div class="row">
+      </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Region of Common Profiles Example</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/skiptoniam/ecomix/blob/master/vignettes/RCP-example.Rmd"><code>vignettes/RCP-example.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/skiptoniam/ecomix/blob/HEAD/vignettes/RCP-example.Rmd" class="external-link"><code>vignettes/RCP-example.Rmd</code></a></small>
       <div class="hidden name"><code>RCP-example.Rmd</code></div>
 
     </div>
 
     
     
-<div id="regions-of-common-profile-models" class="section level3">
-<h3 class="hasAnchor">
-<a href="#regions-of-common-profile-models" class="anchor"></a>Regions of Common Profile Models</h3>
-<p>The Regions of Common Profile (RCP) models are a type of ‘Mixture-of-Experts Models’ and try to describe how homogeneous groups of <strong>sites</strong> vary with the environment. This is done by grouping sites based on the biological content (species observed at each site) and determine how these groups vary across environmental or physical gradients <span class="citation">(Foster <em>et al.</em> 2013)</span>. This approach assumes that assemblages of species at a site exists, and each assemblage can be described by its mean expectation of all species at that site. Within the the RCP model, these indicies are used to represent the data: sites as <span class="math inline">\(i = 1...n\)</span>, species as <span class="math inline">\(j = 1...S\)</span> and groups as <span class="math inline">\(k = 1...K\)</span> (we refer to these as RCPs). The model conditional expectation (given site membership) for all species is, <span class="math inline">\(\mathbb{E}(y_{ij}|z_{ik}=1)\)</span>. The model can be described as:</p>
+<div class="section level3">
+<h3 id="regions-of-common-profile-models">Regions of Common Profile Models<a class="anchor" aria-label="anchor" href="#regions-of-common-profile-models"></a>
+</h3>
+<p>The Regions of Common Profile (RCP) models are a type of
+‘Mixture-of-Experts Models’ and try to describe how homogeneous groups
+of <strong>sites</strong> vary with the environment. This is done by
+grouping sites based on the biological content (species observed at each
+site) and determine how these groups vary across environmental or
+physical gradients <span class="citation">(Foster <em>et al.</em>
+2013)</span>. This approach assumes that assemblages of species at a
+site exists, and each assemblage can be described by its mean
+expectation of all species at that site. Within the the RCP model, these
+indices are used to represent the data: sites as <span class="math inline">\(i = 1...n\)</span>, species as <span class="math inline">\(j = 1...S\)</span> and groups as <span class="math inline">\(k = 1...K\)</span> (we refer to these as RCPs).
+The model conditional expectation (given site membership) for all
+species is, <span class="math inline">\(\mathbb{E}(y_{ij}|z_{ik}=1)\)</span>. The model
+can be described as:</p>
 <p><span class="math display">\[
 \begin{equation}
-h[\mathbb{E}(y_{ij}|z_{ik})] = \alpha_j + Z_{ik}^\top\tau_{jk} \tag{1}\label{eq:one}
+h[\mathbb{E}(y_{ij}|z_{ik})] = \alpha_j + Z_{ik}^\top\tau_{jk}
+\tag{1}\label{eq:one}
 \end{equation}
 \]</span></p>
-<p>Where <span class="math inline">\(\alpha_j\)</span> is a species-specific intercept, <span class="math inline">\(Z_j^\top\)</span> is a design matrix of covariates used to describe the RCPs. We can adjust the assemblage profile based on the species-wise expectation by incorporating a species wise covariates which can account for sampling artefacts. This extension was described in <span class="citation">Foster <em>et al.</em> (2017)</span>.</p>
+<p>Where <span class="math inline">\(\alpha_j\)</span> is a
+species-specific intercept, <span class="math inline">\(Z_j^\top\)</span> is a design matrix of covariates
+used to describe the RCPs. We can adjust the assemblage profile based on
+the species-wise expectation by incorporating a species wise covariates
+which can account for sampling artefacts. This extension was described
+in <span class="citation">Foster <em>et al.</em> (2017)</span>.</p>
 <p><span class="math display">\[
 \begin{equation}
-h[\mathbb{E}(y_{ij}|z_{ik})] = \alpha_j + Z_{ik}^\top\tau_{jk} + W_i^\top\gamma_j + \nu_i \tag{4}\label{eq:four}
+h[\mathbb{E}(y_{ij}|z_{ik})] = \alpha_j + Z_{ik}^\top\tau_{jk} +
+W_i^\top\gamma_j + \nu_i \tag{4}\label{eq:four}
 \end{equation}
-\]</span> Where <span class="math inline">\(W_i\)</span> is a design matrix which represents covariates that could account for sampling biases in the observation of species at sites. Examples covariates to represent <span class="math inline">\(W_i\)</span> might include the methods of collection of each sample or the time of day each sample was taken. These covariates then try and marginalize out observation difference of species at sites based on the input covariates, <span class="math inline">\(\gamma_j\)</span> are species-specific parameters which describes these biases. Similar to the SAMs models any appropriate functional form can be used to describe the species-specific responses to physical environments or sampling artefacts. <span class="math inline">\(\nu_i\)</span> is an offset which can be included to account between difference in sites specific survey effort (e.g. area survey). Any dispersion parameters, such as those for Negative Binomial, Tweedie or Gaussian model will also need to be estimated. <span class="math inline">\(z_i\)</span> is an unobserved variable and is treated as a latent factor. The model assumes that <span class="math inline">\(z_i\)</span> is the result of a multinomial sampling process with one trial and <span class="math inline">\(k x 1\)</span> probability vector <span class="math inline">\(\pi_i\)</span>. The RCP model allows the RCP probability vector <span class="math inline">\(\pi_i\)</span> to vary depending on the observation site’s position in environmental and geographical space. Where <span class="math inline">\(\pi_i=h(X_i)\)</span>, and <span class="math inline">\(X_i\)</span> is the design matrix which contains the environmental and spatial covariates to describe site <span class="math inline">\(i\)</span>. <span class="math inline">\(h(.)\)</span> is represented by a additive logistic function <span class="citation">(Aitchison 1982)</span> whose <span class="math inline">\(k\)</span>th component is represented as:</p>
+\]</span> Where <span class="math inline">\(W_i\)</span> is a design
+matrix which represents covariates that could account for sampling
+biases in the observation of species at sites. Examples covariates to
+represent <span class="math inline">\(W_i\)</span> might include the
+methods of collection of each sample or the time of day each sample was
+taken. These covariates then try and marginalize out observation
+difference of species at sites based on the input covariates, <span class="math inline">\(\gamma_j\)</span> are species-specific parameters
+which describes these biases. Similar to the SAMs models any appropriate
+functional form can be used to describe the species-specific responses
+to physical environments or sampling artefacts. <span class="math inline">\(\nu_i\)</span> is an offset which can be included
+to account between difference in sites specific survey effort (e.g. area
+survey). Any dispersion parameters, such as those for Negative Binomial,
+Tweedie or Gaussian model will also need to be estimated. <span class="math inline">\(z_i\)</span> is an unobserved variable and is
+treated as a latent factor. The model assumes that <span class="math inline">\(z_i\)</span> is the result of a multinomial
+sampling process with one trial and <span class="math inline">\(k x
+1\)</span> probability vector <span class="math inline">\(\pi_i\)</span>. The RCP model allows the RCP
+probability vector <span class="math inline">\(\pi_i\)</span> to vary
+depending on the observation site’s position in environmental and
+geographical space. Where <span class="math inline">\(\pi_i=h(X_i)\)</span>, and <span class="math inline">\(X_i\)</span> is the design matrix which contains
+the environmental and spatial covariates to describe site <span class="math inline">\(i\)</span>. <span class="math inline">\(h(.)\)</span> is represented by a additive
+logistic function <span class="citation">(Aitchison 1982)</span> whose
+<span class="math inline">\(k\)</span>th component is represented
+as:</p>
 <p><span class="math display">\[
 \begin{equation}
 \pi_{ik}\triangleq h(X_i,k)=
 \begin{cases}
-  \frac{exp(X_i^\top\beta_k)}{1 + \sum_{m=1}^{K-1}\exp{X_i^\top\beta_{k'}}}, &amp; \text{if $1 \leq k \leq K-1$,}\\
-  1 + \sum_{m=1}^{K-1}\pi_{ik'}, &amp; \text{if $k = K$,}\tag{5}\label{eq:five}
+  \frac{exp(X_i^\top\beta_k)}{1 +
+\sum_{m=1}^{K-1}\exp{X_i^\top\beta_{k'}}}, &amp; \text{if $1 \leq k
+\leq K-1$,}\\
+  1 + \sum_{m=1}^{K-1}\pi_{ik'}, &amp; \text{if $k =
+K$,}\tag{5}\label{eq:five}
 \end{cases}
 \end{equation}
 \]</span></p>
-<p>In this function <span class="math inline">\(\beta_k\)</span> holds the parameter values for the <span class="math inline">\(k\)</span>th linear combination which represents the environmental or physical covariates used to describe each RCP. The RCP model available for use in the <code>ecomix</code> package are comprised of the following three components. A model for RCP type which is described by the environmental and spatial covariates, a model for the expectation of each species’ observations with reference to the sampling approach or artefacts and a parametric model for how the observations vary around these mean species-specific expectations. RCP to date have largely been used for describing bioregions, ecoregions or assemblages classification for spatial management <span class="citation">(Hill <em>et al.</em> 2017; Lyons <em>et al.</em> 2017)</span>. So this model can viewed as model-based bioregionalisation approach <span class="citation">(Hill <em>et al.</em> 2020; Woolley <em>et al.</em> 2020)</span>. Where the probability of each RCP type occurring at each prediction point (site or prediction surface), represents a probabilistic distribution of an assemblage of species. These probabilities for each RCP can be directly assessed via equation 4.</p>
-<div id="simulate-environmental-data" class="section level4">
-<h4 class="hasAnchor">
-<a href="#simulate-environmental-data" class="anchor"></a>Simulate Environmental Data</h4>
-<p>We generate a set of simulated environment predictors using Gaussian random fields with nugget effects on some of the variables.</p>
+<p>In this function <span class="math inline">\(\beta_k\)</span> holds
+the parameter values for the <span class="math inline">\(k\)</span>th
+linear combination which represents the environmental or physical
+covariates used to describe each RCP. The RCP model available for use in
+the <code>ecomix</code> package are comprised of the following three
+components. A model for RCP type which is described by the environmental
+and spatial covariates, a model for the expectation of each species’
+observations with reference to the sampling approach or artefacts and a
+parametric model for how the observations vary around these mean
+species-specific expectations. RCP to date have largely been used for
+describing bioregions, ecoregions or assemblages classification for
+spatial management <span class="citation">(Hill <em>et al.</em> 2017;
+Lyons <em>et al.</em> 2017)</span>. So this model can viewed as
+model-based bioregionalisation approach <span class="citation">(Hill
+<em>et al.</em> 2020; Woolley <em>et al.</em> 2020)</span>. Where the
+probability of each RCP type occurring at each prediction point (site or
+prediction surface), represents a probabilistic distribution of an
+assemblage of species. These probabilities for each RCP can be directly
+assessed via equation 4.</p>
+<div class="section level4">
+<h4 id="simulate-environmental-data">Simulate Environmental Data<a class="anchor" aria-label="anchor" href="#simulate-environmental-data"></a>
+</h4>
+<p>We generate a set of simulated environment predictors using Gaussian
+random fields with nugget effects on some of the variables.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/raster">raster</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://ms.math.uni-mannheim.de/de/publications/software/randomfields">RandomFields</a></span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">007</span><span class="op">)</span>
-<span class="va">lenny</span> <span class="op">&lt;-</span> <span class="fl">100</span>
-<span class="va">xSeq</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html">seq</a></span><span class="op">(</span> from<span class="op">=</span><span class="fl">0</span>, to<span class="op">=</span><span class="fl">1</span>, length<span class="op">=</span><span class="va">lenny</span><span class="op">)</span>
-<span class="va">ySeq</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html">seq</a></span><span class="op">(</span> from<span class="op">=</span><span class="fl">0</span>, to<span class="op">=</span><span class="fl">1</span>, length<span class="op">=</span><span class="va">lenny</span><span class="op">)</span>
-<span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/expand.grid.html">expand.grid</a></span><span class="op">(</span> x<span class="op">=</span><span class="va">xSeq</span>, y<span class="op">=</span><span class="va">ySeq</span><span class="op">)</span>
-<span class="va">Mod1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/RMgauss.html">RMgauss</a></span><span class="op">(</span> var<span class="op">=</span><span class="fl">1</span>, scale<span class="op">=</span><span class="fl">0.2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/RMnugget.html">RMnugget</a></span><span class="op">(</span> var<span class="op">=</span><span class="fl">0.01</span><span class="op">)</span>
-<span class="va">Mod2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/RMgauss.html">RMgauss</a></span><span class="op">(</span> var<span class="op">=</span><span class="fl">1</span>, scale<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/RMnugget.html">RMnugget</a></span><span class="op">(</span> var<span class="op">=</span><span class="fl">0.01</span><span class="op">)</span>
-<span class="va">Mod3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/RMgauss.html">RMgauss</a></span><span class="op">(</span> var<span class="op">=</span><span class="fl">1</span>, scale<span class="op">=</span><span class="fl">1</span><span class="op">)</span><span class="co"># + RMnugget( var=0.01)</span>
-<span class="va">Mod4</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/RMgauss.html">RMgauss</a></span><span class="op">(</span> var<span class="op">=</span><span class="fl">2</span>, scale<span class="op">=</span><span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/RMnugget.html">RMnugget</a></span><span class="op">(</span> var<span class="op">=</span><span class="fl">1</span><span class="op">)</span>
-<span class="va">simmy1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/RFsimulate.html">RFsimulate</a></span><span class="op">(</span> <span class="va">Mod1</span>, x<span class="op">=</span><span class="va">xSeq</span>, y<span class="op">=</span><span class="va">ySeq</span><span class="op">)</span>
-<span class="va">simmy2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/RFsimulate.html">RFsimulate</a></span><span class="op">(</span> <span class="va">Mod2</span>, x<span class="op">=</span><span class="va">xSeq</span>, y<span class="op">=</span><span class="va">ySeq</span><span class="op">)</span>
-<span class="va">simmy3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/RFsimulate.html">RFsimulate</a></span><span class="op">(</span> <span class="va">Mod3</span>, x<span class="op">=</span><span class="va">xSeq</span>, y<span class="op">=</span><span class="va">ySeq</span><span class="op">)</span>
-<span class="va">simmy4</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/RFsimulate.html">RFsimulate</a></span><span class="op">(</span> <span class="va">Mod4</span>, x<span class="op">=</span><span class="va">xSeq</span>, y<span class="op">=</span><span class="va">ySeq</span><span class="op">)</span>
-<span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">cbind</a></span><span class="op">(</span> <span class="va">X</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span> <span class="fu"><a href="https://rdrr.io/pkg/raster/man/as.matrix.html">as.matrix</a></span><span class="op">(</span> <span class="va">simmy1</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span> <span class="fu"><a href="https://rdrr.io/pkg/raster/man/as.matrix.html">as.matrix</a></span><span class="op">(</span> <span class="va">simmy2</span><span class="op">)</span><span class="op">)</span>,
-            <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span> <span class="fu"><a href="https://rdrr.io/pkg/raster/man/as.matrix.html">as.matrix</a></span><span class="op">(</span> <span class="va">simmy3</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span> <span class="fu"><a href="https://rdrr.io/pkg/raster/man/as.matrix.html">as.matrix</a></span><span class="op">(</span> <span class="va">simmy4</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
-<span class="va">X</span><span class="op">[</span>,<span class="op">-</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html">apply</a></span><span class="op">(</span> <span class="va">X</span><span class="op">[</span>,<span class="op">-</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span><span class="op">]</span>, <span class="fl">2</span>, <span class="va">scale</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/colnames.html">colnames</a></span><span class="op">(</span> <span class="va">X</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">c</a></span><span class="op">(</span><span class="st">"x"</span>,<span class="st">"y"</span>,<span class="st">"covar1"</span>,<span class="st">"covar2"</span>,<span class="st">"covar3"</span>,<span class="st">"covar4"</span><span class="op">)</span>
-<span class="va">env</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/raster/man/rasterFromXYZ.html">rasterFromXYZ</a></span><span class="op">(</span> <span class="va">X</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/pkg/raster/man/names.html">names</a></span><span class="op">(</span><span class="va">env</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/RandomFields/man/QMath.html">c</a></span><span class="op">(</span><span class="st">"Temperature"</span>, <span class="st">"Oxygen"</span>, <span class="st">"Depth"</span>, <span class="st">"Productivity"</span><span class="op">)</span>
-<span class="va">env.df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/raster/man/as.data.frame.html">as.data.frame</a></span><span class="op">(</span><span class="va">env</span>,xy<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span>
-<span class="va">env_dat</span><span class="op">&lt;-</span><span class="fu"><a href="https://rdrr.io/pkg/raster/man/rasterToPoints.html">rasterToPoints</a></span><span class="op">(</span><span class="va">env</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/skiptoniam/ecomix" class="external-link">ecomix</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">007</span><span class="op">)</span></span>
+<span><span class="va">lenny</span> <span class="op">&lt;-</span> <span class="fl">100</span></span>
+<span><span class="va">xSeq</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span> from<span class="op">=</span><span class="fl">0</span>, to<span class="op">=</span><span class="fl">1</span>, length<span class="op">=</span><span class="va">lenny</span><span class="op">)</span></span>
+<span><span class="va">ySeq</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span> from<span class="op">=</span><span class="fl">0</span>, to<span class="op">=</span><span class="fl">1</span>, length<span class="op">=</span><span class="va">lenny</span><span class="op">)</span></span>
+<span><span class="va">xSeq</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span> from<span class="op">=</span><span class="fl">0</span>, to<span class="op">=</span><span class="fl">1</span>, length<span class="op">=</span><span class="va">lenny</span><span class="op">)</span></span>
+<span><span class="va">ySeq</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span> from<span class="op">=</span><span class="fl">0</span>, to<span class="op">=</span><span class="fl">1</span>, length<span class="op">=</span><span class="va">lenny</span><span class="op">)</span></span>
+<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/expand.grid.html" class="external-link">expand.grid</a></span><span class="op">(</span> x<span class="op">=</span><span class="va">xSeq</span>, y<span class="op">=</span><span class="va">ySeq</span><span class="op">)</span></span>
+<span><span class="va">simmy1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rGMRF.html">rGMRF</a></span><span class="op">(</span><span class="va">xSeq</span>, <span class="va">ySeq</span>, sig2 <span class="op">=</span> <span class="fl">1</span>, rho <span class="op">=</span> <span class="fl">0.2</span>, nu <span class="op">=</span> <span class="fl">1</span><span class="op">/</span><span class="fl">2</span>, nugget <span class="op">=</span> <span class="op">(</span><span class="fl">0.01</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">simmy2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rGMRF.html">rGMRF</a></span><span class="op">(</span><span class="va">xSeq</span>, <span class="va">ySeq</span>, sig2 <span class="op">=</span> <span class="fl">1</span>, rho <span class="op">=</span> <span class="fl">0.5</span>, nu <span class="op">=</span> <span class="fl">1</span><span class="op">/</span><span class="fl">2</span>, nugget <span class="op">=</span> <span class="op">(</span><span class="fl">0.01</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">simmy3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rGMRF.html">rGMRF</a></span><span class="op">(</span><span class="va">xSeq</span>, <span class="va">ySeq</span>, sig2 <span class="op">=</span> <span class="fl">1</span>, rho <span class="op">=</span> <span class="fl">1</span>, nu <span class="op">=</span> <span class="fl">1</span><span class="op">/</span><span class="fl">2</span>, nugget <span class="op">=</span> <span class="op">(</span><span class="fl">0.01</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">simmy4</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rGMRF.html">rGMRF</a></span><span class="op">(</span><span class="va">xSeq</span>, <span class="va">ySeq</span>, sig2 <span class="op">=</span> <span class="fl">2</span>, rho <span class="op">=</span> <span class="fl">0.05</span>, nu <span class="op">=</span> <span class="fl">3</span><span class="op">/</span><span class="fl">2</span>, nugget <span class="op">=</span> <span class="op">(</span><span class="fl">4</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">Xsim</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span> <span class="va">X</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/coerce.html" class="external-link">as.matrix</a></span><span class="op">(</span> <span class="va">simmy1</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/coerce.html" class="external-link">as.matrix</a></span><span class="op">(</span> <span class="va">simmy2</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/coerce.html" class="external-link">as.matrix</a></span><span class="op">(</span> <span class="va">simmy3</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/coerce.html" class="external-link">as.matrix</a></span><span class="op">(</span> <span class="va">simmy4</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">Xsim</span><span class="op">[</span>,<span class="op">-</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">Xsim</span><span class="op">[</span>,<span class="op">-</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span><span class="op">]</span>, <span class="fl">2</span>, <span class="va">scale</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">Xsim</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>,<span class="st">"y"</span>,<span class="st">"covar1"</span>,<span class="st">"covar2"</span>,<span class="st">"covar3"</span>,<span class="st">"covar4"</span><span class="op">)</span></span>
+<span><span class="va">env</span> <span class="op">&lt;-</span> <span class="fu">terra</span><span class="fu">::</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/rast.html" class="external-link">rast</a></span><span class="op">(</span><span class="va">Xsim</span>, type<span class="op">=</span><span class="st">"xyz"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">env</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Temperature"</span>, <span class="st">"Oxygen"</span>, <span class="st">"Depth"</span>, <span class="st">"Productivity"</span><span class="op">)</span></span>
+<span><span class="va">env.df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">env</span>,xy<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">env_dat</span> <span class="op">&lt;-</span> <span class="fu">terra</span><span class="fu">::</span><span class="fu"><a href="https://rspatial.github.io/terra/reference/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">env</span>,xy<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <div class="figure">
 <img src="RCP-example_files/figure-html/env%20plots-1.png" alt="Figure 1. Simulated environmental variables used in Species Archetype Modelling" width="384"><p class="caption">
-Figure 1. Simulated environmental variables used in Species Archetype Modelling
+Figure 1. Simulated environmental variables used in Species Archetype
+Modelling
 </p>
 </div>
 </div>
-<div id="model-fitting" class="section level4">
-<h4 class="hasAnchor">
-<a href="#model-fitting" class="anchor"></a>Model fitting</h4>
-<p>Due to the complex nature of the likelihood surface we need to use a multiple fitting approach to converge on the best model. This is computationally expensive for a big models, but it ensures that a detailed exploration of the model log-likelihood to help find the global maximum. We can use the <code>regional_mix.multifit</code> function to do this, this will return a list of models with <code>nstarts</code> as the number of starts to trying when searching the log-likelihood. Once we have run the multiple fits we select the ‘best’ models based on Bayesian Information Criteria (BIC), being aware that the ‘best’ model in both SAMs and RCPs can change dependent on the number of groups chosen and the functional for the covariates in the model. This is typically why we fit a full model with all the covariates and their expected functional form fixed and then we iterate thought <span class="math inline">\(k\)</span> the number of groups. Once <span class="math inline">\(k\)</span> is selected we could do model selection on the covariates with a fixed number of groups if so desired. Here we present a plot of the BIC values from a 100 fits per each of the model first for one to six RCPs (fig. 4a). We can that for these data and this covariate structure three RCPs appears to be the most parsimonious fit.</p>
+<div class="section level4">
+<h4 id="model-fitting">Model fitting<a class="anchor" aria-label="anchor" href="#model-fitting"></a>
+</h4>
+<p>Due to the complex nature of the likelihood surface we need to use a
+multiple fitting approach to converge on the best model. This is
+computationally expensive for a big models, but it ensures that a
+detailed exploration of the model log-likelihood to help find the global
+maximum. We can use the <code>regional_mix.multifit</code> function to
+do this, this will return a list of models with <code>nstarts</code> as
+the number of starts to trying when searching the log-likelihood. Once
+we have run the multiple fits we select the ‘best’ models based on
+Bayesian Information Criteria (BIC), being aware that the ‘best’ model
+in both SAMs and RCPs can change dependent on the number of groups
+chosen and the functional for the covariates in the model. This is
+typically why we fit a full model with all the covariates and their
+expected functional form fixed and then we iterate thought <span class="math inline">\(k\)</span> the number of groups. Once <span class="math inline">\(k\)</span> is selected we could do model selection
+on the covariates with a fixed number of groups if so desired. Here we
+present a plot of the BIC values from a 100 fits per each of the model
+first for one to six RCPs (fig. 4a). We can that for these data and this
+covariate structure three RCPs appears to be the most parsimonious
+fit.</p>
 <!-- ```{r,eval=TRUE,message=FALSE, warning= FALSE} -->
 <!-- RCP_form <- as.formula(paste("cbind(",paste(species, collapse=", "),")~", -->
 <!--                         paste(paste0("poly(",rcp_env_vars,",degree=2)"), collapse="+"))) -->
@@ -307,25 +383,49 @@ Figure 1. Simulated environmental variables used in Species Archetype Modelling
 <!-- ``` -->
 <div id="refs" class="references csl-bib-body hanging-indent">
 <div id="ref-aitchison_statistical_1982" class="csl-entry">
-Aitchison, J. (1982). The statistical analysis of compositional data. <em>Journal of the Royal Statistical Society. Series B (Methodological)</em>, 139–177.
+Aitchison, J. (1982). The statistical analysis of compositional data.
+<em>Journal of the Royal Statistical Society. Series B
+(Methodological)</em>, 139–177.
 </div>
 <div id="ref-foster_modelling_2013" class="csl-entry">
-Foster, S., Givens, G., Dornan, G., Dunstan, P. &amp; Darnell, R. (2013). Modelling biological regions from multi-species and environmental data. <em>Environmetrics</em>, <strong>24</strong>, 489–499.
+Foster, S., Givens, G., Dornan, G., Dunstan, P. &amp; Darnell, R.
+(2013). Modelling biological regions from multi-species and
+environmental data. <em>Environmetrics</em>, <strong>24</strong>,
+489–499.
 </div>
 <div id="ref-foster_ecological_2017" class="csl-entry">
-Foster, S.D., Hill, N.A. &amp; Lyons, M. (2017). Ecological grouping of survey sites when sampling artefacts are present. <em>Journal of the Royal Statistical Society: Series C (Applied Statistics)</em>, <strong>66</strong>, 1031–1047.
+Foster, S.D., Hill, N.A. &amp; Lyons, M. (2017). Ecological grouping of
+survey sites when sampling artefacts are present. <em>Journal of the
+Royal Statistical Society: Series C (Applied Statistics)</em>,
+<strong>66</strong>, 1031–1047.
 </div>
 <div id="ref-hill_model-based_2017" class="csl-entry">
-Hill, N.A., Foster, S.D., Duhamel, G., Welsford, D., Koubbi, P. &amp; Johnson, C.R. (2017). Model-based mapping of assemblages for ecology and conservation management: <span>A</span> case study of demersal fish on the <span>Kerguelen</span> <span>Plateau</span>. <em>Diversity and Distributions</em>, <strong>23</strong>, 1216–1230.
+Hill, N.A., Foster, S.D., Duhamel, G., Welsford, D., Koubbi, P. &amp;
+Johnson, C.R. (2017). Model-based mapping of assemblages for ecology and
+conservation management: <span>A</span> case study of demersal fish on
+the <span>Kerguelen</span> <span>Plateau</span>. <em>Diversity and
+Distributions</em>, <strong>23</strong>, 1216–1230.
 </div>
 <div id="ref-hill_determining_2020" class="csl-entry">
-Hill, N., Woolley, S.N., Foster, S., Dunstan, P.K., McKinlay, J., Ovaskainen, O. &amp; Johnson, C. (2020). Determining marine bioregions: <span>A</span> comparison of quantitative approaches. <em>Methods in Ecology and Evolution</em>, <strong>11</strong>, 1258–1272.
+Hill, N., Woolley, S.N., Foster, S., Dunstan, P.K., McKinlay, J.,
+Ovaskainen, O. &amp; Johnson, C. (2020). Determining marine bioregions:
+<span>A</span> comparison of quantitative approaches. <em>Methods in
+Ecology and Evolution</em>, <strong>11</strong>, 1258–1272.
 </div>
 <div id="ref-lyons_simultaneous_2017" class="csl-entry">
-Lyons, M.B., Foster, S.D. &amp; Keith, D.A. (2017). Simultaneous vegetation classification and mapping at large spatial scales. <em>Journal of biogeography</em>, <strong>44</strong>, 2891–2902.
+Lyons, M.B., Foster, S.D. &amp; Keith, D.A. (2017). Simultaneous
+vegetation classification and mapping at large spatial scales.
+<em>Journal of biogeography</em>, <strong>44</strong>, 2891–2902.
 </div>
 <div id="ref-woolley_bioregions_2020" class="csl-entry">
-Woolley, S.N., Foster, S.D., Bax, N.J., Currie, J.C., Dunn, D.C., Hansen, C., Hill, N., O’Hara, T.D., Ovaskainen, O., Sayre, R. &amp; others. (2020). Bioregions in <span>Marine</span> <span>Environments</span>: <span>Combining</span> <span>Biological</span> and <span>Environmental</span> <span>Data</span> for <span>Management</span> and <span>Scientific</span> <span>Understanding</span>. <em>BioScience</em>, <strong>70</strong>, 48–59.
+Woolley, S.N., Foster, S.D., Bax, N.J., Currie, J.C., Dunn, D.C.,
+Hansen, C., Hill, N., O’Hara, T.D., Ovaskainen, O., Sayre, R. &amp;
+others. (2020). Bioregions in <span>Marine</span>
+<span>Environments</span>: <span>Combining</span>
+<span>Biological</span> and <span>Environmental</span> <span>Data</span>
+for <span>Management</span> and <span>Scientific</span>
+<span>Understanding</span>. <em>BioScience</em>, <strong>70</strong>,
+48–59.
 </div>
 </div>
 </div>
@@ -341,11 +441,13 @@ Woolley, S.N., Foster, S.D., Bax, N.J., Currie, J.C., Dunn, D.C., Hansen, C., Hi
 
 
       <footer><div class="copyright">
-  <p>Developed by Skipton Woolley, Scott Foster, Piers Dunstan.</p>
+  <p></p>
+<p>Developed by Skipton Woolley, Scott Foster, Piers Dunstan.</p>
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
+  <p></p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
 </div>
 
       </footer>
@@ -353,6 +455,8 @@ Woolley, S.N., Foster, S.D., Bax, N.J., Currie, J.C., Dunn, D.C., Hansen, C., Hi
 
   
 
+
+  
 
   </body>
 </html>
