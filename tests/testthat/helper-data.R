@@ -15,6 +15,24 @@ make_sam_data <- function(family = "bernoulli", nArchetypes = 2, S = 6, n = 80,
   list(data = sim, archetype_formula = sam_form, species_formula = sp_form)
 }
 
+make_sam_data_partial <- function(family = "bernoulli", nArchetypes = 2, S = 8, n = 200,
+                                   seed = 1, power = 1.6) {
+  set.seed(seed)
+  sam_form <- stats::as.formula(paste0("cbind(",
+    paste(paste0("spp", 1:S), collapse = ","), ")~x1+x2"))
+  sp_form <- ~x3
+  beta <- matrix(rnorm(nArchetypes * 2, sd = 1), nrow = nArchetypes, ncol = 2)
+  gamma <- matrix(rnorm(S, sd = 1.5), nrow = S, ncol = 1)
+  dat <- data.frame(y = rep(1, n), x1 = stats::runif(n, 0, 2.5),
+                     x2 = stats::rnorm(n, 0, 2.5), x3 = stats::rnorm(n, 0, 1))
+  dat[, -1] <- scale(dat[, -1])
+  sim <- suppressMessages(species_mix.simulate(archetype_formula = sam_form,
+    species_formula = sp_form, data = dat, beta = beta, gamma = gamma,
+    nArchetypes = nArchetypes, powers = if (family == "tweedie") rep(power, S) else NULL,
+    family = family))
+  list(data = sim, archetype_formula = sam_form, species_formula = sp_form, gamma = gamma)
+}
+
 make_rcp_data <- function(family = "bernoulli", nRCP = 2, S = 6, n = 80,
                            seed = 1, power = 1.6) {
   set.seed(seed)
