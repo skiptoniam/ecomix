@@ -7,6 +7,7 @@
 #undef length
 #include<R_ext/Applic.h>
 #include<vector>
+#include<cfloat>
 #include"Tweedie.h"
 
 #include <iostream>

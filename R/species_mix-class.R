@@ -112,11 +112,12 @@
 #'  \item{getscores.cpp}{Should we return the scores (derivates) when doing optimsation? If FALSE (default) scores will not be returned. If TRUE scores will be returned.}
 #'  \item{loglOnly.cpp}{Should the log-likelihood be caulcated? If TRUE (default) then log-likelihood is calculated and returned. If FALSE then the log-likelihood is not calculated for return.}
 #'  \item{derivOnly.cpp}{Should the scores be evaluated at the (final) parameter values. If TRUE (default) then they are calculated. If FALSE then they are not calculated.}
-#'  \item{doPenalties}{A boolean 0 or 1. Default is 0 (false) and no penalities will be applied within the optimsation.}
-#'  \item{penalty.pi}{A numeric scalar. This is the penalty for the mixing coefs. The penality is an from a Dirichlet distribution.}
-#'  \item{penalty.alpha}{A numeric scalar. This is the penalty for the alpha parameters in the species model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).}
-#'  \item{penalty.beta}{A numeric scalar. This is the penalty for the beta parameters in the  group model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).}
-#'  \item{penalty.gamma}{A numeric scalar. This is the penalty for the gamma parameters in the species model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).}
+#'  \item{doPenalties}{A boolean 0 or 1. Default is 1 (true): fairly relaxed normal(0, penalty.*) shrinkage penalties are applied to alpha/beta/gamma/theta during optimisation, mainly to stop weakly-identified parameters (e.g. an archetype with a very small mixing proportion) drifting to extreme/nonsensical values. Set to 0 to disable all four. The penalty on pi (see penalty.pi) is a separate, always-on numerical safeguard and is not controlled by this flag.}
+#'  \item{penalty.pi}{A numeric scalar (default 0.01). Always-on Dirichlet-style penalty on the archetype mixing proportions (pi), independent of doPenalties -- a numerical safeguard against a mixing proportion collapsing to zero, not an opt-in regularisation choice. Set to 0 to disable.}
+#'  \item{penalty.alpha}{A numeric scalar. This is the penalty for the alpha parameters in the species model. They are assumed to come from a normal distribution centred at 0 with standard deviation given as this parameter (default is 10, fairly relaxed).}
+#'  \item{penalty.beta}{A numeric scalar. This is the penalty for the beta parameters in the  group model. They are assumed to come from a normal distribution centred at 0 with standard deviation given as this parameter (default is 10, fairly relaxed).}
+#'  \item{penalty.gamma}{A numeric scalar. This is the penalty for the gamma parameters in the species model. They are assumed to come from a normal distribution centred at 0 with standard deviation given as this parameter (default is 10, fairly relaxed).}
+#'  \item{penalty.theta}{A numeric vector of length 2, c(location, scale). This is the penalty for the (log-scale) dispersion parameters theta, assumed to come from a normal distribution with this location and scale (default is c(0, 10), fairly relaxed).}
 #'  }
 #'
 #' @importFrom graphics abline hist legend lines matplot par plot points polygon
@@ -1151,6 +1152,10 @@
                                      offset, #y_is_na,
                                      disty, linky,
                                      fits, size, powers, control,get.fitted = TRUE)$fitted
+  if(disty == 4) get.mus.tweedie <- e.step(y, X, W, site_spp_weights,
+                                     offset, #y_is_na,
+                                     disty, linky,
+                                     fits, size, powers, control,get.fitted = TRUE)$fitted
 
   Y_s <- as.matrix(unlist(as.data.frame(y)))
   size_s <- matrix(rep(size,ncol(y)),nrow(y),ncol(y))
@@ -1164,7 +1169,8 @@
 
   n_ys <- sapply(X_no_NA,nrow)
   tau.weights <- rep(tau[,gg,drop=FALSE],c(n_ys))
-  # if(disty == 3) tau.weights <- rep(tau[,gg,drop=FALSE],c(n_ys))/(1+rep(fits$theta,each=n)*as.vector(get.mus[gg,,]))
+  if(disty == 4) tau.weights <- tau.weights*as.vector(get.mus.tweedie[gg,,])^(1-rep(powers,each=n))/rep(fits$theta,each=n)
+  # tweedie: V(mu) = theta*mu^power, so V_poisson/V_tweedie = mu^(1-power)/theta
   site.weights <- as.matrix(unlist(as.data.frame(site_spp_weights)))#[!y_is_na]))))
   obs.weights <- as.vector(tau.weights*site.weights)
 
@@ -1381,7 +1387,7 @@
                      offset, #y_is_na,
                      G, S, disty, linky,
                      size, powers, control)
-    starting.sam$theta <- exp(fit1$theta)
+    starting.sam$theta <- fit1$theta
     coefs <- fit1$coefficients
   }
   if(disty == 5){ # gaussian
@@ -1507,7 +1513,7 @@
   }
   if(ncol(W)>1){
     gamma <- do.call(rbind,lapply(fm_sp_mods, `[[`, 3))
-    gammaNames <- colnames(W[-1,,drop=FALSE])
+    gammaNames <- colnames(W[,-1,drop=FALSE])
   } else {
     gamma <- unlist(lapply(fm_sp_mods, `[[`, 3))
     gammaNames <- "gammaNAN!"
@@ -1522,7 +1528,10 @@
 
   dropCovar <- grep("NAN!",colnames(coefficients))
 
-  res$coefficients <- coefficients[,-dropCovar,drop=FALSE]
+  if(length(dropCovar) > 0){
+    coefficients <- coefficients[,-dropCovar,drop=FALSE]
+  }
+  res$coefficients <- coefficients
   res$theta <- theta
   return(res)
 }
@@ -1638,6 +1647,14 @@
 
 "sam_optimise" <- function(y, X, W, offset, spp_weights, site_spp_weights, #y_is_na,
                            S, G, disty, linky, size, powers, start_vals, control){
+
+  # Tweedie gets its own optimisation path -- see sam_optimise_tweedie() for why.
+  if(disty==4){
+    return(sam_optimise_tweedie(y=y, X=X, W=W, offset=offset, spp_weights=spp_weights,
+                                site_spp_weights=site_spp_weights, S=S, G=G, disty=disty,
+                                linky=linky, size=size, powers=powers, start_vals=start_vals,
+                                control=control))
+  }
 
   inits <- unname(c(start_vals$alpha, start_vals$beta, start_vals$eta, start_vals$gamma,
              start_vals$theta))
@@ -1770,6 +1787,166 @@
   ret$start.vals <- inits
   ret$loglikeSG <- matrix(loglikeSG,  nrow = S, ncol = G, byrow = FALSE) # loglikes got mixed up. Need to address in c++ code.  #for residuals
   ret$loglikeS <- loglikeS  #for residuals
+  gc()
+  return(ret)
+}
+
+"sam_optimise_tweedie" <- function(y, X, W, offset, spp_weights, site_spp_weights,
+                                   S, G, disty, linky, size, powers, start_vals, control){
+
+  npx <- as.integer(ncol(X))
+  n <- as.integer(nrow(X))
+
+  alpha <- as.numeric(start_vals$alpha)
+  beta <- as.numeric(start_vals$beta)
+  eta <- as.numeric(start_vals$eta)
+  gamma <- as.numeric(start_vals$gamma)
+  theta <- as.numeric(start_vals$theta)
+
+  inits <- unname(c(alpha, beta, eta, gamma, theta))
+
+  if(ncol(W)>1){
+    npw <- as.integer(ncol(W[,-1,drop=FALSE]))
+    control$optiPart <- as.integer(1)
+    Wcpp <- W[,-1,drop=FALSE]
+  } else {
+    npw <- as.integer(1)
+    control$optiPart <- as.integer(0)
+    Wcpp <- matrix(1,nrow = n, ncol=1)
+  }
+
+  if(linky=="cloglog") linkyin <- as.integer(1)
+  else linkyin <- as.integer(0)
+
+  # A single evaluation of species_mix_cpp with explicit control over what
+  # gets computed (optimise / logl-only / derivs-only) and whether theta is
+  # part of the optimised parameter vector (optiDisp).
+  eval_cpp <- function(alpha, beta, eta, gamma, theta, optiDisp, optimise, loglOnly, derivsOnly){
+    alpha.score <- as.numeric(rep(NA, S))
+    beta.score <- as.numeric(rep(NA, length(beta)))
+    eta.score <- as.numeric(rep(NA, length(eta)))
+    gamma.score <- as.numeric(rep(NA, length(gamma)))
+    theta.score <- as.numeric(rep(NA, S))
+    scores <- as.numeric(rep(NA, length(c(alpha.score,beta.score,eta.score,gamma.score,theta.score))))
+    conv <- as.integer(0)
+    pis_out <- as.numeric(rep(NA, G))
+    mus <- as.numeric(array(NA, dim = c(n, S, G)))
+    loglikeS <- as.numeric(rep(NA, S))
+    loglikeSG <- as.numeric(matrix(NA, nrow = S, ncol = G))
+
+    tmp <- .Call("species_mix_cpp",
+                 as.numeric(as.matrix(y)), as.numeric(as.matrix(X)), as.numeric(as.matrix(Wcpp)),
+                 as.numeric(offset), as.numeric(spp_weights), as.numeric(as.matrix(site_spp_weights)),
+                 as.numeric(size), as.integer(S), as.integer(G), as.integer(npx), as.integer(npw), as.integer(n),
+                 as.integer(disty), as.integer(linkyin),
+                 as.integer(optiDisp), as.integer(control$optiPart), as.integer(control$doPenalties),
+                 as.double(alpha), as.double(beta), as.double(eta), as.double(gamma), as.double(theta), as.double(powers),
+                 as.numeric(control$penalty.alpha), as.numeric(control$penalty.beta),
+                 as.numeric(control$penalty.pi), as.numeric(control$penalty.gamma),
+                 as.numeric(control$penalty.theta[1]), as.numeric(control$penalty.theta[2]),
+                 alpha.score, beta.score, eta.score, gamma.score, theta.score,
+                 as.integer(control$getscores.cpp), scores,
+                 pis_out, mus, loglikeS, loglikeSG,
+                 as.integer(control$maxit), as.integer(control$trace), as.integer(control$nreport),
+                 as.numeric(control$abstol), as.numeric(control$reltol), conv,
+                 as.integer(control$printparams.cpp),
+                 as.integer(optimise), as.integer(loglOnly), as.integer(derivsOnly),
+                 PACKAGE = "ecomix")
+    tmp$alpha.score <- alpha.score
+    tmp$beta.score <- beta.score
+    tmp$eta.score <- eta.score
+    tmp$gamma.score <- gamma.score
+    tmp$theta.score <- theta.score
+    tmp$conv <- conv
+    tmp$pis <- pis_out
+    tmp$mus <- mus
+    tmp$loglikeS <- loglikeS
+    tmp$loglikeSG <- loglikeSG
+    tmp
+  }
+
+  # Negative log-likelihood/score for a single species' theta, all else fixed
+  # used as the objective/gradient for a bounded-by-construction 1-D line
+  # search (nlminb), completely decoupled from the joint location step.
+  Tw.theta.func <- function(theta1, spp3){
+    theta3 <- theta
+    theta3[spp3] <- theta1
+    tmp <- eval_cpp(alpha, beta, eta, gamma, theta3, optiDisp = 1L,
+                    optimise = 0L, loglOnly = 1L, derivsOnly = 0L)
+    -tmp$logl
+  }
+
+  Tw.theta.func.grad <- function(theta1, spp3){
+    theta3 <- theta
+    theta3[spp3] <- theta1
+    tmp <- eval_cpp(alpha, beta, eta, gamma, theta3, optiDisp = 1L,
+                    optimise = 0L, loglOnly = 0L, derivsOnly = 1L)
+    -tmp$theta.score[spp3]
+  }
+
+  kount <- 1
+  logl.new <- logl.old <- -.Machine$double.xmax
+  maxit.outer <- 15
+
+  if(control$optimise.cpp){
+    while((abs(abs(logl.new - logl.old) / (abs(logl.old) + control$reltol)) > control$reltol | kount==1) && kount <= maxit.outer){
+      kount <- kount + 1
+      logl.old <- logl.new
+
+      if(!control$quiet) message("Updating location & dispersion parameters: ")
+      loc <- eval_cpp(alpha, beta, eta, gamma, theta, optiDisp = 0L,
+                      optimise = 1L, loglOnly = 1L, derivsOnly = 0L)
+      alpha <- loc$alpha; beta <- loc$beta; eta <- loc$eta; gamma <- loc$gamma
+      # if(!control$quiet) message(loc$logl)
+
+      # if(!control$quiet) message("Updating dispersion parameters: ")
+      for(ss in seq_len(S)){
+        opt <- stats::nlminb(start = theta[ss], objective = Tw.theta.func, gradient = Tw.theta.func.grad,
+                             spp3 = ss, control = list(trace = 0))
+        theta[ss] <- opt$par
+        # if(!control$quiet) message(opt$objective, " ", appendLF = FALSE)
+      }
+      # if(!control$quiet) message("")
+
+      final.eval <- eval_cpp(alpha, beta, eta, gamma, theta, optiDisp = 1L,
+                             optimise = 0L, loglOnly = 1L, derivsOnly = 0L)
+      logl.new <- final.eval$logl
+    }
+  }
+
+  # final call to populate everything needed for the returned model object
+  # (scores, mus, pis, per-species logls) at the converged parameter values.
+  ret <- eval_cpp(alpha, beta, eta, gamma, theta, optiDisp = 1L,
+                  optimise = 0L, loglOnly = 1L, derivsOnly = 1L)
+
+  ret$mus <- array(ret$mus, dim=c(n, S, G))
+  ret$names <- list(spp=colnames(y), SAMs=paste("Archetype", seq_len(G), sep=""),
+                    Xvars=colnames(X), Wvars=colnames(Wcpp))
+
+  ret$theta <- transform_theta(ret$theta, disty, logify=FALSE)
+
+  names(ret$alpha) <- ret$names$spp
+  names(ret$beta) <- paste(rep(ret$names$Xvars,each=G),ret$names$SAMs,sep='.')
+  if(G>1) names(ret$eta) <- paste0("eta",seq_len(G-1))
+  if(ncol(W)>1) names(ret$gamma) <- paste(rep(ret$names$Wvars,each=S),ret$names$spp,sep='.')
+  names(ret$theta) <- paste0("theta.",ret$names$spp)
+
+  ret$coefs <- list(alpha = ret$alpha,
+                    beta = matrix(ret$beta,G,npx),
+                    eta = ret$eta,
+                    gamma = matrix(ret$gamma,S,npw),
+                    theta = ret$theta)
+
+  ret$scores <- list(alpha.scores = ret$alpha.score,
+                     beta.scores = ret$beta.score,
+                     eta.scores = ret$eta.score,
+                     gamma.scores = ret$gamma.score,
+                     theta.scores = ret$theta.score)
+
+  ret$S <- S; ret$G <- G; ret$npx <- npx; ret$npw <- ifelse(ncol(W)>1,ncol(W)-1,0);
+  ret$n <- n; ret$disty <- disty;
+  ret$start.vals <- inits
+  ret$loglikeSG <- matrix(ret$loglikeSG, nrow = S, ncol = G, byrow = FALSE)
   gc()
   return(ret)
 }
@@ -2261,7 +2438,7 @@
       gamma <- rep(-999999,S)
     }
     if(disty%in%c(3,4,5)){
-      theta <- as.numeric(inits$theta)
+      theta <- transform_theta(as.numeric(inits$theta), disty=disty, logify=TRUE)
     } else {
       theta <- rep(-999999,S)
     }
@@ -2285,7 +2462,7 @@
       # start <- start + S
     }
     if(disty%in%c(3,4,5)){
-      theta <- inits[start + 1:S]
+      theta <- transform_theta(inits[start + 1:S], disty=disty, logify=TRUE)
     } else {
       theta <- rep(-999999,S)
     }
@@ -2345,7 +2522,7 @@
   if (!("printparams.cpp" %in% names( control)))
     control$printparams.cpp <- FALSE
   if(!("doPenalties")%in%names(control))
-    control$doPenalties <- 0
+    control$doPenalties <- 1
   if (!("penalty.pi" %in% names(control)))
     control$penalty.pi <- 0.01
   else
@@ -2375,11 +2552,11 @@
       control$penalty.gamma <- 10
     }
   if( !("penalty.theta" %in% names( control)))
-    control$penalty.theta <- c( 10, sqrt( 10))  #the mu and sd of a log-normal
+    control$penalty.theta <- c( 0, 10)
   else
     if( control$penalty.theta[2] <= 0 | length( control$penalty.theta) != 2) {
       message("Supplied penalty parameters for the dispersions is illogical, reverting to the default")
-      control$penalty.theta <- c( 10, sqrt( 10))
+      control$penalty.theta <- c( 0, 10)
     }
 
   return( control)

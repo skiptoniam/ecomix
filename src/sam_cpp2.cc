@@ -52,7 +52,7 @@ extern "C" {
 	double *tmplogliSG = REAL( RlogliSG);
 	for( int g=0; g<all.data.nG;g++)
 		for( int s=0; s<all.data.nS; s++)
-				tmplogliSG[MATREF2D(s,g,all.data.nS)] = all.fits.log_like_species_group_contrib[MATREF2D(s,g,all.data.nS)];
+				tmplogliSG[MATREF2D(s,g,all.data.nS)] = all.fits.log_like_species_group_contrib[MATREF2D(g,s,all.data.nG)];
 	//the logl contributions
 	double *tmplogliS = REAL( RlogliS);
 	for( int s=0; s<all.data.nS; s++)
@@ -172,15 +172,18 @@ double sam_cpp_mix_loglike(const sam_data &dat, const sam_params &params, sam_fi
 		loglike += tloglike;
 	}
 
+	// Dirichlet-style penalty on pi, keeping any archetype's mixing weight
+	// from collapsing to zero: always applied (independent of doPenalties)
+	penPi = calc_pi_pen(dat, params);
+	loglike += penPi;
+
 	//penalities.
 	if(dat.doPenalties>0){
 		penAlpha = calc_alpha_pen( dat, params);
 		penBeta = calc_beta_pen( dat, params);
-		//penPi = calc_pi_pen(dat, params);  // leave penality as zero.
 
 		loglike += penAlpha;
 		loglike += penBeta;
-		//loglike += penPi;
 
 		if(dat.optiPart>0){
 		penGamma = calc_gamma_pen( dat, params);
@@ -266,7 +269,7 @@ void calc_sam_loglike_SG(vector<double> &loglSG, vector<double> &fits, const sam
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_negative_binomial_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
 						}
 					if(dat.disty==4){ // tweedie
-						loglSG.at(MATREF2D(g,s,dat.nG)) += log_tweedie_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), exp(params.Theta[s]), params.Power[s]);
+						loglSG.at(MATREF2D(g,s,dat.nG)) += log_tweedie_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s], params.Power[s]);
 					}
 					if(dat.disty==5){ // normal
 						loglSG.at(MATREF2D(g,s,dat.nG)) += log_normal_sam(dat.y[MATREF2D(i,s,dat.nObs)], fits.at(MATREF3D(i,s,g,dat.nObs,dat.nS)), params.Theta[s]);
@@ -382,7 +385,7 @@ double log_poisson_deriv_sam( const double &y, const double &mu){
 
 double log_negative_binomial_sam( const double &y, const double &mu, const double &od){
 	double tmp, theta;
-	theta = 1/exp(od);
+	theta = exp(od); // od is log(size); R's transform_theta() stores it as log(1/phi)
 	tmp = dnbinom_mu(y, theta, mu, 1);
 	return( tmp);
 }
@@ -392,14 +395,12 @@ double log_negative_binomial_deriv_theta_sam(const double &y, const double &mu, 
     double theta, res=0.0;
     double sig;
 	sig = exp(od);
-	theta = 1 / sig;
+	theta = sig; // theta (r/size) = exp(od), matching log_negative_binomial_sam
 
-	//theta = 1/exp(od);
 	res = digamma( theta+y);
 	res -= digamma( theta);
 	res += 1 + log( theta) - log(mu+theta) - (theta+y)/(theta+mu);
-	res /= -sig*sig;	//for the change of variable sig --> r
-	res *= sig;	//for the change of variable dispParm --> sig
+	res *= sig;	//for the change of variable dispParm(od) --> theta=exp(od)
     //gr[0] += (digamma(pars[0]+data->y[i]) - digamma(pars[0]) + log(pars[0]) + 1 -
     //log( data->lp.at(i) + pars[0]) - (pars[0]+data->y[i])/(data->lp.at(i) + pars[0]))*data->w[i];
 
@@ -409,7 +410,7 @@ double log_negative_binomial_deriv_theta_sam(const double &y, const double &mu, 
 
 double log_negative_binomial_deriv_mu_sam( const double &y, const double &mu, const double &od){
 	double tmp, theta;
-	theta = 1/exp( od);
+	theta = exp( od); // od is log(size); R's transform_theta() stores it as log(1/phi)
 	tmp = -(theta+y)/(theta+mu);
 	tmp += y/mu;
 	return( tmp);
@@ -486,6 +487,8 @@ void additive_logistic_sam(vector< double > &x, int inv, int G){
     return;
   }
 
+  const double eps = DBL_EPSILON;
+
   vector< double > xt (x.size(),0);
   double sumx=0, sumxt=0;
 
@@ -495,9 +498,12 @@ void additive_logistic_sam(vector< double > &x, int inv, int G){
   }
   for(int i=0;i<x.size();i++){
     x.at(i) = xt.at(i)/(1+sumx);
+    if(x.at(i) < eps) x.at(i) = eps;
     sumxt+=x.at(i);
   }
-  x.push_back(1-sumxt);
+  double pLast = 1-sumxt;
+  if(pLast < eps) pLast = eps;
+  x.push_back(pLast);
 
 }
 
@@ -571,27 +577,20 @@ void sam_cpp_mix_gradient(const sam_data &dat, const sam_params &params, sam_der
 	calc_dlog_dpi(fits.dlogdpi, fits.log_like_species_group_contrib, fits.log_like_species_contrib, dat, params);
 	calc_eta_deriv(etaDerivs, fits.dlogdpi, parpi, dat);
 
-	// update derives before penalities
-	//derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, thetaDerivs);
-
-	// Add in the derivate penalites here.
-	//if(dat.doPenalties>0){
-    //calc_alpha_pen_deriv(alphaDerivs, dat, params);
-    //calc_beta_pen_deriv(betaDerivs, dat, params);
-    //calc_gamma_pen_deriv(gammaDerivs, dat, params);
-    //calc_theta_pen_deriv(thetaDerivs, dat, params);
-    //etaDerivs.assign(etaDerivs.size(), 0.0);
-   	////update the derivates after penalities
-	//derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, thetaDerivs);
-	//}
+	// Add in the derivate penalites here (matching the loglike-side
+	// penalties in sam_cpp_mix_loglike()). calc_gamma_pen_deriv/
+	// calc_theta_pen_deriv already internally gate on optiPart/optiDisp.
+	if(dat.doPenalties>0){
+	    calc_alpha_pen_deriv(alphaDerivs, dat, params);
+	    calc_beta_pen_deriv(betaDerivs, dat, params);
+	    calc_gamma_pen_deriv(gammaDerivs, dat, params);
+	    calc_theta_pen_deriv(thetaDerivs, dat, params);
+	}
 
 	//update the derivates after penalities
 	derivs.updateDerivs( dat, alphaDerivs, betaDerivs, etaDerivs, gammaDerivs, thetaDerivs);
 	}
 
-/* Ok I'm going to try and generalise the derivate function across all distributions */
-/* firstly we are going to estimate DerivMu which will be used across all the derivates.
- * This will replace the tmp_lpd or whatever I've called it */
 void calc_mu_deriv( vector<double> &mu_derivs, const vector<double> &fits, const sam_data &dat, const sam_params &params){
 	//derivatives of conditional density w.r.t. its mean
 	//muDerivs is a GxS matrix of first derivatives
@@ -818,12 +817,11 @@ void calc_dlog_dpi(vector<double> &dldpi, vector<double> const &llSG, vector<dou
 	for(int g=0; g<(dat.nG-1); g++) pispen2.at(g) = params.Eta[g];
 	additive_logistic_sam(pispen2,1,dat.nG);
 
-	//if(dat.doPenalties>0){
-	//for( int g=0; g<dat.nG; g++){
-		//dldpi.at(g) += params.PiPen / pispen2.at(g);
-      ////Rprintf( "pen %f\n", params.PiPen / pispen2.at(g));
-		//}
-	//}
+	// gradient of the (always-on) pi penalty above -- see the matching
+	// comment in sam_cpp_mix_loglike().
+	for( int g=0; g<dat.nG; g++){
+		dldpi.at(g) += params.PiPen / pispen2.at(g);
+	}
 }
 
 //// this should calculate the derivate w.r.t alpha.
@@ -926,7 +924,7 @@ void calc_gamma_pen_deriv( vector<double> &gammaDerivs, const sam_data &dat, con
     if(dat.optiPart>0){
 		for(int s=0; s<(dat.nS); s++){
 			for( int w=0; w<dat.nPW; w++){
-			gammaDerivs.at(MATREF2D(s,w,dat.nS)) += - params.Gamma[MATREF2D(s,w,dat.nPW)] / (params.GammaPen*params.GammaPen);
+			gammaDerivs.at(MATREF2D(s,w,dat.nS)) += - params.Gamma[MATREF2D(s,w,dat.nS)] / (params.GammaPen*params.GammaPen);
 			}
 		}
 	}
@@ -960,10 +958,9 @@ double calc_theta_pen( const sam_data &dat, const sam_params &params){
 
 void calc_theta_pen_deriv(vector<double> &thetaDerivs, const sam_data &dat, const sam_params &params){
 
-	thetaDerivs.assign(thetaDerivs.size(), 0.0);
 	if( dat.optiDisp>0){
 		for( int s=0; s<dat.nS; s++){
-			thetaDerivs.at(s) = -(params.Theta[s]-params.ThetaLocatPen)/(params.ThetaScalePen*params.ThetaScalePen);
+			thetaDerivs.at(s) += -(params.Theta[s]-params.ThetaLocatPen)/(params.ThetaScalePen*params.ThetaScalePen);
 		}
 	}
 }

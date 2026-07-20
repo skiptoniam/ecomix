@@ -42,10 +42,7 @@
     }
     if( type == "BayesBoot")
       all.wts <- object$S * gtools::rdirichlet( nboot, rep( 1, object$S))
-    my.inits <- setup_inits_sam(object$coefs, object$S, object$G,
-                                object$titbits$X, object$titbits$W,
-                                object$disty,
-                                return_list = TRUE)
+    my.inits <- object$coefs
 
     tmpOldQuiet <- object$titbits$control$quiet
     object$titbits$control$quiet <- TRUE
@@ -54,6 +51,12 @@
       if( !quiet) setTxtProgressBar(pb, dummy)
       disty <- object$disty
       linky <- object$link
+      inits_i <- my.inits
+      if( disty %in% c(3,4,5)){
+        log.theta <- transform_theta(inits_i$theta, disty = disty, logify = TRUE)
+        log.theta <- log.theta + stats::rnorm(length(log.theta), mean = 0, sd = 0.1)
+        inits_i$theta <- transform_theta(log.theta, disty = disty, logify = FALSE)
+      }
       dumbOut <- capture.output(
         samp.object <- ecomix::species_mix.fit(y=object$titbits$Y,
                                                X=object$titbits$X,
@@ -69,7 +72,7 @@
                                                size = object$titbits$size,
                                                powers = object$titbits$powers,
                                                control = object$titbits$control,
-                                               inits = my.inits)
+                                               inits = inits_i)
         )
       boot.res <- c(samp.object$alpha,samp.object$beta,samp.object$eta,
                     samp.object$gamma,samp.object$theta)
