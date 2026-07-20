@@ -148,11 +148,12 @@ Control arguments for species_mix are as follows:
  \item{getscores.cpp}{Should we return the scores (derivates) when doing optimsation? If FALSE (default) scores will not be returned. If TRUE scores will be returned.}
  \item{loglOnly.cpp}{Should the log-likelihood be caulcated? If TRUE (default) then log-likelihood is calculated and returned. If FALSE then the log-likelihood is not calculated for return.}
  \item{derivOnly.cpp}{Should the scores be evaluated at the (final) parameter values. If TRUE (default) then they are calculated. If FALSE then they are not calculated.}
- \item{doPenalties}{A boolean 0 or 1. Default is 0 (false) and no penalities will be applied within the optimsation.}
- \item{penalty.pi}{A numeric scalar. This is the penalty for the mixing coefs. The penality is an from a Dirichlet distribution.}
- \item{penalty.alpha}{A numeric scalar. This is the penalty for the alpha parameters in the species model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).}
- \item{penalty.beta}{A numeric scalar. This is the penalty for the beta parameters in the  group model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).}
- \item{penalty.gamma}{A numeric scalar. This is the penalty for the gamma parameters in the species model. They are assumed to come from a normal distribution with standard deviation given as this parameter (default is 10).}
+ \item{doPenalties}{A boolean 0 or 1. Default is 1 (true): fairly relaxed normal(0, penalty.*) shrinkage penalties are applied to alpha/beta/gamma/theta during optimisation, mainly to stop weakly-identified parameters (e.g. an archetype with a very small mixing proportion) drifting to extreme/nonsensical values. Set to 0 to disable all four. The penalty on pi (see penalty.pi) is a separate, always-on numerical safeguard and is not controlled by this flag.}
+ \item{penalty.pi}{A numeric scalar (default 0.01). Always-on Dirichlet-style penalty on the archetype mixing proportions (pi), independent of doPenalties -- a numerical safeguard against a mixing proportion collapsing to zero, not an opt-in regularisation choice. Set to 0 to disable.}
+ \item{penalty.alpha}{A numeric scalar. This is the penalty for the alpha parameters in the species model. They are assumed to come from a normal distribution centred at 0 with standard deviation given as this parameter (default is 10, fairly relaxed).}
+ \item{penalty.beta}{A numeric scalar. This is the penalty for the beta parameters in the  group model. They are assumed to come from a normal distribution centred at 0 with standard deviation given as this parameter (default is 10, fairly relaxed).}
+ \item{penalty.gamma}{A numeric scalar. This is the penalty for the gamma parameters in the species model. They are assumed to come from a normal distribution centred at 0 with standard deviation given as this parameter (default is 10, fairly relaxed).}
+ \item{penalty.theta}{A numeric vector of length 2, c(location, scale). This is the penalty for the (log-scale) dispersion parameters theta, assumed to come from a normal distribution with this location and scale (default is c(0, 10), fairly relaxed).}
  }
 }
 \examples{

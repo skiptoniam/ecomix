@@ -64,6 +64,8 @@ void sam_params::getArray(double *parArr, const sam_data &dat){
 }
 
 void sam_params::update( double *parArr, const sam_data &dat){
+
+	const double etaBound = 30.0;
 	int kount=0;
 	for( int i=0; i<((dat.nS)); i++){
 		Alpha[i] = parArr[kount];
@@ -75,6 +77,8 @@ void sam_params::update( double *parArr, const sam_data &dat){
 	}
 	for( int i=0; i<((dat.nG-1)); i++){
 		Eta[i] = parArr[kount];
+		if( Eta[i] > etaBound) Eta[i] = etaBound;
+		if( Eta[i] < -etaBound) Eta[i] = -etaBound;
 		kount++;
 	}
 	if( dat.optiPart>0){
@@ -92,46 +96,6 @@ void sam_params::update( double *parArr, const sam_data &dat){
 			Theta[i] = parArr[kount];
 			kount++;
 		}
-	} 
+	}
 }
 
-//void sam_params::printParms( const sam_data &dat){
-
-	//Rprintf( "ALPHA:\n");
-	//for( int i=0; i<dat.nS; i++){
-		//Rprintf( "%3.2f\t", Alpha[i]);
-	//}
-	//Rprintf( "\n");
-	//Rprintf( "BETA:\n");
-	//for( int g=0; g<(dat.nG); g++){
-		//for( int i=0; i<dat.nPX; i++)
-			//Rprintf( "%3.2f\t", Beta[MATREF2D(g,i,(dat.nG))]);
-			//Rprintf( "\n");
-	//}
-	//Rprintf( "PI (transformed Pi):\n");
-	//for( int g=0; g<(dat.nG-1); g++){
-		//Rprintf( "%3.2f\t", Eta[g]);
-		//Rprintf( "\n");
-	//}
-	//if( dat.optiPart>0){
-	//Rprintf( "GAMMA:\n");
-		//for( int s=0; s<(dat.nS); s++){
-			//for( int i=0; i<dat.nPW; i++)
-				//Rprintf( "%3.2f\t", Gamma[MATREF2D(s,i,(dat.nS))]);
-				//Rprintf( "\n");
-		//}
-	//}
-	//if( dat.optiAll>0){
-	//Rprintf( "DELTA:\n");
-		//for( int i=0; i<dat.nPW; i++)
-				//Rprintf( "%3.2f\t", Delta[i]);
-				//Rprintf( "\n");
-	//}
-	//if( dat.isDispersion()==true){
-		//Rprintf("DISPERSION:\n");
-		//for( int i=0; i<dat.nS; i++)
-		//Rprintf( "%3.2f\t", Theta[i]);
-		//Rprintf( "\n");
-	//}
-
-//}
