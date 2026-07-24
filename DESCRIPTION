@@ -29,7 +29,7 @@ Suggests:
     RColorBrewer
 Depends:
     R (>= 4.0)
-License: GPL (>= 2)
+License: GPL (>= 3)
 NeedsCompilation: yes
 RoxygenNote: 7.3.2
 VignetteBuilder: knitr
